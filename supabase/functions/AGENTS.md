@@ -53,5 +53,6 @@ Classify a difference as `../AGENTS.md`, "Schema drift check", step 3, describes
 
 With the local Supabase stack running: `bun run functions:serve` (reads `supabase/functions/.env`, maintainer-owned and gitignored), then `bun run stripe:listen` to forward sandbox webhooks to the local `stripe-webhooks`, then `stripe trigger <event>`. `stripe:listen` (`scripts/dev/stripe-listen.ts`) reads the current worktree's API URL and refuses non-local targets. When `stripe-webhooks` handles a new event type, add it to `STRIPE_WEBHOOK_EVENTS` in that script and to `docs/go-live.md`; `scripts/dev/stripe-listen.test.ts` fails if those two differ, but nothing checks the handler itself (#257).
 
+- `stripe:listen` forwards events in the sandbox account's default API version, which must equal `STRIPE_API_VERSION`. Raise it in the Stripe Dashboard on each new API major (`docs/dependencies.md`, "Keep the Stripe SDK and API version together"). Do not add `--latest`. `stripe-webhooks` reports an event from another release line to Sentry and still processes it.
 - Create test scenarios with the Stripe CLI, not through the MCP.
 - Cross-check webhook events in the sandbox (Stripe MCP) with Edge Function logs (Supabase MCP).

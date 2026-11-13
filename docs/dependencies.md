@@ -109,7 +109,13 @@ Every month, with the in-range updates:
 The Edge Functions call Stripe through one SDK pin and send one API version. The pin is the root `stripe` devDependency, and `supabase/functions/_shared/stripe/sdk.ts` holds the only `npm:stripe@<version>` specifier. `STRIPE_API_VERSION` lives in `supabase/functions/_shared/stripe/api-version.ts`. Each SDK major ships one API version, and `STRIPE_API_VERSION` is typed as that version (`Stripe.LatestApiVersion`), so `deno check` fails when the pin moves without it.
 
 - **SDK minors and patches.** Take them with the other in-range updates. They keep the same API version.
-- **A new Stripe API major (about twice a year).** Plan it as its own task. Read the breaking changes in the Stripe API changelog, then move the root pin, the SDK specifier, and `STRIPE_API_VERSION` together in one change. The `upgrade-stripe` skill covers the upgrade. It touches money paths, so run the local payments loop (`supabase/functions/AGENTS.md`, "Local payments loop").
+- **A new Stripe API major (about twice a year).** Plan it as its own task. Read the breaking changes in the Stripe API changelog, then move the root pin, the SDK specifier, and `STRIPE_API_VERSION` together in one change. The `upgrade-stripe` skill covers the upgrade. It touches money paths, so run the local payments loop (`supabase/functions/AGENTS.md`, "Local payments loop"). Snapshot event payloads follow the API version of the account or endpoint that sends them, not the SDK, so the same change needs these steps outside the code:
+  1. In the Stripe Dashboard, raise the sandbox account's default API version to the new `STRIPE_API_VERSION`. `stripe listen` forwards events in that version.
+  2. Recreate the two sandbox webhook endpoints at the new version with the Stripe CLI: `stripe webhook_endpoints create -d api_version=<version> ...`, adding `-d connect=true` for the Connect endpoint. Subscribe each one to its events in `docs/go-live.md`, "9. External webhooks". The Dashboard creates endpoints only at the latest version, so use the CLI.
+  3. Copy each new signing secret into `STRIPE_WEBHOOK_SECRET` and `STRIPE_CONNECT_WEBHOOK_SECRET`, then delete the old endpoints.
+  4. At deploy time, repeat steps 2 and 3 for the live endpoints.
+
+  If an endpoint is missed, `stripe-webhooks` still processes its events and reports each one to Sentry as an API version drift. A monthly version in the same release line (the part after the dot, such as `endive`) needs none of these steps.
 
 The weekly report's **Stripe API version** section compares `STRIPE_API_VERSION` with the API version the installed `stripe` package ships and flags a mismatch. It fails when it cannot read either version, or when the installed SDK is not the pinned one.
 

@@ -165,6 +165,8 @@ Run the monthly steps of `docs/dependencies.md`, "Follow the cadence": `bun outd
 
 Also compare `supabase --version` with the `version:` of the setup-cli step in `.github/workflows/ci.yml`, and check whether each `HELD_BACK` blocker in `scripts/ci/dependency-report.ts` is gone.
 
+Read the sandbox webhook endpoints with the Stripe MCP tool `GetWebhookEndpoints` (`livemode: false`). Each `api_version` must equal `STRIPE_API_VERSION` in `supabase/functions/_shared/stripe/api-version.ts`; a mismatch needs a decision.
+
 ### Worktrees
 
 A worktree is a cleanup candidate only when it is not active ("Check the open worktrees before you act"). It has no uncommitted files, no commits ahead of `origin/main`, and no recent work, and its branch is merged: `git merge-base --is-ancestor <branch> origin/main` exits with 0. A merged branch alone is not enough, because a worktree can move on to a new branch. On 2026-11-10, `repo-hygiene` held a merged branch one day and 38 uncommitted files on a new branch the next.
