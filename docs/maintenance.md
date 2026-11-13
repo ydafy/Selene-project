@@ -163,7 +163,7 @@ Needs a decision for a skill with zero reads in three monthly runs in a row and 
 
 Run the monthly steps of `docs/dependencies.md`, "Follow the cadence": `bun outdated --filter @selene/frontend`, `bun outdated --filter admin-web`, Node and Bun, and Docker Desktop. The agent cannot see Docker Desktop updates. `docker version --format '{{.Server.Version}}'` shows the local version. Ask the maintainer to look at **Settings** > **Software updates**.
 
-Also compare `supabase --version` with the `version:` of the setup-cli step in `.github/workflows/ci.yml`, and check whether each `HELD_BACK` blocker in `scripts/ci/dependency-report.ts` is gone.
+Also compare `supabase --version` with the `version:` of the setup-cli step in `.github/workflows/ci.yml`, run `supabase stack outdated` in the main checkout (an update follows `supabase/AGENTS.md`, "Local stack"), and check whether each `HELD_BACK` blocker in `scripts/ci/dependency-report.ts` is gone.
 
 Read the sandbox webhook endpoints with the Stripe MCP tool `GetWebhookEndpoints` (`livemode: false`). Each `api_version` must equal `STRIPE_API_VERSION` in `supabase/functions/_shared/stripe/api-version.ts`; a mismatch needs a decision.
 

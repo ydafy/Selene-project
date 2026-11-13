@@ -17,7 +17,6 @@ export const GENERATE_COMMAND = [
   'gen',
   'types',
   'typescript',
-  '--local',
   '--schema',
   'public',
 ];

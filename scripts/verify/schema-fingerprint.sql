@@ -1,6 +1,6 @@
 -- Catalog fingerprint for the schema drift check (supabase/AGENTS.md, "Schema drift check").
 -- Run it unchanged on both sides and compare the rows:
---   local:  supabase db query --local -f scripts/verify/schema-fingerprint.sql
+--   local:  supabase db query -f scripts/verify/schema-fingerprint.sql
 --   remote: paste the whole file into the Supabase MCP `execute_sql` (read-only)
 -- Each row is one kind of object with its count and a hash of every object's definition.
 -- When a kind differs, replace the final SELECT with the drill-down at the end of this file.

@@ -95,6 +95,10 @@ To change the CLI version:
 5. Install the same version locally: `scoop unhold supabase`, `scoop update supabase`, `scoop hold supabase`. If the latest release is newer than the one you pinned, run `scoop uninstall supabase` and `scoop install supabase@<version>` instead.
 6. Run `supabase start`, `supabase db reset` and `bun run test:db`. CI's `db-test` job proves the pin on the pull request.
 
+To go back to v2, run `scoop uninstall supabase` and `scoop install supabase-v2-stable`, and change the CI pin back in the same commit.
+
+The CLI version does not move the local service builds. `supabase/supabase.lock` pins them, and `supabase stack update` updates it (`supabase/AGENTS.md`, "Local stack").
+
 ### Docker Desktop
 
 The weekly report does not check Docker. It runs on GitHub's runner, which brings its own Docker and cannot see your machine.

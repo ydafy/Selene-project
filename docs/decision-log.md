@@ -293,3 +293,15 @@ It is established as the standard procedure for structural inconsistencies.
 **Reason:** A `security_invoker` view needs a row policy on `products` that lets every caller read public listings. Column grants are per role, not per row, and `authenticated` needs table-level SELECT on `products` so owners can read their own listings. With that row policy, any signed-in user could read the hidden columns of a public listing (`origin_zip`, the `verification_data` paths, the `publication_*` economics) straight from `products`. The view keeps those columns out because it lists only the columns a buyer needs, and `security_barrier` stops a caller's filter from running before its row predicate.
 
 **Consequence:** A new `products` column stays hidden until someone adds it to the view. Revisit this entry if the view gains a column that only the owner should see.
+
+## 2026-11-12: Supabase CLI v3 and a Lock That Follows the Hosted Project
+
+**Context:** Supabase CLI 3.1.0 replaces `--linked`, `--project-ref` and `--db-url` with `--remote` (`--remote` alone is the linked project, `--remote=<ref|url>` one target), runs database commands against the local stack by default (`--local` is deprecated), and asks before it changes a hosted project. An agent never gets that prompt, so the command fails unless it passes `--yes`. Every entry in the committed `supabase/supabase.lock` has the `linked` specifier, so `supabase stack update` from the linked main checkout pins the hosted versions (Storage v1.94.2, Postgres build 17.11.0.018). #353 asked what to do when `supabase link` rewrites the lock with those versions.
+
+**Decision:**
+
+- The CLI is 3.1.0 on the machine and in CI. Commands that reach the hosted project end with `--remote`.
+- An agent passes `--yes` only to the exact command the maintainer's green light names. A dry run never gets `--yes`.
+- The lock follows the hosted project's service versions. This supersedes "The lock is unlinked" in the 2026-10-26 entry. `supabase stack update`, run from the main checkout after `supabase stack outdated`, is the only way to change it, in its own `chore` commit. This closes #353.
+
+**Consequence:** Local stacks run the service builds the remote runs. A lock update that moves the Postgres build makes older local stacks refuse to start: each worktree runs the `supabase stack destroy --stack-id <id>` that the error prints, then `supabase start` and `supabase db reset` (`supabase/AGENTS.md`, "Local stack").
