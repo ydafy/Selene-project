@@ -169,9 +169,9 @@ select is(pg_temp.peek(format('update public.connect_payout_runs set release_sta
   format('select id || %L || release_stage from public.connect_payout_runs where id = %L', ':', pg_temp.mu(10))),
   pg_temp.mu(10)::text || ':awaiting_connected_balance',
   'a run with no stage is claimed and moved to awaiting_connected_balance');
-select is(pg_temp.claim_after($$insert into public.connect_account_actionability (stripe_account_id, is_actionable, stripe_created)
+select is(pg_temp.claim_after($$insert into internal.connect_account_actionability (stripe_account_id, is_actionable, stripe_created)
   values ('acct_t4_seller', false, now())$$), null, 'a run of a non-actionable account is not claimed');
-select is(pg_temp.claim_after($$insert into public.connect_account_actionability (stripe_account_id, is_actionable, stripe_created)
+select is(pg_temp.claim_after($$insert into internal.connect_account_actionability (stripe_account_id, is_actionable, stripe_created)
   values ('acct_t4_seller', true, now())$$), pg_temp.mu(10)::text, 'a run of an actionable account is claimed');
 select is(pg_temp.claim_after(format('update public.connect_payout_runs set next_attempt_at = now() + interval %L where id = %L',
   '1 second', pg_temp.mu(10))), null, 'a run whose next attempt is not due is not claimed');

@@ -4,9 +4,9 @@ meta {
   seq: 41
 }
 
-get {
-  url: {{baseUrl}}/rest/v1/account_closures?user_id=eq.{{deleteThrowawaySub}}&select=*
-  body: none
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
   auth: none
 }
 
@@ -15,20 +15,25 @@ headers {
   Authorization: Bearer {{secretKey}}
 }
 
+body:json {
+  { "p_user_id": "{{deleteThrowawaySub}}" }
+}
+
 tests {
-  test("one closure row, cleanup finished by a single attempt", function () {
+  test("the closure is recorded and its cleanup finished", function () {
     expect(res.getStatus()).to.equal(200);
-    const rows = res.getBody();
-    expect(rows.length).to.equal(1);
-    expect(rows[0].stripe_customer_cleanup).to.equal("not_needed");
-    expect(rows[0].stripe_account_cleanup).to.equal("not_needed");
-    expect(rows[0].storage_cleanup).to.equal("done");
-    expect(rows[0].attempts).to.equal(1);
-    expect(rows[0].last_error).to.equal(null);
+    const body = res.getBody();
+    expect(body.status).to.equal("already_closed");
+    expect(body.stripe_customer_cleanup).to.equal("not_needed");
+    expect(body.stripe_account_cleanup).to.equal("not_needed");
+    expect(body.storage_cleanup).to.equal("done");
   });
 }
 
 docs {
-  Reads account_closures with the service role (no client grant exists). attempts = 1
-  after the 200 and the refused repeat proves the repeat re-did nothing.
+  account_closures lives in schema internal, out of PostgREST's reach, so the closure is
+  read back through fn_close_account with the service role: a second call changes nothing
+  and reports the stored cleanup state. storage_cleanup done proves delete-account recorded
+  the step through fn_record_closure_cleanup_step. The attempt count and last_error are
+  pinned in supabase/tests/database/account_closure*.test.sql.
 }

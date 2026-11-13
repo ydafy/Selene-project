@@ -41,7 +41,7 @@ BEGIN
   IF v_account_id IS NOT NULL THEN
     SELECT caa.refresh_pending, caa.is_actionable
     INTO v_refresh_pending, v_is_actionable
-    FROM public.connect_account_actionability caa
+    FROM internal.connect_account_actionability caa
     WHERE caa.stripe_account_id = v_account_id
     FOR SHARE;
   END IF;

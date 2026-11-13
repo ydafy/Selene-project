@@ -35,8 +35,10 @@ const CLEANUP_STATES: readonly string[] = [
 ];
 
 /**
- * One write to `account_closures`. `attempt` adds one to `attempts` and stamps
- * `last_error`; `finish` only stamps `last_error` (the cron claim already counted).
+ * One write to `internal.account_closures`, always through a service-only RPC.
+ * A step state goes through `fn_record_closure_cleanup_step`; `attempt` adds one
+ * to `attempts` and stamps `last_error`; `finish` only stamps `last_error` (the
+ * cron claim already counted).
  */
 export type ClosureCleanupUpdate =
   | { stripe_customer_cleanup: 'done' | 'failed' | 'not_needed' }
@@ -44,6 +46,22 @@ export type ClosureCleanupUpdate =
   | { storage_cleanup: 'done' | 'failed' }
   | { attempt: true; last_error: string | null }
   | { finish: true; last_error: string | null };
+
+type ClosureStepUpdate = Exclude<
+  ClosureCleanupUpdate,
+  { attempt: true } | { finish: true }
+>;
+
+/** The step column and the state a step update records. */
+function cleanupStep(update: ClosureStepUpdate): [string, string] {
+  if ('stripe_customer_cleanup' in update) {
+    return ['stripe_customer_cleanup', update.stripe_customer_cleanup];
+  }
+  if ('stripe_account_cleanup' in update) {
+    return ['stripe_account_cleanup', update.stripe_account_cleanup];
+  }
+  return ['storage_cleanup', update.storage_cleanup];
+}
 
 export type ClosureCleanup = {
   customerId: string | null;
@@ -383,10 +401,12 @@ export function createSupabaseClosurePorts(deps: {
         if (error) throw new Error(error.message);
         return;
       }
-      const { error } = await admin
-        .from('account_closures')
-        .update({ ...update, updated_at: new Date().toISOString() })
-        .eq('user_id', userId);
+      const [step, state] = cleanupStep(update);
+      const { error } = await admin.rpc('fn_record_closure_cleanup_step', {
+        p_user_id: userId,
+        p_step: step,
+        p_state: state,
+      });
       if (error) throw new Error(error.message);
     },
   };

@@ -9,46 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      account_closures: {
-        Row: {
-          attempts: number;
-          closed_at: string;
-          last_error: string | null;
-          storage_cleanup: string;
-          stripe_account_cleanup: string;
-          stripe_account_id: string | null;
-          stripe_customer_cleanup: string;
-          stripe_customer_id: string | null;
-          updated_at: string;
-          user_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          attempts?: number;
-          closed_at?: string;
-          last_error?: string | null;
-          storage_cleanup?: string;
-          stripe_account_cleanup?: string;
-          stripe_account_id?: string | null;
-          stripe_customer_cleanup?: string;
-          stripe_customer_id?: string | null;
-          updated_at?: string;
-          user_id: string;
-        };
-        Update: {
-          attempts?: number;
-          closed_at?: string;
-          last_error?: string | null;
-          storage_cleanup?: string;
-          stripe_account_cleanup?: string;
-          stripe_account_id?: string | null;
-          stripe_customer_cleanup?: string;
-          stripe_customer_id?: string | null;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       addresses: {
         Row: {
           city: string;
@@ -439,156 +399,6 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
-      };
-      connect_account_actionability: {
-        Row: {
-          blocked_reason: string | null;
-          current_currency: string | null;
-          current_default_for_currency: boolean | null;
-          current_external_account_id: string | null;
-          current_mxn_default_count: number | null;
-          current_observed_at: string | null;
-          external_account_status: string | null;
-          is_actionable: boolean;
-          payouts_enabled: boolean | null;
-          refresh_generation: number;
-          refresh_pending: boolean;
-          source_event_id: string | null;
-          stripe_account_id: string;
-          stripe_created: string;
-          updated_at: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          blocked_reason?: string | null;
-          current_currency?: string | null;
-          current_default_for_currency?: boolean | null;
-          current_external_account_id?: string | null;
-          current_mxn_default_count?: number | null;
-          current_observed_at?: string | null;
-          external_account_status?: string | null;
-          is_actionable: boolean;
-          payouts_enabled?: boolean | null;
-          refresh_generation?: number;
-          refresh_pending?: boolean;
-          source_event_id?: string | null;
-          stripe_account_id: string;
-          stripe_created: string;
-          updated_at?: string;
-        };
-        Update: {
-          blocked_reason?: string | null;
-          current_currency?: string | null;
-          current_default_for_currency?: boolean | null;
-          current_external_account_id?: string | null;
-          current_mxn_default_count?: number | null;
-          current_observed_at?: string | null;
-          external_account_status?: string | null;
-          is_actionable?: boolean;
-          payouts_enabled?: boolean | null;
-          refresh_generation?: number;
-          refresh_pending?: boolean;
-          source_event_id?: string | null;
-          stripe_account_id?: string;
-          stripe_created?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      connect_account_events: {
-        Row: {
-          event_type: string;
-          external_account_id: string | null;
-          external_account_status: string | null;
-          id: string;
-          payouts_enabled: boolean | null;
-          received_at: string;
-          stripe_account_id: string;
-          stripe_created: string;
-          stripe_event_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          event_type: string;
-          external_account_id?: string | null;
-          external_account_status?: string | null;
-          id?: string;
-          payouts_enabled?: boolean | null;
-          received_at?: string;
-          stripe_account_id: string;
-          stripe_created: string;
-          stripe_event_id: string;
-        };
-        Update: {
-          event_type?: string;
-          external_account_id?: string | null;
-          external_account_status?: string | null;
-          id?: string;
-          payouts_enabled?: boolean | null;
-          received_at?: string;
-          stripe_account_id?: string;
-          stripe_created?: string;
-          stripe_event_id?: string;
-        };
-        Relationships: [];
-      };
-      connect_payout_events: {
-        Row: {
-          connect_payout_run_id: string | null;
-          event_type: string;
-          failure_balance_transaction: string | null;
-          failure_code: string | null;
-          failure_message: string | null;
-          id: string;
-          observed_payout_status: string;
-          received_at: string;
-          stripe_created: string;
-          stripe_event_id: string;
-          stripe_payout_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          connect_payout_run_id?: string | null;
-          event_type: string;
-          failure_balance_transaction?: string | null;
-          failure_code?: string | null;
-          failure_message?: string | null;
-          id?: string;
-          observed_payout_status: string;
-          received_at?: string;
-          stripe_created: string;
-          stripe_event_id: string;
-          stripe_payout_id: string;
-        };
-        Update: {
-          connect_payout_run_id?: string | null;
-          event_type?: string;
-          failure_balance_transaction?: string | null;
-          failure_code?: string | null;
-          failure_message?: string | null;
-          id?: string;
-          observed_payout_status?: string;
-          received_at?: string;
-          stripe_created?: string;
-          stripe_event_id?: string;
-          stripe_payout_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'connect_payout_events_connect_payout_run_id_fkey';
-            columns: ['connect_payout_run_id'];
-            isOneToOne: false;
-            referencedRelation: 'admin_connect_payout_release_view';
-            referencedColumns: ['payout_run_id'];
-          },
-          {
-            foreignKeyName: 'connect_payout_events_connect_payout_run_id_fkey';
-            columns: ['connect_payout_run_id'];
-            isOneToOne: false;
-            referencedRelation: 'connect_payout_runs';
-            referencedColumns: ['id'];
-          },
-        ];
       };
       connect_payout_run_shipments: {
         Row: {
@@ -2440,13 +2250,6 @@ export type Database = {
             referencedRelation: 'shipments';
             referencedColumns: ['id'];
           },
-          {
-            foreignKeyName: 'shipment_tracking_events_webhook_delivery_id_fkey';
-            columns: ['webhook_delivery_id'];
-            isOneToOne: false;
-            referencedRelation: 'webhook_deliveries';
-            referencedColumns: ['id'];
-          },
         ];
       };
       shipments: {
@@ -2807,43 +2610,6 @@ export type Database = {
           shipping_buffer_cents?: number | null;
           trusted_active_limit?: number | null;
           updated_at?: string | null;
-        };
-        Relationships: [];
-      };
-      webhook_deliveries: {
-        Row: {
-          delivery_id: string;
-          error_code: string | null;
-          event_name: string;
-          id: string;
-          payload_sha256: string;
-          processed_at: string | null;
-          provider: string;
-          received_at: string;
-          state: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          delivery_id: string;
-          error_code?: string | null;
-          event_name: string;
-          id?: string;
-          payload_sha256: string;
-          processed_at?: string | null;
-          provider: string;
-          received_at?: string;
-          state?: string;
-        };
-        Update: {
-          delivery_id?: string;
-          error_code?: string | null;
-          event_name?: string;
-          id?: string;
-          payload_sha256?: string;
-          processed_at?: string | null;
-          provider?: string;
-          received_at?: string;
-          state?: string;
         };
         Relationships: [];
       };
@@ -3514,21 +3280,15 @@ export type Database = {
         Returns: {
           attempts: number;
           closed_at: string;
-          last_error: string | null;
+          last_error: string;
           storage_cleanup: string;
           stripe_account_cleanup: string;
-          stripe_account_id: string | null;
+          stripe_account_id: string;
           stripe_customer_cleanup: string;
-          stripe_customer_id: string | null;
+          stripe_customer_id: string;
           updated_at: string;
           user_id: string;
         }[];
-        SetofOptions: {
-          from: '*';
-          to: 'account_closures';
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
       };
       fn_claim_awaiting_balance_payout_run: {
         Args: { p_lease_seconds?: number };
@@ -3553,6 +3313,17 @@ export type Database = {
         Returns: {
           stripe_charge_id: string;
           stripe_payment_intent_id: string;
+        }[];
+      };
+      fn_claim_envia_webhook_delivery: {
+        Args: {
+          p_delivery_id: string;
+          p_event_name: string;
+          p_payload_sha256: string;
+        };
+        Returns: {
+          id: string;
+          kind: string;
         }[];
       };
       fn_claim_payout_create_reconciliation: {
@@ -3882,6 +3653,13 @@ export type Database = {
         Args: { p_shipment_id: string };
         Returns: Json;
       };
+      fn_list_capped_account_closures: {
+        Args: { p_limit: number; p_max_attempts: number };
+        Returns: {
+          attempts: number;
+          user_id: string;
+        }[];
+      };
       fn_list_push_receipts_due: {
         Args: { p_limit: number };
         Returns: {
@@ -4039,6 +3817,10 @@ export type Database = {
         Args: { p_claim_token: string; p_shipment_id: string };
         Returns: boolean;
       };
+      fn_mark_webhook_delivery: {
+        Args: { p_delivery_id: string; p_error_code: string; p_state: string };
+        Returns: undefined;
+      };
       fn_notify_label_deadline_reminders: {
         Args: Record<PropertyKey, never>;
         Returns: number;
@@ -4132,6 +3914,10 @@ export type Database = {
           p_last_error: string;
           p_user_id: string;
         };
+        Returns: undefined;
+      };
+      fn_record_closure_cleanup_step: {
+        Args: { p_state: string; p_step: string; p_user_id: string };
         Returns: undefined;
       };
       fn_record_connect_account_event: {

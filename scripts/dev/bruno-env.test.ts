@@ -105,6 +105,25 @@ describe('buildBrunoEnv', () => {
     expect(without).not.toContain('BRUNO_STRIPE_TEST_ACCOUNT_ID');
   });
 
+  test('copies the Envia sandbox webhook secret when present, never the production one', () => {
+    const output = buildBrunoEnv(
+      JSON.stringify(keys),
+      'ENVIA_WEBHOOK_SECRET_PROD=prod-value\nENVIA_WEBHOOK_SECRET_SANDBOX="sandbox value"\nCRON_SECRET=cron-value\n',
+    );
+    expect(brunoEnvVariableNames(output)).toEqual([
+      'SUPABASE_URL',
+      'SUPABASE_PUBLISHABLE_KEY',
+      'SUPABASE_SECRET_KEY',
+      'CRON_SECRET',
+      'ENVIA_WEBHOOK_SECRET_SANDBOX',
+    ]);
+    expect(output).toContain('ENVIA_WEBHOOK_SECRET_SANDBOX="sandbox value"\n');
+    expect(output).not.toContain('prod-value');
+    expect(
+      buildBrunoEnv(JSON.stringify(keys), 'CRON_SECRET=x\n'),
+    ).not.toContain('ENVIA_WEBHOOK_SECRET_SANDBOX');
+  });
+
   test('refuses a Stripe key that is not a test key, without echoing it', () => {
     for (const key of [
       'sk_live_value',

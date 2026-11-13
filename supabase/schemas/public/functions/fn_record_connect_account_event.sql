@@ -32,7 +32,7 @@ BEGIN
     RAISE EXCEPTION 'MISSING_STRIPE_CREATED';
   END IF;
 
-  INSERT INTO public.connect_account_events (
+  INSERT INTO internal.connect_account_events (
     stripe_event_id, stripe_account_id, event_type, stripe_created,
     payouts_enabled, external_account_status, external_account_id
   ) VALUES (
@@ -48,7 +48,7 @@ BEGIN
   -- A second statement sees the winning concurrent insert at READ COMMITTED.
   -- If unavailable under another isolation level, reject rather than misbind.
   SELECT cae.stripe_account_id INTO v_account_id
-  FROM public.connect_account_events cae
+  FROM internal.connect_account_events cae
   WHERE cae.stripe_event_id = p_stripe_event_id;
   IF v_account_id IS DISTINCT FROM p_stripe_account_id THEN
     RAISE EXCEPTION 'ACCOUNT_EVENT_IDENTITY_MISMATCH';

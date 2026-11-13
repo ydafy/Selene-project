@@ -1,0 +1,48 @@
+meta {
+  name: envia-webhook-signed-duplicate
+  type: http
+  seq: 155
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/envia-webhook
+  body: text
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Webhook-Event: tracking.simple
+}
+
+script:pre-request {
+  const secret = bru.getProcessEnv("ENVIA_WEBHOOK_SECRET_SANDBOX");
+  if (!secret || !bru.getVar("enviaDeliveryId")) {
+    bru.runner.skipRequest();
+  } else {
+    const CryptoJS = require("crypto-js");
+    const body = JSON.stringify({
+      type: "tracking.simple",
+      created_at: "2026-11-12T00:00:00.000Z",
+      data: { tracking_number: "BRUNO-ENVIA-NONE", status: "Picked Up" },
+    });
+    const timestamp = String(Date.now());
+    const signature = CryptoJS.HmacSHA256(timestamp + ".tracking.simple." + body, secret).toString(CryptoJS.enc.Hex);
+    req.setBody(body);
+    req.setHeader("X-Webhook-Id", bru.getVar("enviaDeliveryId"));
+    req.setHeader("X-Webhook-Timestamp", timestamp);
+    req.setHeader("X-Webhook-Signature", "v1=" + signature);
+  }
+}
+
+tests {
+  test("the same delivery id with the same body is acknowledged as a duplicate", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ received: true, deduplicated: true });
+  });
+}
+
+docs {
+  Runs after envia-webhook-signed-new: same delivery id, same body, as an Envia retry.
+  It is acknowledged without recording the event twice.
+}

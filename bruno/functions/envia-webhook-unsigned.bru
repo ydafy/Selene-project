@@ -1,0 +1,36 @@
+meta {
+  name: envia-webhook-unsigned
+  type: http
+  seq: 153
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/envia-webhook
+  body: json
+  auth: none
+}
+
+headers {
+  X-Webhook-Event: tracking.simple
+  X-Webhook-Id: bruno-envia-unsigned
+}
+
+body:json {
+  {
+    "type": "tracking.simple",
+    "created_at": "2026-11-12T00:00:00.000Z",
+    "data": { "tracking_number": "BRUNO-ENVIA-NONE", "status": "Picked Up" }
+  }
+}
+
+tests {
+  test("a delivery without a signature is refused before it is claimed", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_SIGNATURE" });
+  });
+}
+
+docs {
+  Needs the functions server. No secret is needed: the signature check runs first, so
+  nothing reaches fn_claim_envia_webhook_delivery.
+}

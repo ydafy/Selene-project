@@ -23,11 +23,11 @@ BEGIN
     caa.is_actionable,
     caa.current_external_account_id,
     (SELECT count(*)::integer
-       FROM public.connect_account_events cae
+       FROM internal.connect_account_events cae
       WHERE cae.stripe_account_id = p_stripe_account_id
         AND cae.stripe_event_id = ANY (COALESCE(p_stripe_event_ids, ARRAY[]::text[])))
   FROM (SELECT 1) AS seed
-  LEFT JOIN public.connect_account_actionability caa
+  LEFT JOIN internal.connect_account_actionability caa
     ON caa.stripe_account_id = p_stripe_account_id;
 END;
 $function$;

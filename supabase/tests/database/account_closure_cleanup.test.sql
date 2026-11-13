@@ -12,7 +12,7 @@ create function pg_temp.closure(
   p_n integer, p_customer text, p_account text, p_storage text,
   p_attempts integer, p_age interval
 ) returns void language sql as $$
-  insert into public.account_closures (
+  insert into internal.account_closures (
     user_id, stripe_customer_cleanup, stripe_account_cleanup, storage_cleanup,
     attempts, updated_at
   ) values (pg_temp.mu(p_n), p_customer, p_account, p_storage, p_attempts, now() - p_age)
@@ -22,7 +22,7 @@ $$;
 create function pg_temp.state(p_n integer) returns text language sql as $$
   select attempts || ':' || round(extract(epoch from now() - updated_at) / 60)::text
     || ':' || coalesce(last_error, '-')
-  from public.account_closures where user_id = pg_temp.mu(p_n)
+  from internal.account_closures where user_id = pg_temp.mu(p_n)
 $$;
 
 -- The claimed user numbers, sorted. The claim picks the oldest rows but
@@ -52,22 +52,22 @@ select pg_temp.closure(9, 'failed', 'done', 'done', 0, interval '0 minutes');
 
 -- Clients read nothing: RLS on, no policy, no client access ------------------
 select is(
-  (select relrowsecurity from pg_class where oid = 'public.account_closures'::regclass),
+  (select relrowsecurity from pg_class where oid = 'internal.account_closures'::regclass),
   true, 'account_closures has RLS enabled');
 select is(
-  (select count(*) from pg_policies where schemaname = 'public' and tablename = 'account_closures'),
+  (select count(*) from pg_policies where schemaname = 'internal' and tablename = 'account_closures'),
   0::bigint, 'account_closures has no policy');
 select set_config('request.jwt.claims',
   json_build_object('sub', pg_temp.mu(1), 'role', 'authenticated')::text, true);
 set local role authenticated;
 select throws_ok(
-  $$select count(*) from public.account_closures$$,
+  $$select count(*) from internal.account_closures$$,
   '42501', null, 'authenticated cannot read account_closures, not even its own row');
 reset role;
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
 select throws_ok(
-  $$select count(*) from public.account_closures$$,
+  $$select count(*) from internal.account_closures$$,
   '42501', null, 'anon cannot read account_closures');
 reset role;
 
@@ -131,7 +131,7 @@ reset role;
 select is(pg_temp.state(4), '0:300:-', 'a closure with every step closed is never claimed');
 
 -- Recording an attempt --------------------------------------------------------
-update public.account_closures set updated_at = now() - interval '2 hours', attempts = 1
+update internal.account_closures set updated_at = now() - interval '2 hours', attempts = 1
 where user_id in (pg_temp.mu(4), pg_temp.mu(5), pg_temp.mu(6));
 set local role service_role;
 select public.fn_record_closure_attempt(pg_temp.mu(4), repeat('e', 600), true);
@@ -139,16 +139,16 @@ select public.fn_record_closure_attempt(pg_temp.mu(5), 'stripe timeout', false);
 select public.fn_record_closure_attempt(pg_temp.mu(99), 'no such closure', true);
 reset role;
 select is(
-  (select attempts from public.account_closures where user_id = pg_temp.mu(4)),
+  (select attempts from internal.account_closures where user_id = pg_temp.mu(4)),
   2, 'p_count_attempt true adds one attempt');
 select is(
-  (select last_error from public.account_closures where user_id = pg_temp.mu(4)),
+  (select last_error from internal.account_closures where user_id = pg_temp.mu(4)),
   repeat('e', 500), 'last_error keeps the first 500 characters');
 select is(
-  (select attempts from public.account_closures where user_id = pg_temp.mu(5)),
+  (select attempts from internal.account_closures where user_id = pg_temp.mu(5)),
   1, 'p_count_attempt false keeps the attempt count');
 select is(
-  (select last_error from public.account_closures where user_id = pg_temp.mu(5)),
+  (select last_error from internal.account_closures where user_id = pg_temp.mu(5)),
   'stripe timeout', 'p_count_attempt false still records last_error');
 select is(
   pg_temp.state(4) || ' ' || pg_temp.state(5),
@@ -156,7 +156,7 @@ select is(
   'recording stamps updated_at on the named closure');
 select is(pg_temp.state(6), '1:120:-', 'recording leaves the other closures unchanged');
 select is(
-  (select count(*) from public.account_closures where last_error = 'no such closure'),
+  (select count(*) from internal.account_closures where last_error = 'no such closure'),
   0::bigint, 'recording for a user without a closure writes nothing');
 
 select * from finish();

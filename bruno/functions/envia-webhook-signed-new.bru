@@ -1,0 +1,53 @@
+meta {
+  name: envia-webhook-signed-new
+  type: http
+  seq: 154
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/envia-webhook
+  body: text
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Webhook-Event: tracking.simple
+}
+
+script:pre-request {
+  // Opt-in: signs the delivery like Envia does, with the local sandbox secret that
+  // `bun run bruno:env` copies into bruno/.env.
+  const secret = bru.getProcessEnv("ENVIA_WEBHOOK_SECRET_SANDBOX");
+  if (!secret) {
+    bru.runner.skipRequest();
+  } else {
+    const CryptoJS = require("crypto-js");
+    bru.setVar("enviaDeliveryId", "bruno-envia-" + Date.now());
+    const body = JSON.stringify({
+      type: "tracking.simple",
+      created_at: "2026-11-12T00:00:00.000Z",
+      data: { tracking_number: "BRUNO-ENVIA-NONE", status: "Picked Up" },
+    });
+    const timestamp = String(Date.now());
+    const signature = CryptoJS.HmacSHA256(timestamp + ".tracking.simple." + body, secret).toString(CryptoJS.enc.Hex);
+    req.setBody(body);
+    req.setHeader("X-Webhook-Id", bru.getVar("enviaDeliveryId"));
+    req.setHeader("X-Webhook-Timestamp", timestamp);
+    req.setHeader("X-Webhook-Signature", "v1=" + signature);
+  }
+}
+
+tests {
+  test("a new signed delivery is claimed through fn_claim_envia_webhook_delivery", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({ received: true, deduplicated: false });
+  });
+}
+
+docs {
+  Needs the functions server and ENVIA_WEBHOOK_SECRET_SANDBOX (skipped without it; ENVIA_MODE
+  must be sandbox, the default). Each run uses a new delivery id. No shipment has the
+  tracking number, so the background work marks the delivery failed through
+  fn_mark_webhook_delivery; supabase/tests/database/internal_tables.test.sql pins that effect.
+}
