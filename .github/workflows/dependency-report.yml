@@ -8,6 +8,10 @@ on:
   schedule:
     # Off the top and half hour, where GitHub most often delays or drops scheduled runs.
     - cron: '47 14 * * 1' # Mondays 14:47 UTC (08:47 in Mexico City), after the dependency audit
+    # Backup, after the audit's backup: runs the report only when no other scheduled
+    # run started in the last 24 hours (scripts/ci/scheduled-backup.ts). Keep it
+    # equal to BACKUP_CRON below.
+    - cron: '53 20 * * 1' # Mondays 20:53 UTC (14:53 in Mexico City)
   workflow_dispatch:
 
 permissions:
@@ -17,8 +21,31 @@ permissions:
 concurrency:
   group: dependency-report
 
+env:
+  BACKUP_CRON: '53 20 * * 1'
+
 jobs:
+  # Every trigger except the backup cron always runs the report.
+  should-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # gh run list
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: bun scripts/ci/scheduled-backup.ts dependency-report.yml "$BACKUP_CRON"
+
   report:
+    needs: should-run
+    if: needs.should-run.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
