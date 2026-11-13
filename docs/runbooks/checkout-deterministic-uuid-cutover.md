@@ -30,7 +30,7 @@ modules to the confirmed sandbox through the Supabase Dashboard deployment UI
 or the maintainer's authenticated CLI workflow:
 
 ```sh
-supabase functions deploy create-connect-payment --project-ref <confirmed-disposable-sandbox-project-ref>
+supabase functions deploy create-connect-payment --remote=<confirmed-disposable-sandbox-project-ref>
 ```
 
 Do not deploy confirmation, Stripe webhook, or Envia functions for this change.

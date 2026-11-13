@@ -14,7 +14,7 @@ Open launch dependencies:
 
 ## 1. Project
 
-1. Choose the plan before the first real payment. Recommended: Pro (about USD 25 a month). Free runs the app, but it has no downloadable backups, pauses a project after a week without activity, does not offer leaked password protection, and its database and Storage quotas are small for dispute videos (current limits: https://supabase.com/pricing). Launching on Free is acceptable only with a daily off-site database backup in place (`supabase db dump` on a schedule, stored outside Supabase; it does not cover Storage files) and someone watching the quotas. Upgrade to Pro at the first of: real payments flowing every week, the database or Storage near its quota, or any data incident. Point-in-time recovery (add-on, about USD 100 a month) can wait until there is real volume. Decided with the maintainer on 2026-11-08.
+1. Choose the plan before the first real payment. Recommended: Pro (about USD 25 a month). Free runs the app, but it has no downloadable backups, pauses a project after a week without activity, does not offer leaked password protection, and its database and Storage quotas are small for dispute videos (current limits: https://supabase.com/pricing). Launching on Free is acceptable only with a daily off-site database backup in place (`supabase db dump --remote` on a schedule, stored outside Supabase; it does not cover Storage files) and someone watching the quotas. Upgrade to Pro at the first of: real payments flowing every week, the database or Storage near its quota, or any data incident. Point-in-time recovery (add-on, about USD 100 a month) can wait until there is real volume. Decided with the maintainer on 2026-11-08.
 2. Create the project in the target region and organization.
 3. Record the new project ref and update the Supabase MCP URL.
 4. Use the new API keys from day one: `sb_publishable_...` in the apps (`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS environments, `VITE_SUPABASE_PUBLISHABLE_KEY` in the admin-web build env) and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
@@ -55,7 +55,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 3. Database
 
-1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run `supabase db push`. It applies the baseline and every later migration in version order and records them in the remote migration history.
+1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run `supabase db push --remote`. It applies the baseline and every later migration in version order and records them in the remote migration history.
 2. Run `get_advisors` (security and performance) and resolve new findings.
 3. Run the schema drift check (`supabase/AGENTS.md`, "Schema drift check"). The types need no step: `bun run db:types` generates them from the local database, and CI checks them against the migrations.
 
@@ -154,7 +154,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
 
 1. Create the Vault secrets `checkout_recovery_worker_cron_secret` and `reconcile_stripe_fees_cron_secret`, each with the value of `CRON_SECRET` (section 5).
 2. From `main`, deploy the five functions whose `verify_jwt` changed to `false`: `checkout-recovery-worker`, `reconcile-stripe-fees`, `complete-delivered-shipments`, `auto-cancel-orders`, and `auto-cancel-preparing` (this includes both workers).
-3. Right after, run `supabase db push`. Between steps 2 and 3 the two worker jobs are rejected with 401, for at most one 5-minute run each. Both workers lease their work and are retry-safe, and the other jobs already send `x-cron-secret`.
+3. Right after, run `supabase db push --remote`. Between steps 2 and 3 the two worker jobs are rejected with 401, for at most one 5-minute run each. Both workers lease their work and are retry-safe, and the other jobs already send `x-cron-secret`.
 4. After the next runs, check that no job is rejected: `select status_code, count(*) from net._http_response where created > now() - interval '15 minutes' group by status_code;` shows no `401`. `cron.job_run_details` shows `succeeded` even for a 401 (see "HTTP job results").
 5. Delete the old Vault secrets with `delete from vault.secrets where name in ('project_anon_jwt', 'checkout_recovery_worker_service_role_key', 'stripe_fee_worker_service_role_jwt', 'checkout_recovery_worker_url', 'stripe_fee_worker_project_url');` and unset the old function secrets with `supabase secrets unset CHECKOUT_RECOVERY_SERVICE_ROLE_JWT STRIPE_FEE_RECONCILIATION_WORKER_SECRET`.
 

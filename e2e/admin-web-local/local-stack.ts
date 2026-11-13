@@ -50,13 +50,13 @@ export function readLocalStack(): LocalStack {
 // Runs one SQL statement as the database owner. service_role has no privilege on the
 // tables only RPCs may reach (shipment_cancellation_operations and the Connect event
 // tables), so fixture cleanup and assertions on them go through this connection.
+// `supabase db query` without `--remote` targets this worktree's local stack (CLI v3).
 function runOwnerSql(stack: LocalStack, sql: string): string {
   if (!isLocalHost(stack.dbUrl)) throw new Error('LOCAL_DB_URL_REQUIRED');
-  return execFileSync(
-    'supabase',
-    ['db', 'query', '--db-url', stack.dbUrl, '-o', 'json', sql],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-  );
+  return execFileSync('supabase', ['db', 'query', '-o', 'json', sql], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 export function ownerExec(stack: LocalStack, sql: string): void {

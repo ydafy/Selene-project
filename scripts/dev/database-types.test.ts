@@ -1,12 +1,27 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  GENERATE_COMMAND,
   type GenerateResult,
   type TypesDeps,
   parseMode,
   runDatabaseTypes,
   TYPES_PATH,
 } from './database-types';
+
+describe('GENERATE_COMMAND', () => {
+  // CLI v3 reads the local database by default; `--local` is deprecated.
+  test('generates public types from the local database without a target flag', () => {
+    expect(GENERATE_COMMAND).toEqual([
+      'supabase',
+      'gen',
+      'types',
+      'typescript',
+      '--schema',
+      'public',
+    ]);
+  });
+});
 
 describe('parseMode', () => {
   test('writes without arguments and checks with --check', () => {
