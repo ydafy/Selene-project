@@ -1,0 +1,38 @@
+meta {
+  name: order-buyer-closure-cleanup-state
+  type: http
+  seq: 70
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_close_account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "{{orderBuyerId}}"
+  }
+}
+
+tests {
+  test("every cleanup step of the closure is closed, so no retry claims it", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.status).to.equal("already_closed");
+    expect(body.stripe_customer_cleanup).to.equal("not_needed");
+    expect(body.stripe_account_cleanup).to.equal("not_needed");
+    expect(body.storage_cleanup).to.equal("done");
+  });
+}
+
+docs {
+  account_closures lives in schema internal, so the closure is read back through
+  fn_close_account: a second call changes nothing and reports the stored cleanup state.
+}

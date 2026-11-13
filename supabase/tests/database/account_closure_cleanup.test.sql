@@ -35,6 +35,11 @@ $$;
 
 select pg_temp.money_user(n) from generate_series(1, 9) as n;
 
+-- The claims below see the whole table, so closures left by a Bruno run or an
+-- aborted test would join their batches (#492). Remove them for this
+-- transaction only; the rollback at the end restores them.
+delete from internal.account_closures;
+
 -- Claimable with idle 30 minutes and max 5 attempts: 07 (4 h, attempts 4, a
 -- failed account step), 01 (3 h, all pending), 02 (2 h, a failed customer
 -- step), 03 (1 h, only storage pending), 08 (exactly 30 minutes).

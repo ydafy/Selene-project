@@ -33,7 +33,10 @@ tests {
 
 docs {
   Needs the functions server and CRON_SECRET in supabase/functions/.env. Every closure
-  the collection makes is finished by then. The retry of a failed closure and the capped
+  the collection makes is finished, in this run or the one before: delete-account
+  finishes its own, and the orders folder (after this one) finishes the closures of its
+  fn_close_account calls in orders/*-closure-cleanup. A closure left by an aborted run
+  fails this check until `supabase db reset`. The retry of a failed closure and the capped
   list run end to end in scripts/verify/test-account-closure-cleanup.ts, which can age a
   closure.
 }
