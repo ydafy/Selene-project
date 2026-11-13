@@ -134,7 +134,7 @@ For money, webhook, cron, or order and shipment state work, also load the `selen
 
 ## Git
 
-- Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 authored changed lines per commit (larger commits exceed the native review budget). A change to money, SQL, RLS, or auth goes in its own commit.
+- Inside an authorized feature on its feature branch, commit each work unit as soon as its checks pass; do not wait to be asked. Target about 400 changed lines per commit, counting generated files (`declarative sync` migrations rewrite every touched function in full; `packages/types/src/database.types.ts`, `bun.lock`) until gentle-ai#4880 lands: native review reads them all and refuses candidates past its budget. Split a task into commits when you plan or delegate it, one per layer (SQL, Edge Functions, UI), not when you commit. A change to money, SQL, RLS, or auth goes in its own commit.
 - Generated files (`packages/types/src/database.types.ts`, written from the local database by `bun run db:types`) go in the same commit as the migration that produced them.
 - Pass commits to tools as ref names (`HEAD~1`, a branch) or as the exact output of `git rev-parse`; never type or complete a SHA by hand, and check any SHA you cite with `git rev-parse --verify <sha>^{commit}`.
 - Keep commits scoped: code, tests, migration, and contract updates for one behavior go together. Use Conventional Commits.
