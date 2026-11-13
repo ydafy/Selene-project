@@ -3,7 +3,7 @@
 <!-- Maintainer note:
 Every line loads into every agent session. Add a rule only when an agent made the
 same mistake twice or when it cannot be inferred from the code. Prefer pointers to
-docs over copies. Keep it at most 140 lines (`scripts/guards/agent-instructions.test.ts`
+docs over copies. Keep it at most 150 lines (`scripts/guards/agent-instructions.test.ts`
 checks it and every path and script cited here); put area procedures in the nested files. -->
 
 Selene is a peer-to-peer marketplace in Mexico for used PC hardware. Its product is trust: technical verification of listings and safe money flow between buyers and sellers. It is in active development, and every module is built as if it shipped to production tomorrow. Do not add sandbox-only shortcuts, mocks in production paths, or "fine for now" workarounds.
@@ -55,6 +55,15 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | What does the weekly routine check?     | `docs/maintenance.md`                                                                                  |
 
 Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
+
+## CodeGraph
+
+In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+
+- **MCP tool** (when available): `codegraph_explore` (`mcp__codegraph__codegraph_explore`, or the native `codegraph` tool with operation `explore`) answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.
+- **Shell** (always works): `codegraph explore "<symbol names or question>"` prints the same output.
+
+If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
 
 ## Boundaries
 
