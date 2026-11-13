@@ -94,13 +94,13 @@ select ok(
   'a sequence postgres creates in public keeps service_role USAGE');
 
 select ok(
-  not has_table_privilege('service_role', 'public.connect_account_actionability', 'SELECT,INSERT,UPDATE,DELETE'),
+  not has_table_privilege('service_role', 'internal.connect_account_actionability', 'SELECT,INSERT,UPDATE,DELETE'),
   'service_role has no privilege on connect_account_actionability');
 select ok(
-  not has_table_privilege('service_role', 'public.connect_account_events', 'SELECT,INSERT,UPDATE,DELETE'),
+  not has_table_privilege('service_role', 'internal.connect_account_events', 'SELECT,INSERT,UPDATE,DELETE'),
   'service_role has no privilege on connect_account_events');
 select ok(
-  not has_table_privilege('service_role', 'public.connect_payout_events', 'SELECT,INSERT,UPDATE,DELETE'),
+  not has_table_privilege('service_role', 'internal.connect_payout_events', 'SELECT,INSERT,UPDATE,DELETE'),
   'service_role has no privilege on connect_payout_events');
 select ok(
   not has_table_privilege('service_role', 'public.shipment_cancellation_operations', 'SELECT,INSERT,UPDATE,DELETE'),

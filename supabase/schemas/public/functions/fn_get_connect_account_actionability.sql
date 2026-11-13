@@ -20,7 +20,7 @@ BEGIN
     CASE WHEN caa.refresh_pending THEN 'account_refresh_pending'::TEXT
       ELSE caa.blocked_reason END
   FROM (SELECT 1) AS seed
-  LEFT JOIN public.connect_account_actionability caa
+  LEFT JOIN internal.connect_account_actionability caa
     ON caa.stripe_account_id = p_stripe_account_id;
 END;
 $function$;

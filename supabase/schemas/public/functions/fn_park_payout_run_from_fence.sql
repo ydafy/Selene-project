@@ -49,7 +49,7 @@ BEGIN
   -- as in fn_get_connect_account_actionability.
   SELECT caa.refresh_pending, caa.is_actionable, caa.blocked_reason
   INTO v_refresh_pending, v_is_actionable, v_blocked_reason
-  FROM public.connect_account_actionability caa
+  FROM internal.connect_account_actionability caa
   WHERE caa.stripe_account_id = v_account_id
   FOR SHARE;
 

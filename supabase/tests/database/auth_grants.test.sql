@@ -32,8 +32,8 @@ from (values
   ('authenticated', 'public.admin_seller_onboarding_view', ''),
   ('anon', 'public.admin_connect_payout_release_view', ''),
   ('authenticated', 'public.admin_connect_payout_release_view', ''),
-  ('anon', 'public.account_closures', ''),
-  ('authenticated', 'public.account_closures', '')
+  ('anon', 'internal.account_closures', ''),
+  ('authenticated', 'internal.account_closures', '')
 ) as m(role_name, rel, expected);
 
 -- admin_connect_earnings_view lost its only reader and was dropped (#293).

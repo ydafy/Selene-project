@@ -1,4 +1,4 @@
-CREATE TABLE "public"."account_closures" (
+CREATE TABLE "internal"."account_closures" (
   "user_id"                 uuid                     NOT NULL,
   "closed_at"               timestamp with time zone NOT NULL DEFAULT now(),
   "stripe_customer_id"      text,
@@ -17,17 +17,12 @@ CREATE TABLE "public"."account_closures" (
   CONSTRAINT "account_closures_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
 
-ALTER TABLE "public"."account_closures"
+ALTER TABLE "internal"."account_closures"
   ENABLE ROW LEVEL SECURITY;
 
-COMMENT ON TABLE "public"."account_closures" IS 'One row per closed account. Written by fn_close_account; the delete-account Edge Function and its retry worker update the cleanup columns. Service role only.';
+COMMENT ON TABLE "internal"."account_closures" IS 'One row per closed account. Written by fn_close_account; the delete-account Edge Function and its retry worker update the cleanup columns through fn_claim_account_closures, fn_record_closure_attempt and fn_record_closure_cleanup_step. Only those SECURITY DEFINER functions reach it.';
 
-REVOKE ALL ON TABLE "public"."account_closures" FROM "postgres";
-
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."account_closures" TO "postgres";
-
-REVOKE ALL ON TABLE "public"."account_closures" FROM "service_role";
-
-GRANT INSERT, SELECT, UPDATE ON TABLE "public"."account_closures" TO "service_role";
-
-REVOKE ALL ON TABLE "public"."account_closures" FROM "anon", "authenticated";
+-- Server-only machinery (odd/tasks/internal-schema.md S3): only SECURITY DEFINER
+-- functions owned by postgres read or write it, so no client role and not
+-- service_role hold a privilege on it.
+REVOKE ALL ON TABLE "internal"."account_closures" FROM PUBLIC, "anon", "authenticated", "service_role";

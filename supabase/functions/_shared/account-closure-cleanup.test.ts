@@ -357,26 +357,15 @@ describe('removeListingImages', () => {
 describe('createSupabaseClosurePorts.recordCleanup', () => {
   function fake() {
     const rpcCalls: { name: string; args: Record<string, unknown> }[] = [];
-    const updates: {
-      values: Record<string, unknown>;
-      column: string;
-      value: string;
-    }[] = [];
+    const tables: string[] = [];
     const admin = {
       rpc: async (name: string, args: Record<string, unknown>) => {
         rpcCalls.push({ name, args });
         return { error: null };
       },
       from: (table: string) => {
-        expect(table).toBe('account_closures');
-        return {
-          update: (values: Record<string, unknown>) => ({
-            eq: async (column: string, value: string) => {
-              updates.push({ values, column, value });
-              return { error: null };
-            },
-          }),
-        };
+        tables.push(table);
+        throw new Error(`unexpected table access: ${table}`);
       },
     };
     const built = createSupabaseClosurePorts({
@@ -386,11 +375,11 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
         accounts: { del: async () => ({}) },
       }),
     });
-    return { built, rpcCalls, updates };
+    return { built, rpcCalls, tables };
   }
 
   it('counts an attempt through the atomic RPC, never a read then write', async () => {
-    const { built, rpcCalls, updates } = fake();
+    const { built, rpcCalls, tables } = fake();
     await built.recordCleanup(USER, {
       attempt: true,
       last_error: 'storage:error',
@@ -405,7 +394,7 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
         },
       },
     ]);
-    expect(updates).toEqual([]);
+    expect(tables).toEqual([]);
   });
 
   it('stamps last_error without counting', async () => {
@@ -418,22 +407,42 @@ describe('createSupabaseClosurePorts.recordCleanup', () => {
     });
   });
 
-  it('writes a step state with a plain update stamped updated_at', async () => {
-    const { built, updates, rpcCalls } = fake();
+  it('writes each step state through fn_record_closure_cleanup_step, never a table write', async () => {
+    const { built, rpcCalls, tables } = fake();
     await built.recordCleanup(USER, { storage_cleanup: 'done' });
-    expect(rpcCalls).toEqual([]);
-    expect(updates).toHaveLength(1);
-    expect(updates[0].values.storage_cleanup).toBe('done');
-    expect(typeof updates[0].values.updated_at).toBe('string');
-    expect(updates[0]).toMatchObject({ column: 'user_id', value: USER });
+    await built.recordCleanup(USER, { stripe_customer_cleanup: 'not_needed' });
+    await built.recordCleanup(USER, { stripe_account_cleanup: 'failed' });
+    expect(rpcCalls).toEqual([
+      {
+        name: 'fn_record_closure_cleanup_step',
+        args: { p_user_id: USER, p_step: 'storage_cleanup', p_state: 'done' },
+      },
+      {
+        name: 'fn_record_closure_cleanup_step',
+        args: {
+          p_user_id: USER,
+          p_step: 'stripe_customer_cleanup',
+          p_state: 'not_needed',
+        },
+      },
+      {
+        name: 'fn_record_closure_cleanup_step',
+        args: {
+          p_user_id: USER,
+          p_step: 'stripe_account_cleanup',
+          p_state: 'failed',
+        },
+      },
+    ]);
+    expect(tables).toEqual([]);
   });
 
   it('throws when the database refuses the write', async () => {
     const admin = {
       rpc: async () => ({ error: { message: 'boom' } }),
-      from: () => ({
-        update: () => ({ eq: async () => ({ error: { message: 'boom' } }) }),
-      }),
+      from: () => {
+        throw new Error('unexpected table access');
+      },
     };
     const built = createSupabaseClosurePorts({
       getAdmin: () => admin as never,

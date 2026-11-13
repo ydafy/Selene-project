@@ -1,0 +1,48 @@
+meta {
+  name: envia-webhook-signed-collision
+  type: http
+  seq: 156
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/envia-webhook
+  body: text
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Webhook-Event: tracking.simple
+}
+
+script:pre-request {
+  const secret = bru.getProcessEnv("ENVIA_WEBHOOK_SECRET_SANDBOX");
+  if (!secret || !bru.getVar("enviaDeliveryId")) {
+    bru.runner.skipRequest();
+  } else {
+    const CryptoJS = require("crypto-js");
+    const body = JSON.stringify({
+      type: "tracking.simple",
+      created_at: "2026-11-12T00:00:00.000Z",
+      data: { tracking_number: "BRUNO-ENVIA-NONE", status: "Delivered" },
+    });
+    const timestamp = String(Date.now());
+    const signature = CryptoJS.HmacSHA256(timestamp + ".tracking.simple." + body, secret).toString(CryptoJS.enc.Hex);
+    req.setBody(body);
+    req.setHeader("X-Webhook-Id", bru.getVar("enviaDeliveryId"));
+    req.setHeader("X-Webhook-Timestamp", timestamp);
+    req.setHeader("X-Webhook-Signature", "v1=" + signature);
+  }
+}
+
+tests {
+  test("the same delivery id with another body is refused", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "DELIVERY_PAYLOAD_CONFLICT" });
+  });
+}
+
+docs {
+  Runs after envia-webhook-signed-new: same delivery id, another body. The stored delivery
+  keeps the first payload hash.
+}

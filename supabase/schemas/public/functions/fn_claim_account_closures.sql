@@ -3,8 +3,20 @@ CREATE OR REPLACE FUNCTION public.fn_claim_account_closures (
   p_min_idle     interval,
   p_max_attempts integer
 )
-  RETURNS SETOF public.account_closures
+  RETURNS TABLE (
+    user_id                 uuid,
+    closed_at               timestamp with time zone,
+    stripe_customer_id      text,
+    stripe_account_id       text,
+    stripe_customer_cleanup text,
+    stripe_account_cleanup  text,
+    storage_cleanup         text,
+    attempts                integer,
+    last_error              text,
+    updated_at              timestamp with time zone
+  )
   LANGUAGE plpgsql
+  SECURITY DEFINER
   SET search_path TO ''
   AS $function$
 BEGIN
@@ -19,12 +31,12 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  UPDATE public.account_closures AS c
+  UPDATE internal.account_closures AS c
   SET attempts = c.attempts + 1,
       updated_at = now()
   WHERE c.user_id IN (
     SELECT a.user_id
-    FROM public.account_closures AS a
+    FROM internal.account_closures AS a
     WHERE (
         a.stripe_customer_cleanup IN ('pending', 'failed')
         OR a.stripe_account_cleanup IN ('pending', 'failed')
@@ -36,13 +48,15 @@ BEGIN
     LIMIT p_limit
     FOR UPDATE SKIP LOCKED
   )
-  RETURNING c.*;
+  RETURNING c.user_id, c.closed_at, c.stripe_customer_id, c.stripe_account_id,
+    c.stripe_customer_cleanup, c.stripe_account_cleanup, c.storage_cleanup,
+    c.attempts, c.last_error, c.updated_at;
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_claim_account_closures"(integer, interval, integer) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_claim_account_closures"(integer, interval, integer) IS 'Service-only (SECURITY INVOKER): atomically claims up to p_limit closures with an open cleanup step, oldest first, adding one attempt each. Skips rows touched within p_min_idle and rows at p_max_attempts.';
+COMMENT ON FUNCTION "public"."fn_claim_account_closures"(integer, interval, integer) IS 'Service-only (SECURITY DEFINER): atomically claims up to p_limit closures with an open cleanup step, oldest first, adding one attempt each. Skips rows touched within p_min_idle and rows at p_max_attempts.';
 
 REVOKE ALL ON FUNCTION "public"."fn_claim_account_closures"(integer, interval, integer) FROM "postgres";
 

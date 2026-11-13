@@ -590,38 +590,16 @@ describe('account-closure-cleanup: failures', () => {
 });
 
 // The service-role client and Stripe behind the real ports; both record every call in order.
-function fakeClients() {
+function fakeClients(rpcData: unknown[] = [row(U1)]) {
   const calls: unknown[][] = [];
-  const query = {
-    select: (columns: string) => {
-      calls.push(['select', columns]);
-      return query;
-    },
-    or: (filter: string) => {
-      calls.push(['or', filter]);
-      return query;
-    },
-    gte: (column: string, value: number) => {
-      calls.push(['gte', column, value]);
-      return query;
-    },
-    order: (column: string) => {
-      calls.push(['order', column]);
-      return query;
-    },
-    limit: async (count: number) => {
-      calls.push(['limit', count]);
-      return { data: [{ user_id: U1, attempts: 24 }], error: null };
-    },
-  };
   const admin = {
     rpc: async (name: string, args: unknown) => {
       calls.push(['rpc', name, args]);
-      return { data: [row(U1)], error: null };
+      return { data: rpcData, error: null };
     },
     from: (table: string) => {
       calls.push(['from', table]);
-      return query;
+      throw new Error(`unexpected table access: ${table}`);
     },
   };
   const stripe = {
@@ -659,22 +637,18 @@ describe('account-closure-cleanup Supabase ports', () => {
     ]);
   });
 
-  it('lists capped closures with any open step, oldest first', async () => {
-    const { calls, ports } = fakeClients();
+  it('lists capped closures through the fn_list_capped_account_closures RPC, never a table read', async () => {
+    const { calls, ports } = fakeClients([{ user_id: U1, attempts: 24 }]);
     expect(await ports.listCappedClosures(24, 50)).toEqual({
       data: [{ user_id: U1, attempts: 24 }],
       error: null,
     });
     expect(calls).toEqual([
-      ['from', 'account_closures'],
-      ['select', 'user_id, attempts'],
       [
-        'or',
-        'stripe_customer_cleanup.in.(pending,failed),stripe_account_cleanup.in.(pending,failed),storage_cleanup.in.(pending,failed)',
+        'rpc',
+        'fn_list_capped_account_closures',
+        { p_max_attempts: 24, p_limit: 50 },
       ],
-      ['gte', 'attempts', 24],
-      ['order', 'updated_at'],
-      ['limit', 50],
     ]);
   });
 

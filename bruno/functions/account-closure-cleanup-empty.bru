@@ -32,6 +32,8 @@ tests {
 }
 
 docs {
-  Needs the functions server and CRON_SECRET in supabase/functions/.env. Runs before the
-  failed-closure setup below, and every closure the collection makes is finished by then.
+  Needs the functions server and CRON_SECRET in supabase/functions/.env. Every closure
+  the collection makes is finished by then. The retry of a failed closure and the capped
+  list run end to end in scripts/verify/test-account-closure-cleanup.ts, which can age a
+  closure.
 }

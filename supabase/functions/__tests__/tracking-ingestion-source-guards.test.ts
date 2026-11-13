@@ -66,7 +66,9 @@ describe('tracking ingestion source guards', () => {
     const webhook = read('supabase/functions/envia-webhook/index.ts');
 
     expect(webhook).toContain('verifyEnviaWebhook');
-    expect(webhook).toContain(".from('webhook_deliveries')");
+    // webhook_deliveries lives in the internal schema: only its RPCs reach it.
+    expect(webhook).toContain('createWebhookDeliveryPorts(supabaseAdmin)');
+    expect(webhook).not.toContain('webhook_deliveries');
     expect(webhook).toMatch(/\.rpc\(\s*'fn_record_tracking_event'/);
     expect(webhook).not.toContain(".from('shipment_tracking_events')");
   });

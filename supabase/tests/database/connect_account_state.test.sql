@@ -20,10 +20,10 @@ create function pg_temp.acct_row(p_acct text) returns text language sql as $$
   select refresh_generation || ':' || refresh_pending || ':' || is_actionable || ':'
     || coalesce(blocked_reason, '-') || ':' || coalesce(source_event_id, '-') || ':'
     || coalesce(current_external_account_id, '-') || ':' || (current_observed_at is not null)
-  from public.connect_account_actionability where stripe_account_id = p_acct
+  from internal.connect_account_actionability where stripe_account_id = p_acct
 $$;
 create function pg_temp.acct_json(p_acct text) returns jsonb language sql as $$
-  select to_jsonb(c) from public.connect_account_actionability c where stripe_account_id = p_acct
+  select to_jsonb(c) from internal.connect_account_actionability c where stripe_account_id = p_acct
 $$;
 
 -- is_actionable:blocked_reason as the payout worker reads them.
@@ -51,31 +51,31 @@ end $$;
 -- 1. Evidence: idempotent by Stripe event id, append-only ----------------------
 select is(pg_temp.rec('acct_t10main', 'evt_t10m1', 'ba_t10bank'), true, 'events: an account event is recorded');
 select is(
-  (select external_account_id from public.connect_account_events where stripe_event_id = 'evt_t10m1'),
+  (select external_account_id from internal.connect_account_events where stripe_event_id = 'evt_t10m1'),
   'ba_t10bank', 'events: the external bank account id is stored with the event');
 select pg_temp.rec('acct_t10main', 'evt_t10m2');
 select pg_temp.rec('acct_t10del', 'evt_t10d1');
 select throws_ok($$select pg_temp.rec('acct_t10other', 'evt_t10m1')$$,
   'P0001', 'ACCOUNT_EVENT_IDENTITY_MISMATCH', 'events: an event id already bound to another account is refused');
 select throws_ok(
-  $$insert into public.connect_account_events (stripe_event_id, stripe_account_id, event_type, stripe_created)
+  $$insert into internal.connect_account_events (stripe_event_id, stripe_account_id, event_type, stripe_created)
     values ('evt_t10m1', 'acct_t10main', 'account.updated', now())$$,
   '23505', null, 'events: stripe_event_id is unique');
 select throws_ok(
-  $$update public.connect_account_events set external_account_id = 'ba_t10other' where stripe_event_id = 'evt_t10m1'$$,
+  $$update internal.connect_account_events set external_account_id = 'ba_t10other' where stripe_event_id = 'evt_t10m1'$$,
   'P0001', 'connect_account_events is append-only and immutable', 'events: an update is refused');
 select throws_ok(
-  $$delete from public.connect_account_events where stripe_event_id = 'evt_t10d1'$$,
+  $$delete from internal.connect_account_events where stripe_event_id = 'evt_t10d1'$$,
   'P0001', 'connect_account_events is append-only and immutable', 'events: a delete is refused');
 
 -- 2. Both tables keep RLS on with no policy, so a client reads no row even if a
 -- grant appeared (the missing grants are asserted in profile_grants.test.sql).
 select is(
   (select array_agg(relrowsecurity order by relname) from pg_class
-   where oid in ('public.connect_account_actionability'::regclass, 'public.connect_account_events'::regclass)),
+   where oid in ('internal.connect_account_actionability'::regclass, 'internal.connect_account_events'::regclass)),
   array[true, true], 'rls: enabled on connect_account_actionability and connect_account_events');
 select is(
-  (select count(*)::integer from pg_policies where schemaname = 'public'
+  (select count(*)::integer from pg_policies where schemaname = 'internal'
    and tablename in ('connect_account_actionability', 'connect_account_events')),
   0, 'rls: neither table has a policy');
 
@@ -111,7 +111,7 @@ select is(pg_temp.acct_json('acct_t10main'), (select v from pg_temp.before),
   'commit: the mismatched commit wrote nothing');
 
 -- 6. The getter hides a healthy bit while a refresh is pending ------------------
-update public.connect_account_actionability set is_actionable = true, blocked_reason = null
+update internal.connect_account_actionability set is_actionable = true, blocked_reason = null
 where stripe_account_id = 'acct_t10main';
 select is(pg_temp.gate('acct_t10main'), 'false:account_refresh_pending',
   'gate: a pending refresh reports account_refresh_pending even over a healthy bit');

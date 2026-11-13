@@ -32,7 +32,7 @@ BEGIN
     RETURN FALSE;
   END IF;
   IF NOT EXISTS (
-    SELECT 1 FROM public.connect_account_events cae
+    SELECT 1 FROM internal.connect_account_events cae
     WHERE cae.stripe_event_id = p_source_event_id
       AND cae.stripe_account_id = p_stripe_account_id
   ) THEN
@@ -79,7 +79,7 @@ BEGIN
   -- Atomic CAS acquires the account lock BEFORE any run projection. A replay
   -- of an already accepted generation, superseded read, or wrong trigger loses
   -- without clearing another refresh's pending flag. No Stripe timestamp gate.
-  UPDATE public.connect_account_actionability caa
+  UPDATE internal.connect_account_actionability caa
   SET is_actionable = v_actionable,
       blocked_reason = v_blocked_reason,
       payouts_enabled = p_payouts_enabled,
