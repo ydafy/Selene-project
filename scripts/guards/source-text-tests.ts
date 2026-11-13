@@ -9,7 +9,7 @@ export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'apps/frontend': 75,
   'packages/types': 1,
   scripts: 15,
-  'supabase/functions': 9,
+  'supabase/functions': 7,
   'supabase/templates': 1,
 };
 
