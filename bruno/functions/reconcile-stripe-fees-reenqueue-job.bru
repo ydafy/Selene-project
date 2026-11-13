@@ -1,0 +1,35 @@
+meta {
+  name: reconcile-stripe-fees-reenqueue-job
+  type: http
+  seq: 136
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_enqueue_stripe_fee_reconciliation_job
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  {
+    "p_order_id": "00000000-0000-4000-8000-0000000000f0",
+    "p_stripe_payment_intent_id": "{{feeJobIntentId}}"
+  }
+}
+
+tests {
+  test("queuing the same order and payment intent again adds nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(false);
+  });
+}
+
+docs {
+  Run after reconcile-stripe-fees-setup-job. A Stripe webhook retry enqueues the same pair
+  again; the RPC leaves the existing job unchanged and answers false.
+}

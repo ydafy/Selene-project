@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/orders?id=eq.{{releaseOrderId}}&select=actual_stripe_fee_cents,stripe_fee_reconciled_at,stripe_fee_reconciliation_jobs(id,status,attempt_count,last_error,claim_token)
+  url: {{baseUrl}}/rest/v1/orders?id=eq.{{releaseOrderId}}&select=actual_stripe_fee_cents,stripe_fee_reconciled_at
   body: none
   auth: none
 }
@@ -32,15 +32,11 @@ tests {
     expect(order.actual_stripe_fee_cents).to.equal(Number(bru.getVar("releaseChargeFee")));
     expect(order.actual_stripe_fee_cents).to.be.above(0);
     expect(Number.isNaN(Date.parse(order.stripe_fee_reconciled_at))).to.equal(false);
-    expect(order.stripe_fee_reconciliation_jobs.length).to.equal(1);
-    expect(order.stripe_fee_reconciliation_jobs[0].id).to.equal(bru.getVar("sandboxFeeJobId"));
-    expect(order.stripe_fee_reconciliation_jobs[0].status).to.equal("succeeded");
-    expect(order.stripe_fee_reconciliation_jobs[0].attempt_count).to.equal(1);
-    expect(order.stripe_fee_reconciliation_jobs[0].last_error).to.equal(null);
   });
 }
 
 docs {
+  The job itself lives in schema internal; fees-reconcile already proved it succeeded.
   releaseChargeFee is the fee Stripe reported on the charge's balance transaction when
   release-order-from-real-charge created it.
 }

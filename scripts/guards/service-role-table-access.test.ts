@@ -4,8 +4,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 // `service_role` has no privilege on these tables, locally and on the remote
-// (migration 20261109083744_local_privilege_parity; the last five live in
-// schema internal since 20261113004344_internal_tables_machinery). Only
+// (migration 20261109083744_local_privilege_parity). All but the first live in
+// schema internal: five since 20261113004344_internal_tables_machinery, the
+// last two since 20261113034659_internal_tables_money. Only
 // SECURITY DEFINER RPCs reach them, so local tooling reads them through an RPC
 // or a direct owner connection, never through REST or a supabase-js `.from()`
 // call.
@@ -16,6 +17,8 @@ const RPC_ONLY_TABLES = [
   'connect_payout_events',
   'webhook_deliveries',
   'account_closures',
+  'checkout_recovery_shells',
+  'stripe_fee_reconciliation_jobs',
 ];
 
 const ROOT_DIR = join(import.meta.dir, '..', '..');

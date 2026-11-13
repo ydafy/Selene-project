@@ -1,454 +1,386 @@
-import type { Database, Tables } from '../../packages/types/src/index';
+import { SQL } from 'bun';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-export const TARGET = {
-  order: 'dc690d2a-00cb-5b2b-a6d0-1b23172270da',
-  pi: 'pi_3UHDprACloWdhaxv1KVev8sQ',
-  at: '2026-09-19T02:20:42.637Z',
+const help =
+  'Usage: bun scripts/verify/verify-stripe-fee-lease-recovery.ts [--help]\n' +
+  'End to end: the Stripe fee reconciliation queue against the local stack. It creates its own\n' +
+  'paid order without a charge, enqueues a job through fn_enqueue_stripe_fee_reconciliation_job\n' +
+  '(true, then false for the same pair), runs reconcile-stripe-fees over HTTP (no charge, so the\n' +
+  'job goes back to pending with one attempt and a future retry), then proves the lease: a\n' +
+  'claimed job is not claimed again before its lease expires, an expired lease is reclaimed\n' +
+  'with a new token, the stale token cannot complete it, the new one can, and a replay is a\n' +
+  'no-op that answers true.\n' +
+  'internal.stripe_fee_reconciliation_jobs is not exposed through PostgREST, so the setup, the\n' +
+  'read-back, the lease expiry and the cleanup use a direct owner connection; the RPCs and the\n' +
+  'worker go over HTTP with the local secret key and CRON_SECRET from bruno/.env\n' +
+  '(`bun run bruno:env`). Needs `supabase start` and `bun run functions:serve`. Worker and claim\n' +
+  'are global, so it refuses to start while any job is pending or processing. It deletes its\n' +
+  'job and order at the end.\n' +
+  'Database URL: SELENE_LOCAL_DB_URL, else `supabase status --env`. Only 127.0.0.1/localhost is accepted.';
+
+const ROOT = join(import.meta.dir, '..', '..');
+// Seeded fixture buyer (supabase/seed.sql).
+const FIXTURE_BUYER = '00000000-0000-4000-8000-000000000005';
+const FEE_CENTS = 6817;
+const CLOCK_SKEW_MS = 5000;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type Job = {
+  id: string;
+  order_id: string;
+  stripe_payment_intent_id: string;
+  status: string;
+  attempt_count: number;
+  next_retry_at: string | null;
+  last_error: string | null;
+  claim_token: string | null;
+  claim_expires_at: string | null;
 };
-export const APPROVAL = 'DEV_ONLY_CRON_PAUSED_PRODUCERS_QUIET';
-type Job = Tables<'stripe_fee_reconciliation_jobs'>;
-type Order = Tables<'orders'>;
-type RPC = Database['public']['Functions'];
-type Api = (
-  path: string,
-  method?: string,
-  body?: Record<string, unknown>,
-) => Promise<unknown>;
-type FetchCall = (
-  ...args: Parameters<typeof fetch>
-) => ReturnType<typeof fetch>;
-type Options = {
-  api: Api;
-  approval: string;
+
+export type Ports = {
+  db: {
+    /** Jobs any worker or claim could pick up: pending or processing. */
+    activeJobCount: () => Promise<number>;
+    insertOrder: (orderId: string, paymentIntentId: string) => Promise<void>;
+    jobs: (orderId: string) => Promise<Job[]>;
+    makeDue: (jobId: string) => Promise<void>;
+    expireClaim: (jobId: string) => Promise<void>;
+    removeFixture: (orderId: string) => Promise<void>;
+  };
+  rpc: (name: string, args: Record<string, unknown>) => Promise<unknown>;
+  runWorker: () => Promise<unknown>;
   uuid: () => string;
   now: () => number;
-  sleep: (ms: number) => Promise<void>;
-  report: (message: string) => void;
+  report: (line: string) => void;
 };
-const JOBS = 'stripe_fee_reconciliation_jobs';
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-class ProofError extends Error {}
+
+export class ProofError extends Error {}
 function check(ok: unknown, code: string): asserts ok {
   if (!ok) throw new ProofError(code);
 }
-function object(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-function instant(value: unknown): number {
-  return typeof value === 'string' ? Date.parse(value) : NaN;
-}
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (object(value))
-    return JSON.stringify(
-      Object.keys(value)
-        .sort()
-        .map((key) => [key, canonical(value[key])]),
-    );
-  return JSON.stringify(value);
-}
-function rows(value: unknown): Job[] {
-  check(Array.isArray(value), 'INVALID_JOB_RESPONSE');
-  for (const row of value) {
-    check(
-      object(row) &&
-        typeof row.id === 'string' &&
-        UUID.test(row.id) &&
-        typeof row.order_id === 'string' &&
-        UUID.test(row.order_id) &&
-        typeof row.stripe_payment_intent_id === 'string' &&
-        row.stripe_payment_intent_id.startsWith('pi_') &&
-        ['pending', 'processing', 'succeeded', 'failed'].includes(
-          String(row.status),
-        ) &&
-        Number.isSafeInteger(row.attempt_count) &&
-        Number(row.attempt_count) >= 0 &&
-        Number.isFinite(instant(row.created_at)) &&
-        Number.isFinite(instant(row.updated_at)) &&
-        (row.claim_token === null ||
-          (typeof row.claim_token === 'string' &&
-            UUID.test(row.claim_token))) &&
-        (row.claim_expires_at === null ||
-          Number.isFinite(instant(row.claim_expires_at))) &&
-        (row.next_retry_at === null ||
-          Number.isFinite(instant(row.next_retry_at))) &&
-        (row.last_error === null || typeof row.last_error === 'string'),
-      'INVALID_JOB_SHAPE',
-    );
-  }
-  check(
-    new Set(value.map((row) => row.id)).size === value.length,
-    'DUPLICATE_JOB_ID',
-  );
-  return (value as Job[]).sort((a, b) => a.id.localeCompare(b.id));
-}
-type Validator = (value: unknown) => boolean;
-const stringValue: Validator = (value) => typeof value === 'string';
-const numberValue: Validator = (value) =>
-  typeof value === 'number' && Number.isFinite(value);
-const nullable =
-  (validate: Validator): Validator =>
-  (value) =>
-    value === null || validate(value);
-const dateValue: Validator = (value) => Number.isFinite(instant(value));
-// PostgreSQL UUID values need not use the fixture's RFC version/variant restrictions.
-const idValue: Validator = (value) =>
-  typeof value === 'string' &&
-  /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
-function jsonValue(value: unknown): boolean {
-  if (
-    value === null ||
-    stringValue(value) ||
-    numberValue(value) ||
-    typeof value === 'boolean'
-  )
-    return true;
-  if (Array.isArray(value)) return value.every(jsonValue);
-  return (
-    object(value) &&
-    Object.values(value).every((item) => item === undefined || jsonValue(item))
-  );
-}
-const orderStatuses = {
-  pending: true,
-  paid: true,
-  preparing: true,
-  shipped: true,
-  delivered: true,
-  completed: true,
-  cancelled: true,
-  dispute: true,
-  refunded: true,
-} satisfies Record<Order['status'], boolean>;
-const orderValidators = {
-  actual_stripe_fee_cents: nullable(numberValue),
-  buyer_id: idValue,
-  cancellation_loss_cents: nullable(numberValue),
-  compensation_attempt_count: numberValue,
-  compensation_last_error: nullable(stringValue),
-  compensation_lease_expires_at: nullable(dateValue),
-  compensation_state: nullable(stringValue),
-  completed_at: nullable(dateValue),
-  created_at: nullable(dateValue),
-  currency: nullable(stringValue),
-  delivered_at: nullable(dateValue),
-  id: idValue,
-  next_compensation_retry_at: nullable(dateValue),
-  payment_processing: (value: unknown) => typeof value === 'boolean',
-  payment_processing_reason: nullable(stringValue),
-  service_fee_amount: nullable(numberValue),
-  shipping_address: jsonValue,
-  status: (value: unknown) =>
-    typeof value === 'string' && Object.hasOwn(orderStatuses, value),
-  stripe_charge_id: nullable(stringValue),
-  stripe_fee_reconciled_at: nullable(dateValue),
-  stripe_payment_intent_id: nullable(stringValue),
-  stripe_refund_id: nullable(stringValue),
-  stripe_transfer_group: nullable(stringValue),
-  total_amount: numberValue,
-  updated_at: nullable(dateValue),
-} satisfies Record<keyof Order, Validator>;
-function isOrder(value: unknown): value is Order {
-  return (
-    object(value) &&
-    Object.entries(orderValidators).every(
-      ([key, validate]) => Object.hasOwn(value, key) && validate(value[key]),
-    )
-  );
-}
-export function createRestApi(
-  url: string,
-  key: string,
-  fetchImpl: FetchCall,
-): Api {
-  let endpoint: URL;
-  try {
-    endpoint = new URL(url);
-  } catch {
-    throw new ProofError('INVALID_CONFIG');
-  }
-  check(
-    endpoint.protocol === 'https:' &&
-      !endpoint.username &&
-      !endpoint.password &&
-      endpoint.pathname === '/' &&
-      !endpoint.search &&
-      !endpoint.hash &&
-      key.trim() &&
-      !/[\r\n]/.test(key),
-    'INVALID_CONFIG',
-  );
-  return async (path, method = 'GET', body) => {
-    try {
-      const response = await fetchImpl(`${endpoint.origin}/rest/v1/${path}`, {
-        method,
-        redirect: 'error',
-        signal: AbortSignal.timeout(30000),
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-          Prefer: 'return=representation',
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error();
-      const data: unknown = await response.json();
-      if (
-        object(data) &&
-        ('error' in data || 'code' in data || 'message' in data)
-      )
-        throw new Error();
-      return data;
-    } catch {
-      throw new ProofError('API_FAILED');
-    }
-  };
+const instant = (value: string | null) =>
+  value === null ? NaN : Date.parse(value);
+
+// Never touch a remote project: this proof writes data.
+export function requireLocal(url: string, what: string): string {
+  if (!url) throw new Error(`No local ${what} URL found.`);
+  const host = new URL(url).hostname;
+  if (host !== '127.0.0.1' && host !== 'localhost')
+    throw new Error(`Refusing non-local ${what} host: ${host}`);
+  return url;
 }
 
-/** Global claims are not isolated: the human must keep all producers/workers quiet. */
-export async function runLeaseProof(o: Options): Promise<void> {
-  check(o.approval === APPROVAL, 'MAINTENANCE_ACK_REQUIRED');
-  const id = o.uuid();
-  check(UUID.test(id), 'INVALID_FIXTURE_ID');
-  const guard = `id=eq.${id}&order_id=eq.${TARGET.order}&stripe_payment_intent_id=eq.${TARGET.pi}`;
-  const fixturePath = `${JOBS}?select=*&id=eq.${id}`;
-  const inventory = async () =>
-    rows(await o.api(`${JOBS}?select=*&order=id.asc&limit=20`));
-  const order = async (): Promise<Order> => {
-    const data = await o.api(`orders?select=*&id=eq.${TARGET.order}`);
-    check(
-      Array.isArray(data) && data.length === 1 && object(data[0]),
-      'INVALID_ORDER_RESPONSE',
-    );
-    const row = data[0];
-    check(isOrder(row), 'INVALID_ORDER_SHAPE');
-    check(
-      row.id === TARGET.order &&
-        row.status === 'paid' &&
-        row.stripe_payment_intent_id === TARGET.pi &&
-        row.actual_stripe_fee_cents === 6817 &&
-        instant(row.stripe_fee_reconciled_at) === instant(TARGET.at),
-      'ORDER_PREFLIGHT_MISMATCH',
-    );
-    return row;
-  };
-  const baselineOrder = canonical(await order());
-  const history = await inventory();
-  check(
-    history.length === 18 &&
-      history.every(
-        (j) =>
-          j.status === 'succeeded' &&
-          j.order_id !== TARGET.order &&
-          j.id !== id,
-      ),
-    'INVENTORY_PREFLIGHT_MISMATCH',
-  );
-  const baselineHistory = canonical(history);
-  check(rows(await o.api(fixturePath)).length === 0, 'FIXTURE_ALREADY_EXISTS');
+/** Proves the queue, the worker's retry path and the lease recovery on a local fixture. */
+export async function runFeeJobProof(p: Ports): Promise<void> {
+  check((await p.db.activeJobCount()) === 0, 'ACTIVE_JOBS_PRESENT');
+  const orderId = p.uuid();
+  check(UUID.test(orderId), 'INVALID_FIXTURE_ID');
+  const pi = `pi_verify_fee_${orderId.replaceAll('-', '')}`;
   const emit = (stage: string, extra: Record<string, unknown> = {}) =>
-    o.report(JSON.stringify({ stage, ...extra }));
-  const sameOrder = async () =>
-    check(canonical(await order()) === baselineOrder, 'ORDER_DRIFT');
-  const state = async (expected?: Job): Promise<Job | undefined> => {
-    const jobs = await inventory();
-    check(
-      canonical(jobs.filter((j) => j.id !== id)) === baselineHistory,
-      'HISTORY_OR_EXTERNAL_JOBS_DRIFT',
-    );
-    const fixture = jobs.find((j) => j.id === id);
-    check(
-      !fixture ||
-        (fixture.order_id === TARGET.order &&
-          fixture.stripe_payment_intent_id === TARGET.pi),
-      'FIXTURE_IDENTITY_DRIFT',
-    );
-    if (expected)
-      check(canonical(fixture) === canonical(expected), 'FIXTURE_DRIFT');
-    await sameOrder();
-    return fixture;
+    p.report(JSON.stringify({ stage, ...extra }));
+  const enqueue = () =>
+    p.rpc('fn_enqueue_stripe_fee_reconciliation_job', {
+      p_order_id: orderId,
+      p_stripe_payment_intent_id: pi,
+    });
+  const claim = () =>
+    p.rpc('fn_claim_stripe_fee_reconciliation_jobs_leased', {
+      p_limit: 1,
+      p_max_attempts: 3,
+    });
+  const complete = (jobId: string, token: string) =>
+    p.rpc('fn_complete_stripe_fee_reconciliation_job_leased', {
+      p_job_id: jobId,
+      p_claim_token: token,
+      p_actual_stripe_fee_cents: FEE_CENTS,
+      p_reconciled_at: new Date(p.now()).toISOString(),
+    });
+  const only = async (): Promise<Job> => {
+    const rows = await p.db.jobs(orderId);
+    check(rows.length === 1, 'FIXTURE_JOB_COUNT');
+    return rows[0];
   };
-  const claim = async (attempt: number): Promise<Job> => {
-    const args: RPC['fn_claim_stripe_fee_reconciliation_jobs_leased']['Args'] =
-      { p_limit: 1, p_max_attempts: 3 };
-    const data = await o.api(
-      'rpc/fn_claim_stripe_fee_reconciliation_jobs_leased',
-      'POST',
-      args,
-    );
-    // Unexpected global claims remain untouched; existing external ownership needs investigation.
+  const claimed = async (attempt: number): Promise<Job> => {
+    const rows = await claim();
+    check(Array.isArray(rows) && rows.length === 1, 'UNEXPECTED_CLAIM');
+    const job = rows[0] as Job;
     check(
-      Array.isArray(data) &&
-        data.length === 1 &&
-        object(data[0]) &&
-        data[0].id === id,
-      'UNEXPECTED_CLAIM_HUMAN_INVESTIGATION',
-    );
-    const job = rows(data)[0];
-    check(
-      job.order_id === TARGET.order &&
-        job.stripe_payment_intent_id === TARGET.pi &&
+      job.order_id === orderId &&
+        job.stripe_payment_intent_id === pi &&
         job.status === 'processing' &&
         job.attempt_count === attempt &&
-        job.claim_token &&
+        typeof job.claim_token === 'string' &&
         UUID.test(job.claim_token) &&
-        instant(job.claim_expires_at) > o.now() &&
+        instant(job.claim_expires_at) > p.now() &&
         job.next_retry_at === null,
       'INVALID_CLAIM',
     );
-    await state(job);
     return job;
   };
-  const complete = async (token: string, expected: boolean) => {
-    const args: RPC['fn_complete_stripe_fee_reconciliation_job_leased']['Args'] =
-      {
-        p_job_id: id,
-        p_claim_token: token,
-        p_actual_stripe_fee_cents: 6817,
-        p_reconciled_at: TARGET.at,
-      };
-    check(
-      (await o.api(
-        'rpc/fn_complete_stripe_fee_reconciliation_job_leased',
-        'POST',
-        args,
-      )) === expected,
-      'INVALID_COMPLETION_RESULT',
-    );
-  };
-  let insertAttempted = false,
-    failed = false,
-    cleanupFailed = false;
+
+  let failed = false;
+  let cleanupFailed = false;
   try {
-    emit('FIXTURE_RESERVED', { fixtureId: id });
-    const insert: Database['public']['Tables']['stripe_fee_reconciliation_jobs']['Insert'] =
-      {
-        id,
-        order_id: TARGET.order,
-        stripe_payment_intent_id: TARGET.pi,
-        status: 'pending',
-      };
-    // Mark before IO: a lost insert response can still mean the known UUID committed.
-    insertAttempted = true;
-    const inserted = rows(await o.api(`${JOBS}?select=*`, 'POST', insert));
+    // Before the insert: a lost response can still mean the order committed.
+    emit('FIXTURE_RESERVED', { orderId });
+    await p.db.insertOrder(orderId, pi);
+
+    check((await enqueue()) === true, 'ENQUEUE_NOT_INSERTED');
+    check((await enqueue()) === false, 'REENQUEUE_NOT_IDEMPOTENT');
+    const queued = await only();
     check(
-      inserted.length === 1 &&
-        inserted[0].id === id &&
-        inserted[0].status === 'pending' &&
-        inserted[0].attempt_count === 0 &&
-        inserted[0].claim_token === null &&
-        inserted[0].claim_expires_at === null &&
-        inserted[0].next_retry_at === null,
-      'INVALID_INSERT',
+      queued.status === 'pending' &&
+        queued.attempt_count === 0 &&
+        queued.claim_token === null &&
+        queued.claim_expires_at === null &&
+        queued.last_error === null &&
+        instant(queued.next_retry_at) <= p.now() + CLOCK_SKEW_MS,
+      'INVALID_ENQUEUED_JOB',
     );
-    await state(inserted[0]);
-    const first = await claim(1);
-    await state(first); // Immediately before global before-expiry claim.
+    emit('ENQUEUE_CHECK_PASSED');
+
+    const result = await p.runWorker();
     check(
-      instant(first.claim_expires_at) > o.now(),
-      'BEFORE_EXPIRY_WINDOW_LOST',
+      JSON.stringify(result) ===
+        JSON.stringify({
+          selected: 1,
+          succeeded: 0,
+          retryScheduled: 1,
+          failed: 0,
+          errors: 0,
+        }),
+      'WORKER_RESULT_MISMATCH',
     );
-    const args: RPC['fn_claim_stripe_fee_reconciliation_jobs_leased']['Args'] =
-      { p_limit: 1, p_max_attempts: 3 };
-    const excluded = await o.api(
-      'rpc/fn_claim_stripe_fee_reconciliation_jobs_leased',
-      'POST',
-      args,
+    const retried = await only();
+    check(
+      retried.status === 'pending' &&
+        retried.attempt_count === 1 &&
+        retried.last_error === 'STRIPE_FEE_UNAVAILABLE' &&
+        retried.claim_token === null &&
+        retried.claim_expires_at === null &&
+        instant(retried.next_retry_at) > p.now() - CLOCK_SKEW_MS,
+      'INVALID_RETRY_STATE',
     );
+    emit('NO_CHARGE_RETRY_CHECK_PASSED');
+
+    await p.db.makeDue(retried.id);
+    const first = await claimed(2);
+    const excluded = await claim();
     check(
       Array.isArray(excluded) && excluded.length === 0,
-      'UNEXPECTED_CLAIM_HUMAN_INVESTIGATION',
+      'CLAIMED_BEFORE_EXPIRY',
     );
-    await state(first);
     emit('BEFORE_EXPIRY_CHECK_PASSED');
-    emit('WAITING', { minutes: 305000 / 60000 });
-    const started = o.now();
-    await o.sleep(305000);
-    check(o.now() - started >= 305000, 'WAIT_TOO_SHORT');
-    await state(first);
-    check(instant(first.claim_expires_at) <= o.now(), 'LEASE_NOT_EXPIRED');
-    const second = await claim(2);
+
+    await p.db.expireClaim(first.id);
+    const second = await claimed(3);
     check(second.claim_token !== first.claim_token, 'TOKEN_NOT_REPLACED');
-    await complete(first.claim_token!, false);
-    await state(second);
-    emit('STALE_TOKEN_CHECK_PASSED');
-    await complete(second.claim_token!, true);
-    const succeeded = await state();
     check(
-      succeeded?.status === 'succeeded' &&
+      (await complete(first.id, first.claim_token!)) === false,
+      'STALE_TOKEN_ACCEPTED',
+    );
+    const stillClaimed = await only();
+    check(
+      stillClaimed.status === 'processing' &&
+        stillClaimed.claim_token === second.claim_token,
+      'STALE_TOKEN_CHANGED_JOB',
+    );
+    emit('STALE_TOKEN_CHECK_PASSED');
+
+    check(
+      (await complete(second.id, second.claim_token!)) === true,
+      'COMPLETION_REJECTED',
+    );
+    const succeeded = await only();
+    check(
+      succeeded.status === 'succeeded' &&
+        succeeded.attempt_count === 3 &&
         succeeded.claim_token === second.claim_token &&
-        succeeded.claim_expires_at === null &&
-        succeeded.attempt_count === 2,
+        succeeded.claim_expires_at === null,
       'INVALID_SUCCESS_STATE',
     );
-    await complete(second.claim_token!, true);
-    await state(succeeded);
+    check(
+      (await complete(second.id, second.claim_token!)) === true,
+      'REPLAY_REJECTED',
+    );
+    check(
+      JSON.stringify(await only()) === JSON.stringify(succeeded),
+      'REPLAY_CHANGED_JOB',
+    );
     emit('REPLAY_CHECK_PASSED');
   } catch (error) {
     failed = true;
     emit('FAILED', {
       code: error instanceof ProofError ? error.message : 'IO_OR_CHECK_FAILED',
-      cron: 'KEEP_PAUSED',
+      detail: error instanceof ProofError ? undefined : String(error),
     });
   } finally {
-    if (insertAttempted) {
-      try {
-        const deleted = rows(
-          await o.api(`${JOBS}?select=*&${guard}`, 'DELETE'),
-        );
-        check(
-          deleted.length <= 1 &&
-            deleted.every(
-              (j) =>
-                j.id === id &&
-                j.order_id === TARGET.order &&
-                j.stripe_payment_intent_id === TARGET.pi,
-            ),
-          'INVALID_DELETE_RESPONSE',
-        );
-        check(
-          rows(await o.api(fixturePath)).length === 0,
-          'FIXTURE_NOT_REMOVED',
-        );
-        check((await state()) === undefined, 'CLEANUP_STATE_MISMATCH');
-        emit('CLEANUP_VERIFIED');
-      } catch {
-        cleanupFailed = true;
-        emit('CLEANUP_UNCERTAIN', {
-          fixtureId: id,
-          cron: 'KEEP_PAUSED',
-          action: 'HUMAN_INVESTIGATION_REQUIRED',
-        });
-      }
+    try {
+      await p.db.removeFixture(orderId);
+      check((await p.db.jobs(orderId)).length === 0, 'FIXTURE_NOT_REMOVED');
+      emit('CLEANUP_VERIFIED');
+    } catch {
+      cleanupFailed = true;
+      emit('CLEANUP_UNCERTAIN', { orderId });
     }
   }
-  check(!failed && !cleanupFailed, 'PROOF_FAILED_KEEP_CRON_PAUSED');
+  check(!failed && !cleanupFailed, 'PROOF_FAILED');
   emit('PASS', {
-    checks: 'lease_reclaim_stale_token_replay_preservation_cleanup',
-    cron: 'MAINTAINER_ONLY',
-    provider: 'NOT_TESTED',
+    checks:
+      'enqueue_idempotency_no_charge_retry_lease_reclaim_stale_token_replay_cleanup',
   });
 }
 
-if (import.meta.main) {
-  try {
-    const api = createRestApi(
-      process.env.SUPABASE_URL ?? '',
-      process.env.SUPABASE_SECRET_KEY ?? '',
-      fetch,
+type Status = { DB_URL?: string; API_URL?: string; SECRET_KEY?: string };
+
+function stackStatus(): Status {
+  const status = Bun.spawnSync(['supabase', 'status', '--env'], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (status.exitCode !== 0)
+    throw new Error(
+      'Local Supabase stack is not running for this worktree: run `supabase start`.',
     );
-    await runLeaseProof({
-      api,
-      approval: process.env.FEE_LEASE_APPROVAL ?? '',
+  const parsed = JSON.parse(status.stdout.toString()) as Record<
+    string,
+    unknown
+  >;
+  return (
+    parsed.env && typeof parsed.env === 'object' ? parsed.env : parsed
+  ) as Status;
+}
+
+function cronSecret(): string {
+  const path = join(ROOT, 'bruno', '.env');
+  const line = existsSync(path)
+    ? readFileSync(path, 'utf8')
+        .split(/\r?\n/)
+        .find((entry) => entry.startsWith('CRON_SECRET='))
+    : undefined;
+  const value = line
+    ?.slice('CRON_SECRET='.length)
+    .trim()
+    .replace(/^"(.*)"$/, '$1')
+    .replace(/\\"/g, '"');
+  if (!value)
+    throw new Error(
+      'CRON_SECRET is missing from bruno/.env: run `bun run bruno:env`.',
+    );
+  return value;
+}
+
+async function postJson(
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+): Promise<unknown> {
+  const response = await fetch(url, {
+    method: 'POST',
+    redirect: 'error',
+    signal: AbortSignal.timeout(30000),
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`${response.status} ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
+const iso = (value: unknown) =>
+  value instanceof Date ? value.toISOString() : (value as string | null);
+
+function ownerDb(sql: SQL): Ports['db'] {
+  return {
+    activeJobCount: async () => {
+      const [row] = await sql`
+        SELECT count(*)::int AS n FROM internal.stripe_fee_reconciliation_jobs
+        WHERE status IN ('pending', 'processing')`;
+      return row.n as number;
+    },
+    insertOrder: async (orderId, paymentIntentId) => {
+      await sql`
+        INSERT INTO public.orders (
+          id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id
+        ) VALUES (
+          ${orderId}, ${FIXTURE_BUYER}, 100, '{}'::jsonb, 'paid', ${paymentIntentId}
+        )`;
+    },
+    jobs: async (orderId) => {
+      const rows = await sql`
+        SELECT id, order_id, stripe_payment_intent_id, status, attempt_count, next_retry_at,
+               last_error, claim_token, claim_expires_at
+        FROM internal.stripe_fee_reconciliation_jobs WHERE order_id = ${orderId}`;
+      return (rows as Record<string, unknown>[]).map((row) => ({
+        ...(row as Job),
+        next_retry_at: iso(row.next_retry_at),
+        claim_expires_at: iso(row.claim_expires_at),
+      }));
+    },
+    makeDue: async (jobId) => {
+      await sql`
+        UPDATE internal.stripe_fee_reconciliation_jobs
+        SET next_retry_at = now() - interval '1 second'
+        WHERE id = ${jobId} AND status = 'pending'`;
+    },
+    expireClaim: async (jobId) => {
+      await sql`
+        UPDATE internal.stripe_fee_reconciliation_jobs
+        SET claim_expires_at = now() - interval '1 second'
+        WHERE id = ${jobId} AND status = 'processing'`;
+    },
+    removeFixture: async (orderId) => {
+      await sql.begin(async (tx) => {
+        await tx`DELETE FROM internal.stripe_fee_reconciliation_jobs WHERE order_id = ${orderId}`;
+        await tx`DELETE FROM public.orders WHERE id = ${orderId}`;
+      });
+    },
+  };
+}
+
+async function run() {
+  const status = stackStatus();
+  const dbUrl = requireLocal(
+    process.env.SELENE_LOCAL_DB_URL ?? status.DB_URL ?? '',
+    'database',
+  );
+  const apiUrl = requireLocal(status.API_URL ?? '', 'API');
+  const secretKey = status.SECRET_KEY;
+  if (!secretKey) throw new Error('No local SECRET_KEY in `supabase status`.');
+  const secret = cronSecret();
+  const sql = new SQL(dbUrl, { max: 2, connectionTimeout: 5 });
+  try {
+    await runFeeJobProof({
+      db: ownerDb(sql),
+      rpc: (name, args) =>
+        postJson(
+          `${apiUrl}/rest/v1/rpc/${name}`,
+          { apikey: secretKey, Authorization: `Bearer ${secretKey}` },
+          args,
+        ),
+      runWorker: () =>
+        postJson(
+          `${apiUrl}/functions/v1/reconcile-stripe-fees`,
+          { 'x-cron-secret': secret },
+          {},
+        ),
       uuid: () => crypto.randomUUID(),
       now: Date.now,
-      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
       report: console.log,
     });
-  } catch {
-    console.log(JSON.stringify({ stage: 'EXIT_FAILED', cron: 'KEEP_PAUSED' }));
-    process.exitCode = 1;
+  } finally {
+    await sql.close();
   }
+}
+
+if (import.meta.main) {
+  if (process.argv.includes('--help')) console.log(help);
+  else
+    await run().catch((error) => {
+      console.log(
+        JSON.stringify({ stage: 'EXIT_FAILED', reason: String(error) }),
+      );
+      process.exitCode = 1;
+    });
 }
