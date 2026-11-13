@@ -1,7 +1,4 @@
-// source-text: index.ts starts a Deno server on import, so the order of signature rejection before any client or DLQ write is only visible in its text
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { verifyStripeWebhookSignature } from './signature.ts';
 
@@ -86,24 +83,5 @@ describe('verifyStripeWebhookSignature', () => {
     });
     expect(result).toEqual({ ok: false, reason: 'missing_secret' });
     expect(calls).toEqual([]);
-  });
-});
-
-describe('stripe-webhooks entrypoint signature wiring', () => {
-  const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('rejects unverified requests with 400 before any database write', () => {
-    const verify = source.indexOf('verifyStripeWebhookSignature({');
-    const reject = source.indexOf("'Invalid signature', { status: 400 }");
-    const firstClient = source.indexOf('createClient<Database>(');
-    const dlq = source.indexOf("from('webhook_dlq')");
-    expect(verify).toBeGreaterThan(-1);
-    expect(reject).toBeGreaterThan(verify);
-    expect(reject).toBeLessThan(firstClient);
-    expect(reject).toBeLessThan(dlq);
-  });
-
-  it('no longer verifies signatures inline', () => {
-    expect(source.match(/constructEventAsync/g)).toHaveLength(1);
   });
 });

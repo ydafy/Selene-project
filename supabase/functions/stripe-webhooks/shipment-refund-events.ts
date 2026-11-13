@@ -1,5 +1,5 @@
 // Pure decision logic for Stripe refund.updated / refund.failed events that belong to a
-// shipment cancellation. index.ts only wires the RPC and the reporter into these ports.
+// shipment cancellation. handler.ts only wires the RPC and the reporter into these ports.
 
 const SHIPMENT_REFUND_EVENT_TYPES = [
   'refund.updated',

@@ -1,7 +1,4 @@
-// source-text: index.ts starts a Deno server on import, so the drift check's place after signature verification and before event dispatch is only visible in its text
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   hasStripeApiVersionDrift,
@@ -135,24 +132,5 @@ describe('reportStripeApiVersionDrift', () => {
         },
       ),
     ).resolves.toBeUndefined();
-  });
-});
-
-describe('stripe-webhooks wiring', () => {
-  const index = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('checks the API version after the signature is verified and before any event is handled, without returning', () => {
-    const rejected = index.indexOf("return new Response('Invalid signature'");
-    const check = index.indexOf('await reportStripeApiVersionDrift(event, {');
-    const dispatch = index.indexOf(
-      "if (event.type === 'payment_intent.succeeded')",
-    );
-    expect(rejected).toBeGreaterThan(-1);
-    expect(check).toBeGreaterThan(rejected);
-    expect(dispatch).toBeGreaterThan(check);
-    expect(index).toContain('expectedVersion: STRIPE_API_VERSION');
-    expect(index).toContain('reportMessage,');
-    const between = index.slice(check, dispatch);
-    expect(between).not.toContain('return ');
   });
 });

@@ -14,7 +14,7 @@
  * RPC result to a retry-safe HTTP outcome.
  *
  * The module is intentionally free of Deno/Stripe/Supabase imports so it can
- * be unit-tested with `bun test`. `index.ts` only wires `supabaseAdmin.rpc`
+ * be unit-tested with `bun test`. `handler.ts` only wires `supabaseAdmin.rpc`
  * calls around these pure helpers — the same extraction pattern used for the
  * Phase 3 single-PI builders.
  *
@@ -412,7 +412,7 @@ export function parseSingleModalPayload(intent: {
 
 /**
  * Pure webhook routing decision for `payment_intent.succeeded`. Returns a
- * discriminated union describing which settlement body `index.ts`
+ * discriminated union describing which settlement body `handler.ts`
  * should run. Routing precedence:
  *   1. metadata.type === 'return_shipping'  -> return_shipping
  *   2. metadata.flow === SINGLE_MODAL_FLOW  -> single_modal (payload validated)
