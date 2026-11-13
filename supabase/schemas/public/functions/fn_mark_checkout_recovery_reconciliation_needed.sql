@@ -21,7 +21,7 @@ BEGIN
     RETURN;
   END IF;
 
-  UPDATE public.checkout_recovery_shells
+  UPDATE internal.checkout_recovery_shells
   SET compensation_state = 'reconciliation_needed',
       compensation_last_error = p_error,
       compensation_lease_expires_at = NULL,

@@ -14,13 +14,19 @@ const PRODUCTION_POLICY = {
   maxBackoffMs: 300_000,
 } as const;
 
-// Intended future RPC contract from 20261007000000, NOT deployed generated types.
-// Replace this bridge only after maintainer SQL confirmation and type regeneration.
-type ClaimedJobRow =
-  Database['public']['Tables']['stripe_fee_reconciliation_jobs']['Row'] & {
-    claim_token: string;
-    claim_expires_at: string;
-  };
+// The job table lives in schema internal, so the row type comes from the
+// leased claim RPC. Generated types mark every returned column non-null; these
+// four are nullable columns of the job table. parseClaimedFeeJobs checks the
+// claim fields at run time.
+type ClaimedJobRow = Omit<
+  Database['public']['Functions']['fn_claim_stripe_fee_reconciliation_jobs_leased']['Returns'][number],
+  'claim_expires_at' | 'claim_token' | 'last_error' | 'next_retry_at'
+> & {
+  claim_expires_at: string | null;
+  claim_token: string | null;
+  last_error: string | null;
+  next_retry_at: string | null;
+};
 type CompleteJobArgs = {
   p_job_id: string;
   p_claim_token: string;

@@ -45,13 +45,13 @@ end $$;
 create function pg_temp.fee_job(p_n integer) returns uuid language sql as $$
   insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
   values (pg_temp.mu(p_n), pg_temp.mu(1), 1000, '{}'::jsonb, 'paid', 'pi_fee_' || p_n);
-  insert into public.stripe_fee_reconciliation_jobs (id, order_id, stripe_payment_intent_id)
+  insert into internal.stripe_fee_reconciliation_jobs (id, order_id, stripe_payment_intent_id)
   values (pg_temp.mu(p_n), pg_temp.mu(p_n), 'pi_fee_' || p_n)
   returning id
 $$;
 
-create function pg_temp.j(p_n integer) returns public.stripe_fee_reconciliation_jobs language sql as $$
-  select * from public.stripe_fee_reconciliation_jobs where id = pg_temp.mu(p_n)
+create function pg_temp.j(p_n integer) returns internal.stripe_fee_reconciliation_jobs language sql as $$
+  select * from internal.stripe_fee_reconciliation_jobs where id = pg_temp.mu(p_n)
 $$;
 
 create function pg_temp.o(p_n integer) returns public.orders language sql as $$
@@ -59,7 +59,7 @@ create function pg_temp.o(p_n integer) returns public.orders language sql as $$
 $$;
 
 create function pg_temp.set_job(p_n integer, p_set text) returns text language sql as $$
-  select format('update public.stripe_fee_reconciliation_jobs set %s where id = %L', p_set, pg_temp.mu(p_n))
+  select format('update internal.stripe_fee_reconciliation_jobs set %s where id = %L', p_set, pg_temp.mu(p_n))
 $$;
 
 -- Claims every due job with the leased claim and returns how many it got.
@@ -71,14 +71,14 @@ $$;
 -- holds the outcome, retry time and error.
 create function pg_temp.tr(p_n integer, p_tail text) returns text language sql as $$
   select format('select public.fn_transition_stripe_fee_reconciliation_job_leased(id, claim_token, %s)::text
-    from public.stripe_fee_reconciliation_jobs where id = %L', p_tail, pg_temp.mu(p_n))
+    from internal.stripe_fee_reconciliation_jobs where id = %L', p_tail, pg_temp.mu(p_n))
 $$;
 
 -- A call of the leased completion on job p_n under its stored token; p_tail
 -- holds the fee in cents and the reconciliation time.
 create function pg_temp.done(p_n integer, p_tail text) returns text language sql as $$
   select format('select public.fn_complete_stripe_fee_reconciliation_job_leased(id, claim_token, %s)::text
-    from public.stripe_fee_reconciliation_jobs where id = %L', p_tail, pg_temp.mu(p_n))
+    from internal.stripe_fee_reconciliation_jobs where id = %L', p_tail, pg_temp.mu(p_n))
 $$;
 
 select pg_temp.money_user(1);
@@ -94,7 +94,7 @@ select is(pg_temp.peek('select 1', format($$select public.fn_transition_stripe_f
   %L, null, 'succeeded')::text$$, pg_temp.mu(30))), 'false',
   'a NULL token returns false before the arguments are validated');
 select is(pg_temp.peek('select 1', format($$select public.fn_transition_stripe_fee_reconciliation_job_leased(
-  null, claim_token, 'succeeded')::text from public.stripe_fee_reconciliation_jobs where id = %L$$, pg_temp.mu(30))),
+  null, claim_token, 'succeeded')::text from internal.stripe_fee_reconciliation_jobs where id = %L$$, pg_temp.mu(30))),
   'false', 'a NULL job id returns false before the arguments are validated');
 select throws_ok(pg_temp.tr(30, $$null, null, 'x'$$), '22023', 'INVALID_TRANSITION', 'a NULL outcome is rejected');
 select throws_ok(pg_temp.tr(30, $$'succeeded', null, 'x'$$), '22023', 'INVALID_TRANSITION',
@@ -119,7 +119,7 @@ select is(pg_temp.peek(pg_temp.set_job(30, 'claim_expires_at = null'), pg_temp.t
   'a claim with no lease expiry returns false');
 select is(pg_temp.peek(pg_temp.set_job(30, $$claim_expires_at = now() + interval '10 ms'$$),
   pg_temp.tr(30, $$'failed', null, 'x'$$)), 'false', 'a lease expired on the wall clock returns false');
-update public.stripe_fee_reconciliation_jobs set updated_at = now() - interval '1 hour' where id = pg_temp.mu(30);
+update internal.stripe_fee_reconciliation_jobs set updated_at = now() - interval '1 hour' where id = pg_temp.mu(30);
 select is(pg_temp.exec(pg_temp.tr(30, $$'retry', now() + interval '1 hour', 'stripe timeout'$$)), 'true',
   'a retry under the live claim succeeds');
 select ok((select status = 'pending' and next_retry_at = now() + interval '1 hour' and last_error = 'stripe timeout'
@@ -134,7 +134,7 @@ select ok((select status = 'failed' and next_retry_at is null and last_error = '
 
 -- Completion, on job 40 under a live claim (jobs 30 and 31 are not due).
 select pg_temp.fee_job(40);
-update public.stripe_fee_reconciliation_jobs set last_error = 'stripe timeout' where id = pg_temp.mu(40);
+update internal.stripe_fee_reconciliation_jobs set last_error = 'stripe timeout' where id = pg_temp.mu(40);
 select pg_temp.claim();
 create table pg_temp.token as select claim_token from pg_temp.j(40);
 select is(pg_temp.peek('select 1', format('select public.fn_complete_stripe_fee_reconciliation_job_leased(

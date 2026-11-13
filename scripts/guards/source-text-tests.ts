@@ -8,7 +8,7 @@ export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'apps/admin-web': 3,
   'apps/frontend': 75,
   'packages/types': 1,
-  scripts: 15,
+  scripts: 14,
   'supabase/functions': 0,
   'supabase/templates': 1,
 };

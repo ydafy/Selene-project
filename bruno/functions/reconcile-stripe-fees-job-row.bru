@@ -4,9 +4,9 @@ meta {
   seq: 137
 }
 
-get {
-  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs?id=eq.{{feeJobId}}&select=*
-  body: none
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_claim_stripe_fee_reconciliation_jobs_leased
+  body: json
   auth: none
 }
 
@@ -15,21 +15,38 @@ headers {
   Authorization: Bearer {{secretKey}}
 }
 
+body:json {
+  {
+    "p_limit": 1,
+    "p_max_attempts": 3
+  }
+}
+
+script:post-response {
+  const rows = res.getBody();
+  if (res.getStatus() === 200 && Array.isArray(rows) && rows.length === 1) {
+    bru.setVar("feeJobId", rows[0].id);
+    bru.setVar("feeJobClaimToken", rows[0].claim_token);
+  }
+}
+
 tests {
-  test("the job is pending again with one attempt and a future retry", function () {
+  test("the leased claim returns the queued job, processing with one attempt", function () {
     expect(res.getStatus()).to.equal(200);
     const rows = res.getBody();
     expect(rows.length).to.equal(1);
-    expect(rows[0].status).to.equal("pending");
+    expect(rows[0].order_id).to.equal("00000000-0000-4000-8000-0000000000f0");
+    expect(rows[0].stripe_payment_intent_id).to.equal(bru.getVar("feeJobIntentId"));
+    expect(rows[0].status).to.equal("processing");
     expect(rows[0].attempt_count).to.equal(1);
-    expect(rows[0].last_error).to.equal("STRIPE_FEE_UNAVAILABLE");
-    expect(rows[0].claim_token).to.equal(null);
-    expect(rows[0].claim_expires_at).to.equal(null);
-    expect(Date.parse(rows[0].next_retry_at)).to.be.above(Date.now());
+    expect(rows[0].next_retry_at).to.equal(null);
+    expect(rows[0].claim_token).to.match(/^[0-9a-f-]{36}$/);
+    const ttl = (new Date(rows[0].claim_expires_at) - new Date()) / 1000;
+    expect(ttl).to.be.within(290, 310);
   });
 }
 
 docs {
-  Reads the job with the service role. The first retry is 60 s after the run, so a second
-  run right away would not claim it again.
+  The claim is global: it relies on reconcile-stripe-fees-empty having found no other due job.
+  It returns the claimed row's columns, so this is how the run reads the job.
 }

@@ -1,12 +1,13 @@
--- Stripe fee reconciliation, part 1 (#276, T6): grants of the six job RPCs,
--- the retired tokenless RPCs, the stripe_fee_reconciliation_jobs ledger, and
+-- Stripe fee reconciliation, part 1 (#276, T6): grants of the three leased job
+-- RPCs, the dropped tokenless RPCs, the internal.stripe_fee_reconciliation_jobs
+-- ledger (internal-schema T6: no role but its owner holds a privilege), and
 -- the leased claim fn_claim_stripe_fee_reconciliation_jobs_leased (policy
 -- bounds, due and expired-lease selection, legacy tokenless adoption, attempt
 -- exhaustion, batch size and order). Transition and completion are in
 -- stripe_fee_reconciliation_completion.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(69);
+select plan(63);
 \ir ../fixtures/money.psql
 
 -- Runs p_setup and p_query inside a subtransaction that always rolls back and
@@ -40,17 +41,17 @@ $$;
 -- defaults.
 create function pg_temp.fee_job(p_n integer) returns uuid language sql as $$
   select pg_temp.fee_order(p_n);
-  insert into public.stripe_fee_reconciliation_jobs (id, order_id, stripe_payment_intent_id)
+  insert into internal.stripe_fee_reconciliation_jobs (id, order_id, stripe_payment_intent_id)
   values (pg_temp.mu(p_n), pg_temp.mu(p_n), 'pi_fee_' || p_n)
   returning id
 $$;
 
-create function pg_temp.j(p_n integer) returns public.stripe_fee_reconciliation_jobs language sql as $$
-  select * from public.stripe_fee_reconciliation_jobs where id = pg_temp.mu(p_n)
+create function pg_temp.j(p_n integer) returns internal.stripe_fee_reconciliation_jobs language sql as $$
+  select * from internal.stripe_fee_reconciliation_jobs where id = pg_temp.mu(p_n)
 $$;
 
 create function pg_temp.set_job(p_n integer, p_set text) returns text language sql as $$
-  select format('update public.stripe_fee_reconciliation_jobs set %s where id = %L', p_set, pg_temp.mu(p_n))
+  select format('update internal.stripe_fee_reconciliation_jobs set %s where id = %L', p_set, pg_temp.mu(p_n))
 $$;
 
 -- The ids a claim with p_args returns after p_setup, sorted, or 'none'.
@@ -87,34 +88,29 @@ select is(
 ) from unnest(array[
   'public.fn_claim_stripe_fee_reconciliation_jobs_leased(integer,integer)',
   'public.fn_transition_stripe_fee_reconciliation_job_leased(uuid,uuid,text,timestamptz,text)',
-  'public.fn_complete_stripe_fee_reconciliation_job_leased(uuid,uuid,bigint,timestamptz)',
-  'public.fn_claim_stripe_fee_reconciliation_jobs(integer)',
-  'public.fn_transition_stripe_fee_reconciliation_job(uuid,text,timestamptz,text)',
-  'public.fn_complete_stripe_fee_reconciliation_job(uuid,bigint,timestamptz)'
+  'public.fn_complete_stripe_fee_reconciliation_job_leased(uuid,uuid,bigint,timestamptz)'
 ]) as f;
 select is(
   (select count(*)::integer from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.prosecdef and p.proconfig = array['search_path=public, pg_temp']
      and p.proname in ('fn_claim_stripe_fee_reconciliation_jobs_leased',
-       'fn_transition_stripe_fee_reconciliation_job_leased', 'fn_complete_stripe_fee_reconciliation_job_leased',
-       'fn_claim_stripe_fee_reconciliation_jobs', 'fn_transition_stripe_fee_reconciliation_job',
-       'fn_complete_stripe_fee_reconciliation_job')),
-  6, 'the six job RPCs are SECURITY DEFINER with search_path public, pg_temp'
+       'fn_transition_stripe_fee_reconciliation_job_leased', 'fn_complete_stripe_fee_reconciliation_job_leased')),
+  3, 'the three job RPCs are SECURITY DEFINER with search_path public, pg_temp'
 );
 select is(
   (select count(*)::integer from pg_class c, aclexplode(c.relacl) a
-   where c.oid = 'public.stripe_fee_reconciliation_jobs'::regclass
+   where c.oid = 'internal.stripe_fee_reconciliation_jobs'::regclass
      and (a.grantee = 0 or a.grantee::regrole::text in ('anon', 'authenticated'))),
   0, 'the job ledger grants nothing to PUBLIC, anon or authenticated'
 );
 select ok(
-  (select relrowsecurity from pg_class where oid = 'public.stripe_fee_reconciliation_jobs'::regclass),
+  (select relrowsecurity from pg_class where oid = 'internal.stripe_fee_reconciliation_jobs'::regclass),
   'the job ledger has row level security on'
 );
 select ok(
-  (select bool_and(has_table_privilege('service_role', 'public.stripe_fee_reconciliation_jobs', p))
+  (select not bool_or(has_table_privilege('service_role', 'internal.stripe_fee_reconciliation_jobs', p))
    from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) as p),
-  'service_role can read and write the job ledger (the webhook enqueues jobs directly)'
+  'service_role holds no privilege on the job ledger (the webhook enqueues through fn_enqueue_stripe_fee_reconciliation_job)'
 );
 
 set local role anon;
@@ -134,22 +130,18 @@ from (values
   ('fn_transition_stripe_fee_reconciliation_job_leased',
    $$select public.fn_transition_stripe_fee_reconciliation_job_leased(gen_random_uuid(), gen_random_uuid(), 'failed', null, 'x')$$),
   ('fn_complete_stripe_fee_reconciliation_job_leased',
-   'select public.fn_complete_stripe_fee_reconciliation_job_leased(gen_random_uuid(), gen_random_uuid(), 1, now())'),
-  ('fn_claim_stripe_fee_reconciliation_jobs', 'select * from public.fn_claim_stripe_fee_reconciliation_jobs()'),
-  ('fn_transition_stripe_fee_reconciliation_job',
-   $$select public.fn_transition_stripe_fee_reconciliation_job(gen_random_uuid(), 'failed')$$),
-  ('fn_complete_stripe_fee_reconciliation_job',
-   'select public.fn_complete_stripe_fee_reconciliation_job(gen_random_uuid(), 1, now())')
+   'select public.fn_complete_stripe_fee_reconciliation_job_leased(gen_random_uuid(), gen_random_uuid(), 1, now())')
 ) as t(f, q);
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 
--- The tokenless RPCs stay granted but always refuse: only the leased ones work.
-select throws_ok('select * from public.fn_claim_stripe_fee_reconciliation_jobs()', 'P0001', 'STRIPE_FEE_LEASE_REQUIRED',
-  'the tokenless claim refuses with STRIPE_FEE_LEASE_REQUIRED');
-select throws_ok($$select public.fn_transition_stripe_fee_reconciliation_job(gen_random_uuid(), 'failed')$$,
-  'P0001', 'STRIPE_FEE_LEASE_REQUIRED', 'the tokenless transition refuses with STRIPE_FEE_LEASE_REQUIRED');
-select throws_ok('select public.fn_complete_stripe_fee_reconciliation_job(gen_random_uuid(), 1, now())',
-  'P0001', 'STRIPE_FEE_LEASE_REQUIRED', 'the tokenless completion refuses with STRIPE_FEE_LEASE_REQUIRED');
+-- The tokenless RPCs, which only raised STRIPE_FEE_LEASE_REQUIRED, are dropped:
+-- only the leased ones exist.
+select hasnt_function('public', 'fn_claim_stripe_fee_reconciliation_jobs',
+  'the tokenless claim fn_claim_stripe_fee_reconciliation_jobs no longer exists');
+select hasnt_function('public', 'fn_transition_stripe_fee_reconciliation_job',
+  'the tokenless transition fn_transition_stripe_fee_reconciliation_job no longer exists');
+select hasnt_function('public', 'fn_complete_stripe_fee_reconciliation_job',
+  'the tokenless completion fn_complete_stripe_fee_reconciliation_job no longer exists');
 
 -- Claim policy bounds (no job exists yet).
 select throws_ok(format('select * from public.fn_claim_stripe_fee_reconciliation_jobs_leased(%s)', a),
@@ -172,7 +164,7 @@ select throws_ok(pg_temp.set_job(10, $$last_error = repeat('x', 4001)$$), '23514
   'an error longer than 4000 characters is rejected');
 select throws_ok(pg_temp.set_job(10, $$stripe_payment_intent_id = ''$$), '23514', null,
   'an empty payment intent id is rejected');
-select throws_ok(format($$insert into public.stripe_fee_reconciliation_jobs (order_id, stripe_payment_intent_id)
+select throws_ok(format($$insert into internal.stripe_fee_reconciliation_jobs (order_id, stripe_payment_intent_id)
   values (%L, 'pi_fee_10')$$, pg_temp.mu(10)), '23505', null,
   'a second job for the same order and payment intent is rejected');
 select throws_ok(format('delete from public.orders where id = %L', pg_temp.mu(10)), '23503', null,
@@ -209,7 +201,7 @@ select is(pg_temp.claimed(pg_temp.set_job(10, 'attempt_count = 5'), '25, 6'), pg
   'the attempt limit comes from p_max_attempts');
 
 -- A claim leases the job under a new token.
-update public.stripe_fee_reconciliation_jobs
+update internal.stripe_fee_reconciliation_jobs
 set next_retry_at = now() - interval '1 hour', updated_at = now() - interval '1 hour', last_error = 'earlier'
 where id = pg_temp.mu(10);
 select is(array(select pg_temp.claim()), array[pg_temp.mu(10)], 'a due pending job is claimed');
@@ -227,7 +219,7 @@ select ok(
 select is((select next_retry_at from pg_temp.j(10)), null, 'the claim clears the retry time');
 select ok((select updated_at > now() from pg_temp.j(10)), 'the claim stamps updated_at with the wall clock');
 select is(array(select pg_temp.claim()), '{}'::uuid[], 'a leased job is not claimed again');
-update public.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
+update internal.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
 select is(array(select pg_temp.claim()), array[pg_temp.mu(10)], 'a job whose lease expired is claimed again');
 select ok(
   (select b.claim_token <> a.claim_token and j.claim_token = b.claim_token and j.attempt_count = 2
@@ -236,11 +228,11 @@ select ok(
 );
 
 -- Exhaustion: a job at the attempt limit is failed, never stranded.
-update public.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
+update internal.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
 select pg_temp.claim();
-update public.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
+update internal.stripe_fee_reconciliation_jobs set claim_expires_at = now() - interval '1 second' where id = pg_temp.mu(10);
 select pg_temp.fee_job(11);
-update public.stripe_fee_reconciliation_jobs
+update internal.stripe_fee_reconciliation_jobs
 set attempt_count = 3, next_retry_at = now() - interval '1 hour' where id = pg_temp.mu(11);
 select is(array(select pg_temp.claim()), '{}'::uuid[], 'jobs at the attempt limit are not returned');
 select is(array[(select status from pg_temp.j(10)), (select status from pg_temp.j(11))], array['failed', 'failed'],
@@ -253,24 +245,24 @@ select is((select next_retry_at from pg_temp.j(11)), null, 'an exhausted job los
 
 -- Batch size and order.
 select pg_temp.fee_job(20), pg_temp.fee_job(21), pg_temp.fee_job(22);
-update public.stripe_fee_reconciliation_jobs set created_at = now() - interval '1 hour' where id = pg_temp.mu(20);
-update public.stripe_fee_reconciliation_jobs
+update internal.stripe_fee_reconciliation_jobs set created_at = now() - interval '1 hour' where id = pg_temp.mu(20);
+update internal.stripe_fee_reconciliation_jobs
 set created_at = now() - interval '3 hours', next_retry_at = now() - interval '2 hours' where id = pg_temp.mu(21);
-update public.stripe_fee_reconciliation_jobs set created_at = now() - interval '2 hours' where id = pg_temp.mu(22);
+update internal.stripe_fee_reconciliation_jobs set created_at = now() - interval '2 hours' where id = pg_temp.mu(22);
 select is(array[(select pg_temp.claim(1) limit 1), (select pg_temp.claim(1) limit 1), (select pg_temp.claim(1) limit 1)],
   array[pg_temp.mu(22), pg_temp.mu(20), pg_temp.mu(21)],
   'jobs without a retry time come first, then by retry time, ties by creation time');
-update public.stripe_fee_reconciliation_jobs set status = 'pending', claim_token = null, claim_expires_at = null
+update internal.stripe_fee_reconciliation_jobs set status = 'pending', claim_token = null, claim_expires_at = null
 where id in (pg_temp.mu(20), pg_temp.mu(21), pg_temp.mu(22));
 create table pg_temp.batch (n integer);
 insert into pg_temp.batch select count(*) from pg_temp.claim(2);
 select is(
-  (select n from pg_temp.batch) || ':' || (select count(*) from public.stripe_fee_reconciliation_jobs where status = 'pending'),
+  (select n from pg_temp.batch) || ':' || (select count(*) from internal.stripe_fee_reconciliation_jobs where status = 'pending'),
   '2:1', 'a claim returns at most p_limit jobs and leaves the rest pending');
 -- Claims cleared the retry times, so the order is now 21, 22, 20 by creation.
-update public.stripe_fee_reconciliation_jobs set status = 'pending', claim_token = null, claim_expires_at = null
+update internal.stripe_fee_reconciliation_jobs set status = 'pending', claim_token = null, claim_expires_at = null
 where id in (pg_temp.mu(20), pg_temp.mu(21), pg_temp.mu(22));
-update public.stripe_fee_reconciliation_jobs set attempt_count = 3 where id = pg_temp.mu(21);
+update internal.stripe_fee_reconciliation_jobs set attempt_count = 3 where id = pg_temp.mu(21);
 delete from pg_temp.batch;
 insert into pg_temp.batch select count(*) from pg_temp.claim(1);
 select is(

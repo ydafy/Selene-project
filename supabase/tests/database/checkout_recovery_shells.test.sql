@@ -30,7 +30,7 @@ $$;
 -- A standalone shell for p_pi.
 create function pg_temp.rec_shell(p_pi text, p_state text default 'refund_pending', p_charge text default null)
 returns void language sql as $$
-  insert into public.checkout_recovery_shells (stripe_payment_intent_id, reason, charged_amount_cents,
+  insert into internal.checkout_recovery_shells (stripe_payment_intent_id, reason, charged_amount_cents,
     compensation_state, next_compensation_retry_at, compensation_lease_expires_at, stripe_charge_id, stripe_refund_id)
   values (p_pi, 'seed', 1000, p_state, now() + interval '1 minute', now() + interval '1 minute', p_charge,
     case when p_state = 'refunded' then 're_seed' end)
@@ -52,13 +52,14 @@ create function pg_temp.order_rec(p_n integer) returns text language sql as $$
 $$;
 
 -- reason|metadata|amount cents|state|attempts|next retry s|lease s|charge|refund|last error of a shell.
-create function pg_temp.shell_rec(p_pi text) returns text language sql as $$
+-- SECURITY DEFINER: the shells live in internal, which service_role cannot read.
+create function pg_temp.shell_rec(p_pi text) returns text language sql security definer as $$
   select s.reason || '|' || s.source_metadata::text || '|' || coalesce(s.charged_amount_cents::text, '-')
     || '|' || s.compensation_state || '|' || s.compensation_attempt_count::text
     || '|' || pg_temp.secs(s.next_compensation_retry_at) || '|' || pg_temp.secs(s.compensation_lease_expires_at)
     || '|' || coalesce(s.stripe_charge_id, '-') || '|' || coalesce(s.stripe_refund_id, '-')
     || '|' || coalesce(s.compensation_last_error, '-')
-  from public.checkout_recovery_shells s where s.stripe_payment_intent_id = p_pi
+  from internal.checkout_recovery_shells s where s.stripe_payment_intent_id = p_pi
 $$;
 
 -- Execute grants of a function as anon:authenticated:service_role.
@@ -86,7 +87,7 @@ select is(
     || 'fn_mark_checkout_recovery_retry:true:search_path=public fn_set_checkout_recovery_charge_evidence:true:search_path=public '
     || 'fn_upsert_checkout_recovery_shell:true:search_path=public',
   'security mode: the recovery target functions run as definer with search_path public');
-select col_is_pk('public', 'checkout_recovery_shells', 'stripe_payment_intent_id',
+select col_is_pk('internal', 'checkout_recovery_shells', 'stripe_payment_intent_id',
   'shells: one shell per PaymentIntent');
 select is(
   (select pg_get_constraintdef(oid) from pg_constraint where conname = 'checkout_recovery_shells_compensation_state_check'),
@@ -163,7 +164,7 @@ reset role;
 select pg_temp.rec_order(6105, 'pi_cr_5', 'pending', 'refunding', interval '1 hour');
 select pg_temp.rec_shell('pi_cr_s3', 'refunding');
 select pg_temp.rec_shell('pi_cr_s4', 'refunding');
-update public.checkout_recovery_shells set compensation_attempt_count = 2 where stripe_payment_intent_id = 'pi_cr_s3';
+update internal.checkout_recovery_shells set compensation_attempt_count = 2 where stripe_payment_intent_id = 'pi_cr_s3';
 set local role service_role;
 select public.fn_mark_checkout_recovery_retry('pi_cr_5', 'stripe timeout');
 select is(pg_temp.order_rec(6105), 'pending|false|-|refund_failed_retry_queued|0|300|-|-|-|stripe timeout',

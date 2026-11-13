@@ -676,24 +676,15 @@ export function createStripeWebhooksHandler(deps: StripeWebhooksDependencies) {
             });
 
             if (feePlan.kind === 'deferred') {
-              const enqueuedAt = new Date().toISOString();
-              const { error: enqueueError } = await supabaseAdmin
-                .from('stripe_fee_reconciliation_jobs')
-                .upsert(
-                  {
-                    order_id: action.payload.orderId,
-                    stripe_payment_intent_id: intent.id,
-                    status: 'pending',
-                    attempt_count: 0,
-                    next_retry_at: enqueuedAt,
-                    last_error: null,
-                    updated_at: enqueuedAt,
-                  },
-                  {
-                    onConflict: 'order_id,stripe_payment_intent_id',
-                    ignoreDuplicates: true,
-                  },
-                );
+              // The job table lives in schema internal; the RPC inserts a
+              // pending job, or leaves the pair's existing job untouched.
+              const { error: enqueueError } = await supabaseAdmin.rpc(
+                'fn_enqueue_stripe_fee_reconciliation_job',
+                {
+                  p_order_id: action.payload.orderId,
+                  p_stripe_payment_intent_id: intent.id,
+                },
+              );
 
               if (enqueueError) {
                 throw new Error(

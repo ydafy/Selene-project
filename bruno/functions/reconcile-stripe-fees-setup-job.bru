@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs
+  url: {{baseUrl}}/rest/v1/rpc/fn_enqueue_stripe_fee_reconciliation_job
   body: json
   auth: none
 }
@@ -13,32 +13,30 @@ post {
 headers {
   apikey: {{secretKey}}
   Authorization: Bearer {{secretKey}}
-  Prefer: return=representation
+}
+
+script:pre-request {
+  bru.setVar("feeJobIntentId", "pi_bruno_fee_" + Date.now());
 }
 
 body:json {
   {
-    "order_id": "00000000-0000-4000-8000-0000000000f0",
-    "stripe_payment_intent_id": "pi_bruno_fee_no_charge"
-  }
-}
-
-script:post-response {
-  if (res.getStatus() === 201) {
-    bru.setVar("feeJobId", res.getBody()[0].id);
+    "p_order_id": "00000000-0000-4000-8000-0000000000f0",
+    "p_stripe_payment_intent_id": "{{feeJobIntentId}}"
   }
 }
 
 tests {
-  test("the service role adds a pending fee job for an order without a charge", function () {
-    expect(res.getStatus()).to.equal(201);
-    expect(res.getBody()[0].status).to.equal("pending");
-    expect(res.getBody()[0].attempt_count).to.equal(0);
+  test("the service role queues a new fee job", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
   });
 }
 
 docs {
-  Seeds one due job on the seeded auto-completion order f0, whose stripe_charge_id is null,
-  so the worker has no charge to ask Stripe about. reconcile-stripe-fees-cleanup-job
-  deletes it.
+  Queues one due job on the seeded order f0 with a payment intent id unique to this run, so
+  reruns do not collide. The job lives in schema internal, so the requests below see it only
+  through the RPCs; reconcile-stripe-fees-cleanup-job leaves it failed, never due again.
+  The worker's no-charge retry and the lease expiry run in
+  scripts/verify/verify-stripe-fee-lease-recovery.ts, which can read and delete job rows.
 }
