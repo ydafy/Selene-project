@@ -42,17 +42,19 @@ tests {
     expect(body).to.deep.equal({
       status: "complete",
       hasStripeAccount: true,
-      chargesEnabled: true,
+      chargesEnabled: body.chargesEnabled,
       payoutsEnabled: true,
       refreshedAt: body.refreshedAt,
       cached: false,
     });
+    expect(body.chargesEnabled).to.be.a("boolean");
     expect(Number.isNaN(Date.parse(body.refreshedAt))).to.equal(false);
   });
 }
 
 docs {
-  The handler calls stripe.accounts.retrieve on the sandbox account (charges and payouts
-  enabled), so this is the fresh branch of refresh-connect-account-status.ts (lines
+  The handler calls stripe.accounts.retrieve on the sandbox account (payouts enabled and the
+  transfers capability active; chargesEnabled is reported, never required, because a v2
+  recipient account never has it), so this is the fresh branch of refresh-connect-account-status.ts (lines
   153-160). A Stripe failure would answer cached: true with status pending instead.
 }

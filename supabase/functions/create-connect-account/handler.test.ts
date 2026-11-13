@@ -85,21 +85,35 @@ function fakeStripe(
     accountId?: string;
     linkUrl?: string;
     createError?: Error;
+    balanceSettingsError?: Error;
   } = {},
 ) {
-  const calls: Array<[string, unknown]> = [];
+  const calls: unknown[][] = [];
   const stripe: ConnectAccountStripe = {
-    accounts: {
-      create: async (params) => {
-        calls.push(['accounts.create', params]);
-        if (overrides.createError) throw overrides.createError;
-        return { id: overrides.accountId ?? 'acct_created' };
+    v2: {
+      core: {
+        accounts: {
+          create: async (params) => {
+            calls.push(['v2.core.accounts.create', params]);
+            if (overrides.createError) throw overrides.createError;
+            return { id: overrides.accountId ?? 'acct_created' };
+          },
+        },
+        accountLinks: {
+          create: async (params) => {
+            calls.push(['v2.core.accountLinks.create', params]);
+            return { url: overrides.linkUrl ?? 'https://connect.stripe.com/x' };
+          },
+        },
       },
     },
-    accountLinks: {
-      create: async (params) => {
-        calls.push(['accountLinks.create', params]);
-        return { url: overrides.linkUrl ?? 'https://connect.stripe.com/x' };
+    balanceSettings: {
+      update: async (params, options) => {
+        calls.push(['balanceSettings.update', params, options]);
+        if (overrides.balanceSettingsError) {
+          throw overrides.balanceSettingsError;
+        }
+        return {};
       },
     },
   };
@@ -160,6 +174,66 @@ const expectError = async (
   expect(response.status).toBe(status);
   expect(response.headers.get('Content-Type')).toBe('application/json');
   expect(await response.json()).toEqual({ error });
+};
+
+const MANUAL_PAYOUTS = {
+  payments: { payouts: { schedule: { interval: 'manual' } } },
+};
+
+const manualPayoutsFor = (account: string) => [
+  'balanceSettings.update',
+  MANUAL_PAYOUTS,
+  { stripeAccount: account },
+];
+
+const onboardingLinkFor = (
+  account: string,
+  returnUrl = `${BRIDGE}?state=return`,
+  refreshUrl = `${BRIDGE}?state=refresh`,
+) => [
+  'v2.core.accountLinks.create',
+  {
+    account,
+    use_case: {
+      type: 'account_onboarding',
+      account_onboarding: { return_url: returnUrl, refresh_url: refreshUrl },
+    },
+  },
+];
+
+const v2AccountFor = (email: string | undefined) => ({
+  identity: { country: 'mx' },
+  dashboard: 'express',
+  ...(email === undefined ? {} : { contact_email: email }),
+  defaults: {
+    currency: 'mxn',
+    responsibilities: {
+      fees_collector: 'application',
+      losses_collector: 'application',
+    },
+  },
+  configuration: {
+    recipient: {
+      capabilities: {
+        stripe_balance: { stripe_transfers: { requested: true } },
+      },
+    },
+  },
+  metadata: { supabase_user_id: SELLER_ID, app_name: 'selene' },
+});
+
+const STORE_CREATED: Query = {
+  table: 'profiles_private',
+  ops: [
+    [
+      'update',
+      {
+        stripe_account_id: 'acct_created',
+        stripe_onboarding_status: 'pending',
+      },
+    ],
+    ['eq', 'id', SELLER_ID],
+  ],
 };
 
 const PROFILE_LOOKUP: Query = {
@@ -255,7 +329,7 @@ describe('create-connect-account handler', () => {
     expect(stripe.calls).toEqual([]);
   });
 
-  it('creates a manual-payout Express account for the verified seller, stores it and returns the link', async () => {
+  it('creates a v2 recipient account for the verified seller, stores it, sets manual payouts and returns the link', async () => {
     const { handler, database, stripe } = harness();
 
     // A body that names another user must not change whose account is created.
@@ -273,47 +347,101 @@ describe('create-connect-account handler', () => {
     expect(await response.json()).toEqual({
       url: 'https://connect.stripe.com/x',
     });
-    expect(database.queries).toEqual([
-      PROFILE_LOOKUP,
-      {
-        table: 'profiles_private',
-        ops: [
-          [
-            'update',
-            {
-              stripe_account_id: 'acct_created',
-              stripe_onboarding_status: 'pending',
-            },
-          ],
-          ['eq', 'id', SELLER_ID],
-        ],
-      },
-    ]);
+    expect(database.queries).toEqual([PROFILE_LOOKUP, STORE_CREATED]);
     expect(stripe.calls).toEqual([
-      [
-        'accounts.create',
-        {
-          type: 'express',
-          country: 'MX',
-          email: 'seller@example.test',
-          capabilities: {
-            transfers: { requested: true },
-            card_payments: { requested: true },
-          },
-          settings: { payouts: { schedule: { interval: 'manual' } } },
-          metadata: { supabase_user_id: SELLER_ID, app_name: 'selene' },
-        },
-      ],
-      [
-        'accountLinks.create',
-        {
-          account: 'acct_created',
-          refresh_url: `${BRIDGE}?state=refresh`,
-          return_url: `${BRIDGE}?state=return`,
-          type: 'account_onboarding',
-        },
-      ],
+      ['v2.core.accounts.create', v2AccountFor('seller@example.test')],
+      manualPayoutsFor('acct_created'),
+      onboardingLinkFor('acct_created'),
     ]);
+  });
+
+  it('requests no merchant configuration, no card_payments and no v1 account type', async () => {
+    const { handler, stripe } = harness();
+
+    expect((await handler(request())).status).toBe(200);
+    const params = stripe.calls[0][1] as Record<string, unknown>;
+    expect(Object.keys(params.configuration as object)).toEqual(['recipient']);
+    expect(JSON.stringify(params)).not.toContain('card_payments');
+    expect(params).not.toHaveProperty('type');
+    expect(params).not.toHaveProperty('capabilities');
+    expect(params).not.toHaveProperty('settings');
+  });
+
+  it('sends the account link no configurations field', async () => {
+    const { handler, stripe } = harness();
+
+    expect((await handler(request())).status).toBe(200);
+    const link = stripe.calls[2][1] as Record<string, unknown>;
+    expect(JSON.stringify(link)).not.toContain('configurations');
+    expect(Object.keys(link).sort()).toEqual(['account', 'use_case']);
+  });
+
+  it('stores the account id before it sets manual payouts', async () => {
+    const order: string[] = [];
+    const database = fakeSupabase((query) => {
+      order.push(`db:${String(query.ops[0][0])}`);
+      return profileWith({ stripe_account_id: null, email: null })(query);
+    });
+    const stripe = fakeStripe();
+    const update = stripe.stripe.balanceSettings.update;
+    stripe.stripe.balanceSettings.update = async (params, options) => {
+      order.push('stripe:balanceSettings.update');
+      return update(params, options);
+    };
+    const { handler } = harness({ database, stripe });
+
+    expect((await handler(request())).status).toBe(200);
+    expect(order).toEqual([
+      'db:select',
+      'db:update',
+      'stripe:balanceSettings.update',
+    ]);
+  });
+
+  it('answers 500 MANUAL_PAYOUTS_FAILED with no link when manual payouts fail on a new account, keeping the stored id', async () => {
+    const database = fakeSupabase(
+      profileWith({ stripe_account_id: null, email: null }),
+    );
+    const stripe = fakeStripe({
+      balanceSettingsError: new Error('Stripe is down'),
+    });
+    const { handler } = harness({ database, stripe });
+
+    await expectError(await handler(request()), 500, 'MANUAL_PAYOUTS_FAILED');
+    expect(database.queries).toEqual([PROFILE_LOOKUP, STORE_CREATED]);
+    expect(stripe.calls).toEqual([
+      ['v2.core.accounts.create', v2AccountFor('seller@example.test')],
+      manualPayoutsFor('acct_created'),
+    ]);
+  });
+
+  it('repairs the stored account on the retry after a manual payouts failure, without a second account', async () => {
+    // The retry reads the id the failed call stored.
+    const database = fakeSupabase(
+      profileWith({ stripe_account_id: 'acct_created', email: null }),
+    );
+    const { handler, stripe } = harness({ database });
+
+    expect((await handler(request())).status).toBe(200);
+    expect(database.queries).toEqual([PROFILE_LOOKUP]);
+    expect(stripe.calls).toEqual([
+      manualPayoutsFor('acct_created'),
+      onboardingLinkFor('acct_created'),
+    ]);
+  });
+
+  it('answers 500 MANUAL_PAYOUTS_FAILED with no link when manual payouts fail on an existing account', async () => {
+    const database = fakeSupabase(
+      profileWith({ stripe_account_id: 'acct_old', email: null }),
+    );
+    const stripe = fakeStripe({
+      balanceSettingsError: new Error('Stripe is down'),
+    });
+    const { handler } = harness({ database, stripe });
+
+    await expectError(await handler(request()), 500, 'MANUAL_PAYOUTS_FAILED');
+    expect(database.queries).toEqual([PROFILE_LOOKUP]);
+    expect(stripe.calls).toEqual([manualPayoutsFor('acct_old')]);
   });
 
   it('falls back to the profile email when the auth user has none', async () => {
@@ -324,7 +452,18 @@ describe('create-connect-account handler', () => {
     const { handler, stripe } = harness({ database });
 
     expect((await handler(request())).status).toBe(200);
-    expect(stripe.calls[0][1]).toMatchObject({ email: 'profile@example.test' });
+    expect(stripe.calls[0][1]).toEqual(v2AccountFor('profile@example.test'));
+  });
+
+  it('sends no contact email when neither the auth user nor the profile has one', async () => {
+    const database = fakeSupabase(
+      profileWith({ stripe_account_id: null, email: null }),
+      { [TOKEN]: { id: SELLER_ID } },
+    );
+    const { handler, stripe } = harness({ database });
+
+    expect((await handler(request())).status).toBe(200);
+    expect(stripe.calls[0][1]).toEqual(v2AccountFor(undefined));
   });
 
   it('treats an unreadable body as empty', async () => {
@@ -332,12 +471,13 @@ describe('create-connect-account handler', () => {
 
     expect((await handler(request('not json'))).status).toBe(200);
     expect(stripe.calls.map(([call]) => call)).toEqual([
-      'accounts.create',
-      'accountLinks.create',
+      'v2.core.accounts.create',
+      'balanceSettings.update',
+      'v2.core.accountLinks.create',
     ]);
   });
 
-  it('reuses an existing account: no new account, no profile write, a fresh link', async () => {
+  it('reuses an existing account: no new account, no profile write, manual payouts again, a fresh link', async () => {
     const database = fakeSupabase(
       profileWith({ stripe_account_id: 'acct_old', email: null }),
     );
@@ -351,15 +491,8 @@ describe('create-connect-account handler', () => {
     });
     expect(database.queries).toEqual([PROFILE_LOOKUP]);
     expect(stripe.calls).toEqual([
-      [
-        'accountLinks.create',
-        {
-          account: 'acct_old',
-          refresh_url: `${BRIDGE}?state=refresh`,
-          return_url: `${BRIDGE}?state=return`,
-          type: 'account_onboarding',
-        },
-      ],
+      manualPayoutsFor('acct_old'),
+      onboardingLinkFor('acct_old'),
     ]);
   });
 
@@ -372,10 +505,13 @@ describe('create-connect-account handler', () => {
     });
 
     expect((await handler(request())).status).toBe(200);
-    expect(stripe.calls[1][1]).toMatchObject({
-      return_url: 'https://selene.example/return',
-      refresh_url: 'https://selene.example/refresh',
-    });
+    expect(stripe.calls[2]).toEqual(
+      onboardingLinkFor(
+        'acct_created',
+        'https://selene.example/return',
+        'https://selene.example/refresh',
+      ),
+    );
   });
 
   it('uses the configured bridge URL', async () => {
@@ -386,10 +522,13 @@ describe('create-connect-account handler', () => {
     });
 
     expect((await handler(request())).status).toBe(200);
-    expect(stripe.calls[1][1]).toMatchObject({
-      return_url: 'https://tunnel.example/bridge?state=return',
-      refresh_url: 'https://tunnel.example/bridge?state=refresh',
-    });
+    expect(stripe.calls[2]).toEqual(
+      onboardingLinkFor(
+        'acct_created',
+        'https://tunnel.example/bridge?state=return',
+        'https://tunnel.example/bridge?state=refresh',
+      ),
+    );
   });
 
   it('answers 500 CONNECT_ONBOARDING_BRIDGE_URL_REQUIRED with no HTTPS target, before any table or Stripe call', async () => {
@@ -426,7 +565,9 @@ describe('create-connect-account handler', () => {
     const { handler, stripe } = harness({ database });
 
     await expectError(await handler(request()), 500, 'PROFILE_UPDATE_FAILED');
-    expect(stripe.calls.map(([call]) => call)).toEqual(['accounts.create']);
+    expect(stripe.calls.map(([call]) => call)).toEqual([
+      'v2.core.accounts.create',
+    ]);
   });
 
   it('answers 500 ACCOUNT_CREATION_FAILED when Stripe returns no account id', async () => {
@@ -435,7 +576,9 @@ describe('create-connect-account handler', () => {
     });
 
     await expectError(await handler(request()), 500, 'ACCOUNT_CREATION_FAILED');
-    expect(stripe.calls.map(([call]) => call)).toEqual(['accounts.create']);
+    expect(stripe.calls.map(([call]) => call)).toEqual([
+      'v2.core.accounts.create',
+    ]);
     expect(database.queries).toHaveLength(2);
   });
 
@@ -446,11 +589,14 @@ describe('create-connect-account handler', () => {
   });
 
   it('answers 400 with the message of any other error, and stores nothing', async () => {
-    const { handler, database } = harness({
+    const { handler, database, stripe } = harness({
       stripe: fakeStripe({ createError: new Error('Stripe is down') }),
     });
 
     await expectError(await handler(request()), 400, 'Stripe is down');
     expect(database.queries).toEqual([PROFILE_LOOKUP]);
+    expect(stripe.calls.map(([call]) => call)).toEqual([
+      'v2.core.accounts.create',
+    ]);
   });
 });

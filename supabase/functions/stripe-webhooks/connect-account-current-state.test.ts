@@ -27,7 +27,14 @@ type Snapshot = {
   currency: string | null;
   defaultForCurrency: boolean | null;
   mxnDefaultCount: number | null;
+  payoutScheduleInterval: string | null;
 };
+type RetrievedAccount = {
+  id: string;
+  payouts_enabled: boolean | null;
+  settings?: { payouts?: { schedule?: { interval?: string } } };
+};
+const manualSchedule = { payouts: { schedule: { interval: 'manual' } } };
 type CurrentDeps = ConnectAccountActionabilityDeps & {
   // Unknown at the IO boundary: validate numeric/string BIGINT serialization.
   acquireAccountRefresh: (input: {
@@ -36,7 +43,7 @@ type CurrentDeps = ConnectAccountActionabilityDeps & {
   }) => Promise<unknown>;
   retrieveCurrentAccount: (input: {
     accountId: string;
-  }) => Promise<{ id: string; payouts_enabled: boolean | null }>;
+  }) => Promise<RetrievedAccount>;
   listCurrentBankAccounts: (input: {
     accountId: string;
     startingAfter?: string;
@@ -75,6 +82,8 @@ function harness(
     retrievalError?: Error;
     commitAccepted?: boolean;
     retrievedAccountId?: string;
+    /** undefined = manual; null = the account has no payout schedule. */
+    payoutScheduleInterval?: string | null;
   } = {},
 ) {
   const sequence: string[] = [];
@@ -109,10 +118,17 @@ function harness(
       expect(input).toEqual({ accountId: 'acct_1' });
       sequence.push('retrieve');
       if (options.retrievalError) throw options.retrievalError;
+      const interval =
+        options.payoutScheduleInterval === undefined
+          ? 'manual'
+          : options.payoutScheduleInterval;
       return {
         id: options.retrievedAccountId ?? 'acct_1',
         payouts_enabled:
           options.payoutsEnabled === undefined ? true : options.payoutsEnabled,
+        ...(interval === null
+          ? {}
+          : { settings: { payouts: { schedule: { interval } } } }),
       };
     },
     listCurrentBankAccounts: async (input) => {
@@ -150,6 +166,7 @@ describe('current MXN destination reconciliation (real orchestrator, mocked IO)'
         currency: 'mxn',
         defaultForCurrency: true,
         mxnDefaultCount: 1,
+        payoutScheduleInterval: 'manual',
       },
     ]);
     expect(h.legacy).toEqual([]);
@@ -234,7 +251,7 @@ describe('current MXN destination reconciliation (real orchestrator, mocked IO)'
     await applyConnectAccountActionability(event(), h.deps);
     h.deps.retrieveCurrentAccount = async () => {
       h.sequence.push('retrieve');
-      return { id: 'acct_1', payouts_enabled: false };
+      return { id: 'acct_1', payouts_enabled: false, settings: manualSchedule };
     };
     await applyConnectAccountActionability(event(), h.deps);
     expect(h.evidence).toHaveLength(1);
@@ -290,15 +307,15 @@ describe('current MXN destination reconciliation (real orchestrator, mocked IO)'
 
   test('late healthy response cannot overwrite a newer blocked refresh (mock CAS interleaving)', async () => {
     const h = harness();
-    let release!: (value: { id: string; payouts_enabled: boolean }) => void;
-    const delayed = new Promise<{ id: string; payouts_enabled: boolean }>(
-      (resolve) => {
-        release = resolve;
-      },
-    );
+    let release!: (value: RetrievedAccount) => void;
+    const delayed = new Promise<RetrievedAccount>((resolve) => {
+      release = resolve;
+    });
     let reads = 0;
     h.deps.retrieveCurrentAccount = async () =>
-      ++reads === 1 ? delayed : { id: 'acct_1', payouts_enabled: false };
+      ++reads === 1
+        ? delayed
+        : { id: 'acct_1', payouts_enabled: false, settings: manualSchedule };
     let currentGeneration = 0;
     let durableActionable = false;
     h.deps.acquireAccountRefresh = async () => ++currentGeneration;
@@ -317,7 +334,7 @@ describe('current MXN destination reconciliation (real orchestrator, mocked IO)'
     await Promise.resolve();
     await Promise.resolve();
     await applyConnectAccountActionability(event(), h.deps);
-    release({ id: 'acct_1', payouts_enabled: true });
+    release({ id: 'acct_1', payouts_enabled: true, settings: manualSchedule });
     expect(await first).toBe('ACCOUNT_REFRESH_SUPERSEDED');
     expect(h.commits.map(({ generation }) => generation)).toEqual([2, 1]);
     expect(durableActionable).toBe(false);
@@ -538,6 +555,83 @@ describe('additional current-state failure contracts (real orchestrator, mocked 
       externalAccountId: 'ba_old',
       externalAccountStatus: null,
     });
+  });
+});
+
+describe('payout schedule gate, layer 2 (#330 S4; real orchestrator, mocked IO)', () => {
+  test('a manual schedule with a healthy bank stays actionable', async () => {
+    const h = harness({ payoutScheduleInterval: 'manual' });
+    await applyConnectAccountActionability(event(), h.deps);
+    expect(h.commits).toHaveLength(1);
+    expect(h.commits[0]).toMatchObject({
+      actionable: true,
+      blockedReason: null,
+      payoutScheduleInterval: 'manual',
+    });
+  });
+  for (const [name, interval, expected] of [
+    ['a daily schedule', 'daily', 'daily'],
+    ['a weekly schedule', 'weekly', 'weekly'],
+    ['a missing schedule', null, null],
+    ['an empty schedule interval', '', null],
+  ] as const) {
+    test(`${name} blocks payouts with payouts_schedule_not_manual`, async () => {
+      const h = harness({ payoutScheduleInterval: interval });
+      await applyConnectAccountActionability(event(true), h.deps);
+      expect(h.commits).toEqual([
+        {
+          accountId: 'acct_1',
+          generation: 1,
+          sourceEventId: 'evt_oldbank',
+          actionable: false,
+          blockedReason: 'payouts_schedule_not_manual',
+          payoutsEnabled: true,
+          externalAccountId: 'ba_current',
+          externalAccountStatus: 'verified',
+          currency: 'mxn',
+          defaultForCurrency: true,
+          mxnDefaultCount: 1,
+          payoutScheduleInterval: expected,
+        },
+      ]);
+    });
+  }
+  test('a malformed schedule interval counts as a missing schedule', async () => {
+    const h = harness();
+    h.deps.retrieveCurrentAccount = async () =>
+      ({
+        id: 'acct_1',
+        payouts_enabled: true,
+        settings: { payouts: { schedule: { interval: 7 } } },
+      }) as never;
+    await applyConnectAccountActionability(event(true), h.deps);
+    expect(h.commits[0]).toMatchObject({
+      actionable: false,
+      blockedReason: 'payouts_schedule_not_manual',
+      payoutScheduleInterval: null,
+    });
+  });
+  test('disabled payouts outrank a daily schedule', async () => {
+    const h = harness({
+      payoutsEnabled: false,
+      payoutScheduleInterval: 'daily',
+    });
+    await applyConnectAccountActionability(event(true), h.deps);
+    expect(h.commits[0]).toMatchObject({
+      actionable: false,
+      blockedReason: 'payouts_disabled',
+      payoutScheduleInterval: 'daily',
+    });
+  });
+  test('a daily schedule outranks an errored bank and an undetermined destination', async () => {
+    for (const banks of [[bank({ status: 'errored' })], []]) {
+      const h = harness({ payoutScheduleInterval: 'daily', banks });
+      await applyConnectAccountActionability(event(true), h.deps);
+      expect(h.commits[0]).toMatchObject({
+        actionable: false,
+        blockedReason: 'payouts_schedule_not_manual',
+      });
+    }
   });
 });
 

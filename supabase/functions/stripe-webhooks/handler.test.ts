@@ -1381,7 +1381,11 @@ const BANK = {
 const accountStripe = (
   overrides: Record<string, (...args: unknown[]) => unknown> = {},
 ) => ({
-  'accounts.retrieve': () => ({ id: 'acct_1', payouts_enabled: true }),
+  'accounts.retrieve': () => ({
+    id: 'acct_1',
+    payouts_enabled: true,
+    settings: { payouts: { schedule: { interval: 'manual' } } },
+  }),
   'accounts.listExternalAccounts': () => ({ data: [BANK], has_more: false }),
   ...overrides,
 });
@@ -1408,6 +1412,7 @@ const COMMIT_ARGS = {
   p_current_currency: 'mxn',
   p_current_default_for_currency: true,
   p_mxn_default_count: 1,
+  p_payout_schedule_interval: 'manual',
 };
 
 describe('Connect account events', () => {
@@ -1464,12 +1469,49 @@ describe('Connect account events', () => {
     });
   }
 
+  // #330 S4: layer 2 forwards the retrieved interval; the SQL commit rebuilds the gate.
+  for (const [label, settings, interval] of [
+    [
+      'a daily schedule',
+      { payouts: { schedule: { interval: 'daily' } } },
+      'daily',
+    ],
+    ['no payout schedule', undefined, null],
+  ] as const) {
+    it(`commits ${label} as blocked with payouts_schedule_not_manual`, async () => {
+      const event = bankEvent('account.external_account.updated');
+      const result = await invoke(event, {
+        rpc: accountRpc(),
+        stripe: accountStripe({
+          'accounts.retrieve': () => ({
+            id: 'acct_1',
+            payouts_enabled: true,
+            ...(settings ? { settings } : {}),
+          }),
+        }),
+      });
+      expect(result.status).toBe(200);
+      expect(result.rpcs.at(-1)).toEqual({
+        name: 'fn_commit_connect_account_refresh',
+        args: {
+          ...COMMIT_ARGS,
+          p_source_event_id: event.id,
+          p_is_actionable: false,
+          p_blocked_reason: 'payouts_schedule_not_manual',
+          p_payout_schedule_interval: interval,
+        },
+      });
+    });
+  }
+
   it('account.updated stores the onboarding status before refreshing', async () => {
+    // #330 S5: a recipient account has payouts and transfers, never charges.
     const event = stripeEvent('account.updated', {
       id: 'acct_1',
       object: 'account',
-      charges_enabled: true,
+      charges_enabled: false,
       payouts_enabled: true,
+      capabilities: { transfers: 'active' },
     });
     const result = await invoke(event, {
       rpc: accountRpc(),

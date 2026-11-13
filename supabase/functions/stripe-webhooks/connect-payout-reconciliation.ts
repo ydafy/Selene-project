@@ -695,6 +695,8 @@ export interface ConnectAccountCurrentSnapshot {
   currency: string | null;
   defaultForCurrency: boolean | null;
   mxnDefaultCount: number | null;
+  /** Retrieved `settings.payouts.schedule.interval`; null when absent. */
+  payoutScheduleInterval: string | null;
 }
 
 export interface ConnectAccountActionabilityDeps {
@@ -781,6 +783,13 @@ export async function applyConnectAccountActionability(
     typeof account?.payouts_enabled === 'boolean'
       ? account.payouts_enabled
       : null;
+  // Layer 2 (#330 S4): only a manual schedule keeps Selene in control of when
+  // the seller is paid; any other or a missing interval blocks payouts.
+  const interval = accountRecord(
+    accountRecord(accountRecord(account?.settings)?.payouts)?.schedule,
+  )?.interval;
+  const payoutScheduleInterval =
+    typeof interval === 'string' && interval.length > 0 ? interval : null;
   const defaults: Array<{ id: string; status: string | null }> = [];
   const seenBankIds = new Set<string>();
   let destinationUndetermined = false;
@@ -849,16 +858,18 @@ export async function applyConnectAccountActionability(
   const blockedReason =
     payoutsEnabled === false
       ? 'payouts_disabled'
-      : destination &&
-          status !== null &&
-          NON_ACTIONABLE_EXTERNAL_ACCOUNT_STATUSES.includes(status)
-        ? status
-        : payoutsEnabled === true &&
-            destination &&
+      : payoutScheduleInterval !== 'manual'
+        ? 'payouts_schedule_not_manual'
+        : destination &&
             status !== null &&
-            ['new', 'validated', 'verified'].includes(status)
-          ? null
-          : 'destination_undetermined';
+            NON_ACTIONABLE_EXTERNAL_ACCOUNT_STATUSES.includes(status)
+          ? status
+          : payoutsEnabled === true &&
+              destination &&
+              status !== null &&
+              ['new', 'validated', 'verified'].includes(status)
+            ? null
+            : 'destination_undetermined';
   const snapshot: ConnectAccountCurrentSnapshot = {
     accountId: input.accountId,
     generation,
@@ -871,6 +882,7 @@ export async function applyConnectAccountActionability(
     currency: destination ? 'mxn' : null,
     defaultForCurrency: destination ? true : null,
     mxnDefaultCount,
+    payoutScheduleInterval,
   };
   const committed = await deps.commitAccountRefresh(snapshot);
   if (committed === false) throw new Error('ACCOUNT_REFRESH_SUPERSEDED');

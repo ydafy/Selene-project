@@ -305,3 +305,16 @@ It is established as the standard procedure for structural inconsistencies.
 - The lock follows the hosted project's service versions. This supersedes "The lock is unlinked" in the 2026-10-26 entry. `supabase stack update`, run from the main checkout after `supabase stack outdated`, is the only way to change it, in its own `chore` commit. This closes #353.
 
 **Consequence:** Local stacks run the service builds the remote runs. A lock update that moves the Postgres build makes older local stacks refuse to start: each worktree runs the `supabase stack destroy --stack-id <id>` that the error prints, then `supabase start` and `supabase db reset` (`supabase/AGENTS.md`, "Local stack").
+
+## 2026-11-13: Seller Accounts Use Stripe Accounts v2 Only for Creation and Onboarding
+
+**Context:** Seller onboarding created v1 Express accounts with `card_payments`, which Selene never uses: it charges on the platform and sends separate transfers (#330). Stripe Accounts v2 offers a `recipient` configuration for that model. A sandbox spike, recorded in a comment on #330, showed that a v2 `recipient` account in Mexico with Selene as fee and loss collector works. The same account starts with automatic daily payouts, and `POST /v1/balance_settings` switches it to manual. Its v1 `account.updated` events carry `payouts_enabled`, `requirements`, `external_accounts` and `settings.payouts.schedule`.
+
+**Decision (maintainer, option B in #330):**
+
+- `create-connect-account` creates seller accounts with `POST /v2/core/accounts` (`recipient`, Express dashboard, no `card_payments`) and mints onboarding links with `POST /v2/core/account_links`.
+- Every other call stays on the v1 endpoints, which Stripe supports for v2 accounts: account retrieval, external accounts, transfers, payouts and the v1 webhook events.
+- Moving to v2 thin events was judged overengineering for the MVP.
+- Two layers keep automatic payouts off. `create-connect-account` sets manual payouts through `POST /v1/balance_settings` on every call. `fn_commit_connect_account_refresh` blocks payouts to an account whose payout schedule is not `manual` (`payouts_schedule_not_manual`).
+
+**Consequence:** A seller's account requests no `card_payments`, so `charges_enabled` says nothing about readiness (sandbox: false before onboarding, true after it). Onboarding is `complete` when payouts are enabled and the `transfers` capability is active. The migration and `stripe-webhooks` deploy together (`docs/go-live.md`, "7. Edge Functions"). The Connect webhook endpoint needs no new event type.

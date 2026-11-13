@@ -5,6 +5,11 @@ export interface ConnectAccountLike {
   payouts_enabled?: boolean | null;
   chargesEnabled?: boolean | null;
   payoutsEnabled?: boolean | null;
+  // v1 capability map; a v2 `recipient` account read through v1 has only
+  // `transfers` (no `card_payments`).
+  capabilities?: {
+    transfers?: string | null;
+  } | null;
   requirements?: {
     disabled_reason?: string | null;
     disabledReason?: string | null;
@@ -26,6 +31,7 @@ export function normalizeAccountStatus(
     account.charges_enabled === true || account.chargesEnabled === true;
   const payoutsEnabled =
     account.payouts_enabled === true || account.payoutsEnabled === true;
+  const transfersActive = account.capabilities?.transfers === 'active';
   const disabledReason =
     account.requirements?.disabled_reason ??
     account.requirements?.disabledReason ??
@@ -33,7 +39,10 @@ export function normalizeAccountStatus(
     account.disabledReason ??
     null;
 
-  if (chargesEnabled && payoutsEnabled) {
+  // Selene uses separate charges and transfers: the seller's connected account
+  // never takes charges, so readiness is payouts plus an active transfers
+  // capability. chargesEnabled is reported only, never required (#330, S5).
+  if (payoutsEnabled && transfersActive) {
     return { status: 'complete', chargesEnabled, payoutsEnabled };
   }
 

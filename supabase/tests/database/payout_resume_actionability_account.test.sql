@@ -49,11 +49,11 @@ create function pg_temp.record(p_acct text, p_evt text) returns boolean language
 $$;
 create function pg_temp.commit_blocked(p_acct text, p_generation bigint, p_evt text) returns boolean language sql as $$
   select public.fn_commit_connect_account_refresh(p_acct, p_generation, p_evt, false, 'payouts_disabled', false,
-    null, null, null, null, null)
+    null, null, null, null, null, 'manual')
 $$;
 create function pg_temp.commit_actionable(p_acct text, p_generation bigint, p_evt text) returns boolean language sql as $$
   select public.fn_commit_connect_account_refresh(p_acct, p_generation, p_evt, true, null, true,
-    'ba_t6default', 'verified', 'mxn', true, 1)
+    'ba_t6default', 'verified', 'mxn', true, 1, 'manual')
 $$;
 
 -- Runs p_setup, calls the block RPC, and undoes both: 'blocked', or 'refused'
@@ -114,7 +114,7 @@ select is(
   array[false, false, true], f || ' is executable by service_role only')
 from (values
   ('public.fn_block_payout_run_for_account_actionability(uuid, text, integer, text)'),
-  ('public.fn_commit_connect_account_refresh(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer)'),
+  ('public.fn_commit_connect_account_refresh(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer, text)'),
   ('public.fn_record_connect_account_event(text, text, text, timestamptz, boolean, text, text)'),
   ('public.fn_get_connect_account_actionability(text)')
 ) as fns(f);

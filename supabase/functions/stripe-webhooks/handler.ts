@@ -485,6 +485,7 @@ async function commitConnectAccountRefreshRpc(
       p_current_currency: input.currency,
       p_current_default_for_currency: input.defaultForCurrency,
       p_mxn_default_count: input.mxnDefaultCount,
+      p_payout_schedule_interval: input.payoutScheduleInterval,
     } as never,
   );
   if (error) throw new Error('ACCOUNT_REFRESH_COMMIT_FAILED');
