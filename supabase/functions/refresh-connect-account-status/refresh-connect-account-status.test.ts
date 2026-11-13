@@ -46,9 +46,11 @@ function createDependencies(
       overrides.retrieveAccount ??
       (async (accountId) => {
         calls.retrieve.push(accountId);
+        // A v2 recipient account read through v1: no charges, transfers only.
         return {
-          charges_enabled: true,
+          charges_enabled: false,
           payouts_enabled: true,
+          capabilities: { transfers: 'active' },
           requirements: { disabled_reason: null },
         };
       }),
@@ -112,7 +114,7 @@ describe('refreshConnectAccountStatus', () => {
     ).resolves.toMatchObject({
       status: 'complete',
       hasStripeAccount: true,
-      chargesEnabled: true,
+      chargesEnabled: false,
       payoutsEnabled: true,
       refreshedAt: NOW.toISOString(),
       cached: false,

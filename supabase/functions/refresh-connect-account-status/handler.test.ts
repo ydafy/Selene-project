@@ -135,8 +135,13 @@ function harness(
           retrieve: async (accountId) => {
             retrieved.push(accountId);
             if (input.retrieveError) throw input.retrieveError;
+            // A v2 recipient account read through v1: no charges, transfers only.
             return (
-              input.account ?? { charges_enabled: true, payouts_enabled: true }
+              input.account ?? {
+                charges_enabled: false,
+                payouts_enabled: true,
+                capabilities: { transfers: 'active' },
+              }
             );
           },
         },
@@ -192,7 +197,7 @@ const update = (id: string, status: string): Query => ({
 const FRESH_COMPLETE = {
   status: 'complete',
   hasStripeAccount: true,
-  chargesEnabled: true,
+  chargesEnabled: false,
   payoutsEnabled: true,
   refreshedAt: NOW.toISOString(),
   cached: false,

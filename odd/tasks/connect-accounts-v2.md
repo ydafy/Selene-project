@@ -15,8 +15,8 @@ Branch `feat/connect-accounts-v2`. Roadmap #335, item 6. Engram mirror `odd/conn
 
 ## Tasks
 
-- [x] T1 S1-S3: v2 creation, v2 account link, layer 1 (`create-connect-account`); a failed manual-payouts call answers 500 `MANUAL_PAYOUTS_FAILED`. Route: worker. Commit: this commit (`feat(functions): create seller accounts with Stripe Accounts v2`).
-- [ ] T2 S5: onboarding `complete` without `charges_enabled` (`_shared/stripe/connect-status.ts` and its callers). Route: worker (done, uncommitted). Commit: pending.
+- [x] T1 S1-S3: v2 creation, v2 account link, layer 1 (`create-connect-account`); a failed manual-payouts call answers 500 `MANUAL_PAYOUTS_FAILED`. Route: worker. Commit: `2827580a` (431 changed lines, 292 of them tests; one behavior, kept whole).
+- [x] T2 S5: onboarding `complete` without `charges_enabled` (`_shared/stripe/connect-status.ts` and its callers). Route: worker. Commit: this commit (`fix(functions): mark recipient sellers complete without charges_enabled`).
 - [ ] T3 S4: layer 2 in account actionability: migration changing `fn_commit_connect_account_refresh` (new payout-interval input), then `stripe-webhooks`. Route: worker. Commit: pending (SQL and TypeScript).
 - [ ] T4 S6: docs, decision log, Bruno. Route: inline. Commit: pending.
 - [ ] T5 S7: sandbox verification end to end. Route: inline plus verifier. Evidence: pending.
