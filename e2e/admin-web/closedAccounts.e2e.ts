@@ -123,7 +123,19 @@ test('closed account detail shows the deleted label and no status actions', asyn
   context,
   baseURL,
 }) => {
+  // The label renders only after the app restores the session, loads the admin
+  // profile, and then fetches this account (#169). Wait for that response
+  // before asserting, so the first expect measures rendering only and a stalled
+  // boot fails here with the phase that stalled.
+  const closedProfile = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === '/rest/v1/admin_user_directory_view' &&
+      url.searchParams.get('id') === `eq.${closedId}`
+    );
+  });
   const audit = await openAdmin(page, context, baseURL!, `/users/${closedId}`);
+  await closedProfile;
   await expect(
     page.getByText('Cuenta eliminada', { exact: true }).first(),
   ).toBeVisible();
