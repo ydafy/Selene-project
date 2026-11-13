@@ -247,21 +247,21 @@ describe('manage-payment-methods handler', () => {
     ]);
   });
 
-  it('answers 400 MISSING_AUTH_HEADER without an Authorization header, before any table or Stripe call', async () => {
+  it('answers 401 AUTH_REQUIRED without an Authorization header, before any table or Stripe call', async () => {
     const { handler, db, stripe } = harness();
 
     await expectJson(
       await handler(
         request({ action: 'list_payment_methods' }, { authorization: null }),
       ),
-      400,
-      { error: 'MISSING_AUTH_HEADER' },
+      401,
+      { error: 'AUTH_REQUIRED' },
     );
     expect(db.events).toEqual([]);
     expect(stripe.calls).toEqual([]);
   });
 
-  it('answers 400 AUTH_REQUIRED for a token the auth server rejects, before any table or Stripe call', async () => {
+  it('answers 401 AUTH_REQUIRED for a token the auth server rejects, before any table or Stripe call', async () => {
     const { handler, db, stripe } = harness();
 
     await expectJson(
@@ -271,20 +271,20 @@ describe('manage-payment-methods handler', () => {
           { authorization: 'Bearer stolen-token' },
         ),
       ),
-      400,
+      401,
       { error: 'AUTH_REQUIRED' },
     );
     expect(db.events).toEqual(['auth:stolen-token']);
     expect(stripe.calls).toEqual([]);
   });
 
-  it('answers 400 AUTH_REQUIRED when the auth server reports an error, even with a user object', async () => {
+  it('answers 401 AUTH_REQUIRED when the auth server reports an error, even with a user object', async () => {
     const db = fakeSupabase(() => ({}), { message: 'jwt expired' });
     const { handler, stripe } = harness({ db });
 
     await expectJson(
       await handler(request({ action: 'list_payment_methods' })),
-      400,
+      401,
       { error: 'AUTH_REQUIRED' },
     );
     expect(db.events).toEqual([`auth:${TOKEN}`]);

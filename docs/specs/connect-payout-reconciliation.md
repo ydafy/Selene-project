@@ -99,6 +99,21 @@ Refresh acquisition MUST immediately fail closed as `account_refresh_pending`. R
 - THEN only those parks may resume toward `awaiting_connected_balance`
 - AND failed parents and unrelated blockers remain unchanged, `payout_create_in_progress` is never webhook-demoted, and no automatic Retry, duplicate Transfer, or historical run repair occurs
 
+#### Scenario: The payout-create fence finds the account not actionable
+
+- GIVEN a single-modal release (a first release or a Retry child) holds the payout-create fence and its transfers
+- WHEN the fence-time actionability re-check finds the account refresh-pending or blocked
+- THEN `fn_park_payout_run_from_fence` locks the account row before the run and parks the run as `action_required` / `account_not_actionable` with no Stripe payout call, so an accepted healthy snapshot resumes it toward `awaiting_connected_balance`
+- AND if the account became actionable before that lock, the run is requeued to `awaiting_connected_balance` instead of parked
+- AND the release answers 200 with the run; legacy runs without a transfer group and every other fence-time error keep the fail path (#352)
+
+#### Scenario: The executor parks a claimed run
+
+- GIVEN `resume-pending-payouts` read the account as not actionable without a lock
+- WHEN it calls `fn_block_payout_run_for_account_actionability` under its live claim
+- THEN the RPC locks the account row before the run and parks only while the account is still refresh-pending or blocked
+- AND otherwise it returns false: a run in `awaiting_connected_balance` is requeued there with its claim cleared, so a refresh committed between the read and the park never strands it, and a run in `payout_create_in_progress` keeps its stage and claim, so its write-ahead fence is never undone
+
 ### Requirement: Outcome Reconciliation Including Late paid→failed Reversal
 
 The system MUST reconcile Stripe payout lifecycle outcomes (`pending`, `in_transit`, `paid`, `failed`, `canceled`) and update shipment release state at most once per state change. The observed state `paid` MUST NOT be treated as immutable business finality: Stripe documents that some payouts initially show `paid` and later become `failed` within five business days, with `failure_balance_transaction` returning the funds to the Stripe balance. Reconciliation MUST support the `paid → failed` transition by downgrading aggregate status and shipment release state, recording the returned funds, and moving the run to Action required.

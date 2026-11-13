@@ -4,13 +4,8 @@ import {
   ApiError,
   buildConfirmationDiagnostic,
   mapConfirmationRpcResult,
-  parseConfirmationRequestBody,
   resolveBuyerConfirmationPlan,
 } from './confirm-shipment-delivery';
-import {
-  deriveOrderGroupId,
-  deriveShipmentId,
-} from '../create-connect-payment/single-payment-builder.ts';
 
 const orderId = '11111111-1111-4111-8111-111111111111';
 const shipmentId = '22222222-2222-4222-8222-222222222222';
@@ -29,54 +24,6 @@ const validContext = {
   shipment: { id: shipmentId, order_id: orderId, status: 'delivered' },
   hasActiveDispute: false,
 };
-
-describe('parseConfirmationRequestBody', () => {
-  it('accepts real UUID v5 identifiers produced by create-connect-payment', () => {
-    const producerOrderId = deriveOrderGroupId('confirmation-contract-key');
-    const producerShipmentId = deriveShipmentId(
-      'confirmation-contract-key',
-      'product_gpu',
-    );
-    const request = parseConfirmationRequestBody({
-      orderId: producerOrderId,
-      shipmentId: producerShipmentId,
-      idempotencyKey: `confirm_shipment_${producerShipmentId}`,
-    });
-
-    expect(request).toEqual({
-      orderId: producerOrderId,
-      shipmentId: producerShipmentId,
-      idempotencyKey: `confirm_shipment_${producerShipmentId}`,
-    });
-    expect(
-      resolveBuyerConfirmationPlan({
-        ...validContext,
-        order: { id: producerOrderId, buyer_id: buyerId },
-        shipment: {
-          id: producerShipmentId,
-          order_id: producerOrderId,
-          status: 'delivered',
-        },
-      }),
-    ).toMatchObject({ p_shipment_id: producerShipmentId });
-  });
-
-  it('accepts UUID-scoped confirmation with its deterministic idempotency key', () => {
-    expect(parseConfirmationRequestBody(validRequest)).toEqual(validRequest);
-  });
-
-  it('rejects malformed identifiers and a key for another shipment', () => {
-    expect(() =>
-      parseConfirmationRequestBody({ ...validRequest, orderId: 'order-1' }),
-    ).toThrow(new ApiError(400, 'INVALID_REQUEST'));
-    expect(() =>
-      parseConfirmationRequestBody({
-        ...validRequest,
-        idempotencyKey: 'confirm_shipment_44444444-4444-4444-8444-444444444444',
-      }),
-    ).toThrow(new ApiError(400, 'INVALID_REQUEST'));
-  });
-});
 
 describe('resolveBuyerConfirmationPlan', () => {
   it('requires authentication before server-authoritative shipment access', () => {

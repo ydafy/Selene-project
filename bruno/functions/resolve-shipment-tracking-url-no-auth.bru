@@ -1,0 +1,33 @@
+meta {
+  name: resolve-shipment-tracking-url-no-auth
+  type: http
+  seq: 156
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/resolve-shipment-tracking-url
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  {
+    "shipmentId": "00000000-0000-4000-8000-0000000000c1"
+  }
+}
+
+tests {
+  test("a valid shipment id without a user token is refused before any lookup", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  verify_jwt = false (supabase/config.toml), so the function's own auth.getUser check answers a
+  call without an Authorization header, before it reads the shipment.
+}

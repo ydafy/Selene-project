@@ -3848,6 +3848,15 @@ export type Database = {
           is_actionable: boolean;
         }[];
       };
+      fn_get_connect_account_sync_state: {
+        Args: { p_stripe_account_id: string; p_stripe_event_ids: string[] };
+        Returns: {
+          current_external_account_id: string;
+          is_actionable: boolean;
+          recorded_event_count: number;
+          refresh_pending: boolean;
+        }[];
+      };
       fn_get_location_by_zip: {
         Args: { p_zip: string };
         Returns: {
@@ -4058,6 +4067,13 @@ export type Database = {
         Returns: {
           dispute_id: string;
           error_code: string;
+        }[];
+      };
+      fn_park_payout_run_from_fence: {
+        Args: { p_expected_stage_version: number; p_run_id: string };
+        Returns: {
+          outcome: string;
+          stage_version: number;
         }[];
       };
       fn_persist_shipment_label_quote: {

@@ -19,13 +19,7 @@ const json = (body: unknown, status = 200) =>
     headers: { 'Content-Type': 'application/json' },
   });
 
-const isShipmentId = (value: unknown): value is string =>
-  typeof value === 'string' &&
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
-
-function createTrackingUrlRequestHandler(
+export function createResolveShipmentTrackingUrlHandler(
   dependencies: ResolveShipmentTrackingUrlDependencies,
 ) {
   return async (request: Request): Promise<Response> => {
@@ -33,13 +27,12 @@ function createTrackingUrlRequestHandler(
       return json({ error: 'METHOD_NOT_ALLOWED' }, 405);
 
     const body = await request.json().catch(() => null);
-    const shipmentId =
-      body && typeof body === 'object' ? body.shipmentId : null;
-    if (!isShipmentId(shipmentId))
-      return json({ error: 'INVALID_SHIPMENT_ID' }, 400);
+    const parsed = ShipmentTrackingUrlRequestSchema.safeParse(body);
+    if (!parsed.success) return json({ error: 'INVALID_SHIPMENT_ID' }, 400);
+    const { shipmentId } = parsed.data;
 
     const user = await dependencies.authenticate(request);
-    if (!user) return json({ error: 'UNAUTHORIZED' }, 401);
+    if (!user) return json({ error: 'AUTH_REQUIRED' }, 401);
 
     const subject = await dependencies.loadSubject(shipmentId);
     if (!subject) return json({ error: 'NOT_FOUND' }, 404);
@@ -56,28 +49,5 @@ function createTrackingUrlRequestHandler(
         ? dependencies.resolveUrl(subject.trackingNumber)
         : null,
     });
-  };
-}
-
-export function createResolveShipmentTrackingUrlHandler(
-  dependencies: ResolveShipmentTrackingUrlDependencies,
-) {
-  const handler = createTrackingUrlRequestHandler(dependencies);
-
-  return async (request: Request): Promise<Response> => {
-    if (request.method === 'OPTIONS') return new Response('ok');
-
-    const body = await request
-      .clone()
-      .json()
-      .catch(() => null);
-    if (!ShipmentTrackingUrlRequestSchema.safeParse(body).success) {
-      return new Response(JSON.stringify({ error: 'INVALID_SHIPMENT_ID' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-
-    return handler(request);
   };
 }

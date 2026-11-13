@@ -407,6 +407,7 @@ export async function verifyPayoutRecoveryAdapters() {
         completePayoutCreateFence: forbidden('payout_attach'),
         failPayoutCreateFromFence: forbidden('failure_cleanup'),
         abortPayoutCreateToActionRequired: forbidden('abort_cleanup'),
+        parkPayoutRunFromFence: forbidden('fence_park'),
       };
       const request = {
         actorId: claim.actor_id,

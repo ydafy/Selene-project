@@ -4,7 +4,6 @@ import {
   ApiError,
   buildConfirmationDiagnostic,
   mapConfirmationRpcResult,
-  parseConfirmationRequestBody,
   resolveBuyerConfirmationPlan,
 } from './confirm-shipment-delivery.ts';
 import { ConfirmationRequestSchema } from './request-schema.ts';
@@ -50,7 +49,7 @@ export function createConfirmShipmentDeliveryHandler(
       if (!parsed.success) {
         throw new ApiError(400, 'INVALID_REQUEST');
       }
-      request = parseConfirmationRequestBody(parsed.data);
+      request = parsed.data;
 
       const supabaseAdmin = dependencies.createSupabaseAdmin();
 

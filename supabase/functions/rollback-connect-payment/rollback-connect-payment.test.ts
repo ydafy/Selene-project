@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
-  buildConnectRollbackRefundParams,
   extractProductIdsFromIntentMetadata,
   mergeUniqueProductIds,
   parseAllocationProductIds,
@@ -37,23 +36,6 @@ describe('rollback-connect-payment helpers', () => {
       'p2',
       'p3',
     ]);
-  });
-
-  it('builds Connect refund params that reverse seller transfers', () => {
-    expect(
-      buildConnectRollbackRefundParams({
-        paymentIntentId: 'pi_123',
-        orderId: 'order_123',
-      }),
-    ).toEqual({
-      payment_intent: 'pi_123',
-      reason: 'requested_by_customer',
-      reverse_transfer: true,
-      metadata: {
-        order_id: 'order_123',
-        rollback_reason: 'partial_connect_checkout_failure',
-      },
-    });
   });
 });
 
