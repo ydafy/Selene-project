@@ -7,7 +7,7 @@ import type {
   Database,
   Json,
 } from '../../../packages/types/src/database.types.ts';
-import { withSentry } from '../_shared/sentry.ts';
+import { reportMessage, withSentry } from '../_shared/sentry.ts';
 import { createCancellationReporter } from '../_shared/cancellation/cancellation-alerts.ts';
 import {
   normalizeAccountStatus,
@@ -15,6 +15,7 @@ import {
 } from '../_shared/stripe/connect-status.ts';
 import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';
 import { verifyStripeWebhookSignature } from './signature.ts';
+import { reportStripeApiVersionDrift } from './api-version-drift.ts';
 import { compensateRecoveryShell } from '../checkout-recovery-worker/recovery.ts';
 import {
   applyConnectAccountActionability,
@@ -558,6 +559,14 @@ Deno.serve(
 
     try {
       const event = verification.event;
+
+      // Payload shapes follow the endpoint's API version. A drift is reported,
+      // never rejected: dropping signed events would lose payments.
+      await reportStripeApiVersionDrift(event, {
+        expectedVersion: STRIPE_API_VERSION,
+        reportMessage,
+        warn: (data) => log('WARN', 'Stripe event API version drift', data),
+      });
 
       const supabaseAdmin = createClient<Database>(
         Deno.env.get('SUPABASE_URL') ?? '',
