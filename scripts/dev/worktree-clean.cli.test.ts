@@ -3,11 +3,12 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 
 // Runs the real command against a throwaway repository: a bare origin, a main
 // clone, worktrees under <main>-worktrees, and a fake ~/.supabase/stacks (HOME
@@ -37,9 +38,13 @@ function sh(cmd: string[], cwd: string) {
 }
 
 function clean(...args: string[]) {
+  return cleanWith(env, args);
+}
+
+function cleanWith(runEnv: Record<string, string>, args: string[]) {
   const result = Bun.spawnSync(['bun', SCRIPT, ...args], {
     cwd: main,
-    env,
+    env: runEnv,
     stdout: 'pipe',
     stderr: 'pipe',
   });
@@ -55,13 +60,13 @@ function commit(cwd: string, file: string) {
   sh(['git', 'commit', '-q', '-m', file], cwd);
 }
 
-function fakeStack(name: string, projectRoot: string) {
+function fakeStack(name: string, projectRoot: string, branch = 'x') {
   const dir = join(home, '.supabase', 'stacks', name);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     join(dir, 'state.json'),
     JSON.stringify({
-      identity: { projectRoot, branchContext: 'refs/heads/x' },
+      identity: { projectRoot, branchContext: `refs/heads/${branch}` },
     }),
   );
   return dir;
@@ -95,6 +100,68 @@ beforeAll(() => {
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+/**
+ * Puts stub `supabase` and `docker` commands first on PATH. Each records its
+ * arguments in calls.log; `supabase stack list` prints the given stacks.
+ */
+function withStubs(stacks: object[]) {
+  const bin = join(root, 'bin');
+  mkdirSync(bin, { recursive: true });
+  // Each call becomes an empty file named "<order> <arguments>".
+  const calls = join(bin, 'calls');
+  rmSync(calls, { recursive: true, force: true });
+  mkdirSync(calls);
+  const list = JSON.stringify({ stacks, message: '' });
+  writeFileSync(
+    join(bin, 'stub.ts'),
+    [
+      "import { readdirSync, writeFileSync } from 'node:fs';",
+      "import { join } from 'node:path';",
+      'const args = Bun.argv.slice(2);',
+      "const calls = join(import.meta.dir, 'calls');",
+      "const order = String(readdirSync(calls).length).padStart(3, '0');",
+      "writeFileSync(join(calls, `${order} ${args.join(' ')}`), '');",
+      "if (args[1] === 'stack' && args[2] === 'list')",
+      `  console.log(${JSON.stringify(list)});`,
+    ].join('\n'),
+  );
+  for (const name of ['supabase', 'docker']) {
+    writeFileSync(
+      join(bin, name),
+      `#!/bin/sh\nexec bun "$(dirname "$0")/stub.ts" ${name} "$@"\n`,
+      { mode: 0o755 },
+    );
+    writeFileSync(
+      join(bin, `${name}.cmd`),
+      `@bun "%~dp0stub.ts" ${name} %*\r\n`,
+    );
+  }
+  const pathKey =
+    Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH';
+  return {
+    env: { ...env, [pathKey]: `${bin}${delimiter}${env[pathKey]}` },
+    calls: () =>
+      readdirSync(calls)
+        .sort()
+        .map((name) => name.slice(4))
+        .filter((call) => call.includes(' destroy ')),
+  };
+}
+
+const listedStack = (
+  id: string,
+  projectRoot: string,
+  branch: string,
+  owner = 'unavailable',
+) => ({
+  id,
+  project_root: projectRoot,
+  name: 'default',
+  branch_context: `refs/heads/${branch}`,
+  runtime: 'docker',
+  owner,
+});
 
 describe('worktree:clean against a real repository', () => {
   it('removes a merged worktree, its branch and only the stack data that names it', () => {
@@ -181,5 +248,48 @@ describe('worktree:clean against a real repository', () => {
     expect(clean('--orphans', '--yes').code).toBe(0);
     expect(existsSync(orphan)).toBe(false);
     expect(existsSync(foreign)).toBe(true);
+  });
+
+  it('destroys only the stacks of deleted or merged branches with --stale-stacks --yes', () => {
+    const live = join(`${main}-worktrees`, 'live');
+    sh(['git', 'worktree', 'add', '-q', '-b', 'feat/live', live], main);
+    commit(live, 'live.md');
+    sh(['git', 'branch', 'feat/old-merged', 'origin/main'], main);
+    sh(['git', 'branch', 'feat/old-unmerged', 'feat/live'], main);
+    const stubs = withStubs([
+      listedStack('s-current', live, 'feat/live'),
+      listedStack('s-merged', live, 'feat/old-merged'),
+      listedStack('s-gone', main, 'feat/gone'),
+      listedStack('s-unmerged', main, 'feat/old-unmerged'),
+      listedStack('s-running', main, 'feat/gone', 'reachable'),
+      listedStack('s-foreign', join(root, 'other-project'), 'feat/gone'),
+    ]);
+    // On disk only: the CLI could not decode them.
+    const oldGone = fakeStack('u-gone', main, 'feat/gone');
+    const oldMain = fakeStack('u-main', main, 'main');
+
+    const plan = cleanWith(stubs.env, ['--stale-stacks']);
+    expect(plan.code).toBe(0);
+    expect(plan.out).toContain('keep s-current feat/live');
+    expect(plan.out).toContain('stale s-merged feat/old-merged');
+    expect(plan.out).toContain('stale s-gone feat/gone');
+    expect(plan.out).toContain('unmerged branch feat/old-unmerged');
+    expect(plan.out).toContain('running: stop it first');
+    expect(plan.out).not.toContain('s-foreign');
+    expect(plan.out).toContain('stale u-gone feat/gone');
+    expect(plan.out).toContain('keep u-main main');
+    expect(plan.out).toContain('plan only');
+    expect(stubs.calls()).toEqual([]);
+    expect(existsSync(oldGone)).toBe(true);
+
+    const run = cleanWith(stubs.env, ['--stale-stacks', '--yes']);
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(stubs.calls()).toEqual([
+      'supabase stack destroy --stack-id s-merged --yes',
+      'supabase stack destroy --stack-id s-gone --yes',
+    ]);
+    expect(existsSync(oldGone)).toBe(false);
+    expect(existsSync(oldMain)).toBe(true);
   });
 });
