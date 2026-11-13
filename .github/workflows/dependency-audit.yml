@@ -9,6 +9,9 @@ on:
     # Off the top of the hour: GitHub delays or drops scheduled runs under load,
     # most often at minute 0.
     - cron: '17 14 * * 1' # Mondays 14:17 UTC (08:17 in Mexico City)
+    # Backup: runs the audit only when no other scheduled run started in the last
+    # 24 hours (scripts/ci/scheduled-backup.ts). Keep it equal to BACKUP_CRON below.
+    - cron: '23 20 * * 1' # Mondays 20:23 UTC (14:23 in Mexico City)
   workflow_dispatch:
   push:
     branches: [main]
@@ -17,8 +20,31 @@ on:
 permissions:
   contents: read
 
+env:
+  BACKUP_CRON: '23 20 * * 1'
+
 jobs:
+  # Every trigger except the backup cron always runs the audit.
+  should-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # gh run list
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_SCHEDULE: ${{ github.event.schedule }}
+        run: bun scripts/ci/scheduled-backup.ts dependency-audit.yml "$BACKUP_CRON"
+
   audit:
+    needs: should-run
+    if: needs.should-run.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
