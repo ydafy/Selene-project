@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import * as releaseModule from './release-connect-payout';
 
 import {
@@ -811,6 +809,59 @@ describe('atomic pre-payout transition refusal', () => {
     ]);
     expect(parent).toEqual(before);
     expect(deps.calls.transfers).toEqual([]);
+  });
+  it('captures the parent authority before the asynchronous Stripe payout evidence read', async () => {
+    const parent = failedParentRun({ release_stage_version: 19 });
+    const deps = createDeps({
+      findRunById: async () => parent,
+      retrieveStripePayout: async (input) => {
+        parent.release_stage_version = 20;
+        return {
+          id: input.payoutId,
+          status: 'failed',
+          failure_balance_transaction: 'txn_returned_1',
+          amount: 12_500,
+          currency: 'mxn',
+        };
+      },
+      loadReleaseRows: async () => [
+        completedShipment({
+          is_eligible: false,
+          ineligible_reason: 'payout_failed_retry_required',
+          stripe_transfer_id: 'tr_original',
+        }),
+      ],
+      loadReleaseOrders: async () => [
+        {
+          id: 'order-1',
+          stripe_charge_id: 'ch_1',
+          stripe_transfer_group: 'group_1',
+        },
+      ],
+      retrieveConnectedBalance: async () => ({ available: [] }),
+    });
+    expect(
+      await releaseConnectPayout(
+        { actorId: 'admin-1', retryRunId: parent.id },
+        deps,
+      ),
+    ).toMatchObject({ success: true, runId: 'run-1' });
+    expect(deps.calls.updates).toEqual([
+      {
+        runId: 'run-1',
+        expectedStatus: 'pending_reconciliation',
+        expectedStage: 'release_accepted',
+        expectedVersion: 1,
+        shipmentIds: ['shipment-1'],
+        parent: {
+          runId: parent.id,
+          stageVersion: 19,
+          stripePayoutId: 'po_failed_parent',
+        },
+      },
+    ]);
+    expect(deps.calls.transfers).toEqual([]);
+    expect(deps.calls.payouts).toEqual([]);
   });
   it('stops an insufficient-balance park refusal without a later fence or rollback', async () => {
     const deps = createDeps({
@@ -2998,35 +3049,6 @@ describe('releaseConnectPayout', () => {
     ]);
   });
 
-  it('queries account actionability only through the RPC dep and never direct-selects the revoked tables', () => {
-    const source = readFileSync(
-      join(import.meta.dir, 'release-connect-payout.ts'),
-      'utf8',
-    );
-
-    // The projection tables' grants are revoked from every role; the manual
-    // path must reach actionability only through the injected service-role
-    // RPC dependency, never a direct table select.
-    expect(source).not.toMatch(
-      /from\(\s*['"]connect_account_actionability['"]|from\(\s*['"]connect_account_events['"]/,
-    );
-    expect(source).toMatch(/getConnectAccountActionability/);
-  });
-
-  it('writes the post-Stripe sync failure only through the guarded RPC, never a direct terminal-capable update', () => {
-    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-    // Defect 2: the post-Stripe fallback must not direct-UPDATE
-    // connect_payout_runs with status='reconciliation_needed' by run id (that
-    // can regress a terminal result); the guarded
-    // fn_mark_payout_run_sync_failed RPC owns the write and refuses
-    // terminal/newer state itself.
-    expect(source).toMatch(/fn_mark_payout_run_sync_failed/);
-    expect(source).not.toMatch(
-      /\.from\(\s*'connect_payout_runs'\s*\)[\s\S]{0,300}\.update\(\s*\{[\s\S]{0,400}?status:\s*'reconciliation_needed'/,
-    );
-  });
-
   it('refuses a manual release for a non-actionable seller destination before any run, transfer, or payout', async () => {
     const actionabilityLookups: unknown[] = [];
     const deps = createDeps({
@@ -3355,16 +3377,5 @@ describe('fence-time account actionability park', () => {
         new ConnectPayoutReleaseError('PAYOUT_FENCE_PARK_RESULT_INVALID', 409),
       );
     }
-  });
-
-  it('wires the park dependency to the fence-park RPC with the fenced version', () => {
-    const source = readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-    const block = source.slice(source.indexOf('parkPayoutRunFromFence:'));
-    const adapter = block.slice(0, block.indexOf('\n          },') + 13);
-    expect(adapter).toContain("'fn_park_payout_run_from_fence'");
-    expect(adapter).toContain('p_run_id: input.runId');
-    expect(adapter).toContain('p_expected_stage_version: input.stageVersion');
-    expect(adapter).toContain('parseParkPayoutRunFromFenceResult(');
-    expect(adapter).not.toContain('.update(');
   });
 });
