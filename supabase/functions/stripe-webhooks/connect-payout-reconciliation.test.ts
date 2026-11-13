@@ -1482,6 +1482,7 @@ describe('applyConnectAccountActionability (required current-state dependencies)
       retrieveCurrentAccount: async () => ({
         id: 'acct_1',
         payouts_enabled: true,
+        settings: { payouts: { schedule: { interval: 'manual' } } },
       }),
       listCurrentBankAccounts: async () => ({
         data: [
@@ -1521,6 +1522,7 @@ describe('applyConnectAccountActionability (required current-state dependencies)
         currency: 'mxn',
         defaultForCurrency: true,
         mxnDefaultCount: 1,
+        payoutScheduleInterval: 'manual',
       },
     ]);
   });
