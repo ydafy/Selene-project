@@ -105,8 +105,10 @@ Before you decide on a lint, compare it with "Accepted findings". Needs a decisi
 The procedure is `docs/findings.md`. `.github/workflows/issue-labels.yml` sets the labels: `priority:critical`, `priority:high`, `priority:medium`, `priority:low`, the eight `area:*` labels, and `finding`, `idea`, and `roadmap`.
 
 ```bash
-# New issues of the week
-gh issue list --state open --search "created:>=$since" --json number,title,labels
+# New issues of the week, with their milestone
+gh issue list --state open --search "created:>=$since" --json number,title,labels,milestone
+# Launch blockers (docs/findings.md, "Go-live")
+gh issue list --state open --milestone Go-live --json number,title,updatedAt
 # Open critical and high
 gh issue list --state open --label priority:critical
 gh issue list --state open --label priority:high
@@ -120,7 +122,8 @@ gh pr list --state open --json number,title,createdAt,isDraft
 
 Needs a decision for:
 
-- each new issue: is the priority right, is it a duplicate, should it stay open;
+- each new issue: is the priority right, is it a duplicate, should it stay open, does it block the launch (`Go-live`);
+- a `Go-live` issue with no work started;
 - a critical issue with no work started;
 - a finding without a priority;
 - a stale issue: close it, keep it, or change its priority;

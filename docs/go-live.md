@@ -8,7 +8,7 @@ Inventory below was read from project `acoiclkeymgtlwcxilun` through the read-on
 
 The repository rebuilds the database schema: its migrations start with the baseline `supabase/migrations/20261020100000_remote_schema_baseline.sql`, verified on 2026-10-20 to match the development project (functions, policies, triggers, columns, indexes, constraints, enums, views and grants). Pre-baseline history lives in `supabase/migrations/archive/` and is never applied.
 
-Open launch dependencies:
+Open launch dependencies: every issue in the GitHub milestone [`Go-live`](https://github.com/ydafy/Selene-project/milestone/1) (`docs/findings.md`, "Go-live"), plus any unfixed private security advisory. The one below also changes how this runbook is applied:
 
 - Fee-free period for launch sellers (#64). The commission (`system_settings.service_fee_pct`) is global and frozen into each product at publication, so the app cannot waive it for invited sellers' first sales. Do not set the global rate to 0 as a workaround: every product published while it is 0 keeps 0 permanently.
 
