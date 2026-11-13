@@ -1,0 +1,35 @@
+meta {
+  name: summary-buyer-closure-cleanup
+  type: http
+  seq: 71
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_closure_cleanup_step
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "{{sumBuyerId}}",
+    "p_step": "storage_cleanup",
+    "p_state": "done"
+  }
+}
+
+tests {
+  test("the summary buyer's closure has no open cleanup step", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Cleanup (#118, #492), same as order-buyer-closure-cleanup for the buyer that
+  summary-buyer-close-account closes. summary-buyer-closure-cleanup-state reads it back.
+}
