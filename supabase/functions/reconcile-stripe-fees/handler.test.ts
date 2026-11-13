@@ -1,14 +1,15 @@
-// source-text: the Deno.serve wrapper runs only under Deno, so its cron-secret gate is only visible in its text
-import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-import * as reconciliationModule from './index.ts';
 import {
+  createReconcileStripeFeesHandler,
+  createStripeFeeReconciliationAdapter,
   parseClaimedFeeJobs,
   reconcileStripeFeeJobs,
   requireMutationResult,
-} from './index.ts';
+  type FeeWorkerSupabaseClient,
+  type ReconcileStripeFeesDependencies,
+  type ReconcileStripeFeesStripeClient,
+} from './handler.ts';
 
 type ClaimedStripeFeeJob = {
   id: string;
@@ -57,16 +58,8 @@ type ReconcileStripeFeesHandlerFactory = (
   runReconciliation?: ReconciliationRunner,
 ) => (request: Request) => Promise<Response>;
 
-const createReconcileStripeFeesHandler = (
-  reconciliationModule as unknown as {
-    createReconcileStripeFeesHandler?: ReconcileStripeFeesHandlerFactory;
-  }
-).createReconcileStripeFeesHandler;
-
-const requireProductionAdapter = (): ReconcileStripeFeesHandlerFactory => {
-  expect(createReconcileStripeFeesHandler).toBeFunction();
-  return createReconcileStripeFeesHandler as ReconcileStripeFeesHandlerFactory;
-};
+const requireProductionAdapter = (): ReconcileStripeFeesHandlerFactory =>
+  createStripeFeeReconciliationAdapter as ReconcileStripeFeesHandlerFactory;
 
 const NOW = '2026-09-18T12:00:00.000Z';
 const JOB = {
@@ -497,23 +490,396 @@ describe('reconcile Stripe fees production adapter', () => {
   });
 });
 
-describe('reconcile Stripe fees Deno entry point', () => {
-  const source = readFileSync(
-    join(import.meta.dir, 'index.ts'),
-    'utf8',
-  ).replace(/\s+/g, ' ');
+// The served handler, driven with a recording fake Supabase client and a fake Stripe client.
+describe('reconcile Stripe fees served handler', () => {
+  const CRON_SECRET = 'fee-cron-secret';
+  const SUPABASE_URL = 'http://supabase.test';
+  const SUPABASE_SECRET_KEY = 'sb_secret_fees';
+  const STRIPE_SECRET = 'sk_test_fees';
 
-  it('authorizes the served request with the shared cron secret, never a worker bearer', () => {
-    expect(source).not.toContain('STRIPE_FEE_RECONCILIATION_WORKER_SECRET');
-    expect(source).not.toContain('Bearer');
-    expect(source).toContain("denoRuntime.env.get('CRON_SECRET')");
-    expect(source).toContain(
-      'if (!isAuthorizedCronRequest(request, cronSecret)) {',
-    );
-    expect(source).toContain(
-      "await reportCronSecretMismatch( request, 'reconcile-stripe-fees', reportMessage, );",
-    );
+  type Result = { data: unknown; error: unknown };
+  type Effect =
+    | { rpc: string; args: unknown }
+    | { from: string; select: string; filters: unknown[] }
+    | { stripe: string; args: unknown[] };
+
+  const claimedRow = (overrides: Record<string, unknown> = {}) => ({
+    id: JOB.id,
+    order_id: JOB.orderId,
+    stripe_payment_intent_id: JOB.stripePaymentIntentId,
+    claim_token: JOB.claimToken,
+    claim_expires_at: '2026-09-18T12:05:00.000Z',
+    status: 'processing',
+    attempt_count: 1,
+    ...overrides,
   });
+
+  interface Options {
+    env?: Record<string, string | undefined>;
+    supabaseSecretKey?: string | undefined;
+    headers?: Record<string, string>;
+    claim?: Result;
+    order?: Result;
+    complete?: Result;
+    transition?: Result;
+    charge?: () => Promise<unknown>;
+    balanceTransaction?: () => Promise<unknown>;
+  }
+
+  let errorSpy: ReturnType<typeof spyOn>;
+  beforeEach(() => {
+    errorSpy = spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  const setup = (options: Options = {}) => {
+    const effects: Effect[] = [];
+    const reports: unknown[] = [];
+    const created: unknown[] = [];
+    const env: Record<string, string | undefined> = {
+      CRON_SECRET,
+      SUPABASE_URL,
+      STRIPE_SECRET_KEY: STRIPE_SECRET,
+      ...options.env,
+    };
+    const rpcAnswers: Record<string, Result | undefined> = {
+      fn_claim_stripe_fee_reconciliation_jobs_leased: options.claim ?? {
+        data: [claimedRow()],
+        error: null,
+      },
+      fn_complete_stripe_fee_reconciliation_job_leased: options.complete ?? {
+        data: true,
+        error: null,
+      },
+      fn_transition_stripe_fee_reconciliation_job_leased:
+        options.transition ?? { data: true, error: null },
+    };
+    const supabase = {
+      rpc: async (name: string, args: unknown) => {
+        effects.push({ rpc: name, args });
+        const answer = rpcAnswers[name];
+        if (!answer) throw new Error(`unexpected rpc ${name}`);
+        return answer;
+      },
+      from: (table: string) => ({
+        select: (select: string) => {
+          const filters: unknown[] = [];
+          const query = {
+            eq: (column: string, value: unknown) => {
+              filters.push(['eq', column, value]);
+              return query;
+            },
+            maybeSingle: async () => {
+              effects.push({ from: table, select, filters });
+              return (
+                options.order ?? {
+                  data: { stripe_charge_id: JOB.stripeChargeId },
+                  error: null,
+                }
+              );
+            },
+          };
+          return query;
+        },
+      }),
+    };
+    const stripe = {
+      charges: {
+        retrieve: async (...args: unknown[]) => {
+          effects.push({ stripe: 'charges.retrieve', args });
+          return options.charge
+            ? options.charge()
+            : { id: args[0], balance_transaction: 'txn_authoritative_fee' };
+        },
+      },
+      balanceTransactions: {
+        retrieve: async (...args: unknown[]) => {
+          effects.push({ stripe: 'balanceTransactions.retrieve', args });
+          return options.balanceTransaction
+            ? options.balanceTransaction()
+            : { id: args[0], fee: 21_992 };
+        },
+      },
+    };
+    const deps: ReconcileStripeFeesDependencies = {
+      getEnv: (name) => env[name],
+      readSupabaseSecretKey: () =>
+        'supabaseSecretKey' in options
+          ? options.supabaseSecretKey
+          : SUPABASE_SECRET_KEY,
+      reportMessage: (message, reportOptions) => {
+        reports.push([message, reportOptions]);
+      },
+      createSupabaseAdmin: (url, key) => {
+        created.push(['supabase', url, key]);
+        return supabase as unknown as FeeWorkerSupabaseClient;
+      },
+      createStripe: (secret) => {
+        created.push(['stripe', secret]);
+        return stripe as unknown as ReconcileStripeFeesStripeClient;
+      },
+      now: () => NOW,
+    };
+    const handler = createReconcileStripeFeesHandler(deps);
+    const call = async () => {
+      const response = await handler(
+        new Request('https://example.com/functions/v1/reconcile-stripe-fees', {
+          method: 'POST',
+          headers: options.headers ?? { 'x-cron-secret': CRON_SECRET },
+        }),
+      );
+      return {
+        status: response.status,
+        text: await response.text(),
+      };
+    };
+    return { call, effects, reports, created };
+  };
+
+  const claimRpc = {
+    rpc: 'fn_claim_stripe_fee_reconciliation_jobs_leased',
+    args: { p_limit: 25, p_max_attempts: 3 },
+  };
+  const orderLookup = {
+    from: 'orders',
+    select: 'stripe_charge_id',
+    filters: [['eq', 'id', JOB.orderId]],
+  };
+  const summary = (overrides: Record<string, number> = {}) => ({
+    selected: 1,
+    succeeded: 0,
+    retryScheduled: 0,
+    failed: 0,
+    errors: 0,
+    ...overrides,
+  });
+  const mismatchReport = [
+    'reconcile-stripe-fees cron secret mismatch',
+    {
+      fingerprint: ['cron-secret-mismatch', 'reconcile-stripe-fees'],
+      tags: { edge_function: 'reconcile-stripe-fees' },
+    },
+  ];
+
+  it.each([
+    ['no x-cron-secret header', {}, {}, false],
+    ['a wrong x-cron-secret', { 'x-cron-secret': 'wrong' }, {}, true],
+    ['an empty x-cron-secret', { 'x-cron-secret': '' }, {}, false],
+    ['a bearer token', { authorization: `Bearer ${CRON_SECRET}` }, {}, false],
+    [
+      'any secret while CRON_SECRET is unset',
+      { 'x-cron-secret': 'anything' },
+      { CRON_SECRET: undefined },
+      true,
+    ],
+    [
+      'a wrong secret while the configuration is incomplete',
+      { 'x-cron-secret': 'wrong' },
+      { STRIPE_SECRET_KEY: undefined },
+      true,
+    ],
+  ])(
+    'answers 401 to %s with no RPC, query or Stripe call',
+    async (_case, headers, env, reported) => {
+      const run = setup({ headers, env });
+
+      expect(await run.call()).toEqual({
+        status: 401,
+        text: 'Unauthorized',
+      });
+      expect(run.effects).toEqual([]);
+      expect(run.reports).toEqual(reported ? [mismatchReport] : []);
+    },
+  );
+
+  it.each([
+    ['SUPABASE_URL is unset', { env: { SUPABASE_URL: undefined } }],
+    ['SUPABASE_URL is blank', { env: { SUPABASE_URL: '  ' } }],
+    ['STRIPE_SECRET_KEY is unset', { env: { STRIPE_SECRET_KEY: undefined } }],
+    ['STRIPE_SECRET_KEY is blank', { env: { STRIPE_SECRET_KEY: ' ' } }],
+    ['the Supabase secret key is missing', { supabaseSecretKey: undefined }],
+  ])(
+    'answers 500 when %s, without building a client',
+    async (_case, options: Options) => {
+      const run = setup(options);
+
+      expect(await run.call()).toEqual({
+        status: 500,
+        text: 'Server configuration unavailable',
+      });
+      expect(run.created).toEqual([]);
+      expect(run.effects).toEqual([]);
+    },
+  );
+
+  it('builds both clients once from the trimmed configuration', async () => {
+    const run = setup({
+      env: {
+        SUPABASE_URL: ` ${SUPABASE_URL} `,
+        STRIPE_SECRET_KEY: ` ${STRIPE_SECRET} `,
+      },
+    });
+    await run.call();
+    await run.call();
+
+    expect(run.created).toEqual([
+      ['supabase', SUPABASE_URL, SUPABASE_SECRET_KEY],
+      ['stripe', STRIPE_SECRET],
+    ]);
+  });
+
+  it.each([
+    ['as an id', 'txn_authoritative_fee'],
+    ['expanded', { id: 'txn_authoritative_fee', fee: 1 }],
+  ])(
+    'claims, reads the charge from the order, retrieves the fee and completes the job (balance transaction %s)',
+    async (_case, balanceTransaction) => {
+      const run = setup({
+        charge: async () => ({
+          id: JOB.stripeChargeId,
+          balance_transaction: balanceTransaction,
+        }),
+      });
+
+      const response = await run.call();
+
+      expect(response.status).toBe(200);
+      expect(JSON.parse(response.text)).toEqual(summary({ succeeded: 1 }));
+      expect(run.effects).toEqual([
+        claimRpc,
+        orderLookup,
+        { stripe: 'charges.retrieve', args: [JOB.stripeChargeId] },
+        {
+          stripe: 'balanceTransactions.retrieve',
+          args: ['txn_authoritative_fee'],
+        },
+        {
+          rpc: 'fn_complete_stripe_fee_reconciliation_job_leased',
+          args: {
+            p_job_id: JOB.id,
+            p_claim_token: JOB.claimToken,
+            p_actual_stripe_fee_cents: 21_992,
+            p_reconciled_at: NOW,
+          },
+        },
+      ]);
+      expect(errorSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('schedules a retry one minute out when the order has no charge', async () => {
+    const run = setup({
+      order: { data: { stripe_charge_id: null }, error: null },
+    });
+
+    const response = await run.call();
+
+    expect(JSON.parse(response.text)).toEqual(summary({ retryScheduled: 1 }));
+    expect(run.effects).toEqual([
+      claimRpc,
+      orderLookup,
+      {
+        rpc: 'fn_transition_stripe_fee_reconciliation_job_leased',
+        args: {
+          p_job_id: JOB.id,
+          p_claim_token: JOB.claimToken,
+          p_outcome: 'retry',
+          p_next_retry_at: '2026-09-18T12:01:00.000Z',
+          p_last_error: 'STRIPE_FEE_UNAVAILABLE',
+        },
+      },
+    ]);
+  });
+
+  it('marks the job failed on its last attempt, without a retry time', async () => {
+    const run = setup({
+      claim: { data: [claimedRow({ attempt_count: 3 })], error: null },
+      balanceTransaction: async () => ({ id: 'txn', fee: null }),
+    });
+
+    const response = await run.call();
+
+    expect(JSON.parse(response.text)).toEqual(summary({ failed: 1 }));
+    expect(run.effects.at(-1)).toEqual({
+      rpc: 'fn_transition_stripe_fee_reconciliation_job_leased',
+      args: {
+        p_job_id: JOB.id,
+        p_claim_token: JOB.claimToken,
+        p_outcome: 'failed',
+        p_last_error: 'STRIPE_FEE_UNAVAILABLE',
+      },
+    });
+  });
+
+  it('reports a failed order lookup as an IO error and schedules a retry', async () => {
+    const run = setup({ order: { data: null, error: { message: 'down' } } });
+
+    const response = await run.call();
+
+    expect(JSON.parse(response.text)).toEqual(
+      summary({ retryScheduled: 1, errors: 1 }),
+    );
+    expect(run.effects.map((effect) => Object.values(effect)[0])).toEqual([
+      'fn_claim_stripe_fee_reconciliation_jobs_leased',
+      'orders',
+      'fn_transition_stripe_fee_reconciliation_job_leased',
+    ]);
+    expect(errorSpy.mock.calls).toEqual([
+      [
+        'stripe_fee_job_error',
+        { jobId: JOB.id, code: 'STRIPE_FEE_JOB_IO_FAILED' },
+      ],
+    ]);
+  });
+
+  it.each([
+    ['completion', { complete: { data: null, error: { message: 'down' } } }],
+    [
+      'transition',
+      {
+        order: { data: { stripe_charge_id: null }, error: null },
+        transition: { data: null, error: { message: 'down' } },
+      },
+    ],
+  ])(
+    'reports a failed %s RPC as an IO error and counts nothing',
+    async (_case, options: Options) => {
+      const run = setup(options);
+
+      const response = await run.call();
+
+      expect(JSON.parse(response.text)).toEqual(summary({ errors: 1 }));
+      expect(errorSpy.mock.calls).toEqual([
+        [
+          'stripe_fee_job_error',
+          { jobId: JOB.id, code: 'STRIPE_FEE_JOB_IO_FAILED' },
+        ],
+      ]);
+    },
+  );
+
+  it.each([
+    [
+      'a claim RPC error',
+      { data: null, error: { message: 'down' } },
+      'STRIPE_FEE_RECONCILIATION_CLAIM_FAILED',
+    ],
+    [
+      'malformed claim data',
+      { data: [claimedRow({ status: 'pending' })], error: null },
+      'INVALID_FEE_CLAIM_RESPONSE',
+    ],
+  ])(
+    'throws on %s before any Stripe call or mutation',
+    async (_case, claim, message) => {
+      const run = setup({ claim });
+
+      await expect(run.call()).rejects.toThrow(message);
+      expect(run.effects).toEqual([claimRpc]);
+    },
+  );
 });
 
 // Intended future worker contract, not the deployed generated DB contract.

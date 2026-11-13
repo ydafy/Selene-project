@@ -1,9 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
 import {
   applyConnectAccountActionability,
   extractSignedAccountEventData,
-  parseAccountRefreshGeneration,
   type ConnectAccountActionabilityDeps,
 } from './connect-payout-reconciliation';
 
@@ -637,19 +635,9 @@ describe('payout schedule gate, layer 2 (#330 S4; real orchestrator, mocked IO)'
   });
 });
 
-describe('account event routing and adapter (source structural, not Edge runtime)', () => {
+// Routing and the RPC and Stripe adapters run through the handler in handler.test.ts.
+describe('signed account event extraction', () => {
   for (const kind of ['created', 'deleted'] as const) {
-    test(`routes external account ${kind} to reconciliation`, () => {
-      const source = readFileSync(
-        new URL('./index.ts', import.meta.url),
-        'utf8',
-      );
-      const routing =
-        source.match(
-          /const CONNECT_ACCOUNT_EVENT_TYPES\s*=\s*\[([\s\S]*?)\]/,
-        )?.[1] ?? '';
-      expect(routing).toContain(`'account.external_account.${kind}'`);
-    });
     test(`extracts bank identity from signed external account ${kind}`, () => {
       expect(
         extractSignedAccountEventData({
@@ -677,201 +665,5 @@ describe('account event routing and adapter (source structural, not Edge runtime
         dataObject: { id: 'ba_old', account: 'acct_1', status: 'errored' },
       }),
     ).toBeNull();
-  });
-  test('Stripe list adapter explicitly filters banks and forwards final-id pagination', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    expect(source).toMatch(
-      /stripe\s*\.accounts\s*\.retrieve\(\s*input\.accountId\s*\)/,
-    );
-    expect(source).toMatch(
-      /stripe\s*\.accounts\s*\.listExternalAccounts\(\s*input\.accountId,\s*\{\s*object: 'bank_account',\s*limit: 100,/,
-    );
-    expect(source).toContain('starting_after: input.startingAfter');
-    expect(source).not.toContain('fn_apply_connect_account_actionability');
-  });
-  test('commit adapter reads the RPC result and exposes supersession', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    const adapter =
-      source.match(
-        /async function commitConnectAccountRefreshRpc\([\s\S]*?\n\}/,
-      )?.[0] ?? '';
-    expect(adapter).toContain('fn_commit_connect_account_refresh');
-    expect(adapter).toMatch(/const\s*\{\s*data,\s*error\s*\}/);
-    expect(adapter).toMatch(/return\s+data\s*===\s*true/);
-  });
-});
-
-// Execute only the actual bounded RPC adapter bodies, transpiled in memory:
-// the full index registers a Deno server on import. DB responses remain mocks.
-function rpcAdapters() {
-  const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-  const names = [
-    'recordConnectAccountEvent',
-    'acquireConnectAccountRefreshRpc',
-    'commitConnectAccountRefreshRpc',
-  ];
-  const bodies = names
-    .map((name) => {
-      const body = source.match(
-        new RegExp(`async function ${name}\\([\\s\\S]*?\\r?\\n\\}`, 'm'),
-      )?.[0];
-      expect(body).toBeDefined();
-      return body;
-    })
-    .join('\n');
-  const javascript = new Bun.Transpiler({ loader: 'ts' }).transformSync(bodies);
-  return new Function(
-    'parseAccountRefreshGeneration',
-    `${javascript}; return { ${names.join(', ')} };`,
-  )(parseAccountRefreshGeneration) as {
-    recordConnectAccountEvent: (
-      db: unknown,
-      input: ReturnType<typeof event>,
-    ) => Promise<boolean>;
-    acquireConnectAccountRefreshRpc: (
-      db: unknown,
-      input: { accountId: string; sourceEventId: string },
-    ) => Promise<number>;
-    commitConnectAccountRefreshRpc: (
-      db: unknown,
-      input: Snapshot,
-    ) => Promise<boolean>;
-  };
-}
-describe('actual RPC adapter bodies (mock database, not PostgreSQL execution)', () => {
-  test('forwards honest signed evidence and every explicit A2 commit argument', async () => {
-    const adapters = rpcAdapters();
-    const calls: Array<{ name: string; args: unknown }> = [];
-    const db = {
-      rpc: async (name: string, args: unknown) => {
-        calls.push({ name, args });
-        return {
-          data: name === 'fn_acquire_connect_account_refresh' ? '42' : true,
-          error: null,
-        };
-      },
-    };
-    expect(await adapters.recordConnectAccountEvent(db, event())).toBe(true);
-    expect(
-      await adapters.acquireConnectAccountRefreshRpc(db, {
-        accountId: 'acct_1',
-        sourceEventId: 'evt_oldbank',
-      }),
-    ).toBe(42);
-    const h = harness();
-    await applyConnectAccountActionability(event(), h.deps);
-    expect(
-      await adapters.commitConnectAccountRefreshRpc(db, h.commits[0]),
-    ).toBe(true);
-    expect(calls).toEqual([
-      {
-        name: 'fn_record_connect_account_event',
-        args: {
-          p_stripe_event_id: 'evt_oldbank',
-          p_stripe_account_id: 'acct_1',
-          p_event_type: 'account.external_account.updated',
-          p_stripe_created: event().occurredAt,
-          p_external_account_id: 'ba_old',
-          p_payouts_enabled: null,
-          p_external_account_status: 'errored',
-        },
-      },
-      {
-        name: 'fn_acquire_connect_account_refresh',
-        args: {
-          p_stripe_account_id: 'acct_1',
-          p_source_event_id: 'evt_oldbank',
-        },
-      },
-      {
-        name: 'fn_commit_connect_account_refresh',
-        args: {
-          p_stripe_account_id: 'acct_1',
-          p_expected_generation: 1,
-          p_source_event_id: 'evt_oldbank',
-          p_is_actionable: true,
-          p_blocked_reason: null,
-          p_payouts_enabled: true,
-          p_current_external_account_id: 'ba_current',
-          p_current_external_account_status: 'verified',
-          p_current_currency: 'mxn',
-          p_current_default_for_currency: true,
-          p_mxn_default_count: 1,
-          p_payout_schedule_interval: 'manual',
-        },
-      },
-    ]);
-  });
-  test('forwards a blocked schedule interval to the commit RPC', async () => {
-    const adapters = rpcAdapters();
-    const calls: Array<{ name: string; args: unknown }> = [];
-    const db = {
-      rpc: async (name: string, args: unknown) => {
-        calls.push({ name, args });
-        return { data: true, error: null };
-      },
-    };
-    for (const interval of ['daily', null] as const) {
-      const h = harness({ payoutScheduleInterval: interval });
-      await applyConnectAccountActionability(event(), h.deps);
-      expect(
-        await adapters.commitConnectAccountRefreshRpc(db, h.commits[0]),
-      ).toBe(true);
-    }
-    expect(calls.map(({ args }) => args)).toMatchObject([
-      {
-        p_is_actionable: false,
-        p_blocked_reason: 'payouts_schedule_not_manual',
-        p_payout_schedule_interval: 'daily',
-      },
-      {
-        p_is_actionable: false,
-        p_blocked_reason: 'payouts_schedule_not_manual',
-        p_payout_schedule_interval: null,
-      },
-    ]);
-  });
-  test('duplicate/refused booleans remain observable and malformed results are rejected', async () => {
-    const adapters = rpcAdapters();
-    const h = harness();
-    await applyConnectAccountActionability(event(), h.deps);
-    const duplicate = { rpc: async () => ({ data: false, error: null }) };
-    expect(await adapters.recordConnectAccountEvent(duplicate, event())).toBe(
-      false,
-    );
-    expect(
-      await adapters.commitConnectAccountRefreshRpc(duplicate, h.commits[0]),
-    ).toBe(false);
-    const invalid = { rpc: async () => ({ data: 'true', error: null }) };
-    await expect(
-      adapters.recordConnectAccountEvent(invalid, event()),
-    ).rejects.toThrow('ACCOUNT_EVENT_APPEND_INVALID_RESULT');
-    await expect(
-      adapters.acquireConnectAccountRefreshRpc(invalid, {
-        accountId: 'acct_1',
-        sourceEventId: 'evt_oldbank',
-      }),
-    ).rejects.toThrow('ACCOUNT_REFRESH_INVALID_GENERATION');
-    await expect(
-      adapters.commitConnectAccountRefreshRpc(invalid, h.commits[0]),
-    ).rejects.toThrow('ACCOUNT_REFRESH_COMMIT_INVALID_RESULT');
-    const failed = {
-      rpc: async () => ({
-        data: null,
-        error: { message: 'provider detail must not escape' },
-      }),
-    };
-    await expect(
-      adapters.recordConnectAccountEvent(failed, event()),
-    ).rejects.toThrow('ACCOUNT_EVENT_APPEND_FAILED');
-    await expect(
-      adapters.acquireConnectAccountRefreshRpc(failed, {
-        accountId: 'acct_1',
-        sourceEventId: 'evt_oldbank',
-      }),
-    ).rejects.toThrow('ACCOUNT_REFRESH_ACQUIRE_FAILED');
-    await expect(
-      adapters.commitConnectAccountRefreshRpc(failed, h.commits[0]),
-    ).rejects.toThrow('ACCOUNT_REFRESH_COMMIT_FAILED');
   });
 });

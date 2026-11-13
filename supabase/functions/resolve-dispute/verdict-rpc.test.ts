@@ -1,3 +1,4 @@
+// source-text: resolve-dispute is rewritten in #261 and gets no handler before then (#278, S6), so its index.ts text stays the contract until that rewrite.
 import { expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { buildVerdictRpc } from './verdict-rpc.ts';

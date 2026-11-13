@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import {
   buildSinglePaymentIntentParams,
@@ -21,11 +20,9 @@ import {
 /**
  * Strict TDD tests for the Phase 4 single-modal webhook settlement helpers.
  *
- * `stripe-webhooks/index.ts` is a Deno Edge Function (`Deno.serve()`,
- * `npm:` specifiers) that `bun test` cannot run.
- * To honour Strict TDD the single-modal correctness is extracted as PURE,
- * side-effect-free helpers in `single-modal-settlement.ts`; `index.ts` only
- * wires Supabase RPC calls around them.
+ * The single-modal correctness lives in PURE, side-effect-free helpers in
+ * `single-modal-settlement.ts`; `handler.ts` only wires Supabase RPC calls
+ * around them, and `handler.test.ts` drives that wiring.
  *
  * Test layer: Unit (pure functions).
  * Spec acceptance criteria covered (single-modal-multiseller-checkout spec):
@@ -525,27 +522,6 @@ describe('single-modal-settlement > buildStripeFeeReconciliationPlan', () => {
       reason: 'missing_balance_transaction',
     });
     expect(plan.kind).not.toBe('fatal_error');
-  });
-
-  it('wires deferred reconciliation to one idempotent server-side job without failing settlement', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    const deferredStart = source.indexOf("if (feePlan.kind === 'deferred')");
-    const settlementResponse = source.indexOf(
-      'return new Response(JSON.stringify(outcome.body), { status: 200 });',
-      deferredStart,
-    );
-    const deferredBranch = source.slice(deferredStart, settlementResponse);
-
-    expect(deferredStart).toBeGreaterThan(-1);
-    expect(settlementResponse).toBeGreaterThan(deferredStart);
-    expect(deferredBranch).toContain(".from('stripe_fee_reconciliation_jobs')");
-    expect(deferredBranch).toContain(
-      "onConflict: 'order_id,stripe_payment_intent_id'",
-    );
-    expect(deferredBranch).toContain('ignoreDuplicates: true');
-    expect(deferredBranch).toContain('order_id: action.payload.orderId');
-    expect(deferredBranch).toContain('stripe_payment_intent_id: intent.id');
-    expect(deferredBranch).not.toContain('MISSING_BALANCE_TRANSACTION_FEE');
   });
 
   it('returns already_reconciled when the order already has an actual fee', () => {

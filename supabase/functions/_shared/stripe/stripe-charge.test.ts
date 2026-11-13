@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import { extractStripeChargeId } from './stripe-charge.ts';
 
@@ -33,18 +31,5 @@ describe('extractStripeChargeId', () => {
         charges: { data: [{ id: '' }] },
       }),
     ).toBeNull();
-  });
-});
-
-describe('stripe webhook charge extraction wiring', () => {
-  it('uses the shared extraction helper for semantic recovery', () => {
-    const webhookSource = readFileSync(
-      join(process.cwd(), 'supabase/functions/stripe-webhooks/index.ts'),
-      'utf8',
-    );
-
-    expect(webhookSource).toContain(
-      "import { extractStripeChargeId } from '../_shared/stripe/stripe-charge.ts';",
-    );
   });
 });
