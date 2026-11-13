@@ -102,11 +102,11 @@ insert into pg_temp.gen
 select 'acct_blk' || x, public.fn_acquire_connect_account_refresh('acct_blk' || x, 'evt_blk' || x)
 from unnest(array['A', 'B', 'C']) as x;
 select public.fn_commit_connect_account_refresh('acct_blkB', (select g from pg_temp.gen where acct = 'acct_blkB'),
-  'evt_blkB', false, 'payouts_disabled', false, null, null, null, null, null);
+  'evt_blkB', false, 'payouts_disabled', false, null, null, null, null, null, 'manual');
 -- C is actionable: this is the refresh that commits between the worker's
 -- unlocked read and its call to the block RPC.
 select public.fn_commit_connect_account_refresh('acct_blkC', (select g from pg_temp.gen where acct = 'acct_blkC'),
-  'evt_blkC', true, null, true, 'ba_blkdefault', 'verified', 'mxn', true, 1);
+  'evt_blkC', true, null, true, 'ba_blkdefault', 'verified', 'mxn', true, 1, 'manual');
 
 -- Claimed runs, version 1, token tok_<run>.
 select pg_temp.claimed(n, s, st)

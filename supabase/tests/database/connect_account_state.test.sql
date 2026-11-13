@@ -2,14 +2,15 @@
 -- fn_acquire_connect_account_refresh opens a pending refresh that fails closed,
 -- fn_commit_connect_account_refresh accepts only the current generation and
 -- rebuilds the gate from the bank snapshot (the blocked external-account
--- statuses), and fn_get_connect_account_actionability hides a pending bit and
+-- statuses and the payout schedule, which must be manual), and
+-- fn_get_connect_account_actionability hides a pending bit and
 -- defaults an account without a row to actionable. connect_account_events is
 -- append-only evidence keyed by the Stripe event id. Run projection onto payout
 -- runs lives in payout_resume_actionability_account.test.sql; table and
 -- function grants live in profile_grants.test.sql and function_grants.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(26);
+select plan(42);
 
 create function pg_temp.rec(p_acct text, p_evt text, p_bank text default null) returns boolean language sql as $$
   select public.fn_record_connect_account_event(p_evt, p_acct, 'account.updated', now(), null, null, p_bank)
@@ -32,12 +33,21 @@ create function pg_temp.gate(p_acct text) returns text language sql as $$
   from public.fn_get_connect_account_actionability(p_acct) g
 $$;
 
--- A commit with one MXN default bank in p_status.
+-- A commit with one MXN default bank in p_status and payout schedule p_interval.
 create function pg_temp.commit_bank(
-  p_acct text, p_generation bigint, p_evt text, p_actionable boolean, p_reason text, p_status text
+  p_acct text, p_generation bigint, p_evt text, p_actionable boolean, p_reason text, p_status text,
+  p_interval text default 'manual'
 ) returns boolean language sql as $$
   select public.fn_commit_connect_account_refresh(p_acct, p_generation, p_evt, p_actionable, p_reason, true,
-    'ba_t10default', p_status, 'mxn', true, 1)
+    'ba_t10default', p_status, 'mxn', true, 1, p_interval)
+$$;
+
+-- A commit with payouts disabled, no MXN destination and payout schedule p_interval.
+create function pg_temp.commit_disabled(
+  p_acct text, p_evt text, p_actionable boolean, p_reason text, p_interval text
+) returns boolean language sql as $$
+  select public.fn_commit_connect_account_refresh(p_acct, 1, p_evt, p_actionable, p_reason, false,
+    null, null, null, null, 0, p_interval)
 $$;
 
 -- A blocked commit for p_status, then the gate: 'error <message>' if it raised.
@@ -130,6 +140,48 @@ select is(pg_temp.commit_blocked(a, e, s), 'true|false:' || s,
   'blocked: a ' || s || ' bank is accepted as not actionable')
 from (values ('acct_t10err', 'evt_t10e1', 'errored'), ('acct_t10vfail', 'evt_t10v1', 'verification_failed'),
   ('acct_t10tok', 'evt_t10t1', 'tokenized_account_number_deactivated')) as x(a, e, s);
+
+-- 8. Layer 2 (#330 S4): a payout schedule other than manual, or none, blocks --------
+select pg_temp.rec(a, e) from (values ('acct_t10man', 'evt_t10s1'), ('acct_t10daily', 'evt_t10s2'),
+  ('acct_t10nosched', 'evt_t10s3'), ('acct_t10offdaily', 'evt_t10s4')) as x(a, e);
+select public.fn_acquire_connect_account_refresh(a, e) from (values ('acct_t10man', 'evt_t10s1'),
+  ('acct_t10daily', 'evt_t10s2'), ('acct_t10nosched', 'evt_t10s3'), ('acct_t10offdaily', 'evt_t10s4')) as x(a, e);
+
+select is(pg_temp.commit_bank('acct_t10man', 1, 'evt_t10s1', true, null, 'verified', 'manual'), true,
+  'schedule: a manual schedule with a healthy bank is accepted as actionable');
+select is(pg_temp.gate('acct_t10man'), 'true:-', 'schedule: a manual schedule keeps the account actionable');
+
+create table pg_temp.sched_before as
+select a, pg_temp.acct_json(a) as v from unnest(array['acct_t10daily', 'acct_t10nosched', 'acct_t10offdaily']) as a;
+
+select throws_ok($$select pg_temp.commit_bank('acct_t10daily', 1, 'evt_t10s2', true, null, 'verified', 'daily')$$,
+  'P0001', 'INVALID_CURRENT_ACCOUNT_SNAPSHOT', 'schedule: a commit calling a daily-schedule account actionable is refused');
+select throws_ok($$select pg_temp.commit_bank('acct_t10daily', 1, 'evt_t10s2', false, 'destination_undetermined', 'verified', 'daily')$$,
+  'P0001', 'INVALID_CURRENT_ACCOUNT_SNAPSHOT', 'schedule: a daily-schedule commit with another blocked reason is refused');
+select throws_ok($$select pg_temp.commit_bank('acct_t10daily', 1, 'evt_t10s2', false, 'errored', 'errored', 'daily')$$,
+  'P0001', 'INVALID_CURRENT_ACCOUNT_SNAPSHOT', 'schedule: a daily schedule outranks an errored bank');
+select throws_ok($$select pg_temp.commit_bank('acct_t10nosched', 1, 'evt_t10s3', true, null, 'verified', null)$$,
+  'P0001', 'INVALID_CURRENT_ACCOUNT_SNAPSHOT', 'schedule: a commit calling an account without a schedule actionable is refused');
+select throws_ok($$select pg_temp.commit_disabled('acct_t10offdaily', 'evt_t10s4', false, 'payouts_schedule_not_manual', 'daily')$$,
+  'P0001', 'INVALID_CURRENT_ACCOUNT_SNAPSHOT', 'schedule: disabled payouts outrank a daily schedule');
+select is((select array_agg(pg_temp.acct_json(a) = v order by a) from pg_temp.sched_before),
+  array[true, true, true], 'schedule: the refused commits wrote nothing and left the refresh pending');
+select is(pg_temp.gate('acct_t10daily'), 'false:account_refresh_pending',
+  'schedule: after a refused commit the gate still reports the pending refresh');
+
+select is(pg_temp.commit_bank('acct_t10daily', 1, 'evt_t10s2', false, 'payouts_schedule_not_manual', 'verified', 'daily'),
+  true, 'schedule: a daily schedule is accepted as not actionable');
+select is(pg_temp.acct_row('acct_t10daily'), '1:false:false:payouts_schedule_not_manual:evt_t10s2:ba_t10default:true',
+  'schedule: the daily-schedule snapshot is stored with its blocked reason');
+select is(pg_temp.gate('acct_t10daily'), 'false:payouts_schedule_not_manual',
+  'schedule: a daily schedule blocks payouts even with a healthy bank');
+select is(pg_temp.commit_bank('acct_t10nosched', 1, 'evt_t10s3', false, 'payouts_schedule_not_manual', 'verified', null),
+  true, 'schedule: a snapshot without a schedule is accepted as not actionable');
+select is(pg_temp.gate('acct_t10nosched'), 'false:payouts_schedule_not_manual',
+  'schedule: a missing schedule blocks payouts like a daily one');
+select is(pg_temp.commit_disabled('acct_t10offdaily', 'evt_t10s4', false, 'payouts_disabled', 'daily'), true,
+  'schedule: disabled payouts with a daily schedule is accepted as payouts_disabled');
+select is(pg_temp.gate('acct_t10offdaily'), 'false:payouts_disabled', 'schedule: payouts_disabled wins over the schedule');
 
 select * from finish();
 rollback;

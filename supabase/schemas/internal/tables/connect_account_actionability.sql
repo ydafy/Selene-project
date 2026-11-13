@@ -21,7 +21,7 @@ CREATE TABLE "internal"."connect_account_actionability" (
 ALTER TABLE "internal"."connect_account_actionability"
   ENABLE ROW LEVEL SECURITY;
 
-COMMENT ON COLUMN "internal"."connect_account_actionability"."blocked_reason" IS 'Documented non-actionable external-account status (errored, verification_failed, tokenized_account_number_deactivated) or payouts_disabled when the account-level payouts_enabled flag is false.';
+COMMENT ON COLUMN "internal"."connect_account_actionability"."blocked_reason" IS 'Why the account is not actionable, in gate precedence: payouts_disabled when the account-level payouts_enabled flag is false; payouts_schedule_not_manual when the payout schedule interval is not manual or is missing; a documented non-actionable external-account status (errored, verification_failed, tokenized_account_number_deactivated); destination_undetermined; account_refresh_pending while a refresh is open.';
 
 COMMENT ON COLUMN "internal"."connect_account_actionability"."current_external_account_id" IS 'Current server-retrieved MXN default bank identity; distinct from the historical bank in connect_account_events. Usable only when refresh_pending is FALSE.';
 

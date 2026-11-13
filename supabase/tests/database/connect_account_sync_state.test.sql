@@ -50,7 +50,7 @@ select is(pg_temp.sync('acct_381main', array['evt_381a']), 'true:false:-:1',
   'sync state: an open refresh shows the raw pending bit');
 
 select ok(public.fn_commit_connect_account_refresh('acct_381main', 1, 'evt_381a', true, null, true,
-  'ba_381new', 'new', 'mxn', true, 1), 'sync state setup: the webhook commits the refresh');
+  'ba_381new', 'new', 'mxn', true, 1, 'manual'), 'sync state setup: the webhook commits the refresh');
 select is(pg_temp.sync('acct_381main', array['evt_381a']), 'false:true:ba_381new:1',
   'sync state: a committed refresh shows the gate and the current bank');
 

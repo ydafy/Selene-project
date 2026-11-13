@@ -3429,6 +3429,7 @@ export type Database = {
           p_expected_generation: number;
           p_is_actionable: boolean;
           p_mxn_default_count: number;
+          p_payout_schedule_interval: string;
           p_payouts_enabled: boolean;
           p_source_event_id: string;
           p_stripe_account_id: string;

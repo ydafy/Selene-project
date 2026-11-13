@@ -99,9 +99,9 @@ insert into pg_temp.gen
 select 'acct_park' || x, public.fn_acquire_connect_account_refresh('acct_park' || x, 'evt_park' || x)
 from unnest(array['A', 'B', 'C']) as x;
 select public.fn_commit_connect_account_refresh('acct_parkB', (select g from pg_temp.gen where acct = 'acct_parkB'),
-  'evt_parkB', false, 'payouts_disabled', false, null, null, null, null, null);
+  'evt_parkB', false, 'payouts_disabled', false, null, null, null, null, null, 'manual');
 select public.fn_commit_connect_account_refresh('acct_parkC', (select g from pg_temp.gen where acct = 'acct_parkC'),
-  'evt_parkC', true, null, true, 'ba_parkdefault', 'verified', 'mxn', true, 1);
+  'evt_parkC', true, null, true, 'ba_parkdefault', 'verified', 'mxn', true, 1, 'manual');
 
 -- Runs, one shipment each (shipment = run + 100, order = run + 200). Every
 -- fenced run starts at version 1 and is at version 2 inside the fence.
@@ -211,7 +211,7 @@ from unnest(array[50, 51, 52, 53, 54, 55]) as n;
 select is(pg_temp.claim_all(), array[30, 40],
   'before the refresh the worker claims only the requeued runs, never a parked one');
 select is(public.fn_commit_connect_account_refresh('acct_parkA', (select g from pg_temp.gen where acct = 'acct_parkA'),
-  'evt_parkA', true, null, true, 'ba_parkdefault', 'verified', 'mxn', true, 1), true,
+  'evt_parkA', true, null, true, 'ba_parkdefault', 'verified', 'mxn', true, 1, 'manual'), true,
   'an actionable refresh of account A is accepted');
 select is(pg_temp.rs(n), 'awaiting_connected_balance:4:pending_reconciliation:-:-:-:unclaimed',
   'the actionable refresh resumes parked run ' || n)

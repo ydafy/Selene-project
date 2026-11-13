@@ -9,7 +9,8 @@ CREATE OR REPLACE FUNCTION public.fn_commit_connect_account_refresh (
   p_current_external_account_status text,
   p_current_currency                text,
   p_current_default_for_currency    boolean,
-  p_mxn_default_count               integer
+  p_mxn_default_count               integer,
+  p_payout_schedule_interval        text
 )
   RETURNS boolean
   LANGUAGE plpgsql
@@ -59,9 +60,13 @@ BEGIN
   END IF;
 
   -- Reconstruct the gate rather than trusting a service-role healthy bit.
-  -- Only explicit true plus one known healthy MXN default can enable payouts.
+  -- Only explicit true, a manual payout schedule and one known healthy MXN
+  -- default can enable payouts. Any other schedule, or none in the snapshot,
+  -- would let Stripe pay the seller before Selene releases funds (#330 S4).
   IF p_payouts_enabled IS FALSE THEN
     v_blocked_reason := 'payouts_disabled';
+  ELSIF p_payout_schedule_interval IS DISTINCT FROM 'manual' THEN
+    v_blocked_reason := 'payouts_schedule_not_manual';
   ELSIF v_has_destination AND p_current_external_account_status IN (
     'errored', 'verification_failed', 'tokenized_account_number_deactivated'
   ) THEN
@@ -175,12 +180,12 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer) TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer, text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer) FROM "postgres";
+REVOKE ALL ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer, text) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer) TO "postgres";
+GRANT EXECUTE ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer, text) TO "postgres";
 
 REVOKE ALL
-  ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer)
+  ON FUNCTION "public"."fn_commit_connect_account_refresh"(text, bigint, text, boolean, text, boolean, text, text, text, boolean, integer, text)
   FROM PUBLIC, "anon", "authenticated";
