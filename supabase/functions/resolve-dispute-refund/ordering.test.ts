@@ -1,3 +1,4 @@
+// source-text: resolve-dispute-refund is rewritten in #261 and gets no handler before then (#278, S6), so its index.ts text stays the contract until that rewrite.
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

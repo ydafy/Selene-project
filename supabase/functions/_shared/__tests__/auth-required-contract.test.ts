@@ -1,3 +1,4 @@
+// source-text: only the dispute functions remain here; #261 rewrites them and gets no handler before then (#278, S6), so their index.ts text stays the contract.
 import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
