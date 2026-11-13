@@ -6,6 +6,7 @@
 //   bun run worktree:clean <worktree path or folder name>          plan only
 //   bun run worktree:clean <worktree path or folder name> --yes    do it
 //   bun run worktree:clean --orphans [--yes]   stack data of deleted worktrees
+//   bun run worktree:clean --stale-stacks [--yes]   stacks of old branches
 //
 // It refuses uncommitted or untracked work, an unmerged branch, the main
 // checkout, and the worktree it runs in. Stack data is only deleted when its
@@ -126,16 +127,116 @@ export const findOrphanStacks = (
       !exists(stack.identity.projectRoot),
   );
 
+/** A stack as `supabase stack list --output-format json` reports it. */
+export interface ListedStack {
+  id: string;
+  projectRoot: string;
+  branch: string | null;
+  running: boolean;
+}
+
+export type BranchState = 'missing' | 'merged' | 'unmerged';
+
+export interface StaleInput {
+  mainRoot: string;
+  worktrees: Worktree[];
+  stacks: ListedStack[];
+  /** Stacks on disk that the CLI could not decode, identified by state.json */
+  undecodable: ListedStack[];
+  branchState: (branch: string) => BranchState;
+}
+
+export interface StackDecision {
+  stack: ListedStack;
+  reason: string;
+}
+
+export interface StalePlan {
+  stale: StackDecision[];
+  kept: StackDecision[];
+  undecodableStale: StackDecision[];
+  undecodableKept: StackDecision[];
+}
+
+export function parseStackList(json: string): ListedStack[] | null {
+  try {
+    const stacks = JSON.parse(json)?.stacks;
+    if (!Array.isArray(stacks)) return null;
+    return stacks.map((stack) => ({
+      id: String(stack.id),
+      projectRoot: String(stack.project_root),
+      branch:
+        typeof stack.branch_context === 'string'
+          ? stack.branch_context.replace(/^refs\/heads\//, '')
+          : null,
+      // "reachable": the CLI reached the process that owns the running stack
+      running: stack.owner === 'reachable',
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A stack is stale when it belongs to this repository, is not the stack of a
+ * worktree's checked-out branch, its branch is deleted or merged into
+ * origin/main, and it is not running.
+ */
+export function planStaleStacks(input: StaleInput): StalePlan {
+  const scopes = orphanScopes(input.mainRoot);
+  const decide = (stack: ListedStack) => {
+    const current = input.worktrees.find(
+      (wt) =>
+        wt.branch !== null &&
+        wt.branch === stack.branch &&
+        samePath(wt.path, stack.projectRoot),
+    );
+    if (current)
+      return { stale: false, reason: `current branch of ${current.path}` };
+    if (stack.branch === null)
+      return { stale: false, reason: 'no branch recorded' };
+    const state = input.branchState(stack.branch);
+    if (state === 'unmerged')
+      return { stale: false, reason: `unmerged branch ${stack.branch}` };
+    if (stack.running)
+      return { stale: false, reason: 'running: stop it first' };
+    return {
+      stale: true,
+      reason:
+        state === 'missing' ? 'branch deleted' : 'merged into origin/main',
+    };
+  };
+  const split = (stacks: ListedStack[]) => {
+    const stale: StackDecision[] = [];
+    const kept: StackDecision[] = [];
+    for (const stack of stacks) {
+      if (!scopes.some((scope) => isInside(stack.projectRoot, scope))) continue;
+      const { stale: isStale, reason } = decide(stack);
+      (isStale ? stale : kept).push({ stack, reason });
+    }
+    return { stale, kept };
+  };
+  const readable = split(input.stacks);
+  const old = split(input.undecodable);
+  return {
+    stale: readable.stale,
+    kept: readable.kept,
+    undecodableStale: old.stale,
+    undecodableKept: old.kept,
+  };
+}
+
 export function parseArgs(args: string[]) {
   const flags = new Set(args.filter((arg) => arg.startsWith('--')));
   const [target, ...extra] = args.filter((arg) => !arg.startsWith('--'));
   const apply = flags.delete('--yes');
   const orphans = flags.delete('--orphans');
-  if (flags.size > 0 || extra.length > 0 || orphans === Boolean(target))
-    return null;
-  return orphans
-    ? { mode: 'orphans' as const, apply }
-    : { mode: 'worktree' as const, target, apply };
+  const staleStacks = flags.delete('--stale-stacks');
+  const modes = [Boolean(target), orphans, staleStacks].filter(Boolean);
+  if (flags.size > 0 || extra.length > 0 || modes.length !== 1) return null;
+  if (orphans) return { mode: 'orphans' as const, apply };
+  if (staleStacks) return { mode: 'stale-stacks' as const, apply };
+  return { mode: 'worktree' as const, target, apply };
 }
 
 export function planWorktreeClean(input: CleanInput): CleanPlan {
@@ -282,6 +383,95 @@ function cleanOrphans(apply: boolean) {
   return finish(problems);
 }
 
+const git = (...args: string[]) => run(['git', ...args]).ok;
+
+function cleanStaleStacks(apply: boolean) {
+  const worktrees = parseWorktrees(
+    run(['git', 'worktree', 'list', '--porcelain']).out,
+  );
+  if (!worktrees[0]) {
+    console.error('[worktree-clean] run it inside this repository');
+    return 1;
+  }
+  run(['git', 'fetch', '-q', 'origin']);
+  // json: the default text table is only replaced by JSON for AI agents
+  const listed = run(['supabase', 'stack', 'list', '--output-format', 'json']);
+  const stacks = listed.ok ? parseStackList(listed.out) : null;
+  if (!stacks) {
+    console.error(
+      `[worktree-clean] supabase stack list failed: ${listed.err || listed.out}`,
+    );
+    return 1;
+  }
+  const known = new Set(stacks.map((stack) => stack.id));
+  const undecodable = readStacks()
+    .filter(({ dir }) => !known.has(basename(dir)))
+    .map(({ dir, identity }) => {
+      const id = basename(dir);
+      const filter = `label=com.supabase.stack=${id}`;
+      const containers = run(['docker', 'ps', '-q', '--filter', filter]);
+      // When Docker cannot answer, assume the stack is running and keep it.
+      return {
+        id,
+        ...identity,
+        running: !containers.ok || containers.out !== '',
+      };
+    });
+  const plan = planStaleStacks({
+    mainRoot: worktrees[0].path,
+    worktrees,
+    stacks,
+    undecodable,
+    branchState: (branch) => {
+      const ref = `refs/heads/${branch}`;
+      if (!git('rev-parse', '--verify', '--quiet', ref)) return 'missing';
+      return git('merge-base', '--is-ancestor', ref, 'origin/main')
+        ? 'merged'
+        : 'unmerged';
+    },
+  });
+
+  const show = (label: string, { stack, reason }: StackDecision) =>
+    console.log(
+      `[worktree-clean] ${label} ${stack.id} ${stack.branch ?? '(no branch)'} (${stack.projectRoot}): ${reason}`,
+    );
+  for (const decision of plan.kept) show('keep', decision);
+  for (const decision of plan.stale) show('stale', decision);
+  if (plan.undecodableKept.length + plan.undecodableStale.length > 0) {
+    console.log(
+      '[worktree-clean] stacks the Supabase CLI cannot decode (written by an older CLI); stale ones are deleted as folders:',
+    );
+    for (const decision of plan.undecodableKept) show('keep', decision);
+    for (const decision of plan.undecodableStale) show('stale', decision);
+  }
+  const count = plan.stale.length + plan.undecodableStale.length;
+  if (count === 0) {
+    console.log('[worktree-clean] no stale Supabase stacks');
+    return 0;
+  }
+  if (!apply) {
+    console.log(
+      `[worktree-clean] plan only: add --yes to destroy ${count} stale stacks`,
+    );
+    return 0;
+  }
+
+  const problems: string[] = [];
+  for (const { stack } of plan.stale) {
+    const destroy = ['stack', 'destroy', '--stack-id', stack.id, '--yes'];
+    const destroyed = run(['supabase', ...destroy]);
+    if (!destroyed.ok)
+      problems.push(
+        `supabase stack destroy --stack-id ${stack.id}: ${destroyed.err || destroyed.out}`,
+      );
+  }
+  for (const { stack } of plan.undecodableStale) {
+    const problem = removeDir(join(STACKS_DIR, stack.id));
+    if (problem) problems.push(problem);
+  }
+  return finish(problems);
+}
+
 function cleanWorktree(arg: string, apply: boolean) {
   run(['git', 'fetch', '-q', 'origin']);
   const worktrees = parseWorktrees(
@@ -402,10 +592,12 @@ if (import.meta.main) {
   const parsed = parseArgs(Bun.argv.slice(2));
   if (!parsed) {
     console.error(
-      'usage: bun run worktree:clean <worktree path or folder name> [--yes] | --orphans [--yes]',
+      'usage: bun run worktree:clean <worktree path or folder name> [--yes] | --orphans [--yes] | --stale-stacks [--yes]',
     );
     process.exit(2);
   }
   if (parsed.mode === 'orphans') process.exit(cleanOrphans(parsed.apply));
+  if (parsed.mode === 'stale-stacks')
+    process.exit(cleanStaleStacks(parsed.apply));
   process.exit(cleanWorktree(parsed.target, parsed.apply));
 }

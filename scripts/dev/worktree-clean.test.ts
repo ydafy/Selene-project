@@ -6,10 +6,14 @@ import {
   parseStackIdentity,
   orphanScopes,
   parseArgs,
+  parseStackList,
   parseWorktrees,
+  planStaleStacks,
   planWorktreeClean,
   samePath,
+  type BranchState,
   type CleanInput,
+  type ListedStack,
   type StackDir,
 } from './worktree-clean';
 
@@ -148,6 +152,10 @@ describe('parseArgs', () => {
     expect(parseArgs(['auth', '--yes'])).toEqual({ ...worktree, apply: true });
     const orphans = { mode: 'orphans', apply: true } as const;
     expect(parseArgs(['--orphans', '--yes'])).toEqual(orphans);
+    const stale = { mode: 'stale-stacks', apply: false } as const;
+    expect(parseArgs(['--stale-stacks'])).toEqual(stale);
+    expect(parseArgs(['--stale-stacks', '--orphans'])).toBeNull();
+    expect(parseArgs(['auth', '--stale-stacks'])).toBeNull();
     expect(parseArgs(['auth', '--orphans', '--yes'])).toBeNull();
     expect(parseArgs(['auth', '--force'])).toBeNull();
     expect(parseArgs([])).toBeNull();
@@ -238,6 +246,154 @@ describe('planWorktreeClean', () => {
     expect(plan.steps.some((s) => s.startsWith('delete Supabase'))).toBe(false);
     expect(plan.warnings).toEqual([
       'verification-evidence/ holds 3 files and is deleted with the folder: copy it first if a PR needs it',
+    ]);
+  });
+});
+
+describe('parseStackList', () => {
+  it('reads the JSON of supabase stack list, and null when it is not that JSON', () => {
+    const json = JSON.stringify({
+      stacks: [
+        {
+          id: 'abc',
+          project_root: 'C:\\dev\\School-portal',
+          name: 'default',
+          branch_context: 'refs/heads/fix/auth',
+          runtime: 'docker',
+          owner: 'reachable',
+        },
+        { id: 'def', project_root: 'C:\\x', owner: 'unavailable' },
+      ],
+      message: '',
+    });
+    expect(parseStackList(json)).toEqual([
+      {
+        id: 'abc',
+        projectRoot: 'C:\\dev\\School-portal',
+        branch: 'fix/auth',
+        running: true,
+      },
+      { id: 'def', projectRoot: 'C:\\x', branch: null, running: false },
+    ]);
+    expect(parseStackList('NAME | PROJECT')).toBeNull();
+    expect(parseStackList('{}')).toBeNull();
+  });
+});
+
+describe('planStaleStacks', () => {
+  const MAIN = 'C:/dev/School-portal';
+  const AUTH = 'C:\\dev\\School-portal-worktrees\\auth';
+  const listed = (
+    id: string,
+    projectRoot: string,
+    branch: string | null,
+    running = false,
+  ): ListedStack => ({ id, projectRoot, branch, running });
+  const branches: Record<string, BranchState> = {
+    main: 'merged',
+    'fix/auth': 'unmerged',
+    'fix/old': 'merged',
+    'fix/gone': 'missing',
+    'feat/wip': 'unmerged',
+  };
+  const plan = (stacks: ListedStack[], undecodable: ListedStack[] = []) =>
+    planStaleStacks({
+      mainRoot: MAIN,
+      worktrees: parseWorktrees(PORCELAIN),
+      stacks,
+      undecodable,
+      branchState: (branch) => branches[branch] ?? 'missing',
+    });
+  const ids = (decisions: { stack: ListedStack }[]) =>
+    decisions.map((d) => d.stack.id);
+
+  it('keeps the stack of every checked-out branch, the main checkout included', () => {
+    const result = plan([
+      listed('main-current', 'C:\\dev\\School-portal', 'main'),
+      listed('auth-current', AUTH, 'fix/auth'),
+    ]);
+    expect(result.stale).toEqual([]);
+    expect(result.kept.map((d) => d.reason)).toEqual([
+      'current branch of C:/dev/School-portal',
+      'current branch of C:/dev/School-portal-worktrees/auth',
+    ]);
+  });
+
+  it('marks stacks of deleted or merged branches as stale, in any of our worktrees', () => {
+    const result = plan([
+      listed('gone', AUTH, 'fix/gone'),
+      listed('merged', MAIN, 'fix/old'),
+      // main is current only in the main checkout, not in auth
+      listed('auth-main', AUTH, 'main'),
+    ]);
+    expect(result.kept).toEqual([]);
+    expect(result.stale.map((d) => [d.stack.id, d.reason])).toEqual([
+      ['gone', 'branch deleted'],
+      ['merged', 'merged into origin/main'],
+      ['auth-main', 'merged into origin/main'],
+    ]);
+  });
+
+  it('keeps stacks of unmerged branches and stacks without a branch', () => {
+    const result = plan([
+      listed('wip', AUTH, 'feat/wip'),
+      listed('nobranch', AUTH, null),
+    ]);
+    expect(result.stale).toEqual([]);
+    expect(result.kept.map((d) => d.reason)).toEqual([
+      'unmerged branch feat/wip',
+      'no branch recorded',
+    ]);
+  });
+
+  it('skips a running stack even when its branch is stale', () => {
+    const result = plan([listed('busy', AUTH, 'fix/gone', true)]);
+    expect(result.stale).toEqual([]);
+    expect(result.kept.map((d) => d.reason)).toEqual([
+      'running: stop it first',
+    ]);
+  });
+
+  it('protects a detached worktree only through the branch rules', () => {
+    const spike = 'C:/dev/School-portal-worktrees/spike';
+    const result = plan([listed('spike-old', spike, 'fix/old')]);
+    expect(ids(result.stale)).toEqual(['spike-old']);
+  });
+
+  it('never selects stacks of other projects', () => {
+    const result = plan(
+      [
+        listed('other', 'C:\\dev\\another-app', 'fix/gone'),
+        listed(
+          'lookalike',
+          'C:\\dev\\School-portal-worktrees-old\\x',
+          'fix/gone',
+        ),
+      ],
+      [listed('other-old', 'C:\\dev\\another-app', 'fix/gone')],
+    );
+    expect(result).toEqual({
+      stale: [],
+      kept: [],
+      undecodableStale: [],
+      undecodableKept: [],
+    });
+  });
+
+  it('lists undecodable stacks separately with the same rules', () => {
+    const result = plan(
+      [listed('readable', MAIN, 'fix/gone')],
+      [
+        listed('old-gone', MAIN, 'fix/gone'),
+        listed('old-main', MAIN, 'main'),
+        listed('old-busy', MAIN, 'fix/old', true),
+      ],
+    );
+    expect(ids(result.stale)).toEqual(['readable']);
+    expect(ids(result.undecodableStale)).toEqual(['old-gone']);
+    expect(result.undecodableKept.map((d) => [d.stack.id, d.reason])).toEqual([
+      ['old-main', 'current branch of C:/dev/School-portal'],
+      ['old-busy', 'running: stop it first'],
     ]);
   });
 });

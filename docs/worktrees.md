@@ -19,6 +19,8 @@ The Git hooks set up a worktree on their own:
 | Remote branch                                                                                                     | GitHub                                         | Yes, on merge: the repository deletes head branches automatically |
 | Local Supabase stack (stack mode creates one per worktree and branch)                                             | `~/.supabase/stacks/<hash>`, Docker containers | No                                                                |
 
+Stack mode keeps one stack per worktree and branch, so a worktree that stays alive also keeps the stacks of every branch it had before. `bun run worktree:clean --stale-stacks` removes those ([below](#stacks-of-old-branches)).
+
 ## Clean up a finished worktree
 
 From the main checkout (`C:/dev/School-portal`), never from inside the worktree:
@@ -37,7 +39,7 @@ It refuses, and changes nothing, when:
 - git cannot read the worktree's status (it never assumes a worktree is clean);
 - the target is the main checkout or the worktree the command runs in;
 - the path is not a worktree of this repository;
-- the arguments mix a worktree with `--orphans`, or include an unknown flag.
+- the arguments mix a worktree with `--orphans` or `--stale-stacks`, or include an unknown flag.
 
 Git removes the worktree with `core.longpaths` on, because `node_modules` holds paths longer than 260 characters. If `git worktree remove` still fails, the command deletes the folder itself (the worktree already passed every check above). If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops: close what holds it and run the command again. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
 
@@ -49,6 +51,22 @@ bun run worktree:clean --orphans --yes  # deletes it
 ```
 
 It only considers stack data of this repository: projects whose root is the main checkout or a folder under `<main checkout>-worktrees` (for example `C:/dev/School-portal-worktrees`). Stack data of other projects on the same machine is never listed, even when their folder is gone.
+
+## Stacks of old branches
+
+```bash
+bun run worktree:clean --stale-stacks        # lists every stack of this repository and whether it is stale
+bun run worktree:clean --stale-stacks --yes  # destroys the stale ones
+```
+
+Run it from the main checkout. It reads `supabase stack list` and treats a stack as stale only when all of these hold:
+
+- its project root is the main checkout or a folder under `<main checkout>-worktrees`;
+- it is not the stack of the branch a worktree (or the main checkout) has checked out now;
+- its branch no longer exists locally, or is merged into `origin/main`;
+- it is not running (the CLI reports its owner as `reachable`): stop it first.
+
+It keeps stacks without a recorded branch and prints the reason for every stack it keeps. With `--yes` it runs `supabase stack destroy --stack-id <id> --yes` for each stale stack. Stacks written by an older CLI that `supabase stack list` cannot decode get their own section: their branch comes from `state.json`, the same rules apply, a stack with running Docker containers is kept, and a stale one is deleted as a folder, because the CLI cannot read it. A stack that fails to go is named, and the command exits with code 1.
 
 ## Is any context lost?
 
