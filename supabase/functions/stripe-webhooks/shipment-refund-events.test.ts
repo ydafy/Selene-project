@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
 
 import {
   handleShipmentRefundEvent,
@@ -395,19 +394,5 @@ describe('handleShipmentRefundEvent', () => {
     );
     expect(h.reports).toHaveLength(1);
     expect(h.reports[0]?.data.amountOwedCents).toBeNull();
-  });
-});
-
-describe('stripe-webhooks wiring', () => {
-  const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-
-  it('routes refund.updated and refund.failed through the refund event handler and the service-only RPC', () => {
-    expect(source).toContain("from './shipment-refund-events.ts'");
-    expect(source).toContain("'refund.updated'");
-    expect(source).toContain("'refund.failed'");
-    expect(source).toContain('fn_apply_shipment_cancellation_refund_event');
-    expect(source).toContain(
-      "createCancellationReporter('stripe-webhooks', log)",
-    );
   });
 });

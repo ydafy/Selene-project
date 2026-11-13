@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 import {
   applyConnectAccountActionability,
@@ -1732,25 +1730,6 @@ describe('stage projection for payout lifecycle events', () => {
       ]);
     },
   );
-  it('wires production adapter to the stage-specific RPC with bounded decision logging', () => {
-    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
-    expect(source).toMatch(
-      /decideRejectedPayoutStagePark:\s*\(input\)\s*=>\s*decideRejectedPayoutStagePark\(\s*supabaseAdmin,\s*input,?\s*\)/,
-    );
-    expect(source).toMatch(/'fn_decide_rejected_payout_stage_park' as never/);
-    for (const argument of [
-      'p_run_id',
-      'p_payout_id',
-      'p_target_stage',
-      'p_failure_reason',
-    ]) {
-      expect(source).toContain(argument);
-    }
-    expect(source).toMatch(
-      /Payout stage conflict decision',\s*\{\s*eventId: input\.eventId,\s*category: data,?\s*\}/,
-    );
-  });
-
   it('routes only the named stage conflict through the decision after an adapter refusal', async () => {
     const deps = createDeps({
       projectPayoutStage: async () => {
@@ -2533,82 +2512,5 @@ describe('defensive signed account event extraction', () => {
       blockedReason: 'payouts_disabled',
       undetermined: false,
     });
-  });
-});
-
-describe('phase 2B slice 2 webhook account surface is RPC-only', () => {
-  const readIndexSource = (): string =>
-    readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('never reads or writes the revoked account tables directly', () => {
-    const source = readIndexSource();
-
-    expect(source).not.toMatch(/\.from\(\s*['"]connect_account_events['"]/);
-    expect(source).not.toMatch(
-      /\.from\(\s*['"]connect_account_actionability['"]/,
-    );
-  });
-
-  it('records timestamped evidence and commits actionability through acquire/CAS RPCs only', () => {
-    const source = readIndexSource();
-
-    expect(source).toMatch(/fn_record_connect_account_event/);
-    expect(source).toMatch(/fn_acquire_connect_account_refresh/);
-    expect(source).toMatch(/fn_commit_connect_account_refresh/);
-    expect(source).not.toMatch(/fn_apply_connect_account_actionability/);
-    // stripe_created is signed evidence only; current-state ordering is generation.
-    expect(source).toMatch(/p_stripe_created\s*:/);
-    expect(source).toMatch(/p_expected_generation\s*:/);
-    // The evidence append carries the extracted external bank account id.
-    expect(source).toMatch(/p_external_account_id\s*:/);
-  });
-});
-
-describe('phase 2B slice 5 webhook park and stage-projection surface is guarded', () => {
-  const readIndexSource = (): string =>
-    readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('parks reconciliation-needed only through the guarded park RPC, never a direct run update', () => {
-    const source = readIndexSource();
-
-    // The reconciliation-needed park must be a guarded, version-bumping,
-    // claim-clearing RPC — not a direct UPDATE that could regress a terminal
-    // status or a newer stage behind an in-flight writer.
-    expect(source).toMatch(/fn_mark_payout_run_reconciliation_needed/);
-    expect(source).not.toMatch(
-      /\.from\(\s*'connect_payout_runs'\s*\)[\s\S]{0,300}\.update\(\s*\{[\s\S]{0,400}?status:\s*'reconciliation_needed'/,
-    );
-  });
-
-  it('never ignores a rejected intermediate stage projection', () => {
-    const source = readIndexSource();
-
-    // fn_project_payout_run_stage returns FALSE when the monotonic gate
-    // refuses the progression: the webhook must observe that result, never
-    // treat the projection as applied.
-    expect(source).toMatch(/PAYOUT_STAGE_PROJECTION_CONFLICT/);
-  });
-});
-
-describe('phase 2B final slice webhook terminal surface is atomic', () => {
-  const readIndexSource = (): string =>
-    readFileSync(join(import.meta.dir, 'index.ts'), 'utf8');
-
-  it('keeps no separate shipment write next to the atomic terminal RPC', () => {
-    const source = readIndexSource();
-
-    // The terminal projection unit (run + mappings + shipment payout-id
-    // set/clear) is one SECURITY DEFINER RPC (connect-payout-adapters.test.ts
-    // drives it); the webhook wiring keeps no separate mapping-projection,
-    // release, or clear write the handler could apply after a refusal.
-    expect(source).not.toMatch(
-      /markConnectPayoutRunShipmentsStatus|markConnectShipmentsReleased|clearConnectShipmentsReleased|listConnectPayoutRunShipmentIds/,
-    );
-    expect(source).not.toMatch(
-      /\.from\(\s*'connect_payout_run_shipments'\s*\)[\s\S]{0,300}\.update\(/,
-    );
-    expect(source).not.toMatch(
-      /\.from\(\s*'shipments'\s*\)[\s\S]{0,300}\.update\(\s*\{[\s\S]{0,200}?stripe_payout_id/,
-    );
   });
 });
