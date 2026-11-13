@@ -317,4 +317,4 @@ It is established as the standard procedure for structural inconsistencies.
 - Moving to v2 thin events was judged overengineering for the MVP.
 - Two layers keep automatic payouts off. `create-connect-account` sets manual payouts through `POST /v1/balance_settings` on every call. `fn_commit_connect_account_refresh` blocks payouts to an account whose payout schedule is not `manual` (`payouts_schedule_not_manual`).
 
-**Consequence:** A seller's account never has `charges_enabled`, so onboarding is `complete` when payouts are enabled and the `transfers` capability is active. The migration and `stripe-webhooks` deploy together (`docs/go-live.md`, "7. Edge Functions"). The Connect webhook endpoint needs no new event type.
+**Consequence:** A seller's account requests no `card_payments`, so `charges_enabled` says nothing about readiness (sandbox: false before onboarding, true after it). Onboarding is `complete` when payouts are enabled and the `transfers` capability is active. The migration and `stripe-webhooks` deploy together (`docs/go-live.md`, "7. Edge Functions"). The Connect webhook endpoint needs no new event type.
