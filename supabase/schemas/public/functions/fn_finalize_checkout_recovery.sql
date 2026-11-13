@@ -22,7 +22,7 @@ BEGIN
   FOR UPDATE;
 
   IF v_order_id IS NULL THEN
-    UPDATE public.checkout_recovery_shells
+    UPDATE internal.checkout_recovery_shells
     SET compensation_state = 'refunded',
         stripe_refund_id = p_stripe_refund_id,
         compensation_lease_expires_at = NULL,
@@ -36,7 +36,7 @@ BEGIN
     END IF;
 
     IF EXISTS (
-      SELECT 1 FROM public.checkout_recovery_shells
+      SELECT 1 FROM internal.checkout_recovery_shells
       WHERE stripe_payment_intent_id = p_stripe_payment_intent_id
         AND compensation_state = 'refunded'
     ) THEN
@@ -51,7 +51,7 @@ BEGIN
     WHERE id = v_order_id
       AND compensation_state = 'refunded'
   ) THEN
-    UPDATE public.checkout_recovery_shells
+    UPDATE internal.checkout_recovery_shells
     SET compensation_state = 'refunded',
         stripe_refund_id = COALESCE(stripe_refund_id, p_stripe_refund_id),
         compensation_lease_expires_at = NULL,

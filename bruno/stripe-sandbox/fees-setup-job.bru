@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs
+  url: {{baseUrl}}/rest/v1/rpc/fn_enqueue_stripe_fee_reconciliation_job
   body: json
   auth: none
 }
@@ -13,7 +13,6 @@ post {
 headers {
   apikey: {{secretKey}}
   Authorization: Bearer {{secretKey}}
-  Prefer: return=representation
 }
 
 script:pre-request {
@@ -28,26 +27,19 @@ script:pre-request {
 
 body:json {
   {
-    "order_id": "{{releaseOrderId}}",
-    "stripe_payment_intent_id": "{{releaseIntentId}}"
-  }
-}
-
-script:post-response {
-  if (res.getStatus() === 201) {
-    bru.setVar("sandboxFeeJobId", res.getBody()[0].id);
+    "p_order_id": "{{releaseOrderId}}",
+    "p_stripe_payment_intent_id": "{{releaseIntentId}}"
   }
 }
 
 tests {
   test("the service role adds a due fee job for the order with the real charge", function () {
-    expect(res.getStatus()).to.equal(201);
-    expect(res.getBody()[0].status).to.equal("pending");
-    expect(res.getBody()[0].attempt_count).to.equal(0);
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
   });
 }
 
 docs {
-  Seeds one due job on the order of release-order-from-real-charge, whose stripe_charge_id
-  is a real sandbox charge.
+  Queues one due job, through the same RPC stripe-webhooks uses, on the order of
+  release-order-from-real-charge, whose stripe_charge_id is a real sandbox charge.
 }

@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.fn_complete_stripe_fee_reconciliation_job_leas
   SET search_path TO 'public', 'pg_temp'
   AS $function$
 DECLARE
-  v_job public.stripe_fee_reconciliation_jobs;
+  v_job internal.stripe_fee_reconciliation_jobs;
   v_payment_intent_id TEXT;
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
@@ -24,7 +24,7 @@ BEGIN
     RAISE EXCEPTION 'INVALID_COMPLETION' USING ERRCODE = '22023';
   END IF;
 
-  SELECT * INTO v_job FROM public.stripe_fee_reconciliation_jobs
+  SELECT * INTO v_job FROM internal.stripe_fee_reconciliation_jobs
   WHERE id = p_job_id FOR UPDATE;
   IF NOT FOUND THEN
     RETURN FALSE;
@@ -59,7 +59,7 @@ BEGIN
       stripe_fee_reconciled_at = p_reconciled_at, updated_at = clock_timestamp()
   WHERE id = v_job.order_id AND actual_stripe_fee_cents IS NULL;
 
-  UPDATE public.stripe_fee_reconciliation_jobs
+  UPDATE internal.stripe_fee_reconciliation_jobs
   SET status = 'succeeded', next_retry_at = NULL, last_error = NULL,
       claim_expires_at = NULL, updated_at = clock_timestamp()
   WHERE id = p_job_id;

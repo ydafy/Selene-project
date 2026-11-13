@@ -1,28 +1,36 @@
 -- Server-only machinery tables live in schema internal (odd/tasks/internal-schema.md
--- S3, T5): webhook_deliveries, account_closures, connect_account_actionability,
--- connect_account_events and connect_payout_events. Each one exists only in
--- internal, keeps RLS on with no policy, and grants nothing to any role but its
--- owner: only SECURITY DEFINER functions reach them. The Edge Functions that read
--- or wrote two of them directly now call narrow RPCs, pinned here: their
--- service_role-only access and their exact effect.
+-- S3, T5 and T6): webhook_deliveries, account_closures,
+-- connect_account_actionability, connect_account_events, connect_payout_events,
+-- checkout_recovery_shells and stripe_fee_reconciliation_jobs. Each one exists
+-- only in internal, keeps RLS on with no policy, and grants nothing to any role
+-- but its owner: only SECURITY DEFINER functions reach them. The Edge Functions
+-- that read or wrote three of them directly now call narrow RPCs, pinned here:
+-- their service_role-only access and their exact effect. The leased fee claim
+-- returns a column table instead of the moved row type, with the same columns
+-- in the same order (S10).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(51);
+select plan(65);
 \ir ../fixtures/money.psql
 
 create temporary table moved (name text) on commit drop;
 insert into moved values
   ('webhook_deliveries'), ('account_closures'), ('connect_account_actionability'),
-  ('connect_account_events'), ('connect_payout_events');
+  ('connect_account_events'), ('connect_payout_events'),
+  ('checkout_recovery_shells'), ('stripe_fee_reconciliation_jobs');
 
-create temporary table rpcs (signature text) on commit drop;
-insert into rpcs values
+-- search_path is the exact pinned setting; the fee claim keeps its original one.
+create temporary table rpcs (signature text, search_path text default '""') on commit drop;
+insert into rpcs (signature) values
   ('public.fn_claim_envia_webhook_delivery(text, text, text)'),
   ('public.fn_mark_webhook_delivery(uuid, text, text)'),
   ('public.fn_list_capped_account_closures(integer, integer)'),
   ('public.fn_record_closure_cleanup_step(uuid, text, text)'),
   ('public.fn_claim_account_closures(integer, interval, integer)'),
-  ('public.fn_record_closure_attempt(uuid, text, boolean)');
+  ('public.fn_record_closure_attempt(uuid, text, boolean)'),
+  ('public.fn_enqueue_stripe_fee_reconciliation_job(uuid, text)');
+insert into rpcs values
+  ('public.fn_claim_stripe_fee_reconciliation_jobs_leased(integer, integer)', 'public, pg_temp');
 
 create function pg_temp.as_service() returns void language plpgsql as $$
 begin
@@ -36,7 +44,7 @@ select results_eq(
     where c.relnamespace = 'internal'::regnamespace and c.relkind = 'r'
       and c.relname in (select name from moved) order by 1$$,
   $$select name collate "default" from moved order by 1$$,
-  'the five machinery tables exist in internal');
+  'the seven machinery tables exist in internal');
 select is_empty(
   $$select c.relname from pg_class c
     where c.relnamespace = 'public'::regnamespace and c.relname in (select name from moved)$$,
@@ -67,6 +75,8 @@ select fk_ok('public', 'shipment_tracking_events', 'webhook_delivery_id', 'inter
   'shipment_tracking_events.webhook_delivery_id still references the moved webhook_deliveries');
 select fk_ok('internal', 'connect_payout_events', 'connect_payout_run_id', 'public', 'connect_payout_runs', 'id',
   'connect_payout_events still references connect_payout_runs');
+select fk_ok('internal', 'stripe_fee_reconciliation_jobs', 'order_id', 'public', 'orders', 'id',
+  'stripe_fee_reconciliation_jobs still references orders');
 select has_trigger('internal', 'connect_account_events', 'trg_connect_account_events_append_only',
   'connect_account_events keeps its append-only trigger');
 select has_trigger('internal', 'connect_payout_events', 'trg_connect_payout_events_append_only',
@@ -83,6 +93,8 @@ reset role;
 select pg_temp.as_service();
 select throws_ok('select 1 from internal.webhook_deliveries', '42501', null,
   'service_role cannot read internal.webhook_deliveries directly');
+select throws_ok('select 1 from internal.stripe_fee_reconciliation_jobs', '42501', null,
+  'service_role cannot read internal.stripe_fee_reconciliation_jobs directly');
 reset role;
 
 -- 2. The RPCs: SECURITY DEFINER, pinned search_path, EXECUTE for service_role only
@@ -90,9 +102,10 @@ select is_empty(
   $$select r.signature from rpcs r
     where not exists (
       select 1 from pg_proc p
-      where p.oid = to_regprocedure(r.signature) and p.prosecdef and p.proconfig @> array['search_path=""']
+      where p.oid = to_regprocedure(r.signature) and p.prosecdef
+        and p.proconfig @> array['search_path=' || r.search_path]
     )$$,
-  'every RPC is SECURITY DEFINER with an empty search_path');
+  'every RPC is SECURITY DEFINER with its pinned search_path (empty; the fee claim keeps public, pg_temp)');
 select results_eq(
   $$select x.role_name collate "default", r.signature collate "default"
     from rpcs r cross join (values ('anon'), ('authenticated'), ('service_role')) x(role_name)
@@ -100,6 +113,16 @@ select results_eq(
     order by 1, 2$$,
   $$select 'service_role' collate "default", signature collate "default" from rpcs order by 2$$,
   'only service_role can execute the RPCs');
+select is(
+  pg_get_function_result('public.fn_claim_stripe_fee_reconciliation_jobs_leased(integer, integer)'::regprocedure),
+  'TABLE(id uuid, order_id uuid, stripe_payment_intent_id text, status text, attempt_count integer, '
+    || 'next_retry_at timestamp with time zone, last_error text, created_at timestamp with time zone, '
+    || 'updated_at timestamp with time zone, claim_token uuid, claim_expires_at timestamp with time zone)',
+  'the fee claim returns the job columns in table order, not the moved row type');
+set local role authenticated;
+select throws_ok($$select public.fn_enqueue_stripe_fee_reconciliation_job(gen_random_uuid(), 'pi_t6')$$,
+  '42501', null, 'authenticated cannot execute the fee enqueue');
+reset role;
 
 -- Run as the owner with client claims, so the body check answers, not the grant.
 select set_config('request.jwt.claims', '{"role": "authenticated"}', true);
@@ -111,6 +134,8 @@ select throws_ok($$select * from public.fn_list_capped_account_closures(24, 50)$
   'P0001', 'UNAUTHORIZED', 'the capped list refuses an authenticated caller');
 select throws_ok($$select public.fn_record_closure_cleanup_step(gen_random_uuid(), 'storage_cleanup', 'done')$$,
   'P0001', 'UNAUTHORIZED', 'the step record refuses an authenticated caller');
+select throws_ok($$select public.fn_enqueue_stripe_fee_reconciliation_job(gen_random_uuid(), 'pi_t6')$$,
+  '42501', 'UNAUTHORIZED', 'the fee enqueue refuses an authenticated caller');
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 select throws_ok($$select * from public.fn_claim_envia_webhook_delivery('d', 'tracking.simple', repeat('a', 64))$$,
   'P0001', 'UNAUTHORIZED', 'the delivery claim refuses an anon caller');
@@ -120,6 +145,8 @@ select throws_ok($$select * from public.fn_list_capped_account_closures(24, 50)$
   'P0001', 'UNAUTHORIZED', 'the capped list refuses an anon caller');
 select throws_ok($$select public.fn_record_closure_cleanup_step(gen_random_uuid(), 'storage_cleanup', 'done')$$,
   'P0001', 'UNAUTHORIZED', 'the step record refuses an anon caller');
+select throws_ok($$select public.fn_enqueue_stripe_fee_reconciliation_job(gen_random_uuid(), 'pi_t6')$$,
+  '42501', 'UNAUTHORIZED', 'the fee enqueue refuses an anon caller');
 
 -- 3. fn_claim_envia_webhook_delivery -----------------------------------------
 create temporary table claims (step text, kind text, id uuid) on commit drop;
@@ -253,6 +280,48 @@ select is(pg_temp.closure_state(4), 'done,done,done:40:-:false',
 select is(
   (select count(*) from internal.account_closures where user_id = pg_temp.mu(6)),
   0::bigint, 'recording a step for a user without a closure writes nothing');
+
+-- 7. fn_enqueue_stripe_fee_reconciliation_job --------------------------------
+-- Replaces the webhook's direct upsert: a pending job due now, inserted once per
+-- order and payment intent; a repeat changes nothing. Returns whether it inserted.
+select pg_temp.money_user(7);
+insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
+values (pg_temp.mu(70), pg_temp.mu(7), 1000, '{}'::jsonb, 'paid', 'pi_t6_70'),
+       (pg_temp.mu(71), pg_temp.mu(7), 1000, '{}'::jsonb, 'paid', 'pi_t6_71');
+create function pg_temp.fee_job_state(p_order integer) returns text language sql as $$
+  select string_agg(status || ':' || attempt_count || ':' || coalesce((next_retry_at = now())::text, '-')
+    || ':' || coalesce(last_error, '-') || ':' || (updated_at = now())::text, ',')
+  from internal.stripe_fee_reconciliation_jobs where order_id = pg_temp.mu(p_order)
+$$;
+select pg_temp.as_service();
+select is(public.fn_enqueue_stripe_fee_reconciliation_job(pg_temp.mu(70), 'pi_t6_70'), true,
+  'the first enqueue for an order and payment intent inserts a job and returns true');
+select is(public.fn_enqueue_stripe_fee_reconciliation_job(pg_temp.mu(70), 'pi_t6_70'), false,
+  'a second enqueue for the same pair inserts nothing and returns false');
+reset role;
+select is(pg_temp.fee_job_state(70), 'pending:0:true:-:true',
+  'one job is stored: pending, no attempt, due now, no error, stamped now');
+insert into internal.stripe_fee_reconciliation_jobs (order_id, stripe_payment_intent_id, status, attempt_count,
+  last_error, updated_at)
+values (pg_temp.mu(71), 'pi_t6_71', 'failed', 2, 'earlier', now() - interval '1 hour');
+select pg_temp.as_service();
+select is(public.fn_enqueue_stripe_fee_reconciliation_job(pg_temp.mu(71), 'pi_t6_71'), false,
+  'an enqueue for a pair whose job already exists returns false');
+select throws_ok($$select public.fn_enqueue_stripe_fee_reconciliation_job(gen_random_uuid(), 'pi_t6_none')$$,
+  '23503', null, 'an enqueue for an unknown order is refused by the order foreign key');
+reset role;
+select is(pg_temp.fee_job_state(71), 'failed:2:-:earlier:false',
+  'an enqueue never resets an existing job');
+select is(
+  (select count(*) from internal.stripe_fee_reconciliation_jobs where stripe_payment_intent_id = 'pi_t6_none'),
+  0::bigint, 'a refused enqueue stores nothing');
+select pg_temp.as_service();
+select results_eq(
+  $$select order_id, stripe_payment_intent_id, status, attempt_count, claim_token is not null
+    from public.fn_claim_stripe_fee_reconciliation_jobs_leased(25, 3)$$,
+  $$values (pg_temp.mu(70), 'pi_t6_70', 'processing', 1, true)$$,
+  'the leased claim returns the enqueued job as processing with a token; the failed one is not due');
+reset role;
 
 select * from finish();
 rollback;

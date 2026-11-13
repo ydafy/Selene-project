@@ -530,15 +530,9 @@ const SETTLEMENT_ARGS = {
 
 // Order fee lookup, conditional fee update and refresh for a settled order.
 const orderTable =
-  (options: {
-    order?: Result;
-    updated?: Result;
-    refreshed?: Result;
-    job?: Result;
-  }) =>
+  (options: { order?: Result; updated?: Result; refreshed?: Result }) =>
   (query: Query): Result | undefined => {
     const ops = query.ops.map(([op]) => op);
-    if (query.table === 'stripe_fee_reconciliation_jobs') return options.job;
     if (query.table !== 'orders') return undefined;
     if (ops.includes('update')) {
       return options.updated ?? { data: [{ id: ORDER_ID }] };
@@ -628,37 +622,68 @@ describe('payment_intent.succeeded single-modal settlement', () => {
     expect(result.queries.map((query) => query.table)).toEqual(['orders']);
   });
 
-  it('queues one idempotent fee job when the balance transaction is not ready', async () => {
-    const result = await invoke(succeeded(), {
-      rpc: { fn_create_shipments_from_single_payment: settled },
-      table: orderTable({}),
-      stripe: {
-        'charges.retrieve': () => ({ id: 'ch_1', balance_transaction: null }),
+  const ENQUEUE_ARGS = {
+    p_order_id: ORDER_ID,
+    p_stripe_payment_intent_id: 'pi_single',
+  };
+  // `true` inserted a job; `false` means the pair already has one, which the
+  // RPC leaves untouched. Either way the webhook acknowledges.
+  for (const inserted of [true, false]) {
+    it(`queues the fee job through the enqueue RPC when the balance transaction is not ready (inserted: ${inserted})`, async () => {
+      const result = await invoke(succeeded(), {
+        rpc: {
+          fn_create_shipments_from_single_payment: settled,
+          fn_enqueue_stripe_fee_reconciliation_job: { data: inserted },
+        },
+        table: orderTable({}),
+        stripe: {
+          'charges.retrieve': () => ({ id: 'ch_1', balance_transaction: null }),
+        },
+      });
+      expect(result.status).toBe(200);
+      expect(result.body).toEqual({ received: true });
+      expect(result.effects).toEqual([
+        'supabase',
+        'rpc:fn_create_shipments_from_single_payment',
+        'from:orders',
+        'stripe:charges.retrieve',
+        'rpc:fn_enqueue_stripe_fee_reconciliation_job',
+      ]);
+      expect(result.rpcs[1]).toEqual({
+        name: 'fn_enqueue_stripe_fee_reconciliation_job',
+        args: ENQUEUE_ARGS,
+      });
+      // The job table lives in schema internal: no direct table access, and
+      // no fee write on the order until the worker reconciles it.
+      expect(result.queries.map((query) => query.table)).toEqual(['orders']);
+    });
+  }
+
+  it('sends the event to the DLQ when the fee job cannot be queued', async () => {
+    const event = succeeded();
+    const result = await invoke(event, {
+      rpc: {
+        fn_create_shipments_from_single_payment: settled,
+        fn_enqueue_stripe_fee_reconciliation_job: {
+          error: { message: 'jobs down' },
+        },
       },
+      table: orderTable({}),
+      stripe: { 'charges.retrieve': () => ({ id: 'ch_1' }) },
     });
-    expect(result.status).toBe(200);
-    expect(result.queries[1]).toEqual({
-      table: 'stripe_fee_reconciliation_jobs',
-      ops: [
-        [
-          'upsert',
-          {
-            order_id: ORDER_ID,
-            stripe_payment_intent_id: 'pi_single',
-            status: 'pending',
-            attempt_count: 0,
-            next_retry_at: expect.any(String),
-            last_error: null,
-            updated_at: expect.any(String),
-          },
-          {
-            onConflict: 'order_id,stripe_payment_intent_id',
-            ignoreDuplicates: true,
-          },
-        ],
-      ],
-    });
-    expect(result.queries).toHaveLength(2);
+    expectDlq(
+      result,
+      event,
+      'STRIPE_FEE_RECONCILIATION_JOB_UPSERT_FAILED: jobs down',
+    );
+    expect(result.rpcs.map((rpc) => rpc.name)).toEqual([
+      'fn_create_shipments_from_single_payment',
+      'fn_enqueue_stripe_fee_reconciliation_job',
+    ]);
+    expect(result.queries.map((query) => query.table)).toEqual([
+      'orders',
+      'webhook_dlq',
+    ]);
   });
 
   it('accepts a fee another writer already recorded', async () => {
@@ -688,14 +713,6 @@ describe('payment_intent.succeeded single-modal settlement', () => {
       'the order lookup fails',
       { table: orderTable({ order: { data: null } }) },
       'ORDER_STRIPE_FEE_LOOKUP_FAILED: not_found',
-    ],
-    [
-      'the fee job cannot be queued',
-      {
-        table: orderTable({ job: { error: { message: 'jobs down' } } }),
-        stripe: { 'charges.retrieve': () => ({ id: 'ch_1' }) },
-      },
-      'STRIPE_FEE_RECONCILIATION_JOB_UPSERT_FAILED: jobs down',
     ],
     [
       'the fee update fails',

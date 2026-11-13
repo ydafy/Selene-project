@@ -32,7 +32,7 @@ create function pg_temp.c_shell(
   p_key text, p_state text, p_next interval default null,
   p_lease interval default null, p_created_ago interval default interval '1 hour'
 ) returns void language sql as $$
-  insert into public.checkout_recovery_shells (stripe_payment_intent_id, reason, compensation_state,
+  insert into internal.checkout_recovery_shells (stripe_payment_intent_id, reason, compensation_state,
     next_compensation_retry_at, compensation_lease_expires_at, compensation_attempt_count, stripe_charge_id, created_at)
   values ('pi_crc_' || p_key, 'seed', p_state, now() + p_next, now() + p_lease, 3, 'ch_' || p_key, now() - p_created_ago)
 $$;
@@ -52,7 +52,7 @@ create function pg_temp.o_states(p_ns integer[]) returns text language sql as $$
 $$;
 create function pg_temp.s_states(p_keys text[]) returns text language sql as $$
   select string_agg(k || ':' || s.compensation_state || ':' || s.compensation_attempt_count, ',' order by k)
-  from unnest(p_keys) k join public.checkout_recovery_shells s on s.stripe_payment_intent_id = 'pi_crc_' || k
+  from unnest(p_keys) k join internal.checkout_recovery_shells s on s.stripe_payment_intent_id = 'pi_crc_' || k
 $$;
 
 -- Execute grants of a function as anon:authenticated:service_role.
@@ -160,7 +160,7 @@ select is(pg_temp.s_states(array['s2', 's4', 's6', 's8', 's9']),
 select is(
   (select string_agg(right(stripe_payment_intent_id, 2) || ':' || compensation_state || ':' || compensation_attempt_count || ':'
      || extract(epoch from compensation_lease_expires_at - now())::integer, ',' order by stripe_payment_intent_id)
-   from public.checkout_recovery_shells where stripe_payment_intent_id in ('pi_crc_s1', 'pi_crc_s7')),
+   from internal.checkout_recovery_shells where stripe_payment_intent_id in ('pi_crc_s1', 'pi_crc_s7')),
   's1:refunding:4:300,s7:refunding:4:300', 'claims: a shell claim counts the attempt and sets a five-minute lease');
 
 select pg_temp.c_order(7118, true, 'refund_pending', interval '-1 minute');
@@ -178,7 +178,7 @@ set local role service_role;
 select is(pg_temp.claim(0, null, 'standalone') || '|' || pg_temp.claim(1, null, 'standalone'),
   'pi_crc_t_c:ch_t_c|pi_crc_t_a:ch_t_a', 'claims: a limit below 1 claims one; the oldest goes first, ties by PaymentIntent');
 reset role;
-insert into public.checkout_recovery_shells (stripe_payment_intent_id, reason, next_compensation_retry_at)
+insert into internal.checkout_recovery_shells (stripe_payment_intent_id, reason, next_compensation_retry_at)
 select 'pi_crc_bulk_' || n, 'seed', now() - interval '1 minute' from generate_series(1, 101) n;
 set local role service_role;
 select is(

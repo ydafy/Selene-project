@@ -1,0 +1,40 @@
+meta {
+  name: order-buyer-closure-cleanup
+  type: http
+  seq: 69
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_record_closure_cleanup_step
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  {
+    "p_user_id": "{{orderBuyerId}}",
+    "p_step": "storage_cleanup",
+    "p_state": "done"
+  }
+}
+
+tests {
+  test("the order buyer's closure has no open cleanup step", function () {
+    expect(res.getStatus()).to.equal(204);
+  });
+}
+
+docs {
+  Cleanup (#118, #492). order-buyer-close-account calls fn_close_account directly, not
+  delete-account, so nothing runs the Storage step and the closure stays pending. The
+  account-closure-cleanup cron of a later run (functions/account-closure-cleanup-empty)
+  and the claim in supabase/tests/database/account_closure_cleanup.test.sql would pick it
+  up. This buyer never uploaded an avatar or a listing, so there is nothing to remove:
+  record the step done, as the cleanup does through the same function.
+  order-buyer-closure-cleanup-state reads it back.
+}

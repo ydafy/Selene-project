@@ -351,55 +351,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      checkout_recovery_shells: {
-        Row: {
-          charged_amount_cents: number | null;
-          compensation_attempt_count: number;
-          compensation_last_error: string | null;
-          compensation_lease_expires_at: string | null;
-          compensation_state: string;
-          created_at: string;
-          next_compensation_retry_at: string | null;
-          reason: string;
-          source_metadata: NonNullable<Json>;
-          stripe_charge_id: string | null;
-          stripe_payment_intent_id: string;
-          stripe_refund_id: string | null;
-          updated_at: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          charged_amount_cents?: number | null;
-          compensation_attempt_count?: number;
-          compensation_last_error?: string | null;
-          compensation_lease_expires_at?: string | null;
-          compensation_state?: string;
-          created_at?: string;
-          next_compensation_retry_at?: string | null;
-          reason: string;
-          source_metadata?: NonNullable<Json>;
-          stripe_charge_id?: string | null;
-          stripe_payment_intent_id: string;
-          stripe_refund_id?: string | null;
-          updated_at?: string;
-        };
-        Update: {
-          charged_amount_cents?: number | null;
-          compensation_attempt_count?: number;
-          compensation_last_error?: string | null;
-          compensation_lease_expires_at?: string | null;
-          compensation_state?: string;
-          created_at?: string;
-          next_compensation_retry_at?: string | null;
-          reason?: string;
-          source_metadata?: NonNullable<Json>;
-          stripe_charge_id?: string | null;
-          stripe_payment_intent_id?: string;
-          stripe_refund_id?: string | null;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
       connect_payout_run_shipments: {
         Row: {
           created_at: string;
@@ -2433,64 +2384,6 @@ export type Database = {
           },
         ];
       };
-      stripe_fee_reconciliation_jobs: {
-        Row: {
-          attempt_count: number;
-          claim_expires_at: string | null;
-          claim_token: string | null;
-          created_at: string;
-          id: string;
-          last_error: string | null;
-          next_retry_at: string | null;
-          order_id: string;
-          status: string;
-          stripe_payment_intent_id: string;
-          updated_at: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          attempt_count?: number;
-          claim_expires_at?: string | null;
-          claim_token?: string | null;
-          created_at?: string;
-          id?: string;
-          last_error?: string | null;
-          next_retry_at?: string | null;
-          order_id: string;
-          status?: string;
-          stripe_payment_intent_id: string;
-          updated_at?: string;
-        };
-        Update: {
-          attempt_count?: number;
-          claim_expires_at?: string | null;
-          claim_token?: string | null;
-          created_at?: string;
-          id?: string;
-          last_error?: string | null;
-          next_retry_at?: string | null;
-          order_id?: string;
-          status?: string;
-          stripe_payment_intent_id?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'stripe_fee_reconciliation_jobs_order_id_fkey';
-            columns: ['order_id'];
-            isOneToOne: false;
-            referencedRelation: 'admin_disputes_monitor_view';
-            referencedColumns: ['order_id'];
-          },
-          {
-            foreignKeyName: 'stripe_fee_reconciliation_jobs_order_id_fkey';
-            columns: ['order_id'];
-            isOneToOne: false;
-            referencedRelation: 'orders';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
       system_logs: {
         Row: {
           created_at: string | null;
@@ -3374,49 +3267,21 @@ export type Database = {
         };
         Returns: Json;
       };
-      fn_claim_stripe_fee_reconciliation_jobs: {
-        Args: { p_limit?: number };
-        Returns: {
-          attempt_count: number;
-          claim_expires_at: string | null;
-          claim_token: string | null;
-          created_at: string;
-          id: string;
-          last_error: string | null;
-          next_retry_at: string | null;
-          order_id: string;
-          status: string;
-          stripe_payment_intent_id: string;
-          updated_at: string;
-        }[];
-        SetofOptions: {
-          from: '*';
-          to: 'stripe_fee_reconciliation_jobs';
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
-      };
       fn_claim_stripe_fee_reconciliation_jobs_leased: {
         Args: { p_limit?: number; p_max_attempts?: number };
         Returns: {
           attempt_count: number;
-          claim_expires_at: string | null;
-          claim_token: string | null;
+          claim_expires_at: string;
+          claim_token: string;
           created_at: string;
           id: string;
-          last_error: string | null;
-          next_retry_at: string | null;
+          last_error: string;
+          next_retry_at: string;
           order_id: string;
           status: string;
           stripe_payment_intent_id: string;
           updated_at: string;
         }[];
-        SetofOptions: {
-          from: '*';
-          to: 'stripe_fee_reconciliation_jobs';
-          isOneToOne: false;
-          isSetofReturn: true;
-        };
       };
       fn_close_account: { Args: { p_user_id: string }; Returns: Json };
       fn_commit_connect_account_refresh: {
@@ -3454,32 +3319,6 @@ export type Database = {
           p_transfer_token: string;
         };
         Returns: boolean;
-      };
-      fn_complete_stripe_fee_reconciliation_job: {
-        Args: {
-          p_actual_stripe_fee_cents: number;
-          p_job_id: string;
-          p_reconciled_at: string;
-        };
-        Returns: {
-          attempt_count: number;
-          claim_expires_at: string | null;
-          claim_token: string | null;
-          created_at: string;
-          id: string;
-          last_error: string | null;
-          next_retry_at: string | null;
-          order_id: string;
-          status: string;
-          stripe_payment_intent_id: string;
-          updated_at: string;
-        };
-        SetofOptions: {
-          from: '*';
-          to: 'stripe_fee_reconciliation_jobs';
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
       };
       fn_complete_stripe_fee_reconciliation_job_leased: {
         Args: {
@@ -3567,6 +3406,10 @@ export type Database = {
           p_expected_stage_version: number;
           p_run_id: string;
         };
+        Returns: boolean;
+      };
+      fn_enqueue_stripe_fee_reconciliation_job: {
+        Args: { p_order_id: string; p_stripe_payment_intent_id: string };
         Returns: boolean;
       };
       fn_escalate_shipment_cancellation: {
@@ -4142,33 +3985,6 @@ export type Database = {
           p_target_stage: string;
         };
         Returns: number;
-      };
-      fn_transition_stripe_fee_reconciliation_job: {
-        Args: {
-          p_job_id: string;
-          p_last_error?: string;
-          p_next_retry_at?: string;
-          p_outcome: string;
-        };
-        Returns: {
-          attempt_count: number;
-          claim_expires_at: string | null;
-          claim_token: string | null;
-          created_at: string;
-          id: string;
-          last_error: string | null;
-          next_retry_at: string | null;
-          order_id: string;
-          status: string;
-          stripe_payment_intent_id: string;
-          updated_at: string;
-        };
-        SetofOptions: {
-          from: '*';
-          to: 'stripe_fee_reconciliation_jobs';
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
       };
       fn_transition_stripe_fee_reconciliation_job_leased: {
         Args: {

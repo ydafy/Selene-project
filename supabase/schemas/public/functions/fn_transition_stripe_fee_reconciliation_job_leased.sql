@@ -11,7 +11,7 @@ CREATE OR REPLACE FUNCTION public.fn_transition_stripe_fee_reconciliation_job_le
   SET search_path TO 'public', 'pg_temp'
   AS $function$
 DECLARE
-  v_job public.stripe_fee_reconciliation_jobs;
+  v_job internal.stripe_fee_reconciliation_jobs;
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'UNAUTHORIZED' USING ERRCODE = '42501';
@@ -27,7 +27,7 @@ BEGIN
     RAISE EXCEPTION 'INVALID_TRANSITION' USING ERRCODE = '22023';
   END IF;
 
-  SELECT * INTO v_job FROM public.stripe_fee_reconciliation_jobs
+  SELECT * INTO v_job FROM internal.stripe_fee_reconciliation_jobs
   WHERE id = p_job_id FOR UPDATE;
   IF NOT FOUND THEN
     RETURN FALSE;
@@ -40,7 +40,7 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  UPDATE public.stripe_fee_reconciliation_jobs
+  UPDATE internal.stripe_fee_reconciliation_jobs
   SET status = CASE p_outcome WHEN 'retry' THEN 'pending' ELSE 'failed' END,
       next_retry_at = p_next_retry_at, last_error = p_last_error,
       claim_token = NULL, claim_expires_at = NULL, updated_at = clock_timestamp()

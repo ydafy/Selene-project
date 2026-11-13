@@ -4,25 +4,35 @@ meta {
   seq: 138
 }
 
-delete {
-  url: {{baseUrl}}/rest/v1/stripe_fee_reconciliation_jobs?id=eq.{{feeJobId}}
-  body: none
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_transition_stripe_fee_reconciliation_job_leased
+  body: json
   auth: none
 }
 
 headers {
   apikey: {{secretKey}}
   Authorization: Bearer {{secretKey}}
-  Prefer: return=representation
+}
+
+body:json {
+  {
+    "p_job_id": "{{feeJobId}}",
+    "p_claim_token": "{{feeJobClaimToken}}",
+    "p_outcome": "failed",
+    "p_last_error": "BRUNO_FIXTURE_DONE"
+  }
 }
 
 tests {
-  test("deletes the seeded fee job", function () {
+  test("the claim holder closes the job as failed", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()).to.equal(true);
   });
 }
 
 docs {
-  Cleanup of reconcile-stripe-fees-setup-job, so the next run starts with no job.
+  Cleanup of reconcile-stripe-fees-setup-job. The service role cannot delete rows in schema
+  internal, so the holder moves the job to failed: it is never claimed again and the next run
+  starts with no due job.
 }
