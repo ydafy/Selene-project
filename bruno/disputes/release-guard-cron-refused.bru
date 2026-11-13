@@ -19,9 +19,56 @@ body:json {
   {}
 }
 
+script:pre-request {
+  // #58: the cron acts on every eligible dispute in the database, not only this fixture.
+  // Snapshot every other dispute (with its shipment) and count the logs that name one;
+  // the last test fails, naming the disputes, when the run changed or logged any of them.
+  bru.setVar("cronFixture", [bru.getVar("rgDisp2"), bru.getVar("rgDisp5")].join(","));
+  const key = bru.getEnvVar("secretKey");
+  const read = (path) => bru.sendRequest({
+    method: "GET",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+    headers: { apikey: key, Authorization: "Bearer " + key, Prefer: "count=exact" },
+  });
+  const outside = "=not.in.(" + bru.getVar("cronFixture") + ")";
+  const disputes = (await read("disputes?id" + outside + "&select=*,shipments(*)&order=id")).data;
+  const logs = await read("system_logs?metadata->>dispute_id" + outside + "&select=id&limit=1");
+  const logCount = Number(logs.headers["content-range"].split("/")[1]);
+  bru.setVar("cronOthersBefore", JSON.stringify({ disputes, logCount }));
+}
+
+script:post-response {
+  const key = bru.getEnvVar("secretKey");
+  const read = (path) => bru.sendRequest({
+    method: "GET",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+    headers: { apikey: key, Authorization: "Bearer " + key, Prefer: "count=exact" },
+  });
+  const outside = "=not.in.(" + bru.getVar("cronFixture") + ")";
+  const disputes = (await read("disputes?id" + outside + "&select=*,shipments(*)&order=id")).data;
+  const logs = await read("system_logs?metadata->>dispute_id" + outside + "&select=id&limit=1");
+  const logCount = Number(logs.headers["content-range"].split("/")[1]);
+  const before = JSON.parse(bru.getVar("cronOthersBefore"));
+  const newLogs = logCount > before.logCount
+    ? (await read("system_logs?metadata->>dispute_id" + outside + "&select=message,dispute_id:metadata->>dispute_id&order=created_at.desc&limit=" + (logCount - before.logCount))).data
+    : [];
+  bru.setVar("cronOthersAfter", JSON.stringify({ disputes, logCount, newLogs }));
+}
+
 tests {
   test("the cron runs", function () {
     expect([200, 204]).to.include(res.getStatus());
+  });
+
+  test("#58: the run changed no dispute, shipment or dispute log outside this fixture", function () {
+    const before = JSON.parse(bru.getVar("cronOthersBefore"));
+    const after = JSON.parse(bru.getVar("cronOthersAfter"));
+    const was = Object.fromEntries(before.disputes.map((d) => [d.id, JSON.stringify(d)]));
+    const changed = after.disputes.filter((d) => was[d.id] !== JSON.stringify(d)).map((d) => d.id);
+    expect(changed.length, "disputes or shipments outside the fixture changed: " + changed.join(", ")).to.equal(0);
+    expect(after.disputes.length, "disputes outside the fixture").to.equal(before.disputes.length);
+    expect(after.newLogs.length, "system_logs written for disputes outside the fixture: " + JSON.stringify(after.newLogs)).to.equal(0);
+    expect(after.logCount, "system_logs naming a dispute outside the fixture").to.equal(before.logCount);
   });
 }
 
