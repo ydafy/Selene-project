@@ -1,8 +1,9 @@
 /**
  * @file supabase/functions/create-connect-account/handler.ts
  *
- * Creates (or re-uses) a Stripe Connect Express account for the calling seller
- * and returns an AccountLink URL for hosted onboarding.
+ * Creates (or re-uses) a Stripe Accounts v2 connected account (`recipient`
+ * configuration, Express dashboard) for the calling seller and returns a v2
+ * Account Link URL for hosted onboarding.
  *
  * Implements delta spec CON-001 (Stripe Connect Onboarding).
  *
@@ -12,9 +13,14 @@
  *
  * Idempotency:
  *   - If the caller already has `profiles_private.stripe_account_id`, we reuse
- *     it and just mint a fresh AccountLink (the previous link is short-lived).
- *   - If not, we create a new v1 Express account (country MX, transfers and
- *     card_payments requested) with a manual payout schedule.
+ *     it and just mint a fresh Account Link (the previous link is short-lived).
+ *   - If not, we create a new v2 account (country MX, `stripe_transfers` only;
+ *     no `merchant` configuration or `card_payments`, because Selene uses
+ *     separate charges and transfers) and store its id at once.
+ *   - Either way, manual payouts are applied through `POST /v1/balance_settings`
+ *     before a link is minted: a new v2 account starts with daily payouts, and a
+ *     retry after a failed call repairs the stored account instead of creating a
+ *     second one.
  */
 
 import type { SupabaseClient } from '../_shared/supabase-js.ts';
@@ -25,15 +31,27 @@ import { CreateConnectAccountRequestSchema } from './request-schema.ts';
 
 export type SupabaseAdminClient = SupabaseClient;
 
-// The two Stripe calls this function makes; index.ts passes the real client.
+// The three Stripe calls this function makes; index.ts passes the real client.
 export interface ConnectAccountStripe {
-  accounts: {
-    create: (params: Stripe.AccountCreateParams) => Promise<{ id: string }>;
+  v2: {
+    core: {
+      accounts: {
+        create: (
+          params: Stripe.V2.Core.AccountCreateParams,
+        ) => Promise<{ id: string }>;
+      };
+      accountLinks: {
+        create: (
+          params: Stripe.V2.Core.AccountLinkCreateParams,
+        ) => Promise<{ url: string }>;
+      };
+    };
   };
-  accountLinks: {
-    create: (
-      params: Stripe.AccountLinkCreateParams,
-    ) => Promise<{ url: string }>;
+  balanceSettings: {
+    update: (
+      params: Stripe.BalanceSettingsUpdateParams,
+      options: { stripeAccount: string },
+    ) => Promise<unknown>;
   };
 }
 
@@ -50,6 +68,13 @@ export interface CreateConnectAccountDependencies {
 }
 
 const APP_NAME = 'selene';
+
+// Selene creates each payout itself when an admin releases a completed
+// shipment (full amount or nothing). Automatic payouts would pay out on
+// Stripe's schedule and make the payout ledger diverge from Stripe.
+const MANUAL_PAYOUTS: Stripe.BalanceSettingsUpdateParams = {
+  payments: { payouts: { schedule: { interval: 'manual' } } },
+};
 
 const log = (
   level: 'info' | 'warn' | 'error',
@@ -128,23 +153,27 @@ export function createCreateConnectAccountHandler(
       let accountId = profile?.stripe_account_id ?? null;
 
       if (!accountId) {
-        log('info', 'Creating Stripe Connect Express account', {
+        log('info', 'Creating Stripe Connect v2 recipient account', {
           sellerId: user.id,
         });
 
-        // Manual payout schedule: funds stay in the seller's Connect account
-        // until Selene triggers the payout, after the order completes.
-        const account = await stripe.accounts.create({
-          type: 'express',
-          country: 'MX',
-          email: user.email ?? profile?.email ?? undefined,
-          capabilities: {
-            transfers: { requested: true },
-            card_payments: { requested: true },
+        const contactEmail = user.email ?? profile?.email ?? undefined;
+        const account = await stripe.v2.core.accounts.create({
+          identity: { country: 'mx' },
+          dashboard: 'express',
+          ...(contactEmail ? { contact_email: contactEmail } : {}),
+          defaults: {
+            currency: 'mxn',
+            responsibilities: {
+              fees_collector: 'application',
+              losses_collector: 'application',
+            },
           },
-          settings: {
-            payouts: {
-              schedule: { interval: 'manual' },
+          configuration: {
+            recipient: {
+              capabilities: {
+                stripe_balance: { stripe_transfers: { requested: true } },
+              },
             },
           },
           metadata: {
@@ -174,7 +203,22 @@ export function createCreateConnectAccountHandler(
 
       if (!accountId) throw new Error('ACCOUNT_CREATION_FAILED');
 
-      // 5. Create AccountLink for hosted onboarding.
+      // 5. Manual payouts, on every call, before any link. The id is already
+      // stored, so a failure here leaves an account the next call repairs.
+      try {
+        await stripe.balanceSettings.update(MANUAL_PAYOUTS, {
+          stripeAccount: accountId,
+        });
+      } catch (error: unknown) {
+        log('error', 'Failed to set manual payouts', {
+          accountId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new Error('MANUAL_PAYOUTS_FAILED');
+      }
+
+      // 6. Create a v2 Account Link for hosted onboarding. It sends no
+      // `configurations` field: API version endive rejects it.
       // Stripe requires HTTPS return/refresh URLs. `resolveConnectOnboardingUrls`
       // gives Stripe configured HTTPS URLs or the HTTPS bridge URL
       // (`connect-onboarding-return?state=return|refresh`). The bridge redirects
@@ -182,11 +226,15 @@ export function createCreateConnectAccountHandler(
       // bridge target via env without changing this AccountLink code.
       let onboardingUrl: string | null = null;
 
-      const link = await stripe.accountLinks.create({
+      const link = await stripe.v2.core.accountLinks.create({
         account: accountId,
-        refresh_url: onboardingUrls.refreshUrl,
-        return_url: onboardingUrls.returnUrl,
-        type: 'account_onboarding',
+        use_case: {
+          type: 'account_onboarding',
+          account_onboarding: {
+            return_url: onboardingUrls.returnUrl,
+            refresh_url: onboardingUrls.refreshUrl,
+          },
+        },
       });
       onboardingUrl = link.url;
 
@@ -206,6 +254,7 @@ export function createCreateConnectAccountHandler(
         PROFILE_NOT_FOUND: 404,
         PROFILE_UPDATE_FAILED: 500,
         ACCOUNT_CREATION_FAILED: 500,
+        MANUAL_PAYOUTS_FAILED: 500,
         ACCOUNT_LINK_FAILED: 500,
         CONNECT_ONBOARDING_BRIDGE_URL_REQUIRED: 500,
       };
