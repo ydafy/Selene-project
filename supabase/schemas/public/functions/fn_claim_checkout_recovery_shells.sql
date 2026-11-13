@@ -67,7 +67,7 @@ BEGIN
   RETURN QUERY
   WITH eligible AS (
     SELECT s.stripe_payment_intent_id
-    FROM public.checkout_recovery_shells s
+    FROM internal.checkout_recovery_shells s
     WHERE (p_claim_scope IS NULL OR p_claim_scope = 'standalone')
       AND (p_stripe_payment_intent_id IS NULL OR s.stripe_payment_intent_id = p_stripe_payment_intent_id)
       AND s.compensation_state IN ('refund_pending', 'refund_failed_retry_queued', 'refunding')
@@ -93,7 +93,7 @@ BEGIN
     FOR UPDATE SKIP LOCKED
     LIMIT GREATEST(1, LEAST(p_limit, 100))
   )
-  UPDATE public.checkout_recovery_shells s
+  UPDATE internal.checkout_recovery_shells s
   SET compensation_state = 'refunding',
       compensation_attempt_count = s.compensation_attempt_count + 1,
       compensation_lease_expires_at = now() + interval '5 minutes',

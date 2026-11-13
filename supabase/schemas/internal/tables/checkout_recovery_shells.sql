@@ -1,4 +1,4 @@
-CREATE TABLE "public"."checkout_recovery_shells" (
+CREATE TABLE "internal"."checkout_recovery_shells" (
   "stripe_payment_intent_id"      text                     NOT NULL,
   "reason"                        text                     NOT NULL,
   "source_metadata"               jsonb                    NOT NULL DEFAULT '{}'::jsonb,
@@ -17,16 +17,15 @@ CREATE TABLE "public"."checkout_recovery_shells" (
   CONSTRAINT "checkout_recovery_shells_pkey" PRIMARY KEY (stripe_payment_intent_id)
 );
 
-ALTER TABLE "public"."checkout_recovery_shells"
+ALTER TABLE "internal"."checkout_recovery_shells"
   ENABLE ROW LEVEL SECURITY;
 
-CREATE INDEX checkout_recovery_shells_claim_idx ON public.checkout_recovery_shells USING btree (next_compensation_retry_at, created_at)
+CREATE INDEX checkout_recovery_shells_claim_idx ON internal.checkout_recovery_shells USING btree (next_compensation_retry_at, created_at)
   WHERE (compensation_state = ANY (ARRAY['refund_pending'::text, 'refund_failed_retry_queued'::text, 'refunding'::text]));
 
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."checkout_recovery_shells" TO "service_role";
+COMMENT ON TABLE "internal"."checkout_recovery_shells" IS 'Refund queue for checkout payments that have no order to settle against, one row per payment intent. Only fn_upsert_checkout_recovery_shell, fn_set_checkout_recovery_charge_evidence, fn_claim_checkout_recovery_shells, fn_mark_checkout_recovery_retry, fn_mark_checkout_recovery_reconciliation_needed and fn_finalize_checkout_recovery (SECURITY DEFINER) reach it.';
 
-REVOKE ALL ON TABLE "public"."checkout_recovery_shells" FROM "postgres";
-
-GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."checkout_recovery_shells" TO "postgres";
-
-REVOKE ALL ON TABLE "public"."checkout_recovery_shells" FROM "anon", "authenticated";
+-- Server-only machinery (odd/tasks/internal-schema.md S3): only SECURITY DEFINER
+-- functions owned by postgres read or write it, so no client role and not
+-- service_role hold a privilege on it.
+REVOKE ALL ON TABLE "internal"."checkout_recovery_shells" FROM PUBLIC, "anon", "authenticated", "service_role";

@@ -42,7 +42,7 @@ BEGIN
   FOR UPDATE;
 
   IF v_refunded_order_id IS NOT NULL THEN
-    UPDATE public.checkout_recovery_shells
+    UPDATE internal.checkout_recovery_shells
     SET compensation_state = 'refunded',
         stripe_refund_id = COALESCE(stripe_refund_id, v_order_refund_id),
         compensation_lease_expires_at = NULL,
@@ -58,7 +58,7 @@ BEGIN
     );
   END IF;
 
-  INSERT INTO public.checkout_recovery_shells (
+  INSERT INTO internal.checkout_recovery_shells (
     stripe_payment_intent_id,
     reason,
     source_metadata,
@@ -77,13 +77,13 @@ BEGIN
   SET reason = EXCLUDED.reason,
       source_metadata = EXCLUDED.source_metadata,
       charged_amount_cents = COALESCE(
-        public.checkout_recovery_shells.charged_amount_cents,
+        internal.checkout_recovery_shells.charged_amount_cents,
         EXCLUDED.charged_amount_cents
       ),
       -- Charge evidence is immutable once observed; retries cannot replace it.
-      stripe_charge_id = COALESCE(public.checkout_recovery_shells.stripe_charge_id, EXCLUDED.stripe_charge_id),
+      stripe_charge_id = COALESCE(internal.checkout_recovery_shells.stripe_charge_id, EXCLUDED.stripe_charge_id),
       updated_at = now()
-  WHERE public.checkout_recovery_shells.compensation_state <> 'refunded'
+  WHERE internal.checkout_recovery_shells.compensation_state <> 'refunded'
   RETURNING stripe_payment_intent_id INTO v_shell_payment_intent_id;
 
   IF v_shell_payment_intent_id IS NULL THEN

@@ -25,7 +25,7 @@ BEGIN
     RETURN v_stripe_charge_id;
   END IF;
 
-  UPDATE public.checkout_recovery_shells
+  UPDATE internal.checkout_recovery_shells
   SET stripe_charge_id = COALESCE(stripe_charge_id, p_stripe_charge_id),
       updated_at = now()
   WHERE stripe_payment_intent_id = p_stripe_payment_intent_id

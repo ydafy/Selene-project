@@ -4,7 +4,7 @@
 -- client_grants (#305).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(47);
+select plan(39);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -88,16 +88,14 @@ select throws_ok(
 -- The server-only tables in schema internal are pinned in internal_tables.test.sql.
 select throws_ok(format('select 1 from public.%I', t), '42501', null, 'anon cannot read ' || t)
 from unnest(array[
-  'admin_connect_payout_release_view', 'checkout_recovery_shells',
+  'admin_connect_payout_release_view',
   'connect_payout_run_shipments', 'connect_payout_runs',
-  'shipment_cancellation_operations', 'shipment_completion_events',
-  'stripe_fee_reconciliation_jobs'
+  'shipment_cancellation_operations', 'shipment_completion_events'
 ]) as t;
 select throws_ok(format('delete from public.%I', t), '42501', null, 'anon cannot delete from ' || t)
 from unnest(array[
-  'checkout_recovery_shells', 'connect_payout_run_shipments', 'connect_payout_runs',
-  'shipment_cancellation_operations', 'shipment_completion_events',
-  'stripe_fee_reconciliation_jobs'
+  'connect_payout_run_shipments', 'connect_payout_runs',
+  'shipment_cancellation_operations', 'shipment_completion_events'
 ]) as t;
 
 select set_config('request.jwt.claims',
@@ -107,16 +105,13 @@ set local role authenticated;
 select throws_ok(format('select 1 from public.%I', t), '42501', null, 'authenticated cannot read ' || t)
 from unnest(array[
   'admin_connect_payout_release_view', 'admin_seller_onboarding_view',
-  'checkout_recovery_shells',
   'connect_payout_run_shipments', 'connect_payout_runs',
-  'shipment_cancellation_operations', 'shipment_completion_events',
-  'stripe_fee_reconciliation_jobs'
+  'shipment_cancellation_operations', 'shipment_completion_events'
 ]) as t;
 select throws_ok(format('delete from public.%I', t), '42501', null, 'authenticated cannot delete from ' || t)
 from unnest(array[
-  'checkout_recovery_shells', 'connect_payout_run_shipments', 'connect_payout_runs',
-  'shipment_cancellation_operations', 'shipment_completion_events',
-  'stripe_fee_reconciliation_jobs'
+  'connect_payout_run_shipments', 'connect_payout_runs',
+  'shipment_cancellation_operations', 'shipment_completion_events'
 ]) as t;
 select throws_ok(
   $$insert into public.notifications default values$$,
