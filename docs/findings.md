@@ -19,7 +19,22 @@ A finding is a bug or gap that is not part of the task. Open a GitHub issue with
 2. Open the issue with the "Finding" form (`.github/ISSUE_TEMPLATE/finding.yml`), using the `gentle-ai-issue-creation` skill.
 3. Write it so the maintainer understands it without the code open.
 4. Keep the form's `### Priority` and `### Area` headings with the exact option text. `.github/workflows/issue-labels.yml` sets the `priority:*` and `area:*` labels from them, so change a priority by editing the body, not the label.
-5. Cite the issue number in the feature's `## Log`.
+5. Decide whether it blocks the launch ("Go-live" below).
+6. Cite the issue number in the feature's `## Log`.
+
+## Go-live
+
+The GitHub milestone `Go-live` holds the issues Selene must not launch with. Every other open issue is real and stays open, but it ships and gets fixed after launch. Decide once, when the issue is opened, and change the decision only when new evidence arrives.
+
+An issue blocks the launch when it is a money, data loss, security, or privacy defect, however rare. Otherwise answer three questions:
+
+1. What happens if a real user hits it: lost money or trust, or an annoyance?
+2. Can it change after launch with a deploy, or does it get expensive once real users and data exist (data model, money format, onboarding scheme)?
+3. Would we see it (Sentry, an alert, an admin view) and fix it fast, or would it fail silently?
+
+It blocks when the answer is serious harm, expensive to change later, or silent. A broken main journey (publish, buy, ship, get paid, report a problem) and a legal or app store requirement also block. Never add an issue to get it noticed.
+
+When it blocks, set the milestone (`gh issue edit <N> --milestone Go-live`) and comment `Go-live: blocks launch.` with the rule and a one-line reason. When it does not, say so in your report to the maintainer. A private advisory never goes in the milestone; it blocks the launch until it is fixed.
 
 ## Record an idea
 
@@ -30,6 +45,8 @@ An idea is a feature, tool, or process worth doing later, in the short, medium, 
 3. Fill "When to revisit".
 4. Tell the maintainer the issue number.
 5. Cite the issue number in the feature's `## Log`.
+
+An idea blocks the launch only when it fixes something that meets the "Go-live" rule; decide it the same way.
 
 Do not keep backlog lists in `odd/tasks/`.
 
