@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+
+import { pendingMarkerName } from './worktree-clean';
 import { delimiter, join } from 'node:path';
 
 // Runs the real command against a throwaway repository: a bare origin, a main
@@ -457,6 +459,43 @@ describe('worktree:clean against a real repository', () => {
     } finally {
       rmSync(fakeGit, { force: true });
     }
+  });
+
+  it('finishes a removal interrupted after its .git file was deleted', () => {
+    const wt = mergedWorktree('interrupted');
+    const stubs = withStubs([]);
+    const pending = join(main, '.git', 'worktree-clean-pending');
+    // What an interrupted run leaves: the marker it wrote before deleting,
+    // no registration, and a folder that already lost its .git file.
+    const first = cleanWith(stubs.env, ['interrupted', '--yes']);
+    expect(first.code).toBe(0);
+    expect(existsSync(pending) ? readdirSync(pending) : []).toEqual([]);
+    mkdirSync(join(wt, 'node_modules', 'x'), { recursive: true });
+    mkdirSync(pending, { recursive: true });
+    writeFileSync(join(pending, pendingMarkerName(wt)), wt);
+
+    const plan = cleanWith(stubs.env, ['interrupted']);
+    expect(plan.code).toBe(0);
+    expect(plan.out).toContain(
+      'is left over from a removal that stopped halfway',
+    );
+
+    const run = cleanWith(stubs.env, ['interrupted', '--yes']);
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(existsSync(wt)).toBe(false);
+    expect(readdirSync(pending)).toEqual([]);
+  });
+
+  it('refuses a folder without .git when no interrupted run marked it', () => {
+    const lone = join(`${main}-worktrees`, 'lone');
+    mkdirSync(lone, { recursive: true });
+    writeFileSync(join(lone, 'keep.md'), 'keep');
+
+    const run = clean('lone', '--yes');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('is not a worktree of this repository');
+    expect(existsSync(join(lone, 'keep.md'))).toBe(true);
   });
 
   it('still refuses a folder that was never a worktree of this repository', () => {

@@ -17,10 +17,12 @@
 import { connect } from 'node:net';
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, posix, resolve } from 'node:path';
@@ -258,6 +260,13 @@ export function leftoverAdminDir(gitFile: string, gitCommonDir: string) {
   const worktrees = `${gitCommonDir.replace(/\\/g, '/')}/worktrees`;
   return samePath(posix.dirname(gitdir), worktrees) ? gitdir : null;
 }
+
+/**
+ * The file name of the marker an in-progress removal leaves in
+ * `.git/worktree-clean-pending/`: the same for any spelling of the path.
+ */
+export const pendingMarkerName = (path: string) =>
+  normalize(path).replace(/[^a-z0-9]+/g, '_');
 
 /** The pid and socket of `.codegraph/daemon.pid`, or null when unreadable. */
 export function parseDaemonLock(text: string) {
@@ -618,17 +627,45 @@ const unregisteredPath = (arg: string, mainRoot: string) =>
   // Windows rejects a path that starts with `..`.
   /[\\/]/.test(arg) ? resolve(arg) : join(`${mainRoot}-worktrees`, arg);
 
-function isLeftover(dir: string) {
-  const gitFile = join(dir, '.git');
-  if (!existsSync(gitFile) || statSync(gitFile).isDirectory()) return false;
+const gitCommonDir = () => {
   const common = run([
     'git',
     'rev-parse',
     '--path-format=absolute',
     '--git-common-dir',
   ]);
-  if (!common.ok) return false;
-  const admin = leftoverAdminDir(readFileSync(gitFile, 'utf8'), common.out);
+  return common.ok ? common.out : null;
+};
+
+// Before deleting a folder the command writes a marker naming it, and removes
+// the marker once the folder is gone. Deletion order is not ours to choose
+// (git worktree remove may delete the .git file first), so after an
+// interrupted run the marker is what still proves the folder was ours.
+const pendingMarker = (common: string, dir: string) =>
+  join(common, 'worktree-clean-pending', pendingMarkerName(dir));
+
+function markPending(dir: string) {
+  const common = gitCommonDir();
+  if (!common) return;
+  mkdirSync(join(common, 'worktree-clean-pending'), { recursive: true });
+  writeFileSync(pendingMarker(common, dir), dir);
+}
+
+function clearPending(dir: string) {
+  const common = gitCommonDir();
+  if (common) rmSync(pendingMarker(common, dir), { force: true });
+}
+
+function isLeftover(dir: string) {
+  if (!existsSync(dir)) return false;
+  const common = gitCommonDir();
+  if (!common) return false;
+  const marker = pendingMarker(common, dir);
+  if (existsSync(marker) && samePath(readFileSync(marker, 'utf8'), dir))
+    return true;
+  const gitFile = join(dir, '.git');
+  if (!existsSync(gitFile) || statSync(gitFile).isDirectory()) return false;
+  const admin = leftoverAdminDir(readFileSync(gitFile, 'utf8'), common);
   return admin !== null && !existsSync(admin);
 }
 
@@ -694,7 +731,10 @@ async function cleanWorktree(arg: string, apply: boolean) {
   }
   // --force: only line-ending noise is left. core.longpaths: node_modules holds
   // paths over 260 characters, which git on Windows cannot delete without it.
-  if (present) announceDelete(target);
+  if (present) {
+    announceDelete(target);
+    markPending(target);
+  }
   const removed = present
     ? run([
         'git',
@@ -718,6 +758,7 @@ async function cleanWorktree(arg: string, apply: boolean) {
     console.error(LOCKED_HINT);
     return 1;
   }
+  clearPending(target);
   run(['git', 'worktree', 'prune']);
   // -d also compares against the branch's upstream, which can lag behind a
   // branch that is merged into origin/main. -D runs only after checking the
@@ -748,6 +789,7 @@ async function finishLeftover(target: string) {
   const daemon = await stopCodegraphDaemon(target);
   if (daemon) console.log(`[worktree-clean] warning: ${daemon}`);
   announceDelete(target);
+  markPending(target);
   const removed = removeDir(target);
   if (removed !== null || existsSync(target)) {
     console.error(
@@ -756,6 +798,7 @@ async function finishLeftover(target: string) {
     console.error(LOCKED_HINT);
     return 1;
   }
+  clearPending(target);
   run(['git', 'worktree', 'prune']);
   run(['git', 'fetch', '-q', '--prune', 'origin']);
   const problems: string[] = [];
