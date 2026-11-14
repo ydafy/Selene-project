@@ -118,6 +118,8 @@ ALTER TABLE "public"."shipment_cancellation_operations"
 ALTER TABLE "public"."shipment_cancellation_operations"
   ADD CONSTRAINT "shipment_cancellation_operations_late_activity_recorded" CHECK (((late_carrier_activity_at IS NULL) = (late_carrier_activity_event_type IS NULL)));
 
+CREATE INDEX shipment_cancellation_operations_order_id_idx ON public.shipment_cancellation_operations USING btree (order_id);
+
 CREATE UNIQUE INDEX shipment_cancellation_operations_refund_id_key ON public.shipment_cancellation_operations USING btree (refund_id)
   WHERE (refund_id IS NOT NULL);
 

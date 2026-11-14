@@ -17,12 +17,12 @@ CREATE INDEX ix_system_logs_user_id ON public.system_logs USING btree (user_id);
 
 CREATE POLICY "system_logs_insert" ON "public"."system_logs"
   FOR INSERT
-  TO PUBLIC
+  TO "authenticated"
   WITH CHECK ((( SELECT auth.role() AS role) = 'authenticated'::text));
 
 CREATE POLICY "system_logs_read" ON "public"."system_logs"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (( SELECT public.is_admin() AS is_admin));
 
 REVOKE ALL ON TABLE "public"."system_logs" FROM "anon", "authenticated";

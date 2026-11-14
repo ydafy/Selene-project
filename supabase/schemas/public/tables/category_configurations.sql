@@ -11,7 +11,7 @@ ALTER TABLE "public"."category_configurations"
 
 CREATE POLICY "category_config_select" ON "public"."category_configurations"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 REVOKE ALL ON TABLE "public"."category_configurations" FROM "anon", "authenticated";

@@ -340,16 +340,13 @@ interface Shipment {
 
 ## RLS Policies (shipments)
 
-| Policy                          | Operation | Condition                                                               |
-| ------------------------------- | --------- | ----------------------------------------------------------------------- |
-| `shipments_select_buyer`        | SELECT    | `order.buyer_id = auth.uid()` via subquery on orders                    |
-| `shipments_select_seller`       | SELECT    | `seller_id = auth.uid()`                                                |
-| `shipments_select_admin`        | SELECT    | `is_admin()`                                                            |
-| `shipments_insert_service_role` | INSERT    | service_role only (client-side block for authenticated)                 |
-| `shipments_update_seller`       | UPDATE    | `seller_id = auth.uid()` AND `status IN ('paid','preparing','shipped')` |
-| `shipments_update_admin`        | UPDATE    | `is_admin()`                                                            |
+| Policy                                  | Operation | Condition                                                                                             |
+| --------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------- |
+| `shipments_select_participant_or_admin` | SELECT    | `seller_id = (select auth.uid())`, or the order's `buyer_id` via a subquery, or `(select is_admin())` |
+| `shipments_insert_block`                | INSERT    | `false`                                                                                               |
+| `shipments_delete_block`                | DELETE    | `false`                                                                                               |
 
-Seller can only update status/tracking/label while shipment is in early stages (before `delivered`).
+Clients hold only SELECT on `shipments` (`supabase/tests/database/client_grants.test.sql`); every write goes through Edge Functions and RPCs with server credentials.
 
 ---
 

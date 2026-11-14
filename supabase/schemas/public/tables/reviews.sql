@@ -23,6 +23,8 @@ CREATE TABLE "public"."reviews" (
 ALTER TABLE "public"."reviews"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE INDEX idx_reviews_order_id ON public.reviews USING btree (order_id);
+
 CREATE INDEX idx_reviews_shipment_id ON public.reviews USING btree (shipment_id);
 
 CREATE INDEX ix_reviews_product_id ON public.reviews USING btree (product_id);
@@ -48,7 +50,7 @@ CREATE POLICY "reviews_insert" ON "public"."reviews"
 
 CREATE POLICY "reviews_select" ON "public"."reviews"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 REVOKE ALL ON TABLE "public"."reviews" FROM "anon", "authenticated";

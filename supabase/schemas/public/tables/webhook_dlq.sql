@@ -23,7 +23,7 @@ CREATE INDEX ix_webhook_dlq_resolved_by ON public.webhook_dlq USING btree (resol
 
 CREATE POLICY "dlq_admin_select" ON "public"."webhook_dlq"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (( SELECT public.is_admin() AS is_admin));
 
 REVOKE ALL ON TABLE "public"."webhook_dlq" FROM "anon", "authenticated";

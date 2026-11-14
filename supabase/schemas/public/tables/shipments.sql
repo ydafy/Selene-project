@@ -138,6 +138,8 @@ CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (
 
 CREATE INDEX idx_shipments_order_id ON public.shipments USING btree (order_id);
 
+CREATE INDEX idx_shipments_origin_address_id ON public.shipments USING btree (origin_address_id);
+
 CREATE INDEX idx_shipments_seller_id ON public.shipments USING btree (seller_id);
 
 CREATE INDEX idx_shipments_stripe_payment_intent_id ON public.shipments USING btree (stripe_payment_intent_id)
@@ -161,37 +163,20 @@ CREATE TRIGGER trg_shipments_status
 
 CREATE POLICY "shipments_delete_block" ON "public"."shipments"
   FOR DELETE
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (false);
 
 CREATE POLICY "shipments_insert_block" ON "public"."shipments"
   FOR INSERT
-  TO PUBLIC
+  TO "anon", "authenticated"
   WITH CHECK (false);
 
-CREATE POLICY "shipments_select_admin" ON "public"."shipments"
+CREATE POLICY "shipments_select_participant_or_admin" ON "public"."shipments"
   FOR SELECT
-  TO PUBLIC
-  USING (public.is_admin());
-
-CREATE POLICY "shipments_select_buyer" ON "public"."shipments"
-  FOR SELECT
-  TO PUBLIC
-  USING ((EXISTS ( SELECT 1
+  TO "authenticated"
+  USING (((seller_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.orders o
-  WHERE ((o.id = shipments.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid))))));
-
-CREATE POLICY "shipments_select_policy" ON "public"."shipments"
-  FOR SELECT
-  TO PUBLIC
-  USING (((( SELECT auth.uid() AS uid) = ( SELECT orders.buyer_id
-   FROM public.orders
-  WHERE (orders.id = shipments.order_id))) OR (( SELECT auth.uid() AS uid) = seller_id) OR public.is_admin()));
-
-CREATE POLICY "shipments_select_seller" ON "public"."shipments"
-  FOR SELECT
-  TO PUBLIC
-  USING ((seller_id = ( SELECT auth.uid() AS uid)));
+  WHERE ((o.id = shipments.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipments" TO "service_role";
 

@@ -4,10 +4,14 @@
 -- (`returns/` is the buyer's, `shipments/` the seller's packing evidence); the
 -- uploader and admins read it.
 -- products: `<seller_id>/<file>`. Avatars: `<user_id>/avatar.<ext>`.
+-- verification: `<product_id>/<file>` (verification_access.test.sql covers the
+-- uploads and reads per role; this file covers a first folder that is not a uuid).
+-- The policies look up products, orders and shipments by uuid, so the primary
+-- key or the shipments order_id index applies.
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(44);
+select plan(53);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -47,6 +51,24 @@ values
   ('f2000000-0000-4000-8000-0000000c0001', 'f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000002', 'paid', 'pi_test_sta_1'),
   ('f2000000-0000-4000-8000-0000000c0002', 'f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000004', 'paid', 'pi_test_sta_2');
 
+-- A listing of the seller, with one verification file in its folder and one file
+-- whose first folder is not a uuid.
+insert into public.products (
+  id, name, description, price_cents, category, condition, usage, images,
+  specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
+  publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
+)
+select 'f2000000-0000-4000-8000-0000000d0001', 'sta-listing', 'Test listing', 100000, 'GPU', 'used',
+  'gaming', array['https://example.test/p.png'], '{}'::jsonb, 'f2000000-0000-4000-8000-000000000002',
+  10000, '06600', 'gpu_1',
+  10000::bigint + s.shipping_buffer_cents + ceil(100000::numeric * s.insurance_rate)::bigint,
+  s.service_fee_pct, s.insurance_rate
+from public.system_settings s where s.id = 1;
+insert into storage.objects (bucket_id, name)
+values
+  ('verification', 'f2000000-0000-4000-8000-0000000d0001/sta-front.jpg'),
+  ('verification', 'not-a-uuid/sta-front.jpg');
+
 -- Each user's avatar, stored as the Storage API would.
 insert into storage.objects (bucket_id, name, owner, owner_id)
 values
@@ -75,10 +97,10 @@ select is(
 select is(
   (select string_agg(policyname || ':' || cmd || ':' || roles::text, ', ' order by policyname)
    from pg_policies where schemaname = 'storage' and tablename = 'objects'),
-  'Admins can view all avatars:SELECT:{public}, '
+  'Admins can view all avatars:SELECT:{authenticated}, '
   || 'Allow Select Own Files 1ahc6qj_0:SELECT:{authenticated}, '
   || 'Allow Uploads 1ahc6qj_0:INSERT:{authenticated}, '
-  || 'Products Visual Access:SELECT:{public}, '
+  || 'Products Visual Access:SELECT:{anon,authenticated}, '
   || 'Users can upload their own avatar h0za56_0:INSERT:{authenticated}, '
   || 'Users can upload their own avatar h0za56_1:UPDATE:{authenticated}, '
   || 'Users can upload their own avatar h0za56_2:SELECT:{authenticated}, '
@@ -110,6 +132,9 @@ select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/not-a-uuid/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
   '42501', null, 'an order segment that is not a uuid is denied by the policy');
 select throws_ok(
+  $$select pg_temp.put('evidence', 'disputes/F2000000-0000-4000-8000-0000000B0001/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
+  '42501', null, 'the evidence order segment matches only the lowercase order id');
+select throws_ok(
   $$select pg_temp.put('evidence', 'other/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
   '42501', null, 'an unknown top folder is denied');
 select throws_ok(
@@ -130,6 +155,9 @@ select throws_ok(
 select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0002/f2000000-0000-4000-8000-000000000002/reply.jpg')$$,
   '42501', null, 'the seller cannot upload for an order they do not ship');
+select throws_ok(
+  $$select pg_temp.put('verification', 'F2000000-0000-4000-8000-0000000D0001/sta-upper.jpg')$$,
+  '42501', null, 'the verification folder matches only the lowercase product id of the owner''s listing');
 
 -- A user with no part in order 1.
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000003');
@@ -195,6 +223,12 @@ select throws_ok(
     where bucket_id = 'evidence'
       and name = 'returns/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/return.jpg'$$,
   '42501', null, 'the buyer cannot move their evidence into another user''s folder');
+select throws_ok(
+  $$update storage.objects
+    set name = 'disputes/not-a-uuid/f2000000-0000-4000-8000-000000000001/moved.jpg'
+    where bucket_id = 'evidence'
+      and name = 'returns/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/return.jpg'$$,
+  '42501', null, 'moving evidence to an order segment that is not a uuid is denied by the policy');
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000002');
 select lives_ok(
   $$update storage.objects set metadata = '{"v": 3}'::jsonb
@@ -257,6 +291,17 @@ select is(
   'product photos stay readable');
 reset role;
 
+-- Verification files: the listing's seller reads its folder; a first folder that
+-- is not a uuid matches no listing and reads as nothing, without an error.
+select pg_temp.as_user('f2000000-0000-4000-8000-000000000002');
+set local role authenticated;
+select is(
+  (select string_agg(name, ', ' order by name) from storage.objects where bucket_id = 'verification'
+     and name like '%sta-front.jpg'),
+  'f2000000-0000-4000-8000-0000000d0001/sta-front.jpg',
+  'the seller reads their listing''s verification file and not the file outside a listing folder');
+reset role;
+
 -- Avatars: users read their own object row; the files stay public through the bucket.
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000001');
 set local role authenticated;
@@ -287,6 +332,62 @@ select is(
    from storage.objects where bucket_id = 'Avatars' and name like 'f2000000-%'),
   'f2000000-0000-4000-8000-000000000001/avatar.jpg={"v": 2}, f2000000-0000-4000-8000-000000000003/avatar.jpg=null',
   'only the owner''s avatar overwrite is stored');
+
+-- Index use. The plan of a policy's check, evaluated for one object path, finds
+-- the folder's row through the primary key of products or orders, or the
+-- shipments order_id index. The owner-column indexes are dropped (rolled back
+-- with the file) so the folder's row is the only indexed way in.
+create function pg_temp.policy_plan(p_policy text, p_bucket text, p_name text)
+returns text language plpgsql as $$
+declare
+  v_check text;
+  v_line text;
+  v_plan text := '';
+begin
+  select coalesce(with_check, qual) into strict v_check from pg_policies
+  where schemaname = 'storage' and tablename = 'objects' and policyname = p_policy;
+  for v_line in execute format(
+    'explain (costs off) select 1 from (values (%L::text, %L::text)) as objects(bucket_id, name) where %s',
+    p_bucket, p_name, v_check)
+  loop
+    v_plan := v_plan || v_line || E'\n';
+  end loop;
+  return v_plan;
+end
+$$;
+
+drop index public.ix_products_seller_id;
+drop index public.ix_orders_buyer_id;
+drop index public.idx_shipments_seller_id;
+set local enable_seqscan = off;
+select matches(
+  pg_temp.policy_plan('Allow Select Own Files 1ahc6qj_0', 'verification',
+    'f2000000-0000-4000-8000-0000000d0001/x.jpg'),
+  'products_pkey[^\n]*\n\s+Index Cond: \(id = ',
+  'the verification read policy finds the listing through the products primary key');
+select matches(
+  pg_temp.policy_plan('Allow Uploads 1ahc6qj_0', 'verification',
+    'f2000000-0000-4000-8000-0000000d0001/x.jpg'),
+  'products_pkey[^\n]*\n\s+Index Cond: \(id = ',
+  'the verification upload policy finds the listing through the products primary key');
+select matches(
+  pg_temp.policy_plan('evidence_insert_order_participant', 'evidence',
+    'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/x.jpg'),
+  'orders_pkey[^\n]*\n\s+Index Cond: \(id = .*idx_shipments_order_id[^\n]*\n\s+Index Cond: \(order_id = ',
+  'the evidence upload policy finds the order through its primary key and the shipments order_id index');
+select matches(
+  pg_temp.policy_plan('evidence_update_order_participant', 'evidence',
+    'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/x.jpg'),
+  'orders_pkey[^\n]*\n\s+Index Cond: \(id = .*idx_shipments_order_id[^\n]*\n\s+Index Cond: \(order_id = ',
+  'the evidence overwrite policy finds the order through its primary key and the shipments order_id index');
+-- The planner folds a folder known at plan time to a constant; one that is not a
+-- uuid still plans without an error (22P02).
+select lives_ok(
+  $$select pg_temp.policy_plan('Allow Uploads 1ahc6qj_0', 'verification', 'not-a-uuid/x.jpg'),
+      pg_temp.policy_plan('evidence_insert_order_participant', 'evidence',
+        'disputes/not-a-uuid/f2000000-0000-4000-8000-000000000001/x.jpg')$$,
+  'a folder that is not a uuid plans without an error');
+reset enable_seqscan;
 
 select * from finish();
 rollback;

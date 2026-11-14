@@ -21,6 +21,10 @@ CREATE TABLE "public"."shipment_completion_events" (
 ALTER TABLE "public"."shipment_completion_events"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE INDEX shipment_completion_events_actor_id_idx ON public.shipment_completion_events USING btree (actor_id);
+
+CREATE INDEX shipment_completion_events_order_id_idx ON public.shipment_completion_events USING btree (order_id);
+
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipment_completion_events" TO "service_role";
 
 REVOKE ALL ON TABLE "public"."shipment_completion_events" FROM "postgres";

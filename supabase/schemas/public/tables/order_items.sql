@@ -39,8 +39,10 @@ CREATE UNIQUE INDEX order_items_shipment_id_unique ON public.order_items USING b
 
 CREATE POLICY "order_items_select_v4" ON "public"."order_items"
   FOR SELECT
-  TO PUBLIC
-  USING (internal.fn_check_order_access(order_id, ( SELECT auth.uid() AS uid)));
+  TO "authenticated"
+  USING (((seller_id = ( SELECT auth.uid() AS uid)) OR ( SELECT public.is_admin() AS is_admin) OR (EXISTS ( SELECT 1
+   FROM public.orders o
+  WHERE ((o.id = order_items.order_id) AND (o.buyer_id = ( SELECT auth.uid() AS uid)))))));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."order_items" TO "service_role";
 

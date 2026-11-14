@@ -26,7 +26,7 @@ CREATE TRIGGER trigger_check_max_cards
 
 CREATE POLICY "payment_methods_manage" ON "public"."payment_methods"
   FOR ALL
-  TO PUBLIC
+  TO "authenticated"
   USING ((( SELECT auth.uid() AS uid) = user_id));
 
 REVOKE ALL ON TABLE "public"."payment_methods" FROM "anon", "authenticated";

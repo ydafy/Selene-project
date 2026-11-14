@@ -89,8 +89,6 @@ CREATE INDEX idx_disputes_order_id ON public.disputes USING btree (order_id);
 
 CREATE INDEX idx_disputes_return_last_tracked ON public.disputes USING btree (return_last_tracked_at);
 
-CREATE INDEX idx_disputes_shipment_id ON public.disputes USING btree (shipment_id);
-
 CREATE INDEX idx_disputes_status ON public.disputes USING btree (status);
 
 CREATE INDEX ix_disputes_buyer_id ON public.disputes USING btree (buyer_id);
@@ -116,7 +114,7 @@ CREATE TRIGGER tr_on_dispute_opened
 
 CREATE POLICY "disputes_select" ON "public"."disputes"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."disputes" TO "service_role";

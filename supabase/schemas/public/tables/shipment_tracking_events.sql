@@ -48,15 +48,15 @@ CREATE INDEX shipment_tracking_events_dispute_timeline ON public.shipment_tracki
 
 CREATE INDEX shipment_tracking_events_shipment_timeline ON public.shipment_tracking_events USING btree (shipment_id, event_at, received_at, id);
 
+CREATE INDEX shipment_tracking_events_webhook_delivery_id_idx ON public.shipment_tracking_events USING btree (webhook_delivery_id);
+
 CREATE POLICY "shipment tracking events are visible to participants and admins" ON "public"."shipment_tracking_events"
   FOR SELECT
   TO "authenticated"
   USING (((EXISTS ( SELECT 1
    FROM (public.shipments s
      JOIN public.orders o ON ((o.id = s.order_id)))
-  WHERE ((s.id = shipment_tracking_events.shipment_id) AND ((o.buyer_id = auth.uid()) OR (s.seller_id = auth.uid()))))) OR (EXISTS ( SELECT 1
-   FROM public.profiles_private pp
-  WHERE ((pp.id = auth.uid()) AND (pp.role = 'admin'::text))))));
+  WHERE ((s.id = shipment_tracking_events.shipment_id) AND ((o.buyer_id = ( SELECT auth.uid() AS uid)) OR (s.seller_id = ( SELECT auth.uid() AS uid)))))) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipment_tracking_events" TO "service_role";
 

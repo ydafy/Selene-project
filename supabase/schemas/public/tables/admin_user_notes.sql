@@ -18,7 +18,7 @@ CREATE INDEX ix_admin_user_notes_user_id ON public.admin_user_notes USING btree 
 
 CREATE POLICY "admin_user_notes_all" ON "public"."admin_user_notes"
   FOR ALL
-  TO PUBLIC
+  TO "authenticated"
   USING (( SELECT public.is_admin() AS is_admin));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."admin_user_notes" TO "service_role";

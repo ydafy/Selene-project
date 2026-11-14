@@ -21,7 +21,7 @@ CREATE TRIGGER trg_product_interest_on_favorite
 
 CREATE POLICY "favorites_all" ON "public"."favorites"
   FOR ALL
-  TO PUBLIC
+  TO "authenticated"
   USING ((( SELECT auth.uid() AS uid) = user_id));
 
 REVOKE ALL ON TABLE "public"."favorites" FROM "anon", "authenticated";
