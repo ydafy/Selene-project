@@ -114,7 +114,7 @@ CREATE TRIGGER tr_on_dispute_opened
 
 CREATE POLICY "disputes_select" ON "public"."disputes"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (((( SELECT auth.uid() AS uid) = buyer_id) OR (( SELECT auth.uid() AS uid) = seller_id) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."disputes" TO "service_role";

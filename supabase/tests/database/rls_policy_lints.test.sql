@@ -3,7 +3,7 @@
 -- before the advisor does. Reads the catalog only; needs no rows.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(2);
+select plan(3);
 
 -- (a) A policy calls auth.uid(), auth.jwt(), auth.role(), current_setting()
 -- or is_admin() only inside `( SELECT ... )`, so Postgres evaluates it once
@@ -53,6 +53,21 @@ select is(
   ),
   '{}'::text[],
   'no table in public or internal has two permissive policies for the same role and command'
+);
+
+-- (c) A policy names the client roles it is for (#310 S6): `TO authenticated`,
+-- or `TO anon, authenticated` where anon holds the privilege, never PUBLIC.
+-- A PUBLIC policy also applies to every role created later.
+select is(
+  (
+    select coalesce(array_agg(format('%s.%s: %s', schemaname, tablename, policyname)
+             order by schemaname, tablename, policyname), '{}')
+    from pg_policies
+    where schemaname in ('public', 'storage')
+      and 'public' = any (roles)
+  ),
+  '{}'::text[],
+  'no policy in public or storage targets PUBLIC'
 );
 
 select * from finish();

@@ -17,7 +17,7 @@ CREATE INDEX ix_reports_reporter_id ON public.reports USING btree (reporter_id);
 
 CREATE POLICY "reports_insert" ON "public"."reports"
   FOR INSERT
-  TO PUBLIC
+  TO "authenticated"
   WITH CHECK ((( SELECT auth.uid() AS uid) = reporter_id));
 
 REVOKE ALL ON TABLE "public"."reports" FROM "anon", "authenticated";

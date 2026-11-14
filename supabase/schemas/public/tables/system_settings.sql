@@ -53,7 +53,7 @@ ALTER TABLE "public"."system_settings"
 
 CREATE POLICY "system_settings_read" ON "public"."system_settings"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 REVOKE ALL ON TABLE "public"."system_settings" FROM "anon", "authenticated";

@@ -25,12 +25,12 @@ CREATE TRIGGER tr_profiles_reserve_deleted_username
 
 CREATE POLICY "profiles_public_read" ON "public"."profiles"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 CREATE POLICY "profiles_update" ON "public"."profiles"
   FOR UPDATE
-  TO PUBLIC
+  TO "authenticated"
   USING ((( SELECT auth.uid() AS uid) = id));
 
 REVOKE ALL ON TABLE "public"."profiles" FROM "authenticated";

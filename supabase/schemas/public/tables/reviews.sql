@@ -50,7 +50,7 @@ CREATE POLICY "reviews_insert" ON "public"."reviews"
 
 CREATE POLICY "reviews_select" ON "public"."reviews"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 REVOKE ALL ON TABLE "public"."reviews" FROM "anon", "authenticated";

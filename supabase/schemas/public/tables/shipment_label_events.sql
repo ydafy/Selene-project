@@ -22,7 +22,7 @@ CREATE INDEX shipment_label_events_shipment_id_idx ON public.shipment_label_even
 
 CREATE POLICY "shipment label events are append-only" ON "public"."shipment_label_events"
   FOR ALL
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (false)
   WITH CHECK (false);
 

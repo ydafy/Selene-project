@@ -16,7 +16,7 @@ CREATE INDEX ix_admin_audit_logs_admin_id ON public.admin_audit_logs USING btree
 
 CREATE POLICY "admin_audit_logs_read" ON "public"."admin_audit_logs"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (( SELECT public.is_admin() AS is_admin));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."admin_audit_logs" TO "service_role";

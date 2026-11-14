@@ -16,7 +16,7 @@ CREATE INDEX ix_blocked_users_blocked_id ON public.blocked_users USING btree (bl
 
 CREATE POLICY "blocked_users_all" ON "public"."blocked_users"
   FOR ALL
-  TO PUBLIC
+  TO "authenticated"
   USING ((( SELECT auth.uid() AS uid) = blocker_id));
 
 REVOKE ALL ON TABLE "public"."blocked_users" FROM "anon", "authenticated";

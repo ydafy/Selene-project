@@ -135,7 +135,7 @@ CREATE TRIGGER validate_product_publication_economics
 
 CREATE POLICY "products_delete_block" ON "public"."products"
   FOR DELETE
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (false);
 
 CREATE POLICY "products_insert" ON "public"."products"

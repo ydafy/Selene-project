@@ -163,12 +163,12 @@ CREATE TRIGGER trg_shipments_status
 
 CREATE POLICY "shipments_delete_block" ON "public"."shipments"
   FOR DELETE
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (false);
 
 CREATE POLICY "shipments_insert_block" ON "public"."shipments"
   FOR INSERT
-  TO PUBLIC
+  TO "anon", "authenticated"
   WITH CHECK (false);
 
 CREATE POLICY "shipments_select_participant_or_admin" ON "public"."shipments"

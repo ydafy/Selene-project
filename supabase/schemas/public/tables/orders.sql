@@ -100,7 +100,7 @@ CREATE TRIGGER tr_orders_updated_at
 
 CREATE POLICY "orders_select_v4" ON "public"."orders"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING ((( SELECT public.is_admin() AS is_admin) OR internal.fn_check_order_access(id, ( SELECT auth.uid() AS uid))));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."orders" TO "service_role";

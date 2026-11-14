@@ -17,7 +17,7 @@ CREATE INDEX idx_mexico_zips_code ON public.mexico_zips USING btree (zip_code);
 
 CREATE POLICY "mexico_zips_read" ON "public"."mexico_zips"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (true);
 
 REVOKE ALL ON TABLE "public"."mexico_zips" FROM "anon", "authenticated";

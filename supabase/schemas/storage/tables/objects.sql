@@ -1,6 +1,6 @@
 CREATE POLICY "Admins can view all avatars" ON "storage"."objects"
   FOR SELECT
-  TO PUBLIC
+  TO "authenticated"
   USING (((bucket_id = 'Avatars'::text) AND ( SELECT public.is_admin() AS is_admin)));
 
 CREATE POLICY "Allow Select Own Files 1ahc6qj_0" ON "storage"."objects"
@@ -19,7 +19,7 @@ CREATE POLICY "Allow Uploads 1ahc6qj_0" ON "storage"."objects"
 
 CREATE POLICY "Products Visual Access" ON "storage"."objects"
   FOR SELECT
-  TO PUBLIC
+  TO "anon", "authenticated"
   USING (((bucket_id = 'products'::text) AND ((storage.foldername(name))[1] IS NOT NULL)));
 
 CREATE POLICY "Users can upload their own avatar h0za56_0" ON "storage"."objects"

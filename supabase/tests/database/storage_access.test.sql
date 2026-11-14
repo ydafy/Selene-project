@@ -75,10 +75,10 @@ select is(
 select is(
   (select string_agg(policyname || ':' || cmd || ':' || roles::text, ', ' order by policyname)
    from pg_policies where schemaname = 'storage' and tablename = 'objects'),
-  'Admins can view all avatars:SELECT:{public}, '
+  'Admins can view all avatars:SELECT:{authenticated}, '
   || 'Allow Select Own Files 1ahc6qj_0:SELECT:{authenticated}, '
   || 'Allow Uploads 1ahc6qj_0:INSERT:{authenticated}, '
-  || 'Products Visual Access:SELECT:{public}, '
+  || 'Products Visual Access:SELECT:{anon,authenticated}, '
   || 'Users can upload their own avatar h0za56_0:INSERT:{authenticated}, '
   || 'Users can upload their own avatar h0za56_1:UPDATE:{authenticated}, '
   || 'Users can upload their own avatar h0za56_2:SELECT:{authenticated}, '
