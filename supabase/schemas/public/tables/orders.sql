@@ -103,10 +103,10 @@ CREATE INDEX orders_checkout_recovery_claim_idx ON public.orders USING btree (ne
 CREATE UNIQUE INDEX orders_stripe_payment_intent_id_recovery_uidx ON public.orders USING btree (stripe_payment_intent_id)
   WHERE (stripe_payment_intent_id IS NOT NULL);
 
-CREATE TRIGGER tr_orders_updated_at
+CREATE TRIGGER orders_set_updated_at
   BEFORE UPDATE ON public.orders
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_updated_at_column();
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 CREATE POLICY "orders_select_v4" ON "public"."orders"
   FOR SELECT

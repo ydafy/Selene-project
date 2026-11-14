@@ -25,6 +25,11 @@ ALTER TABLE "internal"."checkout_recovery_shells"
 CREATE INDEX checkout_recovery_shells_claim_idx ON internal.checkout_recovery_shells USING btree (next_compensation_retry_at, created_at)
   WHERE (compensation_state = ANY (ARRAY['refund_pending'::text, 'refund_failed_retry_queued'::text, 'refunding'::text]));
 
+CREATE TRIGGER checkout_recovery_shells_set_updated_at
+  BEFORE UPDATE ON internal.checkout_recovery_shells
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 COMMENT ON TABLE "internal"."checkout_recovery_shells" IS 'Refund queue for checkout payments that have no order to settle against, one row per payment intent. Only fn_upsert_checkout_recovery_shell, fn_set_checkout_recovery_charge_evidence, fn_claim_checkout_recovery_shells, fn_mark_checkout_recovery_retry, fn_mark_checkout_recovery_reconciliation_needed and fn_finalize_checkout_recovery (SECURITY DEFINER) reach it.';
 
 -- Server-only machinery (odd/tasks/internal-schema.md S3): only SECURITY DEFINER

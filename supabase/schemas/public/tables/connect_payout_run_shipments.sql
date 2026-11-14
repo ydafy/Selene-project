@@ -31,6 +31,11 @@ CREATE INDEX idx_connect_payout_run_shipments_shipment_id ON public.connect_payo
 CREATE INDEX idx_connect_payout_run_shipments_transfer_started ON public.connect_payout_run_shipments USING btree (shipment_id)
   WHERE (transfer_started_at IS NOT NULL);
 
+CREATE TRIGGER connect_payout_run_shipments_set_updated_at
+  BEFORE UPDATE ON public.connect_payout_run_shipments
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."connect_payout_run_shipments" TO "service_role";
 
 COMMENT ON COLUMN "public"."connect_payout_run_shipments"."net_payout" IS 'Shipment payout amount in cents captured at release-run creation time.';

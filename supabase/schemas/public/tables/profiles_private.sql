@@ -48,6 +48,11 @@ CREATE TRIGGER trg_product_available_on_connect_complete
     (((old.stripe_onboarding_status IS DISTINCT FROM 'complete'::public.stripe_onboarding_status) AND (new.stripe_onboarding_status = 'complete'::public.stripe_onboarding_status)))
   EXECUTE FUNCTION public.fn_tr_product_available_on_connect_complete();
 
+CREATE TRIGGER profiles_private_set_updated_at
+  BEFORE UPDATE ON public.profiles_private
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 CREATE POLICY "profiles_private_access" ON "public"."profiles_private"
   FOR SELECT
   TO "authenticated"

@@ -20,6 +20,11 @@ CREATE TABLE "internal"."account_closures" (
 ALTER TABLE "internal"."account_closures"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE TRIGGER account_closures_set_updated_at
+  BEFORE UPDATE ON internal.account_closures
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 COMMENT ON TABLE "internal"."account_closures" IS 'One row per closed account. Written by fn_close_account; the delete-account Edge Function and its retry worker update the cleanup columns through fn_claim_account_closures, fn_record_closure_attempt and fn_record_closure_cleanup_step. Only those SECURITY DEFINER functions reach it.';
 
 -- Server-only machinery (odd/tasks/internal-schema.md S3): only SECURITY DEFINER

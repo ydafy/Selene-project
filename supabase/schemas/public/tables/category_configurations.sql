@@ -9,6 +9,11 @@ CREATE TABLE "public"."category_configurations" (
 ALTER TABLE "public"."category_configurations"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE TRIGGER category_configurations_set_updated_at
+  BEFORE UPDATE ON public.category_configurations
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 CREATE POLICY "category_config_select" ON "public"."category_configurations"
   FOR SELECT
   TO "anon", "authenticated"

@@ -53,6 +53,11 @@ CREATE INDEX idx_connect_payout_runs_seller_id ON public.connect_payout_runs USI
 CREATE INDEX idx_connect_payout_runs_stripe_payout_id ON public.connect_payout_runs USING btree (stripe_payout_id)
   WHERE (stripe_payout_id IS NOT NULL);
 
+CREATE TRIGGER connect_payout_runs_set_updated_at
+  BEFORE UPDATE ON public.connect_payout_runs
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."connect_payout_runs" TO "service_role";
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."action_required_reason" IS 'Why a run sits in the action_required stage. Only the account_not_actionable reason may be auto-resumed by a later actionable account update; every other action_required state requires an admin decision.';

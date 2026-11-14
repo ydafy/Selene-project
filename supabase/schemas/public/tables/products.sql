@@ -145,6 +145,11 @@ CREATE TRIGGER validate_product_publication_economics
   FOR EACH ROW
   EXECUTE FUNCTION public.validate_product_publication_economics();
 
+CREATE TRIGGER products_set_updated_at
+  BEFORE UPDATE ON public.products
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 CREATE POLICY "products_delete_block" ON "public"."products"
   FOR DELETE
   TO "anon", "authenticated"

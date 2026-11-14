@@ -26,6 +26,11 @@ CREATE TRIGGER tr_profiles_reserve_deleted_username
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_reserve_deleted_username();
 
+CREATE TRIGGER profiles_set_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 CREATE POLICY "profiles_public_read" ON "public"."profiles"
   FOR SELECT
   TO "anon", "authenticated"

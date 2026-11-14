@@ -62,6 +62,11 @@ CREATE TABLE "public"."system_settings" (
 ALTER TABLE "public"."system_settings"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE TRIGGER system_settings_set_updated_at
+  BEFORE UPDATE ON public.system_settings
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 CREATE POLICY "system_settings_read" ON "public"."system_settings"
   FOR SELECT
   TO "anon", "authenticated"

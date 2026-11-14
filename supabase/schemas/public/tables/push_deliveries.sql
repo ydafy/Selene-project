@@ -44,6 +44,11 @@ CREATE INDEX push_deliveries_receipt_due_idx ON public.push_deliveries USING btr
 
 CREATE INDEX push_deliveries_user_id_idx ON public.push_deliveries USING btree (user_id);
 
+CREATE TRIGGER push_deliveries_set_updated_at
+  BEFORE UPDATE ON public.push_deliveries
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."push_deliveries" TO "service_role";
 
 COMMENT ON COLUMN "public"."push_deliveries"."receipt_status" IS 'Expo push receipt of a sent delivery: ok, error (receipt_error holds the code) or missing (no receipt one hour after sending). NULL while the check is due.';
