@@ -11,7 +11,7 @@
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(51);
+select plan(53);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -132,6 +132,9 @@ select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/not-a-uuid/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
   '42501', null, 'an order segment that is not a uuid is denied by the policy');
 select throws_ok(
+  $$select pg_temp.put('evidence', 'disputes/F2000000-0000-4000-8000-0000000B0001/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
+  '42501', null, 'the evidence order segment matches only the lowercase order id');
+select throws_ok(
   $$select pg_temp.put('evidence', 'other/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
   '42501', null, 'an unknown top folder is denied');
 select throws_ok(
@@ -152,6 +155,9 @@ select throws_ok(
 select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0002/f2000000-0000-4000-8000-000000000002/reply.jpg')$$,
   '42501', null, 'the seller cannot upload for an order they do not ship');
+select throws_ok(
+  $$select pg_temp.put('verification', 'F2000000-0000-4000-8000-0000000D0001/sta-upper.jpg')$$,
+  '42501', null, 'the verification folder matches only the lowercase product id of the owner''s listing');
 
 -- A user with no part in order 1.
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000003');
