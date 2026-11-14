@@ -2581,6 +2581,7 @@ export type Database = {
       admin_connect_payout_release_view: {
         Row: {
           completed_at: string | null;
+          days_since_completed: number | null;
           ineligible_reason: string | null;
           is_eligible: boolean | null;
           is_retryable: boolean | null;
@@ -2596,6 +2597,7 @@ export type Database = {
           retry_of_run_id: string | null;
           seller_id: string;
           seller_name: string | null;
+          seller_payout_block_reason: string | null;
           shipment_id: string;
           status: Database['public']['Enums']['order_status_enum'];
           stripe_account_id: string | null;

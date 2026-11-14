@@ -70,8 +70,18 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
     payout_run.retry_of_run_id,
     COALESCE(((payout_run.status = 'failed'::text) AND (NOT payout_run.has_protected_release) AND (NOT payout_run.has_retry_child)), false) AS is_retryable,
     COALESCE((payout_run.status = 'canceled'::text), false) AS requires_manual_review,
-    payout_run.paid_at AS payout_run_paid_at
-   FROM (shipment_amounts sa
+    payout_run.paid_at AS payout_run_paid_at,
+        CASE
+            WHEN ((NOT sa.is_completed) OR (sa.stripe_transfer_id IS NOT NULL) OR (sa.stripe_account_id IS NULL) OR (payout_run.status = 'paid'::text)) THEN NULL::text
+            WHEN (sa.stripe_onboarding_status = 'rejected'::public.stripe_onboarding_status) THEN 'onboarding_rejected'::text
+            WHEN ((sa.stripe_onboarding_status <> 'complete'::public.stripe_onboarding_status) OR (sa.stripe_onboarding_status IS NULL)) THEN 'onboarding_pending'::text
+            ELSE account_gate.blocked_reason
+        END AS seller_payout_block_reason,
+        CASE
+            WHEN (sa.completed_at IS NULL) THEN NULL::integer
+            ELSE (EXTRACT(day FROM (now() - sa.completed_at)))::integer
+        END AS days_since_completed
+   FROM ((shipment_amounts sa
      LEFT JOIN LATERAL ( SELECT pr.id,
             pr.status,
             pr.amount,
@@ -90,7 +100,17 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
              JOIN public.connect_payout_runs pr ON ((pr.id = crs.run_id)))
           WHERE (crs.shipment_id = sa.shipment_id)
           ORDER BY pr.created_at DESC, pr.id DESC
-         LIMIT 1) payout_run ON (true));
+         LIMIT 1) payout_run ON (true))
+     LEFT JOIN LATERAL ( SELECT
+                CASE
+                    WHEN (sa.is_completed AND (sa.stripe_transfer_id IS NULL) AND (sa.stripe_onboarding_status = 'complete'::public.stripe_onboarding_status) AND (sa.stripe_account_id IS NOT NULL) AND (btrim(sa.stripe_account_id) <> ''::text)) THEN ( SELECT
+                            CASE
+                                WHEN gate.is_actionable THEN NULL::text
+                                ELSE COALESCE(gate.blocked_reason, 'account_not_actionable'::text)
+                            END AS "case"
+                       FROM public.fn_get_connect_account_actionability(sa.stripe_account_id) gate(is_actionable, blocked_reason))
+                    ELSE NULL::text
+                END AS blocked_reason) account_gate ON (true));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."admin_connect_payout_release_view" TO "service_role";
 
