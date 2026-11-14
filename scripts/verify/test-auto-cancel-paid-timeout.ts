@@ -318,7 +318,10 @@ async function run() {
           notice.message,
           'Si no generas la guía en 1 hora, cancelaremos la venta y reembolsaremos al comprador.',
         );
-        assert.equal(notice.action_path, `/profile/orders/${ids.order}`);
+        assert.equal(
+          notice.action_path,
+          `/profile/orders/${ids.order}?shipment_id=${shipments.fresh.id}`,
+        );
         assert.equal(notice.event_payload.recipient_role, 'seller');
         assert.equal(notice.event_payload.shipment_id, shipments.fresh.id);
         const [operation] =

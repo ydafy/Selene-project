@@ -311,7 +311,10 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         rows[0].source_event_key,
         `shipment.refund_failed:${ids.shipment}:re_1`,
       );
-      assert.equal(rows[0].action_path, `/profile/orders/${ids.order}`);
+      assert.equal(
+        rows[0].action_path,
+        `/profile/orders/${ids.order}?shipment_id=${ids.shipment}`,
+      );
       assert.deepEqual(
         { ...rows[0].event_payload },
         {

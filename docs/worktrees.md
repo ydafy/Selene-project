@@ -30,7 +30,7 @@ bun run worktree:clean <folder name or path>        # prints the plan, changes n
 bun run worktree:clean <folder name or path> --yes  # runs it
 ```
 
-In order, it stops the worktree's Supabase stack, removes the worktree, prunes the registration, deletes the local branch with `git branch -D` after checking that the branch is merged into `origin/main` (`-d` would also compare it against its upstream, which can lag behind), prunes remote-tracking branches, and deletes the stack data folders whose `state.json` names the worktree.
+In order, it stops the worktree's Supabase stack, stops its CodeGraph daemon, removes the worktree, prunes the registration, deletes the local branch with `git branch -D` after checking that the branch is merged into `origin/main` (`-d` would also compare it against its upstream, which can lag behind), prunes remote-tracking branches, and deletes the stack data folders whose `state.json` names the worktree.
 
 It refuses, and changes nothing, when:
 
@@ -41,7 +41,11 @@ It refuses, and changes nothing, when:
 - the path is not a worktree of this repository;
 - the arguments mix a worktree with `--orphans` or `--stale-stacks`, or include an unknown flag.
 
-Git removes the worktree with `core.longpaths` on, because `node_modules` holds paths longer than 260 characters. If `git worktree remove` still fails, the command deletes the folder itself (the worktree already passed every check above). If Windows keeps the folder locked (an open terminal, editor or Docker Desktop), the command stops: close what holds it and run the command again. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
+The CodeGraph daemon (its lock file `daemon.pid` lives in `.codegraph/`) is stopped because it outlives the terminal and the agent session that started it: on Windows it keeps the index database in `.codegraph/` open for up to five minutes after its last client leaves, which is why a removal used to work only after waiting or restarting the machine. The command stops it only after the daemon answers on its socket with the pid in the lock file, so a stale lock file never kills an unrelated process that reused the pid.
+
+Git removes the worktree with `core.longpaths` on, because `node_modules` holds paths longer than 260 characters. Deleting `node_modules` prints nothing for a few minutes on Windows, so the command announces it first: do not interrupt it (an interrupted run leaves a half-deleted folder that the same command finishes on a rerun). If `git worktree remove` still fails, the command deletes the folder itself (the worktree already passed every check above). If Windows keeps the folder locked (an open terminal, editor, agent session or Docker Desktop), the command stops: close what holds it and run the same command again.
+
+Git drops the registration even when it cannot delete the folder, so before this fix a rerun answered `is not a worktree of this repository`. Now a rerun recognizes the leftover: a folder whose `.git` file points to a missing `.git/worktrees/<name>` of this repository. Its plan warns that git can no longer check the folder for uncommitted work, then it stops the CodeGraph daemon, deletes the folder, prunes, and deletes the stack data that names the folder. It keeps the data of a stack whose containers still run (or when Docker cannot answer), because `supabase stop` cannot run without the worktree, and names the `supabase stack destroy` command to run. A folder whose `.git` file points anywhere else, or one that contains the main checkout or a registered worktree, is still refused. If a later step fails (deleting the branch or a stack folder), the command names it, ends with `finished with problems` and exits with code 1. A `supabase stop` that could not run is reported as a warning: a worktree without a running stack is the normal case.
 
 ## Stack data of worktrees already deleted
 
