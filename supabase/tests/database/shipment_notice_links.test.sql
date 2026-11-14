@@ -14,17 +14,17 @@ select plan(23);
 create function pg_temp.make_product(p_id uuid, p_seller uuid)
 returns void language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'SOLD'::public.product_status_enum, '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+  select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
+    array['https://example.test/p.png'], 'SOLD'::public.product_status_enum, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
 $$;
 
@@ -52,18 +52,18 @@ update public.profiles_private set role = 'admin'
 where id = 'd0000000-0000-4000-8000-000000000021';
 
 -- One order, two shipments of the same seller; the dispute is on shipment 1.
-insert into public.orders (id, buyer_id, total_amount, shipping_address, status)
-values ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000022', 2000, '{}'::jsonb, 'completed');
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+values ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000022', 200000, '{}'::jsonb, 'completed');
 insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
 values
   ('d0000000-0000-4000-8000-0000000c0021', 'd0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000023', 'completed', now(), 'pi_test_links_1'),
   ('d0000000-0000-4000-8000-0000000c0022', 'd0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000023', 'completed', now(), 'pi_test_links_2');
 select pg_temp.make_product('d0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023');
 select pg_temp.make_product('d0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023');
-insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
 values
-  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023', 1000, 900, 'd0000000-0000-4000-8000-0000000c0021'),
-  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023', 1000, 900, 'd0000000-0000-4000-8000-0000000c0022');
+  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023', 100000, 90000, 'd0000000-0000-4000-8000-0000000c0021'),
+  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023', 100000, 90000, 'd0000000-0000-4000-8000-0000000c0022');
 update public.orders set status = 'completed' where id = 'd0000000-0000-4000-8000-0000000b0021';
 
 -- Producers filter by kind, so start from an empty inbox for these users.

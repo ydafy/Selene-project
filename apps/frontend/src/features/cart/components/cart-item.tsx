@@ -11,7 +11,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { AppChip } from '@/shared/ui/app-chip';
 import { Theme } from '@/shared/theme';
-import { formatCurrency } from '@/shared/utils/money/format-currency'; // <--- AGREGADO
+import { formatCents } from '@/shared/utils/money/format-cents';
 
 type CartItemProps = {
   product: Product;
@@ -127,7 +127,7 @@ export const CartItem = ({
             color={isUnavailable ? 'textSecondary' : 'primary'}
             fontWeight="700"
           >
-            {formatCurrency(product.price)}
+            {formatCents(product.price_cents)}
           </Text>
         </Box>
 

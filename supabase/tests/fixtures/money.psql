@@ -32,23 +32,23 @@ begin
   return pg_temp.mu(p_n);
 end $$;
 
--- A sold listing of p_seller priced at p_price pesos, with the publication
+-- A sold listing of p_seller priced at p_price_cents, with the publication
 -- economics fields computed from system_settings like a real publication.
-create function pg_temp.money_product(p_n integer, p_seller integer, p_price numeric default 1000)
+create function pg_temp.money_product(p_n integer, p_seller integer, p_price_cents bigint default 100000)
 returns uuid language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price, 'GPU', 'used', 'gaming',
+  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price_cents, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], 'SOLD'::public.product_status_enum,
-    '{}'::jsonb, pg_temp.mu(p_seller), 100, '06600', 'gpu_1',
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(p_price * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+    '{}'::jsonb, pg_temp.mu(p_seller), 10000, '06600', 'gpu_1',
+    10000 + s.shipping_buffer_cents
+      + ceil(p_price_cents::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
   returning id
 $$;
@@ -56,20 +56,21 @@ $$;
 -- One paid Connect order (payment intent pi_test_<order>) with one shipment
 -- of p_seller holding one listing (p_shipment is also the listing number).
 -- p_delivered_ago sets delivered_at to now() minus it; NULL leaves it empty.
+-- p_net_payout_cents is the order item's net payout in cents.
 -- p_payment_intent NULL makes a shipment with no Connect payment.
 create function pg_temp.money_shipment(
   p_order integer, p_shipment integer, p_seller integer, p_buyer integer,
   p_status public.order_status_enum default 'delivered',
   p_delivered_ago interval default null,
-  p_net_payout numeric default 900,
+  p_net_payout_cents bigint default 90000,
   p_payment_intent text default ''
 ) returns uuid language plpgsql as $$
 declare
   v_intent text := case when p_payment_intent = '' then 'pi_test_' || p_order else p_payment_intent end;
 begin
   perform pg_temp.money_product(p_shipment, p_seller);
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-  values (pg_temp.mu(p_order), pg_temp.mu(p_buyer), 1000, '{}'::jsonb, p_status, v_intent)
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+  values (pg_temp.mu(p_order), pg_temp.mu(p_buyer), 100000, '{}'::jsonb, p_status, v_intent)
   on conflict (id) do nothing;
   insert into public.shipments (
     id, order_id, seller_id, status, delivered_at, stripe_payment_intent_id
@@ -77,8 +78,8 @@ begin
     pg_temp.mu(p_shipment), pg_temp.mu(p_order), pg_temp.mu(p_seller), p_status,
     now() - p_delivered_ago, v_intent
   );
-  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-  values (pg_temp.mu(p_order), pg_temp.mu(p_shipment), pg_temp.mu(p_seller), 1000, p_net_payout, pg_temp.mu(p_shipment));
+  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+  values (pg_temp.mu(p_order), pg_temp.mu(p_shipment), pg_temp.mu(p_seller), 100000, p_net_payout_cents, pg_temp.mu(p_shipment));
   return pg_temp.mu(p_shipment);
 end $$;
 
@@ -104,9 +105,9 @@ begin
 end $$;
 
 -- A payout run of p_seller started by admin p_actor over p_shipments, each
--- mapped with its order_items net_payout in cents. amount is the sum.
+-- mapped with its order_items net_payout_cents. amount is the sum.
 -- release-connect-payout maps release_amount_cents instead (the view's amount
--- after the label deduction); pass a shipment whose net_payout already is the
+-- after the label deduction); pass a shipment whose net_payout_cents already is the
 -- amount a test needs.
 create function pg_temp.money_payout_run(
   p_run integer, p_seller integer, p_actor integer, p_shipments integer[],
@@ -115,11 +116,11 @@ create function pg_temp.money_payout_run(
 begin
   insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, release_stage)
   select pg_temp.mu(p_run), 'test-run-' || p_run, pg_temp.mu(p_seller),
-    coalesce(sum(round(oi.net_payout * 100)), 0)::integer, p_status, pg_temp.mu(p_actor), p_stage
+    coalesce(sum(oi.net_payout_cents), 0)::integer, p_status, pg_temp.mu(p_actor), p_stage
   from unnest(p_shipments) as n
   left join public.order_items oi on oi.shipment_id = pg_temp.mu(n);
   insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout, status)
-  select pg_temp.mu(p_run), pg_temp.mu(n), round(sum(oi.net_payout) * 100)::integer, p_status
+  select pg_temp.mu(p_run), pg_temp.mu(n), sum(oi.net_payout_cents)::integer, p_status
   from unnest(p_shipments) as n
   join public.order_items oi on oi.shipment_id = pg_temp.mu(n)
   group by n;

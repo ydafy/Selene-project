@@ -134,45 +134,45 @@ INSERT INTO public.addresses (
 -- the rates above change.
 
 INSERT INTO public.products (
-  id, name, description, price, category, condition, usage, images, status,
-  specifications, seller_id, shipping_cost, origin_zip, package_preset,
+  id, name, description, price_cents, category, condition, usage, images, status,
+  specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
   verified_at, publication_shipping_reserve_cents, publication_commission_rate,
   publication_insurance_rate
 )
 SELECT
-  p.id, p.name, p.description, p.price, p.category, p.condition, p.usage,
+  p.id, p.name, p.description, p.price_cents, p.category, p.condition, p.usage,
   ARRAY['https://placehold.co/800x800/png?text=' || replace(p.name, ' ', '+')],
   p.status::public.product_status_enum, p.specifications, '00000000-0000-4000-8000-000000000002',
-  p.shipping_cost, '06600', p.package_preset,
+  p.shipping_cost_cents, '06600', p.package_preset,
   CASE WHEN p.status = 'VERIFIED' THEN now() END,
-  round(p.shipping_cost * 100)::bigint
+  p.shipping_cost_cents
     + s.shipping_buffer_cents
-    + ceil(round(p.price * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-  internal.normalize_publication_rate(s.service_fee_pct),
-  internal.normalize_publication_rate(s.insurance_rate)
+    + ceil(p.price_cents::numeric * s.insurance_rate)::bigint,
+  s.service_fee_pct,
+  s.insurance_rate
 FROM public.system_settings s
 CROSS JOIN (VALUES
-  ('00000000-0000-4000-8000-0000000000b1'::uuid, 'NVIDIA RTX 3070', 'Tarjeta usada, sin minería, con caja original.', 7500::numeric,
-   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'VERIFIED'),
-  ('00000000-0000-4000-8000-0000000000b2'::uuid, 'AMD Ryzen 7 5800X', 'Procesador funcionando al 100%, sin disipador.', 3900::numeric,
-   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 120::numeric, 'cpu_2', 'VERIFIED'),
-  ('00000000-0000-4000-8000-0000000000b3'::uuid, 'Corsair Vengeance 32 GB DDR4', 'Kit 2x16 GB a 3600 MHz.', 1600::numeric,
-   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 100::numeric, 'ram_1', 'VERIFIED'),
-  ('00000000-0000-4000-8000-0000000000b4'::uuid, 'ASUS TUF B550-PLUS', 'Tarjeta madre AM4 en caja original.', 2400::numeric,
-   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 150::numeric, 'mobo_1', 'VERIFIED'),
-  ('00000000-0000-4000-8000-0000000000b5'::uuid, 'Gigabyte RTX 3060 Ti', 'Tarjeta usada, pendiente de enviar pruebas.', 5200::numeric,
-   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "Gigabyte", "model": "RTX 3060 Ti", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'PENDING_VERIFICATION'),
-  ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 4800::numeric,
-   'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 120::numeric, 'cpu_2', 'IN_REVIEW'),
-  ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 900::numeric,
-   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'REJECTED'),
-  ('00000000-0000-4000-8000-0000000000b8'::uuid, 'Sapphire Pulse RX 6600', 'Tarjeta ya vendida.', 3200::numeric,
-   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 180::numeric, 'gpu_1', 'SOLD'),
-  ('00000000-0000-4000-8000-0000000000b9'::uuid, 'Crucial Ballistix 16 GB DDR4', 'Kit oculto por el vendedor.', 700::numeric,
-   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 100::numeric, 'ram_1', 'HIDDEN'),
-  ('00000000-0000-4000-8000-0000000000ba'::uuid, 'AMD Ryzen 5 3600', 'Listado eliminado por el vendedor.', 1500::numeric,
-   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 120::numeric, 'cpu_2', 'VERIFIED')
-) AS p(id, name, description, price, category, condition, usage, specifications, shipping_cost, package_preset, status)
+  ('00000000-0000-4000-8000-0000000000b1'::uuid, 'NVIDIA RTX 3070', 'Tarjeta usada, sin minería, con caja original.', 750000::bigint,
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'VERIFIED'),
+  ('00000000-0000-4000-8000-0000000000b2'::uuid, 'AMD Ryzen 7 5800X', 'Procesador funcionando al 100%, sin disipador.', 390000::bigint,
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 12000::bigint, 'cpu_2', 'VERIFIED'),
+  ('00000000-0000-4000-8000-0000000000b3'::uuid, 'Corsair Vengeance 32 GB DDR4', 'Kit 2x16 GB a 3600 MHz.', 160000::bigint,
+   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'VERIFIED'),
+  ('00000000-0000-4000-8000-0000000000b4'::uuid, 'ASUS TUF B550-PLUS', 'Tarjeta madre AM4 en caja original.', 240000::bigint,
+   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 15000::bigint, 'mobo_1', 'VERIFIED'),
+  ('00000000-0000-4000-8000-0000000000b5'::uuid, 'Gigabyte RTX 3060 Ti', 'Tarjeta usada, pendiente de enviar pruebas.', 520000::bigint,
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "Gigabyte", "model": "RTX 3060 Ti", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'PENDING_VERIFICATION'),
+  ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 480000::bigint,
+   'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 12000::bigint, 'cpu_2', 'IN_REVIEW'),
+  ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 90000::bigint,
+   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'REJECTED'),
+  ('00000000-0000-4000-8000-0000000000b8'::uuid, 'Sapphire Pulse RX 6600', 'Tarjeta ya vendida.', 320000::bigint,
+   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'SOLD'),
+  ('00000000-0000-4000-8000-0000000000b9'::uuid, 'Crucial Ballistix 16 GB DDR4', 'Kit oculto por el vendedor.', 70000::bigint,
+   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'HIDDEN'),
+  ('00000000-0000-4000-8000-0000000000ba'::uuid, 'AMD Ryzen 5 3600', 'Listado eliminado por el vendedor.', 150000::bigint,
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 12000::bigint, 'cpu_2', 'VERIFIED')
+) AS p(id, name, description, price_cents, category, condition, usage, specifications, shipping_cost_cents, package_preset, status)
 WHERE s.id = 1;
 
 -- Auto-completion fixtures for complete-delivered-shipments (backlog BL14): one fixture-buyer
@@ -180,8 +180,8 @@ WHERE s.id = 1;
 -- an open dispute; f3 is due and its dispute is resolved; f4 was delivered 1 hour ago.
 -- The complete-delivered-shipments cron must complete f1 and f3 only. The Stripe ids are fake:
 -- they only mark the shipments as Connect, so completion never touches the legacy wallets.
-INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status) VALUES
-  ('00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-000000000005', 100,
+INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status) VALUES
+  ('00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-000000000005', 10000,
    '{"street": "Av. Reforma 1", "city": "Ciudad de México", "zip": "06500"}'::jsonb, 'delivered');
 
 INSERT INTO public.shipments (id, order_id, seller_id, status, delivered_at, stripe_payment_intent_id) VALUES

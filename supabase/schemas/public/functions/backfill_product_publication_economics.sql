@@ -47,13 +47,13 @@ BEGIN
 
   SELECT
     shipping_buffer_cents,
-    internal.normalize_publication_rate(service_fee_pct),
-    internal.normalize_publication_rate(insurance_rate)
+    service_fee_pct,
+    insurance_rate
   INTO v_shipping_buffer_cents, v_commission_rate, v_insurance_rate
   FROM public.system_settings
   WHERE id = 1;
 
-  IF v_product.shipping_cost IS NULL
+  IF v_product.shipping_cost_cents IS NULL
     OR v_shipping_buffer_cents IS NULL
     OR v_commission_rate IS NULL
     OR v_insurance_rate IS NULL THEN
@@ -61,9 +61,9 @@ BEGIN
   END IF;
 
   v_reserve_cents :=
-    round(v_product.shipping_cost * 100)::BIGINT
+    v_product.shipping_cost_cents
     + v_shipping_buffer_cents
-    + ceil(round(v_product.price * 100)::NUMERIC * v_insurance_rate)::BIGINT;
+    + ceil(v_product.price_cents::NUMERIC * v_insurance_rate)::BIGINT;
 
   UPDATE public.products
   SET publication_shipping_reserve_cents = v_reserve_cents,

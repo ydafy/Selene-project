@@ -71,7 +71,7 @@ export const useAdminStats = () => {
         // 4. Ventas del Mes Actual (GMV, Ganancias de Selene y Conteo)
         supabase
           .from('orders')
-          .select('total_amount, service_fee_amount')
+          .select('total_amount_cents, service_fee_amount_cents')
           .gte('created_at', startOfMonth.toISOString())
           .not('status', 'eq', 'cancelled')
           .not('status', 'eq', 'refunded'),
@@ -79,7 +79,7 @@ export const useAdminStats = () => {
         // 5. Ventas del Mes Anterior (Para cálculo de tendencias)
         supabase
           .from('orders')
-          .select('total_amount')
+          .select('total_amount_cents')
           .gte('created_at', startOfLastMonth.toISOString())
           .lt('created_at', startOfMonth.toISOString())
           .not('status', 'eq', 'cancelled')
@@ -103,28 +103,27 @@ export const useAdminStats = () => {
 
       // --- CÁLCULOS FINANCIEROS Y OPERATIVOS ---
 
-      // A. Total por dispersar a vendedores (Convertido de Centavos a Pesos MXN)
-      const totalToPay =
-        (connectPayoutsResult.data || [])
-          .filter((row) => row.is_eligible)
-          .reduce((sum, row) => sum + (row.release_amount_cents || 0), 0) / 100;
+      // A. Total por dispersar a vendedores (centavos enteros)
+      const totalToPayCents = (connectPayoutsResult.data || [])
+        .filter((row) => row.is_eligible)
+        .reduce((sum, row) => sum + (row.release_amount_cents || 0), 0);
 
       // B. GMV actual y Ganancias de Selene (Comisiones del 6% + fees)
       const currentOrders = currentOrdersResult.data || [];
-      const monthlyGmv = currentOrders.reduce(
-        (sum, order) => sum + Number(order.total_amount || 0),
+      const monthlyGmvCents = currentOrders.reduce(
+        (sum, order) => sum + order.total_amount_cents,
         0,
       );
-      const monthlyRevenue = currentOrders.reduce(
-        (sum, order) => sum + Number(order.service_fee_amount || 0),
+      const monthlyRevenueCents = currentOrders.reduce(
+        (sum, order) => sum + order.service_fee_amount_cents,
         0,
       );
       const monthlySalesCount = currentOrders.length;
 
       // C. GMV anterior para tendencia
       const prevOrders = prevOrdersResult.data || [];
-      const prevMonthlyGmv = prevOrders.reduce(
-        (sum, order) => sum + Number(order.total_amount || 0),
+      const prevMonthlyGmvCents = prevOrders.reduce(
+        (sum, order) => sum + order.total_amount_cents,
         0,
       );
       const prevMonthlySalesCount = prevOrders.length;
@@ -138,21 +137,23 @@ export const useAdminStats = () => {
         // Operativos
         pendingProducts,
         activeDisputes,
-        totalToPay,
+        totalToPayCents,
 
         // Financieros
-        monthlyGmv,
-        monthlyRevenue,
+        monthlyGmvCents,
+        monthlyRevenueCents,
         monthlySalesCount,
-        averageTicket:
-          monthlySalesCount > 0 ? monthlyGmv / monthlySalesCount : 0,
+        averageTicketCents:
+          monthlySalesCount > 0
+            ? Math.round(monthlyGmvCents / monthlySalesCount)
+            : 0,
 
         // Tendencias
         trends: {
           pendingProducts: calcTrend(pendingProducts, prevPendingProducts),
           activeDisputes: calcTrend(activeDisputes, prevActiveDisputes),
           monthlySales: calcTrend(monthlySalesCount, prevMonthlySalesCount),
-          monthlyGmv: calcTrend(monthlyGmv, prevMonthlyGmv),
+          monthlyGmv: calcTrend(monthlyGmvCents, prevMonthlyGmvCents),
         },
 
         // Catálogo y Usuarios

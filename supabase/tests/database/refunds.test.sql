@@ -93,7 +93,7 @@ select pg_temp.money_shipment(7201, 7101, 7001, 7002, 'delivered');
 select pg_temp.money_dispute(7301, 7101, 'waiting_return');
 update public.disputes set shipment_id = null where id = pg_temp.mu(7301);
 -- 7102: no Connect payment, already refunded with a buyer resolution: Connect before replay.
-select pg_temp.money_shipment(7202, 7102, 7001, 7002, 'refunded', null, 900, null);
+select pg_temp.money_shipment(7202, 7102, 7001, 7002, 'refunded', null, 90000, null);
 select pg_temp.money_dispute(7302, 7102, 'resolved');
 -- 7103: refunded and resolved for the buyer: a replay.
 select pg_temp.money_shipment(7203, 7103, 7001, 7002, 'refunded');
@@ -227,9 +227,9 @@ select is(
 -- Keep the disputes above out of the crons' selection.
 update public.disputes set updated_at = now() where id in (select pg_temp.mu(n) from generate_series(7301, 7311) n);
 -- 7120: waiting_return, return label unpaid for 49 hours. 7121: return delivered 49 hours ago.
-select pg_temp.money_shipment(7220, 7120, 7001, 7002, 'delivered', null, 900, null);
+select pg_temp.money_shipment(7220, 7120, 7001, 7002, 'delivered', null, 90000, null);
 select pg_temp.money_dispute(7320, 7120, 'waiting_return');
-select pg_temp.money_shipment(7221, 7121, 7001, 7002, 'delivered', null, 900, null);
+select pg_temp.money_shipment(7221, 7121, 7001, 7002, 'delivered', null, 90000, null);
 select pg_temp.money_dispute(7321, 7121, 'return_delivered');
 update public.disputes set updated_at = now() - interval '49 hours' where id = pg_temp.mu(7320);
 update public.disputes set return_delivered_at = now() - interval '49 hours', updated_at = now() - interval '49 hours'

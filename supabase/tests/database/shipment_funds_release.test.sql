@@ -55,7 +55,7 @@ select is(
 
 -- 2. fn_release_shipment_funds refusals, in check order -----------------------------
 -- 2101: no Connect payment and not delivered: the Connect check comes first.
-select pg_temp.money_shipment(2201, 2101, 2001, 2002, 'paid', null, 900, null);
+select pg_temp.money_shipment(2201, 2101, 2001, 2002, 'paid', null, 90000, null);
 -- 2102: Connect, shipped, never delivered, with an open dispute: delivery before dispute.
 select pg_temp.money_shipment(2202, 2102, 2001, 2002, 'shipped');
 select pg_temp.money_dispute(2301, 2102);
@@ -241,7 +241,7 @@ select is((select count(*) from public.notifications where source_event_key like
 -- 4. Funds-released notice of fn_complete_shipment_transfer ---------------------------
 -- 2131: the normal notice. 2132: a notice with the same key already exists.
 -- 2133: the notice insert fails.
-select pg_temp.money_shipment(2231, 2131, 2001, 2002, 'completed', interval '3 days', 12345.67);
+select pg_temp.money_shipment(2231, 2131, 2001, 2002, 'completed', interval '3 days', 1234567);
 select pg_temp.money_shipment(2232, 2132, 2001, 2002, 'completed', interval '3 days');
 select pg_temp.money_shipment(2233, 2133, 2001, 2002, 'completed', interval '3 days');
 select pg_temp.money_payout_run(2431, 2001, 2003, array[2131], 'pending_reconciliation', 'release_accepted');
@@ -311,13 +311,13 @@ select is(
   0::bigint, 'notice: a written or already existing notice logs no warning');
 
 -- 5. Release amount of admin_connect_payout_release_view ------------------------------
--- All completed Connect shipments of a payout-ready seller, net payout 4700 pesos.
+-- All completed Connect shipments of a payout-ready seller, net payout 470000 cents.
 -- 2141 single-modal, no shipping cost, with a label cost. 2142 single-modal with a
 -- shipping cost. 2143 legacy with a shipping cost. 2144 legacy without one.
 -- 2145 legacy with a shipping cost above the net payout.
 update public.profiles_private set stripe_account_id = 'acct_test_2001', stripe_onboarding_status = 'complete'
 where id = pg_temp.mu(2001);
-select pg_temp.money_shipment(2240 + n, 2140 + n, 2001, 2002, 'completed', interval '3 days', 4700)
+select pg_temp.money_shipment(2240 + n, 2140 + n, 2001, 2002, 'completed', interval '3 days', 470000)
 from generate_series(1, 5) n;
 update public.shipments set completed_at = now() - interval '1 day'
 where id in (select pg_temp.mu(n) from generate_series(2141, 2145) n);

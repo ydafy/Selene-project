@@ -23,7 +23,7 @@ tests {
     expect(rows[0].product.id).to.equal("00000000-0000-4000-8000-0000000000b1");
     expect(Object.keys(rows[0].product).sort()).to.deep.equal([
       "aspect_ratio", "category", "condition", "created_at", "description", "fts", "id", "images",
-      "name", "price", "seller_id", "specifications", "status", "usage", "views"
+      "name", "price_cents", "seller_id", "specifications", "status", "usage", "views"
     ]);
   });
 }

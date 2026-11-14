@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.fn_reserve_products (
   p_product_ids uuid[]
 )
   RETURNS TABLE (
-    total_price   numeric,
+    total_price_cents bigint,
     success       boolean,
     error_message text
   )
@@ -13,12 +13,12 @@ CREATE OR REPLACE FUNCTION public.fn_reserve_products (
   AS $function$
 DECLARE
   v_count INT;
-  v_sum NUMERIC;
+  v_sum BIGINT;
   v_reserved_ids UUID[];
 BEGIN
   -- 0. DEFENSA: Carrito nulo o vacío (retorno inmediato en 0ms)
   IF p_product_ids IS NULL OR cardinality(p_product_ids) = 0 THEN
-    RETURN QUERY SELECT 0::NUMERIC, false, 'EMPTY_CART'::TEXT;
+    RETURN QUERY SELECT 0::BIGINT, false, 'EMPTY_CART'::TEXT;
     RETURN;
   END IF;
 
@@ -27,7 +27,7 @@ BEGIN
     SELECT 1 FROM public.profiles_private pp
     WHERE pp.id = p_buyer_id AND pp.status = 'banned'
   ) THEN
-    RETURN QUERY SELECT 0::NUMERIC, false, 'ACCOUNT_RESTRICTED'::TEXT;
+    RETURN QUERY SELECT 0::BIGINT, false, 'ACCOUNT_RESTRICTED'::TEXT;
     RETURN;
   END IF;
 
@@ -56,9 +56,9 @@ BEGIN
         WHERE pp.id = products.seller_id
           AND pp.status IN ('suspended', 'banned')
       )
-    RETURNING id, price
+    RETURNING id, price_cents
   )
-  SELECT array_agg(id), COUNT(*), COALESCE(SUM(price), 0)
+  SELECT array_agg(id), COUNT(*), COALESCE(SUM(price_cents), 0)::BIGINT
     INTO v_reserved_ids, v_count, v_sum
   FROM reserved;
 
@@ -69,7 +69,7 @@ BEGIN
     IF v_count > 0 THEN
       PERFORM public.fn_release_listings(v_reserved_ids, true, false);
     END IF;
-    RETURN QUERY SELECT 0::NUMERIC, false, 'SOME_PRODUCTS_UNAVAILABLE'::TEXT;
+    RETURN QUERY SELECT 0::BIGINT, false, 'SOME_PRODUCTS_UNAVAILABLE'::TEXT;
   END IF;
 END;
 $function$;

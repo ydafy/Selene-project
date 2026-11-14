@@ -14,8 +14,7 @@ insert into moved values
   ('fn_derive_order_status', 'uuid'),
   ('fn_generate_profile_username', 'text'),
   ('fn_refresh_seller_stats', 'uuid'),
-  ('fn_shipment_label_is_stuck', 'order_status_enum, text, timestamp with time zone'),
-  ('normalize_publication_rate', 'numeric');
+  ('fn_shipment_label_is_stuck', 'order_status_enum, text, timestamp with time zone');
 
 select set_eq(
   $$select p.proname::text, oidvectortypes(p.proargtypes)

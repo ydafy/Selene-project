@@ -257,7 +257,7 @@ export function createCreateConnectPaymentHandler(
       const { data: products, error: productsError } = await supabaseAdmin
         .from('products')
         .select(
-          'id, seller_id, price, name, shipping_cost, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate',
+          'id, seller_id, price_cents, name, shipping_cost_cents, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate',
         )
         .in('id', productIds);
       if (productsError || !products?.length) {
@@ -301,7 +301,7 @@ export function createCreateConnectPaymentHandler(
 
         const productEconomics = product as typeof product &
           ProductPublicationEconomicsRow;
-        const subtotalCents = Math.round(product.price * 100) * item.quantity;
+        const subtotalCents = product.price_cents * item.quantity;
         const shippingBufferCents =
           systemSettings?.shipping_buffer_cents == null
             ? undefined
@@ -331,8 +331,7 @@ export function createCreateConnectPaymentHandler(
               calculateEstimatedSellerShippingDeductionCents({
                 priceCents: subtotalCents,
                 quotedShippingCents:
-                  Math.round((product.shipping_cost ?? 0) * 100) *
-                  item.quantity,
+                  product.shipping_cost_cents * item.quantity,
                 shippingBufferCents,
                 insuranceRate,
               }),

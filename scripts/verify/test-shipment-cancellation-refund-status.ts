@@ -84,8 +84,8 @@ function request(shipmentId: string) {
 }
 
 async function fixture(tx: Tx) {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-    VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid', ${paymentIntent})`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+    VALUES (${ids.order}, ${ids.buyer}, 18000, '{}'::jsonb, 'paid', ${paymentIntent})`;
   await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
     VALUES (${ids.shipment}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}),
            (${ids.sibling}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent})`;

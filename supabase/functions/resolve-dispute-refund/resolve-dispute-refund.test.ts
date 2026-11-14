@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  disputeRefundAmountCents,
   extractRefundId,
   refundBlockedReason,
   refundIntentBlockedReason,
@@ -43,6 +44,26 @@ describe('refundBlockedReason', () => {
     expect(refundBlockedReason(undefined)).toBe(
       'SHIPMENT_NOT_REFUNDABLE:unknown',
     );
+  });
+});
+
+describe('disputeRefundAmountCents', () => {
+  test('adds the item prices and shipping amounts in cents', () => {
+    expect(
+      disputeRefundAmountCents([
+        { price_at_purchase_cents: 325_000, shipping_amount_cents: 90_000 },
+        { price_at_purchase_cents: 29, shipping_amount_cents: null },
+      ]),
+    ).toBe(415_029);
+  });
+
+  test('keeps the amount the pesos columns produced for the same data', () => {
+    // 7569.59 + 0.01 pesos rounded to cents was 756960.
+    expect(
+      disputeRefundAmountCents([
+        { price_at_purchase_cents: 756_959, shipping_amount_cents: 1 },
+      ]),
+    ).toBe(756_960);
   });
 });
 

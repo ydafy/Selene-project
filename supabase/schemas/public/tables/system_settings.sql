@@ -3,9 +3,9 @@ CREATE TABLE "public"."system_settings" (
   "is_maintenance"                             boolean                  DEFAULT false,
   "min_version_android"                        text                     DEFAULT '1.0.0'::text,
   "min_version_ios"                            text                     DEFAULT '1.0.0'::text,
-  "service_fee_pct"                            numeric                  DEFAULT 0.05,
+  "service_fee_pct"                            numeric(5,4)                  NOT NULL DEFAULT 0.05,
   "service_fee_fixed_cents"                    integer                  DEFAULT 500,
-  "insurance_rate"                             numeric                  DEFAULT 0.012,
+  "insurance_rate"                             numeric(5,4)                  NOT NULL DEFAULT 0.012,
   "payout_fee_fixed_cents"                     integer                  DEFAULT 2000,
   "currency"                                   text                     DEFAULT 'MXN'::text,
   "updated_at"                                 timestamp with time zone DEFAULT now(),
@@ -16,8 +16,8 @@ CREATE TABLE "public"."system_settings" (
   "order_expiration_hours"                     integer                  DEFAULT 48,
   "min_payout_amount_cents"                    integer                  DEFAULT 10000,
   "preparing_expiration_hours"                 integer                  DEFAULT 96,
-  "isr_withholding_pct"                        numeric                  DEFAULT 0.01,
-  "iva_withholding_pct"                        numeric                  DEFAULT 0.08,
+  "isr_withholding_pct"                        numeric(5,4)                  NOT NULL DEFAULT 0.01,
+  "iva_withholding_pct"                        numeric(5,4)                  NOT NULL DEFAULT 0.08,
   "novice_completed_threshold"                 integer                  DEFAULT 3,
   "novice_active_limit"                        integer                  DEFAULT 3,
   "trusted_active_limit"                       integer                  DEFAULT 10,
@@ -41,7 +41,11 @@ CREATE TABLE "public"."system_settings" (
     AND (upper((listing_quote_reference_destination ->> 'state'::text)) <> 'MX'::text) AND ((listing_quote_reference_destination ->> 'country'::text) = 'MX'::text) AND
     ((listing_quote_reference_destination ->> 'postalCode'::text) ~ '^[0-9]{5}$'::text)))),
   CONSTRAINT "system_settings_id_check" CHECK ((id = 1)),
-  CONSTRAINT "system_settings_pkey" PRIMARY KEY (id)
+  CONSTRAINT "system_settings_pkey" PRIMARY KEY (id),
+  CONSTRAINT "system_settings_rates_check"
+    CHECK
+    (((service_fee_pct >= (0)::numeric) AND (service_fee_pct <= (1)::numeric) AND (insurance_rate >= (0)::numeric) AND (insurance_rate <= (1)::numeric) AND
+    (isr_withholding_pct >= (0)::numeric) AND (isr_withholding_pct <= (1)::numeric) AND (iva_withholding_pct >= (0)::numeric) AND (iva_withholding_pct <= (1)::numeric)))
 );
 
 ALTER TABLE "public"."system_settings"

@@ -34,7 +34,7 @@ import { useCheckoutStore } from '@/shared/store/use-checkout-store';
 import { useAddresses } from '@/shared/hooks/use-addresses';
 import { useOrderCalculations } from '@/features/orders/hooks/use-order-calculations';
 import { usePaymentMethods } from '@/features/checkout/hooks/use-payment-methods';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { Address } from '@selene/types';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { OrderService } from '@/features/orders/logic/order-service';
@@ -63,7 +63,8 @@ export default function CheckoutSummaryScreen() {
 
   const { addresses, isLoading: loadingAddresses } = useAddresses();
   const { methods, isLoadingMethods } = usePaymentMethods();
-  const { subtotal, serviceFee, total } = useOrderCalculations(cartItems);
+  const { subtotalCents, serviceFeeCents, totalCents } =
+    useOrderCalculations(cartItems);
 
   // Estados Locales
   const [showErrors, setShowErrors] = useState(false);
@@ -260,9 +261,9 @@ export default function CheckoutSummaryScreen() {
 
         {/* DESGLOSE FINANCIERO */}
         <SummaryBreakdown
-          subtotal={subtotal}
-          serviceFee={serviceFee}
-          total={total}
+          subtotalCents={subtotalCents}
+          serviceFeeCents={serviceFeeCents}
+          totalCents={totalCents}
           onHelpPress={() => setIsProtectionDialogVisible(true)}
         />
 
@@ -310,7 +311,7 @@ export default function CheckoutSummaryScreen() {
         >
           {status === 'validating'
             ? t('summary.validating')
-            : `${t('actions.pay')} ${formatCurrency(total)}`}
+            : `${t('actions.pay')} ${formatCents(totalCents)}`}
         </PrimaryButton>
       </Box>
 

@@ -55,12 +55,12 @@ const asOwnerFor = async <T>(tx: Tx, body: () => Promise<T>): Promise<T> => {
 };
 
 async function fixture(tx: Tx, status: 'paid' | 'preparing' = 'paid') {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
-    VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid', ${pi}, 500)`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
+    VALUES (${ids.order}, ${ids.buyer}, 18000, '{}'::jsonb, 'paid', ${pi}, 500)`;
   await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
     VALUES (${ids.shipment}, ${ids.order}, ${ids.seller}, ${status}, ${pi})`;
-  await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-    VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 7500, 7000, ${ids.shipment})`;
+  await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+    VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 750000, 700000, ${ids.shipment})`;
   await tx`UPDATE public.products SET status = 'SOLD' WHERE id = ${ids.product}`;
   await asService(tx);
 }

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { SellDraft } from '../store/use-sell-store';
+import type { Product } from '@selene/types';
+
+import { type SellDraft, useSellStore } from '../store/use-sell-store';
 import { buildEditEconomicsFields, classifyListingEdit } from './listing-edit';
 
 const original = {
@@ -116,5 +118,35 @@ describe('buildEditEconomicsFields', () => {
         insurance_rate: 0.02,
       }),
     ).toThrow('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+  });
+});
+
+describe('a listing loaded for edit', () => {
+  test('is not an economics change until the seller edits a price', () => {
+    useSellStore.getState().loadProductForEdit({
+      id: 'prod-1',
+      category: 'GPU',
+      name: 'RTX 3060',
+      description: 'Like new',
+      price_cents: 123_456,
+      shipping_cost_cents: 15_050,
+      specifications: {},
+      images: [],
+    } as unknown as Product);
+    const { draft, originalData } = useSellStore.getState();
+    if (!originalData) throw new Error('originalData not loaded');
+
+    expect(classifyListingEdit(draft, originalData).economicsChanges).toBe(
+      false,
+    );
+    expect(
+      classifyListingEdit({ ...draft, price: '1234.560' }, originalData)
+        .economicsChanges,
+    ).toBe(false);
+    expect(
+      classifyListingEdit({ ...draft, price: '1234.57' }, originalData)
+        .economicsChanges,
+    ).toBe(true);
+    useSellStore.getState().resetDraft();
   });
 });

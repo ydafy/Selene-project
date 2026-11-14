@@ -17,16 +17,16 @@ headers {
 }
 
 script:pre-request {
-  function reserve(price, shipping, buffer, insurance) {
-    return Math.round(shipping * 100) + buffer + Math.ceil(Math.round(price * 100) * insurance);
+  function reserve(priceCents, shippingCents, buffer, insurance) {
+    return shippingCents + buffer + Math.ceil(priceCents * insurance);
   }
   const buffer = Number(bru.getVar("staleEconBuffer")) + 500;
   const insurance = Number(bru.getVar("staleEconInsurance"));
-  bru.setVar("staleEconNewReserve", reserve(8100, 100, buffer, insurance));
+  bru.setVar("staleEconNewReserve", reserve(810000, 10000, buffer, insurance));
   req.setBody({
-    price: 8100,
+    price_cents: 810000,
     status: "PENDING_VERIFICATION",
-    publication_shipping_reserve_cents: reserve(8100, 100, buffer, insurance),
+    publication_shipping_reserve_cents: reserve(810000, 10000, buffer, insurance),
     publication_commission_rate: Number(bru.getVar("staleEconCommission")),
     publication_insurance_rate: insurance
   });
@@ -39,7 +39,7 @@ body:json {
 tests {
   test("a price change with a snapshot fresh against current settings is stored", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(Number(res.getBody()[0].price)).to.equal(8100);
+    expect(res.getBody()[0].price_cents).to.equal(810000);
     expect(res.getBody()[0].status).to.equal("PENDING_VERIFICATION");
     expect(res.getBody()[0].publication_shipping_reserve_cents).to.equal(Number(bru.getVar("staleEconNewReserve")));
   });

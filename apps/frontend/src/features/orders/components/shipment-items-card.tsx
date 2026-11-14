@@ -7,7 +7,7 @@ import type { EnrichedShipment } from '@selene/types';
 
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { Theme } from '@/shared/theme';
 import { cardStyles } from './order-card-styles';
 
@@ -15,7 +15,7 @@ interface ShipmentItemsCardProps {
   items: EnrichedShipment['items'] | undefined;
   isBuyer: boolean;
   isSeller: boolean | undefined;
-  total: number;
+  totalCents: number;
   isReviewed: (productId: string) => boolean;
   onOpenProduct: (productId: string) => void;
 }
@@ -24,7 +24,7 @@ export function ShipmentItemsCard({
   items,
   isBuyer,
   isSeller,
-  total,
+  totalCents,
   isReviewed,
   onOpenProduct,
 }: ShipmentItemsCardProps) {
@@ -70,7 +70,7 @@ export function ShipmentItemsCard({
                 {item.product?.name || t('common:states.unknownProduct')}
               </Text>
               <Text variant="body-sm" color="primary" marginTop="xs">
-                {formatCurrency(item.price_at_purchase)}
+                {formatCents(item.price_at_purchase_cents)}
               </Text>
               {/* V2: per-product reviewed badge.
                   Shows "Calificado" checkmark when buyer already reviewed
@@ -117,7 +117,7 @@ export function ShipmentItemsCard({
           {isSeller ? t('orders:detail.totalSold') : t('orders:detail.total')}
         </Text>
         <Text variant="subheader-lg" color="primary">
-          {formatCurrency(total)}
+          {formatCents(totalCents)}
         </Text>
       </Box>
     </Box>

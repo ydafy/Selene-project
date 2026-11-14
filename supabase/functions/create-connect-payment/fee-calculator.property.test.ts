@@ -29,12 +29,8 @@ const commissionRateArbitrary = fc.oneof(
   fc.constantFrom(0, CONNECT_COMMISSION_RATE, 0.1, 1),
 );
 
-const subtotalArbitrary = fc.oneof(
-  fc.integer({ min: 0, max: 100_000_000 }),
-  fc.constantFrom(0, 1, 100, 10_000),
-);
-
 // Below the $10 MXN product minimum on purpose, so the math is exercised there too.
+// A subtotal of 0 is rejected (#294), so every generated row is positive.
 const positiveSubtotalArbitrary = fc.oneof(
   fc.integer({ min: 1, max: 100_000_000 }),
   fc.constantFrom(1, 100, 10_000),
@@ -48,25 +44,20 @@ const idsArbitrary = (minLength: number) =>
 
 // Shipping is drawn as a fraction of what is left after the largest possible
 // rounded commission, so every generated shipment has a non-negative net.
-// At least one row has a positive subtotal; other rows may be zero.
 const economicCheckoutArbitrary = fc
   .tuple(
     fc.option(commissionRateArbitrary, { nil: undefined }),
     idsArbitrary(1),
-    fc.nat(),
   )
-  .chain(([commissionRate, shipmentIds, positivePick]) =>
+  .chain(([commissionRate, shipmentIds]) =>
     fc.record({
       commissionRate: fc.constant(commissionRate),
       sellers: fc.tuple(
-        ...shipmentIds.map((shipmentId, index) =>
+        ...shipmentIds.map((shipmentId) =>
           fc
             .record({
               sellerId: fc.constantFrom('seller-a', 'seller-b', 'seller-c'),
-              subtotalCents:
-                index === positivePick % shipmentIds.length
-                  ? positiveSubtotalArbitrary
-                  : subtotalArbitrary,
+              subtotalCents: positiveSubtotalArbitrary,
               shippingShare: fc.double({ min: 0, max: 1, noNaN: true }),
             })
             .map(
@@ -199,7 +190,6 @@ describe('calculateCheckoutAllocation properties', () => {
             allocation.totalGrossCents,
           ),
         ).toBe(false);
-        if (totalGross === 0n) return;
         for (const row of allocation.rows) {
           // |seguro - totalSeguro * gross / totalGross| < 1, kept in integers.
           const error =
@@ -228,10 +218,9 @@ describe('calculateCheckoutAllocation properties', () => {
               }) satisfies SellerAllocationInput,
           );
 
-          // The error code is not pinned: #294 may replace the current gross-up one.
           expect(() =>
             calculateCheckoutAllocation(sellers, { commissionRate }),
-          ).toThrow();
+          ).toThrow(new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'));
         },
       ),
       { numRuns: 200 },

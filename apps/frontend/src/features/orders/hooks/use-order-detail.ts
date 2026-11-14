@@ -171,25 +171,25 @@ export function useOrderDetail() {
   /** Both buyer and seller may cancel a `paid` shipment; copy follows the viewer's role. */
   const isSellerCancel = currentShipment?.isSeller ?? false;
 
-  /** Subtotal del envío actual: suma de price_at_purchase de sus items.
+  /** Subtotal del envío actual en centavos: suma de price_at_purchase_cents de sus items.
    *  Se usa como total mostrado al pie del listado de productos cuando hay
    *  multiples envios (cada card lista sólo los items de su shipment).
-   *  En ordenes single-seller se conserva `order.total_amount` (que incluye
+   *  En ordenes single-seller se conserva `order.total_amount_cents` (que incluye
    *  envio/fee) para no alterar el comportamiento existente. */
-  const shipmentSubtotal = useMemo(() => {
+  const shipmentSubtotalCents = useMemo(() => {
     if (!currentShipment) return 0;
     return currentShipment.items.reduce(
-      (sum, i) => sum + Number(i.price_at_purchase ?? 0),
+      (sum, i) => sum + i.price_at_purchase_cents,
       0,
     );
   }, [currentShipment]);
 
   const isMultiShipment = (order?.shipments?.length ?? 0) > 1;
-  // Sellers never see order.total_amount: it is the buyer's payment (all items, shipping and fees).
-  const displayedTotal =
+  // Sellers never see order.total_amount_cents: it is the buyer's payment (all items, shipping and fees).
+  const displayedTotalCents =
     isMultiShipment || currentShipment?.isSeller
-      ? shipmentSubtotal
-      : (order?.total_amount ?? 0);
+      ? shipmentSubtotalCents
+      : (order?.total_amount_cents ?? 0);
   const checkoutRecoveryView = resolveBuyerCheckoutRecoveryView({
     isBuyer: order?.isBuyer ?? false,
     paymentProcessing: (
@@ -254,7 +254,7 @@ export function useOrderDetail() {
     isSharing,
     isSellerCancel,
     isMultiShipment,
-    displayedTotal,
+    displayedTotalCents,
     reviewData,
     canReviewProductFn,
     openReviewFor,

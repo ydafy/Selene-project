@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import type { Product } from '@selene/types';
 
 import {
   buildPublicationEconomicsSnapshot,
@@ -98,5 +99,76 @@ describe('publication economics draft snapshot', () => {
       commissionRate: 0.06,
       insuranceRate: 0.012,
     });
+  });
+});
+
+describe('publication rates are fractions (S6)', () => {
+  const snapshot = (rate: number | null) =>
+    buildPublicationEconomicsSnapshot({
+      priceCents: 100_000,
+      quoteCents: 15_000,
+      settings: {
+        service_fee_pct: rate,
+        shipping_buffer_cents: 2_000,
+        insurance_rate: 0.012,
+      },
+    });
+
+  it('accepts a fraction in 0..1', () => {
+    expect(snapshot(0.06).commissionRate).toBe(0.06);
+    expect(snapshot(0).commissionRate).toBe(0);
+    expect(snapshot(1).commissionRate).toBe(1);
+  });
+
+  it.each([6, 600, 1.0001, -0.01, Number.NaN, Number.POSITIVE_INFINITY, null])(
+    'rejects %p instead of guessing a percent or basis points',
+    (rate) => {
+      expect(() => snapshot(rate)).toThrow(
+        'PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED',
+      );
+    },
+  );
+
+  it('rejects a percent insurance rate too', () => {
+    expect(() =>
+      buildPublicationEconomicsSnapshot({
+        priceCents: 100_000,
+        quoteCents: 15_000,
+        settings: {
+          service_fee_pct: 0.06,
+          shipping_buffer_cents: 2_000,
+          insurance_rate: 1.2,
+        },
+      }),
+    ).toThrow('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
+  });
+});
+
+describe('loadProductForEdit', () => {
+  beforeEach(() => {
+    useSellStore.getState().resetDraft();
+  });
+
+  it('prefills the pesos inputs from the cents columns', () => {
+    useSellStore.getState().loadProductForEdit({
+      id: 'prod-1',
+      category: 'GPU',
+      name: 'RTX 3060',
+      description: 'Like new',
+      price_cents: 100_050,
+      shipping_cost_cents: 15_000,
+      condition: 'used',
+      usage: 'light',
+      specifications: {},
+      images: [],
+      package_preset: 'gpu_1',
+      shipping_payer: 'seller',
+      origin_zip: '01000',
+    } as unknown as Product);
+
+    const { draft, originalData } = useSellStore.getState();
+    expect(draft.price).toBe('1000.50');
+    expect(draft.shipping_cost).toBe('150');
+    expect(originalData).toEqual(draft);
   });
 });

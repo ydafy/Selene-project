@@ -13,7 +13,7 @@ import { GlobalHeader } from '@/shared/ui/layout/global-header';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Theme } from '@/shared/theme';
 import { usePaymentProcess } from '@/features/checkout/hooks/use-payment-process';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { OrderPreviewStrip } from '@/features/checkout/components/order-preview-strip';
 import { ProductSummaryModal } from '@/features/checkout/components/product-summary-modal';
 import { Stack } from 'expo-router';
@@ -185,7 +185,7 @@ export default function PaymentScreen() {
                 ? 'Confirmando pago...'
                 : loading
                   ? t('payment.processing')
-                  : `${t('payment.confirmBtn')} ${formatCurrency((paymentData?.amount || 0) / 100)}`}
+                  : `${t('payment.confirmBtn')} ${formatCents(paymentData?.amount ?? 0)}`}
             </PrimaryButton>
           </Box>
         </Box>

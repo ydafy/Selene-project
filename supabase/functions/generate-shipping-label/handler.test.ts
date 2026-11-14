@@ -64,12 +64,12 @@ const shipmentRow = (overrides: Row = {}): Row => ({
   origin_address: null,
   order: {
     id: ORDER_ID,
-    total_amount: 1500,
+    total_amount_cents: 150000,
     shipping_address: buyerSnapshot,
   },
   items: [
     {
-      price_at_purchase: 1500,
+      price_at_purchase_cents: 150000,
       product: { package_preset: 'gpu_1', category: 'GPU' },
     },
   ],
@@ -506,7 +506,7 @@ describe('generate-shipping-label ownership and preconditions', () => {
         shipment: shipmentRow({
           items: [
             {
-              price_at_purchase: 0,
+              price_at_purchase_cents: 0,
               product: { package_preset: 'gpu_1', category: 'GPU' },
             },
           ],
@@ -565,7 +565,7 @@ describe('generate-shipping-label ownership and preconditions', () => {
       shipment: shipmentRow({
         order: {
           id: ORDER_ID,
-          total_amount: 1500,
+          total_amount_cents: 150000,
           shipping_address: { ...buyerSnapshot, street_number: undefined },
         },
       }),
@@ -864,6 +864,36 @@ describe('generate-shipping-label claim, Envia and persistence', () => {
       },
     });
     expect(generate).toEqual(rate);
+  });
+
+  it('reads the item prices in cents and declares their sum to Envia in pesos', async () => {
+    const { handler, database, envia } = setup({
+      shipment: shipmentRow({
+        items: [
+          {
+            price_at_purchase_cents: 100_000,
+            product: { package_preset: 'gpu_1', category: 'GPU' },
+          },
+          {
+            price_at_purchase_cents: 23_456,
+            product: { package_preset: 'gpu_1', category: 'GPU' },
+          },
+        ],
+      }),
+    });
+
+    await handler(request());
+
+    const [shipmentRead] = database.fromCalls('shipments');
+    expect(String(shipmentRead?.[0]?.[1])).toContain('price_at_purchase_cents');
+    const [rate, generate] = envia.bodies();
+    for (const body of [rate, generate]) {
+      const [envPackage] = (body as { packages: Row[] }).packages;
+      expect(envPackage?.declaredValue).toBe(1234.56);
+      expect(envPackage?.additionalServices).toEqual([
+        { data: { amount: 1234.56 }, service: 'envia_insurance' },
+      ]);
+    }
   });
 
   it('uses the production key and URL when Envia runs in production', async () => {

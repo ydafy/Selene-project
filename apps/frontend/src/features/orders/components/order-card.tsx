@@ -19,7 +19,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { Theme } from '@/shared/theme';
 
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { formatDate } from '@/shared/utils/format-date';
 import { orderCardAmountCents } from '../logic/order-summary-state';
 import {
@@ -98,11 +98,11 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
   const statusLabel = t(getOrderStatusLabel(safeStatus)).toUpperCase();
   const showPulse = ['paid', 'shipped'].includes(safeStatus);
   const hasMultipleItems = order.items.length > 1;
-  // Sales lists only carry the seller's own items; order.total_amount is the buyer's payment.
+  // Sales lists only carry the seller's own items; order.total_amount_cents is the buyer's payment.
   const cardAmountCents = orderCardAmountCents(
     isSeller ? 'seller' : 'buyer',
     order.items,
-    order.total_amount,
+    order.total_amount_cents,
   );
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -299,7 +299,7 @@ export const OrderCard = ({ order, isSeller, onPress }: Props) => {
                 textShadowRadius: 4,
               }}
             >
-              {formatCurrency(cardAmountCents / 100)}
+              {formatCents(cardAmountCents)}
             </Text>
           </Box>
         </Box>

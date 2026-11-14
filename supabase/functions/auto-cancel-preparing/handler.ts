@@ -313,12 +313,16 @@ export function createAutoCancelPreparingHandler(
               // Reconstruct and persist fees only after winning the reservation.
               const { data: orderItems } = await supabaseAdmin
                 .from('order_items')
-                .select('price_at_purchase, shipping_amount, shipment_id')
+                .select(
+                  'price_at_purchase_cents, shipping_amount_cents, shipment_id',
+                )
                 .eq('order_id', shipment.order_id);
 
               const refundItems = (orderItems ?? []) as Pick<
                 Tables<'order_items'>,
-                'price_at_purchase' | 'shipping_amount' | 'shipment_id'
+                | 'price_at_purchase_cents'
+                | 'shipping_amount_cents'
+                | 'shipment_id'
               >[];
 
               const shipmentItems = refundItems.filter(
@@ -328,7 +332,7 @@ export function createAutoCancelPreparingHandler(
               const { data: order } = await supabaseAdmin
                 .from('orders')
                 .select(
-                  'stripe_charge_id, total_amount, stripe_payment_intent_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
+                  'stripe_charge_id, total_amount_cents, stripe_payment_intent_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
                 )
                 .eq('id', shipment.order_id)
                 .single();
@@ -401,17 +405,15 @@ export function createAutoCancelPreparingHandler(
                 orderItems: refundItems,
                 orderChargeCents: refundCharge?.amount
                   ? refundCharge.amount
-                  : Math.round(Number(order?.total_amount ?? 0) * 100),
+                  : Number(order?.total_amount_cents ?? 0),
                 remainingRefundableCents: refundCharge?.amount
                   ? refundCharge.amount - refundCharge.amount_refunded
                   : null,
               });
 
-              const shipmentSubtotalCents = Math.round(
-                shipmentItems.reduce(
-                  (sum, item) => sum + item.price_at_purchase,
-                  0,
-                ) * 100,
+              const shipmentSubtotalCents = shipmentItems.reduce(
+                (sum, item) => sum + item.price_at_purchase_cents,
+                0,
               );
               const seguroShareCents =
                 refundAmountCents - shipmentSubtotalCents;
@@ -442,9 +444,7 @@ export function createAutoCancelPreparingHandler(
                           orderItems: refundItems,
                           orderChargeCents: refundCharge?.amount
                             ? refundCharge.amount
-                            : Math.round(
-                                Number(order?.total_amount ?? 0) * 100,
-                              ),
+                            : Number(order?.total_amount_cents ?? 0),
                           // Entitlement weights use the original charge, not residual headroom.
                         }),
                       }),

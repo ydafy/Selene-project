@@ -12,7 +12,7 @@ import { BlurView } from 'expo-blur';
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { PublicProduct } from '@selene/types';
 import { isInVerification } from '@/shared/utils/product-listing-status';
 import { VerificationPill } from '@/shared/ui/product/verification-pill';
@@ -131,7 +131,7 @@ const ProductSnapCardComponent = ({
                 fontWeight="bold"
                 marginTop="xs"
               >
-                {formatCurrency(product.price)}
+                {formatCents(product.price_cents)}
               </Text>
 
               <PrimaryButton

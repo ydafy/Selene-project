@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { Search, Clock } from 'lucide-react';
 import { UserAvatar } from '@/shared/ui/user-avatar';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
 import type { PendingProduct } from '@selene/types';
 
 interface VerificationListProps {
@@ -106,7 +108,7 @@ export const VerificationList = ({
                 {product.category}
               </span>
               <span className="text-lion font-bold">
-                ${product.price?.toLocaleString()}
+                {formatCurrency(centsToMoney(product.price_cents))}
               </span>
             </div>
             <h4 className="font-semibold truncate text-platinum">

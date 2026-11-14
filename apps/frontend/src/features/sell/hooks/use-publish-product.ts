@@ -6,8 +6,10 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import Toast from 'react-native-toast-message';
 
 import { publishProductSchema } from '../logic/sell-schema';
+import { productMoneyColumns } from '../logic/product-money-columns';
 
 import { supabase } from '@/shared/lib/supabase';
+import { pesosToCents } from '@/shared/utils/money/pesos-to-cents';
 import {
   buildPublicationEconomicsSnapshot,
   useSellStore,
@@ -154,8 +156,8 @@ export const usePublishProduct = () => {
         }
 
         publicationEconomics = buildPublicationEconomicsSnapshot({
-          priceCents: Math.round(parseFloat(draft.price) * 100),
-          quoteCents: Math.round(parseFloat(draft.shipping_cost) * 100),
+          priceCents: pesosToCents(draft.price),
+          quoteCents: pesosToCents(draft.shipping_cost || '0'),
           settings,
         });
         setPublicationEconomics(publicationEconomics);
@@ -187,7 +189,7 @@ export const usePublishProduct = () => {
       const productData = {
         name: draft.name,
         description: draft.description,
-        price: parseFloat(draft.price),
+        ...productMoneyColumns(draft),
         category: draft.category as ProductCategory,
         condition: draft.condition,
         usage: draft.usage,
@@ -195,7 +197,6 @@ export const usePublishProduct = () => {
         specifications: draft.specifications as Record<string, string>,
 
         // --- DATOS DE ENVÍO (CRÍTICOS) ---
-        shipping_cost: parseFloat(draft.shipping_cost || '0'),
         shipping_payer: draft.shipping_payer,
         origin_zip: draft.origin_zip,
         package_preset: draft.package_preset,

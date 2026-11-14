@@ -19,19 +19,19 @@ select pg_temp.money_user(77003, 'admin');
 create function pg_temp.listing(p_n integer, p_status text, p_deleted boolean default false)
 returns uuid language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset, deleted_at,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset, deleted_at,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.mu(p_n), 'pp-' || p_n, 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select pg_temp.mu(p_n), 'pp-' || p_n, 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum,
-    '{}'::jsonb, pg_temp.mu(77001), 100, '06600', 'gpu_1',
+    '{}'::jsonb, pg_temp.mu(77001), 10000, '06600', 'gpu_1',
     case when p_deleted then now() end,
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
   returning id
 $$;
@@ -77,7 +77,7 @@ end $$;
 select is(
   (select string_agg(column_name::text, ',' order by ordinal_position)
    from information_schema.columns where table_schema = 'public' and table_name = 'products_public'),
-  'id,seller_id,name,description,price,category,condition,usage,images,specifications,aspect_ratio,status,views,created_at,fts',
+  'id,seller_id,name,description,price_cents,category,condition,usage,images,specifications,aspect_ratio,status,views,created_at,fts',
   'products_public exposes exactly the allow-listed columns, in order');
 select is(
   (select reloptions::text from pg_class where oid = 'public.products_public'::regclass),
@@ -92,7 +92,7 @@ select throws_ok(
 from unnest(array[
   'origin_zip', 'verification_data', 'rejection_reason', 'locked_by', 'locked_at',
   'publication_commission_rate', 'publication_insurance_rate',
-  'publication_shipping_reserve_cents', 'status_before_account_hold', 'shipping_cost',
+  'publication_shipping_reserve_cents', 'status_before_account_hold', 'shipping_cost_cents',
   'package_preset', 'shipping_payer', 'reserved_at', 'deleted_at'
 ]) as c;
 

@@ -285,9 +285,9 @@ select is(
 -- Replaces the webhook's direct upsert: a pending job due now, inserted once per
 -- order and payment intent; a repeat changes nothing. Returns whether it inserted.
 select pg_temp.money_user(7);
-insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-values (pg_temp.mu(70), pg_temp.mu(7), 1000, '{}'::jsonb, 'paid', 'pi_t6_70'),
-       (pg_temp.mu(71), pg_temp.mu(7), 1000, '{}'::jsonb, 'paid', 'pi_t6_71');
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+values (pg_temp.mu(70), pg_temp.mu(7), 100000, '{}'::jsonb, 'paid', 'pi_t6_70'),
+       (pg_temp.mu(71), pg_temp.mu(7), 100000, '{}'::jsonb, 'paid', 'pi_t6_71');
 create function pg_temp.fee_job_state(p_order integer) returns text language sql as $$
   select string_agg(status || ':' || attempt_count || ':' || coalesce((next_retry_at = now())::text, '-')
     || ':' || coalesce(last_error, '-') || ':' || (updated_at = now())::text, ',')

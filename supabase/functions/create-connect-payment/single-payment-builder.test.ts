@@ -398,12 +398,12 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     const ctx = baseCtx();
     const params = buildSinglePaymentIntentParams({ allocation, ...ctx });
     const frontendSummary = calculateOrderCalculations([
-      { id: 'item-a', price: 1_000 },
-      { id: 'item-b', price: 800 },
+      { id: 'item-a', price_cents: 100_000 },
+      { id: 'item-b', price_cents: 80_000 },
     ] as never);
 
-    expect(params.amount).toBe(frontendSummary.totalInCents);
-    expect(frontendSummary.totalInCents).toBe(allocation.buyerTotalCents);
+    expect(params.amount).toBe(frontendSummary.totalCents);
+    expect(frontendSummary.totalCents).toBe(allocation.buyerTotalCents);
   });
 
   it('produces BYTE-DETERMINISTIC metadata regardless of allocation row input order', () => {

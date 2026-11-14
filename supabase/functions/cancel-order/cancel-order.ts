@@ -219,11 +219,9 @@ export function resolveManualShipmentCancelPlan(
 
   const seguroShareCents =
     amountCents -
-    Math.round(
-      input.shipmentItems.reduce(
-        (sum, item) => sum + item.price_at_purchase,
-        0,
-      ) * 100,
+    input.shipmentItems.reduce(
+      (sum, item) => sum + item.price_at_purchase_cents,
+      0,
     );
 
   const refundParams = buildCancelShipmentRefundParams({

@@ -21,11 +21,11 @@ create function pg_temp.address(p_n integer, p_user integer) returns uuid langua
   returning id
 $$;
 
--- A listing of p_seller at p_price pesos in status p_status (RESERVED by checkout).
-create function pg_temp.listing(p_n integer, p_seller integer, p_price numeric, p_status text default 'RESERVED')
+-- A listing of p_seller at p_price_cents in status p_status (RESERVED by checkout).
+create function pg_temp.listing(p_n integer, p_seller integer, p_price_cents bigint, p_status text default 'RESERVED')
 returns uuid language plpgsql as $$
 begin
-  perform pg_temp.money_product(p_n, p_seller, p_price);
+  perform pg_temp.money_product(p_n, p_seller, p_price_cents);
   update public.products set status = p_status::public.product_status_enum, reserved_at = now()
   where id = pg_temp.mu(p_n);
   return pg_temp.mu(p_n);
@@ -60,26 +60,26 @@ $$;
 -- status|payment_processing|reason|total cents|fee cents|charge|group of an order.
 create function pg_temp.order_row(p_order integer) returns text language sql as $$
   select o.status::text || '|' || o.payment_processing::text || '|' || coalesce(o.payment_processing_reason, '-')
-    || '|' || round(o.total_amount * 100)::bigint::text || '|' || coalesce(round(o.service_fee_amount * 100)::bigint::text, '-')
+    || '|' || o.total_amount_cents::text || '|' || o.service_fee_amount_cents::text
     || '|' || coalesce(o.stripe_charge_id, '-') || '|' || coalesce(o.stripe_transfer_group, '-')
   from public.orders o where o.id = pg_temp.mu(p_order)
 $$;
 
 select pg_temp.address(5101, 5001);
 select pg_temp.address(5102, 5004);
-select pg_temp.listing(5201, 5002, 1000);
-select pg_temp.listing(5202, 5003, 2500);
-select pg_temp.listing(5203, 5001, 500);
-select pg_temp.listing(5211, 5002, 1000);
-select pg_temp.listing(5212, 5003, 1000, 'VERIFIED');
-select pg_temp.listing(5221, 5002, 1000);
-select pg_temp.listing(5222, 5002, 1000);
-select pg_temp.listing(5231, 5003, 1000);
-select pg_temp.listing(5241, 5002, 1000);
-select pg_temp.listing(5251, 5002, 1000);
-select pg_temp.listing(5261, 5002, 1000);
-select pg_temp.listing(5271, 5002, 1000);
-select pg_temp.listing(5272, 5003, 1000);
+select pg_temp.listing(5201, 5002, 100000);
+select pg_temp.listing(5202, 5003, 250000);
+select pg_temp.listing(5203, 5001, 50000);
+select pg_temp.listing(5211, 5002, 100000);
+select pg_temp.listing(5212, 5003, 100000, 'VERIFIED');
+select pg_temp.listing(5221, 5002, 100000);
+select pg_temp.listing(5222, 5002, 100000);
+select pg_temp.listing(5231, 5003, 100000);
+select pg_temp.listing(5241, 5002, 100000);
+select pg_temp.listing(5251, 5002, 100000);
+select pg_temp.listing(5261, 5002, 100000);
+select pg_temp.listing(5271, 5002, 100000);
+select pg_temp.listing(5272, 5003, 100000);
 
 -- 1. Grants, security mode and signature ---------------------------------------------
 select is(
@@ -141,11 +141,11 @@ select is(
   'settle: one paid shipment per row with the row id, seller, PaymentIntent and shipping cost in cents');
 select is(
   (select string_agg(right(oi.product_id::text, 4) || ':' || right(oi.shipment_id::text, 4) || ':' || right(oi.seller_id::text, 4)
-     || ':' || round(oi.price_at_purchase * 100)::bigint::text || ':' || round(oi.commission_amount * 100)::bigint::text
-     || ':' || round(oi.shipping_amount * 100)::bigint::text || ':' || round(oi.net_payout * 100)::bigint::text || ':' || oi.shipping_payer, ',' order by oi.product_id)
+     || ':' || oi.price_at_purchase_cents::text || ':' || oi.commission_amount_cents::text
+     || ':' || oi.shipping_amount_cents::text || ':' || oi.net_payout_cents::text || ':' || oi.shipping_payer, ',' order by oi.product_id)
    from public.order_items oi where oi.order_id = pg_temp.mu(5401)),
   '5201:5301:5002:100000:10000:15000:75000:seller,5202:5302:5003:250000:25000:20000:205000:seller',
-  'settle: each order item carries the row commission, shipping and net (cents here), and the seller pays shipping');
+  'settle: each order item carries the row commission, shipping and net in cents, and the seller pays shipping');
 select is(
   (select string_agg(status::text, ',' order by id) from public.products where id in (pg_temp.mu(5201), pg_temp.mu(5202))),
   'SOLD,SOLD', 'settle: the reserved listings are SOLD');
@@ -310,7 +310,7 @@ select is(
     || 'idx_shipments_stripe_transfer_id:btree (stripe_transfer_id) WHERE (stripe_transfer_id IS NOT NULL)',
   'indexes: the settlement lookup and recovery indexes are partial');
 select throws_ok(
-  $$insert into public.orders (buyer_id, total_amount, shipping_address, status, stripe_transfer_group)
+  $$insert into public.orders (buyer_id, total_amount_cents, shipping_address, status, stripe_transfer_group)
     values (pg_temp.mu(5004), 1, '{}'::jsonb, 'pending', 'tg_t5_1')$$,
   '23505', null, 'columns: two orders cannot share a transfer group');
 select is(

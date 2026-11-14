@@ -14,7 +14,7 @@ import { AppImage } from '@/shared/ui/media/app-image';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { EnrichedShipment } from '@selene/types';
 import { Theme } from '@/shared/theme';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { resolvePublicIdentity } from '@/shared/utils/public-identity';
 import {
   getOrderStatusColor,
@@ -67,8 +67,8 @@ export const OrderShipmentCard = ({
   const statusLabel = t(getOrderStatusLabel(shipment.status));
 
   const item = shipment.items[0];
-  const totalAmount = shipment.items.reduce(
-    (sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase),
+  const totalAmountCents = shipment.items.reduce(
+    (sum, shipmentItem) => sum + shipmentItem.price_at_purchase_cents,
     0,
   );
 
@@ -310,7 +310,7 @@ export const OrderShipmentCard = ({
             color="primary"
             style={{ flexShrink: 1, textAlign: 'right' }}
           >
-            {formatCurrency(totalAmount)}
+            {formatCents(totalAmountCents)}
           </Text>
         </Box>
       </Box>

@@ -3,22 +3,22 @@ import { TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 import { Box, Text } from '@/shared/ui/base';
 import { CheckoutRow } from './checkout-row';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { Theme } from '@/shared/theme';
 
 interface SummaryBreakdownProps {
-  subtotal: number;
-  serviceFee: number;
-  total: number;
+  subtotalCents: number;
+  serviceFeeCents: number;
+  totalCents: number;
   onHelpPress: () => void;
 }
 
 export const SummaryBreakdown = ({
-  subtotal,
-  serviceFee,
-  total,
+  subtotalCents,
+  serviceFeeCents,
+  totalCents,
   onHelpPress,
 }: SummaryBreakdownProps) => {
   const { t } = useTranslation('checkout');
@@ -28,7 +28,7 @@ export const SummaryBreakdown = ({
     <Box backgroundColor="cardBackground" padding="m" borderRadius="l">
       <CheckoutRow
         label={t('summary.subtotal')}
-        value={formatCurrency(subtotal)}
+        value={formatCents(subtotalCents)}
       />
 
       {/* PROTECCIÓN SELENE */}
@@ -55,7 +55,7 @@ export const SummaryBreakdown = ({
           </TouchableOpacity>
         </Box>
         <Text variant="body-md" color="textPrimary">
-          {formatCurrency(serviceFee)}
+          {formatCents(serviceFeeCents)}
         </Text>
       </Box>
 
@@ -113,7 +113,7 @@ export const SummaryBreakdown = ({
           {t('summary.totalToPay')}
         </Text>
         <Text variant="header-xl" color="primary" fontWeight="bold">
-          {formatCurrency(total)}
+          {formatCents(totalCents)}
         </Text>
       </Box>
     </Box>

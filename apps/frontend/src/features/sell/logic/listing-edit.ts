@@ -3,6 +3,7 @@ import {
   type SellDraft,
 } from '../store/use-sell-store';
 import { normalize } from '@/features/sell/logic/compare';
+import { pesosToCents } from '@/shared/utils/money/pesos-to-cents';
 
 type EconomicsSettings = Parameters<
   typeof buildPublicationEconomicsSnapshot
@@ -12,9 +13,6 @@ type EditableListing = Pick<
   SellDraft,
   'images' | 'specifications' | 'category' | 'price' | 'shipping_cost'
 >;
-
-const toCents = (value: string | undefined): number =>
-  Math.round(parseFloat(value || '0') * 100);
 
 /**
  * Classifies an edit against the listing as it was loaded.
@@ -33,8 +31,9 @@ export const classifyListingEdit = (
       JSON.stringify(normalize(original.specifications)) ||
     draft.category !== original.category,
   economicsChanges:
-    toCents(draft.price) !== toCents(original.price) ||
-    toCents(draft.shipping_cost) !== toCents(original.shipping_cost),
+    pesosToCents(draft.price || '0') !== pesosToCents(original.price || '0') ||
+    pesosToCents(draft.shipping_cost || '0') !==
+      pesosToCents(original.shipping_cost || '0'),
 });
 
 /** The `publication_*` columns for the draft under the current settings. */
@@ -43,8 +42,8 @@ export const buildEditEconomicsFields = (
   settings: EconomicsSettings,
 ) => {
   const snapshot = buildPublicationEconomicsSnapshot({
-    priceCents: Math.round(parseFloat(draft.price) * 100),
-    quoteCents: Math.round(parseFloat(draft.shipping_cost) * 100),
+    priceCents: pesosToCents(draft.price),
+    quoteCents: pesosToCents(draft.shipping_cost || '0'),
     settings,
   });
   return {

@@ -20,9 +20,9 @@ create function pg_temp.rec_order(
   p_n integer, p_pi text, p_status public.order_status_enum default 'pending',
   p_state text default null, p_next interval default null, p_charge text default null, p_refund text default null
 ) returns uuid language sql as $$
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id,
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id,
     compensation_state, next_compensation_retry_at, compensation_lease_expires_at, stripe_charge_id, stripe_refund_id)
-  values (pg_temp.mu(p_n), pg_temp.mu(6001), 1000, '{}'::jsonb, p_status, p_pi,
+  values (pg_temp.mu(p_n), pg_temp.mu(6001), 100000, '{}'::jsonb, p_status, p_pi,
     p_state, now() + p_next, case when p_state is not null then now() + interval '1 minute' end, p_charge, p_refund)
   returning id
 $$;

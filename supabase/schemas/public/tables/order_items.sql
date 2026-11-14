@@ -4,14 +4,16 @@ CREATE TABLE "public"."order_items" (
   "order_id"            uuid                     NOT NULL,
   "product_id"          uuid                     NOT NULL,
   "seller_id"           uuid                     NOT NULL,
-  "price_at_purchase"   numeric                  NOT NULL,
-  "commission_amount"   numeric                  DEFAULT 0,
-  "shipping_amount"     numeric                  DEFAULT 0,
-  "insurance_amount"    numeric                  DEFAULT 0,
-  "net_payout"          numeric                  DEFAULT 0,
+  "price_at_purchase_cents" bigint                   NOT NULL,
+  "commission_amount_cents" bigint                   NOT NULL DEFAULT 0,
+  "shipping_amount_cents"   bigint                   NOT NULL DEFAULT 0,
+  "net_payout_cents"        bigint                   NOT NULL DEFAULT 0,
   "shipping_payer"      text                     DEFAULT 'seller'::text,
   "shipment_id"         uuid,
-  "sat_tax_withholding" numeric,
+  CONSTRAINT "order_items_commission_amount_cents_check" CHECK ((commission_amount_cents >= 0)),
+  CONSTRAINT "order_items_net_payout_cents_check" CHECK ((net_payout_cents >= 0)),
+  CONSTRAINT "order_items_price_at_purchase_cents_check" CHECK ((price_at_purchase_cents >= 0)),
+  CONSTRAINT "order_items_shipping_amount_cents_check" CHECK ((shipping_amount_cents >= 0)),
   CONSTRAINT "order_items_pkey" PRIMARY KEY (id),
   CONSTRAINT "order_items_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES auth.users(id),
   CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE,
@@ -42,13 +44,13 @@ CREATE POLICY "order_items_select_v4" ON "public"."order_items"
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."order_items" TO "service_role";
 
-COMMENT ON COLUMN "public"."order_items"."commission_amount" IS 'Monto retenido por Selene como comisión de plataforma';
+COMMENT ON COLUMN "public"."order_items"."commission_amount_cents" IS 'Monto retenido por Selene como comisión de plataforma, en centavos enteros';
 
-COMMENT ON COLUMN "public"."order_items"."net_payout" IS 'Monto final a transferir al vendedor tras todas las deducciones';
+COMMENT ON COLUMN "public"."order_items"."net_payout_cents" IS 'Monto final a transferir al vendedor tras todas las deducciones, en centavos enteros';
 
-COMMENT ON COLUMN "public"."order_items"."sat_tax_withholding" IS 'Monto total de retención SAT (ISR + IVA) para este artículo. Calculado en fn_create_order_from_payment.';
+COMMENT ON COLUMN "public"."order_items"."price_at_purchase_cents" IS 'Precio del producto al momento de la compra, en centavos enteros';
 
-COMMENT ON COLUMN "public"."order_items"."shipping_amount" IS 'Monto descontado al vendedor para cubrir la logística de envío';
+COMMENT ON COLUMN "public"."order_items"."shipping_amount_cents" IS 'Monto descontado al vendedor para cubrir la logística de envío, en centavos enteros';
 
 REVOKE ALL ON TABLE "public"."order_items" FROM "anon";
 

@@ -512,7 +512,6 @@ const SETTLEMENT_ARGS = {
     address_id: 'bbbbbbbb-0000-0000-0000-000000000002',
     order_id: ORDER_ID,
     order_group_id: ORDER_ID,
-    total_amount: 1039,
     rows: [
       {
         seller_id: ROW.sellerId,

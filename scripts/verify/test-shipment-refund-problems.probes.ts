@@ -77,15 +77,15 @@ async function asOwner(tx: Tx) {
 
 /** Shipments 1..10 of one order; the first four own the seeded products so cancellations can complete. */
 async function fixture(tx: Tx) {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
-    VALUES (${ids.order}, ${ids.buyer}, 500, '{}'::jsonb, 'paid', 'pi_b24a_order', 500)`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
+    VALUES (${ids.order}, ${ids.buyer}, 50000, '{}'::jsonb, 'paid', 'pi_b24a_order', 500)`;
   for (let n = 1; n <= 10; n++) {
     await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
       VALUES (${shipmentId(n)}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent(n)})`;
   }
   for (const [index, product] of productIds.entries()) {
-    await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-      VALUES (${ids.order}, ${product}, ${ids.seller}, 1000, 900, ${shipmentId(index + 1)})`;
+    await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+      VALUES (${ids.order}, ${product}, ${ids.seller}, 100000, 90000, ${shipmentId(index + 1)})`;
   }
   await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN ${tx(productIds)}`;
   await asService(tx);
