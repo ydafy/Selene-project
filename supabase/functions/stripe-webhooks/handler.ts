@@ -166,7 +166,6 @@ const buildSingleModalAllocationPayload = (
   address_id: input.addressId,
   order_id: input.orderId,
   order_group_id: input.orderId,
-  total_amount: input.totalsCents.buyerTotal / 100,
   rows: input.rows.map((row) => ({
     seller_id: row.sellerId,
     shipment_id: row.shipmentId,

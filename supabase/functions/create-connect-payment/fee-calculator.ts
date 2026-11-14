@@ -243,6 +243,12 @@ export function calculateCheckoutAllocation(
       seenShipmentIds,
       'INVALID_CHECKOUT_INPUT',
     );
+    // #294: every listing costs money; a zero or negative subtotal is never a
+    // valid row, so reject it before any economics or the checkout gross-up.
+    // A non-integer subtotal keeps its INVALID_MONEY_FLOW_INPUT code below.
+    if (input.subtotalCents <= 0) {
+      throw new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal');
+    }
 
     const economics = input.publicationSnapshot
       ? resolvePublicationEconomics(input.publicationSnapshot, () => {

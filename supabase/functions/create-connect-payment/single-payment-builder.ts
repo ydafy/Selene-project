@@ -68,7 +68,7 @@ export function buildTransferGroup(orderId: string): string {
 export interface ReservationResult {
   success: boolean;
   error_message?: string | null;
-  total_price?: number | null;
+  total_price_cents?: number | null;
 }
 
 export type ReservationRpcData = ReservationResult | ReservationResult[] | null;
