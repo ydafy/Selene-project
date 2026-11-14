@@ -18,7 +18,9 @@ Presence of `bucket` enables RPC mode:
 - `scope`: optional `page` (default) or `selection`. Selection is permitted only for `ready` and `action-required`; it returns the complete selectable matching set, independent of page offset.
 - Explicit null or invalid values are rejected, not defaulted.
 
-Success is exactly `{success:true, rows, counts, bucket, scope, page, pageSize, totalGroups, totalPages, selectedGroupCount, selectionComplete}` from the RPC. Pages contain 20 complete seller/run groups, not 20 shipment rows; SQL clamps pages and preserves History chronology. Selection completeness is validated, never synthesized. Unknown/malformed metadata or row field types fail closed. There is no legacy fallback after RPC errors.
+Success is exactly `{success:true, rows, counts, bucket, scope, page, pageSize, totalGroups, totalPages, selectedGroupCount, selectionComplete}` from the RPC. Pages contain 20 complete seller/run groups, not 20 shipment rows; SQL clamps pages and preserves History chronology. Selection completeness is validated, never synthesized. Unknown/malformed metadata or row field types fail closed.
+
+Each row carries `seller_payout_block_reason` (null or a string code, such as `payouts_disabled` or `onboarding_rejected`, explaining why the seller's account cannot be paid) and `days_since_completed` (null or an integer). Both are required keys; any string code passes, so a new account gate code still reaches the admin. They are display data: `is_eligible` and `ineligible_reason` still decide selection. Deploy this function only after the migration that adds both columns to `admin_connect_payout_release_view`, or every RPC-mode read fails with `INVALID_QUEUE_RESPONSE`. There is no legacy fallback after RPC errors.
 
 Without `bucket`, the legacy search-only path and `{success:true,eligibleBatches,rejected,rows}` body remain unchanged, including literal ILIKE escaping and seller grouping. Legacy error statuses remain unchanged.
 

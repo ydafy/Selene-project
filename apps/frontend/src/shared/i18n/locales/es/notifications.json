@@ -18,6 +18,16 @@
     "return": "Novedad de devolución",
     "shipment": "Novedad de envío"
   },
+  "payoutBlocked": {
+    "title": "No podemos enviarte el pago de una venta",
+    "reminderTitle": "Tu pago sigue retenido",
+    "messages": {
+      "onboardingRejected": "Stripe rechazó tu cuenta de cobro. Revisa tu configuración de pagos para recibir {{amount}} MXN.",
+      "onboardingPending": "Stripe necesita más datos de tu cuenta de cobro. Revisa tu configuración de pagos para recibir {{amount}} MXN.",
+      "payoutsDisabled": "Stripe pausó los pagos a tu cuenta. Revisa tu configuración de pagos para recibir {{amount}} MXN.",
+      "bankAccount": "Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir {{amount}} MXN."
+    }
+  },
   "markAll": "Marcar todo como leído",
   "markReadLabel": "Marcar aviso como leído: {{title}}",
   "emptyTitle": "Buzón vacío",

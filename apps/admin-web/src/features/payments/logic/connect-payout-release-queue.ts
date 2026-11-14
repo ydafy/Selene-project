@@ -9,11 +9,19 @@ type ReleaseQueueBatchState = 'ready' | 'partial' | 'blocked';
 
 interface ReleaseQueueShipment {
   completedAt: string | null;
+  /** Whole days since `completedAt`; null until the shipment completes. */
+  daysSinceCompleted: number | null;
   ineligibleReason: string | null;
   isEligible: boolean;
   orderId: string;
   releaseAmountCents: number;
   reconciliationIndicator: ReleaseQueueShipmentIndicator;
+  /**
+   * Why Stripe cannot pay the seller's account, as the view's code. Display
+   * only: `isEligible` still decides selection, and release re-checks the
+   * account gate on the server.
+   */
+  sellerPayoutBlockReason: string | null;
   shipmentId: string;
   status: string | null;
   stripePaymentIntentId: string | null;
@@ -27,6 +35,8 @@ export interface ReleaseQueueBatch {
   eligibleShipmentCount: number;
   ineligibleShipmentCount: number;
   releaseState: ReleaseQueueBatchState;
+  /** The first non-null shipment block reason; it describes the seller's account. */
+  sellerPayoutBlockReason: string | null;
   shipments: ReleaseQueueShipment[];
 }
 
@@ -124,11 +134,14 @@ export function groupConnectPayoutReleaseQueue(
         eligibleShipmentCount: 0,
         ineligibleShipmentCount: 0,
         releaseState: 'blocked',
+        sellerPayoutBlockReason: null,
         shipments: [],
       } satisfies ReleaseQueueBatch);
 
+    batch.sellerPayoutBlockReason ??= row.seller_payout_block_reason;
     batch.shipments.push({
       completedAt: row.completed_at,
+      daysSinceCompleted: row.days_since_completed,
       ineligibleReason: isEligible
         ? null
         : (row.ineligible_reason ?? 'NOT_ELIGIBLE'),
@@ -136,6 +149,7 @@ export function groupConnectPayoutReleaseQueue(
       orderId: row.order_id,
       releaseAmountCents,
       reconciliationIndicator: isEligible ? 'ready_for_release' : 'blocked',
+      sellerPayoutBlockReason: row.seller_payout_block_reason,
       shipmentId: row.shipment_id,
       status: row.status,
       stripePaymentIntentId: row.stripe_payment_intent_id,

@@ -75,6 +75,7 @@ if (process.env.A65_HOOK_CHILD !== '1') {
   };
   const queueRow: ConnectPayoutReleaseQueueRow = {
     completed_at: null,
+    days_since_completed: null,
     ineligible_reason: null,
     is_eligible: false,
     is_retryable: false,
@@ -90,6 +91,7 @@ if (process.env.A65_HOOK_CHILD !== '1') {
     retry_of_run_id: null,
     seller_id: 'seller-1',
     seller_name: 'Selene Seller',
+    seller_payout_block_reason: null,
     shipment_id: 'shipment-1',
     status: 'completed',
     stripe_account_id: 'acct_123',
@@ -160,14 +162,17 @@ if (process.env.A65_HOOK_CHILD !== '1') {
     eligibleShipmentCount: 1,
     ineligibleShipmentCount: 0,
     releaseState: 'ready',
+    sellerPayoutBlockReason: null,
     shipments: [
       {
         completedAt: '2026-06-22T10:00:00.000Z',
+        daysSinceCompleted: null,
         ineligibleReason: null,
         isEligible: true,
         orderId: 'order-1',
         releaseAmountCents: 12_500,
         reconciliationIndicator: 'ready_for_release',
+        sellerPayoutBlockReason: null,
         shipmentId: 'shipment-1',
         status: 'completed',
         stripePaymentIntentId: 'pi_123',

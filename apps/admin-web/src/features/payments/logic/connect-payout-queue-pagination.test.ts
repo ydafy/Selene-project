@@ -4,6 +4,7 @@ import { validatePayoutQueueResponse } from './connect-payout-queue-pagination';
 
 const row = (id: number): ConnectPayoutReleaseQueueRow => ({
   completed_at: null,
+  days_since_completed: null,
   ineligible_reason: null,
   is_eligible: true,
   is_retryable: false,
@@ -19,6 +20,7 @@ const row = (id: number): ConnectPayoutReleaseQueueRow => ({
   retry_of_run_id: null,
   seller_id: `seller-${id}`,
   seller_name: `Seller ${id}`,
+  seller_payout_block_reason: null,
   shipment_id: `shipment-${id}`,
   status: 'completed',
   stripe_account_id: 'acct',

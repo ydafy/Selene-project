@@ -36,6 +36,7 @@ if (process.env.A65_SSR_CHILD !== '1') {
   let populated = false;
   const row: ConnectPayoutReleaseQueueRow = {
     completed_at: null,
+    days_since_completed: null,
     ineligible_reason: null,
     is_eligible: false,
     is_retryable: false,
@@ -51,6 +52,7 @@ if (process.env.A65_SSR_CHILD !== '1') {
     retry_of_run_id: null,
     seller_id: 'seller-1',
     seller_name: 'SSR Seller',
+    seller_payout_block_reason: null,
     shipment_id: 'shipment-1',
     status: 'completed',
     stripe_account_id: 'acct_123',

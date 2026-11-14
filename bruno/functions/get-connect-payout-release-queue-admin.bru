@@ -1,0 +1,52 @@
+meta {
+  name: get-connect-payout-release-queue-admin
+  type: http
+  seq: 158
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "bucket": "ready",
+    "page": 0,
+    "scope": "page"
+  }
+}
+
+tests {
+  test("an admin reads the ready bucket of the release queue", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.bucket).to.equal("ready");
+    expect(body.rows).to.be.an("array").that.is.not.empty;
+  });
+
+  test("every row carries the seller block reason and the days held", function () {
+    for (const row of res.getBody().rows) {
+      expect(row).to.have.property("seller_payout_block_reason");
+      expect(row).to.have.property("days_since_completed");
+      const reason = row.seller_payout_block_reason;
+      expect(reason === null || typeof reason === "string").to.equal(true);
+      const days = row.days_since_completed;
+      expect(days === null || Number.isInteger(days)).to.equal(true);
+      if (row.completed_at === null) expect(days).to.equal(null);
+    }
+  });
+}
+
+docs {
+  Run after functions/login-admin (needs adminToken). Read-only. The seeded fixture
+  shipments are delivered, not completed, so on a fresh seed both new fields are null;
+  the test proves they are part of the response shape (held-payout-seller-notice, S1).
+}

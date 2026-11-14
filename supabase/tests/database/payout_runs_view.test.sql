@@ -4,7 +4,7 @@
 -- pages and selects them (#275, T3). The tables are in payout_runs.test.sql.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(59);
+select plan(70);
 \ir ../fixtures/money.psql
 
 -- A completed shipment: completed p_ago ago with p_shipping_cost cents of label.
@@ -97,6 +97,44 @@ select is(pg_temp.gate(108), 'true:-:89000', 'a rejected dispute no longer block
 update public.shipments set status = 'delivered', stripe_payment_intent_id = null where id = pg_temp.mu(116);
 select is(pg_temp.gate(116), 'false:shipment_not_completed:89000', 'the first failing gate is the one reported');
 
+-- Why the seller's account cannot be paid (#549), and how long the shipment
+-- has been held. Seller 14 was rejected; 15, 16 and 17 finished onboarding
+-- but Stripe disabled payouts, the bank account errored, or a refresh is open.
+-- The reason never changes eligibility: the release path refuses the account.
+create function pg_temp.block(p_shipment integer) returns text language sql as $$
+  select coalesce(seller_payout_block_reason, '-')
+  from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(p_shipment)
+$$;
+create function pg_temp.days(p_shipment integer) returns integer language sql as $$
+  select days_since_completed from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(p_shipment)
+$$;
+select pg_temp.money_user(n) from generate_series(14, 17) as n;
+select pg_temp.connect_seller(14, 'rejected');
+select pg_temp.connect_seller(n) from generate_series(15, 17) as n;
+insert into internal.connect_account_actionability (stripe_account_id, is_actionable, blocked_reason, stripe_created, refresh_pending)
+values ('acct_test_15', false, 'payouts_disabled', now(), false),
+  ('acct_test_16', false, 'errored', now(), false),
+  ('acct_test_17', true, null, now(), true);
+select pg_temp.money_shipment(220, 120, 14, 19);
+select pg_temp.money_shipment(221, 121, 15, 19);
+select pg_temp.money_shipment(222, 122, 16, 19);
+select pg_temp.money_shipment(223, 123, 17, 19);
+select pg_temp.money_shipment(224, 124, 15, 19);
+select pg_temp.complete(120, 1000, '10 days 3 hours');
+select pg_temp.complete(n, 1000) from generate_series(121, 123) as n;
+-- 124 stays delivered.
+select is(pg_temp.block(117), 'onboarding_pending', 'a seller who has not finished onboarding is blocked by pending onboarding');
+select is(pg_temp.block(120), 'onboarding_rejected', 'a seller Stripe rejected is blocked by the rejection');
+select is(pg_temp.block(121), 'payouts_disabled', 'a seller whose payouts Stripe disabled shows that reason');
+select is(pg_temp.gate(121), 'true:-:89000', 'the block reason leaves eligibility as it was');
+select is(pg_temp.block(122), 'errored', 'a seller whose bank account errored shows the bank status');
+select is(pg_temp.block(123), 'account_refresh_pending', 'an open account refresh shows as pending');
+select is(pg_temp.block(101), '-', 'a payout-ready seller has no block reason');
+select is(pg_temp.block(124), '-', 'a shipment that is not completed has no block reason');
+select is(pg_temp.days(120), 10, 'days since completed_at count whole days');
+select is(pg_temp.days(101), 1, 'a shipment completed one day ago is one day held');
+select is(pg_temp.days(105), null, 'a shipment that is not completed has no days held');
+
 -- The selected run and its flags.
 select is(pg_temp.run_flags(101), '-:false:false', 'a shipment with no run is neither retryable nor in manual review');
 select is(pg_temp.run_flags(111), 'failed:true:false', 'a failed run with no retry child is retryable');
@@ -116,8 +154,9 @@ select is(
 select results_eq(
   $$select attname::text collate "default" from pg_attribute
     where attrelid = 'public.admin_connect_payout_release_view'::regclass and attnum > 0
-    order by attnum desc limit 1$$,
-  $$values ('payout_run_paid_at')$$, 'payout_run_paid_at is the last column of the view');
+    order by attnum desc limit 3$$,
+  $$values ('days_since_completed'), ('seller_payout_block_reason'), ('payout_run_paid_at')$$,
+  'the view appends payout_run_paid_at, seller_payout_block_reason and days_since_completed last');
 select ok(
   (select 'security_invoker=true' = any(reloptions) from pg_class where oid = 'public.admin_connect_payout_release_view'::regclass),
   'the view reads with the caller''s privileges');

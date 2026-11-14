@@ -23,6 +23,7 @@ type QueueRow = ConnectPayoutReleaseQueueRow & {
 
 const row = (overrides: Partial<QueueRow>): QueueRow => ({
   completed_at: '2026-06-22T10:00:00.000Z',
+  days_since_completed: 3,
   ineligible_reason: null,
   is_eligible: true,
   is_retryable: false,
@@ -38,6 +39,7 @@ const row = (overrides: Partial<QueueRow>): QueueRow => ({
   retry_of_run_id: null,
   seller_id: 'seller-1',
   seller_name: 'Selene Seller',
+  seller_payout_block_reason: null,
   shipment_id: 'shipment-1',
   status: 'completed',
   stripe_account_id: 'acct_123',
@@ -85,25 +87,30 @@ describe('connect payout release queue shipment batching', () => {
         eligibleShipmentCount: 2,
         ineligibleShipmentCount: 0,
         releaseState: 'ready',
+        sellerPayoutBlockReason: null,
         shipments: [
           {
             completedAt: '2026-06-22T10:00:00.000Z',
+            daysSinceCompleted: 3,
             ineligibleReason: null,
             isEligible: true,
             orderId: 'order-1',
             releaseAmountCents: 12_500,
             reconciliationIndicator: 'ready_for_release',
+            sellerPayoutBlockReason: null,
             shipmentId: 'shipment-1',
             status: 'completed',
             stripePaymentIntentId: 'pi_123',
           },
           {
             completedAt: '2026-06-22T10:00:00.000Z',
+            daysSinceCompleted: 3,
             ineligibleReason: null,
             isEligible: true,
             orderId: 'order-1',
             releaseAmountCents: 8_000,
             reconciliationIndicator: 'ready_for_release',
+            sellerPayoutBlockReason: null,
             shipmentId: 'shipment-2',
             status: 'completed',
             stripePaymentIntentId: 'pi_123',
@@ -119,7 +126,7 @@ describe('connect payout release queue shipment batching', () => {
       row({
         shipment_id: 'shipment-blocked',
         is_eligible: false,
-        ineligible_reason: 'ACTIVE_DISPUTE',
+        ineligible_reason: 'active_dispute',
         release_amount_cents: 9_000,
       }),
     ]);
@@ -133,9 +140,51 @@ describe('connect payout release queue shipment batching', () => {
     expect(batches[0].shipments[1]).toMatchObject({
       shipmentId: 'shipment-blocked',
       isEligible: false,
-      ineligibleReason: 'ACTIVE_DISPUTE',
+      ineligibleReason: 'active_dispute',
       reconciliationIndicator: 'blocked',
     });
+  });
+
+  it('carries the seller block reason and days held without changing eligibility', () => {
+    const batches = groupConnectPayoutReleaseQueue([
+      // The account gate does not decide eligibility (S4): a blocked account
+      // can still be eligible here and fail at release.
+      row({
+        shipment_id: 'shipment-gated',
+        seller_payout_block_reason: 'payouts_disabled',
+        days_since_completed: 9,
+      }),
+      row({
+        shipment_id: 'shipment-pending',
+        is_eligible: false,
+        ineligible_reason: 'seller_not_payout_ready',
+        seller_payout_block_reason: 'brand_new_gate',
+        days_since_completed: 0,
+      }),
+      row({
+        shipment_id: 'shipment-not-completed',
+        is_eligible: false,
+        ineligible_reason: 'shipment_not_completed',
+        status: 'delivered',
+        completed_at: null,
+        seller_payout_block_reason: null,
+        days_since_completed: null,
+      }),
+    ]);
+
+    expect(batches[0].sellerPayoutBlockReason).toBe('payouts_disabled');
+    expect(
+      batches[0].shipments.map((shipment) => [
+        shipment.shipmentId,
+        shipment.isEligible,
+        shipment.sellerPayoutBlockReason,
+        shipment.daysSinceCompleted,
+      ]),
+    ).toEqual([
+      ['shipment-gated', true, 'payouts_disabled', 9],
+      ['shipment-pending', false, 'brand_new_gate', 0],
+      ['shipment-not-completed', false, null, null],
+    ]);
   });
 
   it('builds a release payload only from selected eligible shipments', () => {
@@ -145,7 +194,7 @@ describe('connect payout release queue shipment batching', () => {
       row({
         shipment_id: 'shipment-c',
         is_eligible: false,
-        ineligible_reason: 'SELLER_PAYOUT_NOT_READY',
+        ineligible_reason: 'seller_not_payout_ready',
         release_amount_cents: 20_000,
       }),
     ]);
@@ -174,7 +223,7 @@ describe('connect payout release queue shipment batching', () => {
       row({
         shipment_id: 'shipment-blocked',
         is_eligible: false,
-        ineligible_reason: 'MISSING_STRIPE_ACCOUNT',
+        ineligible_reason: 'missing_stripe_account',
       }),
     ]);
 

@@ -16,16 +16,17 @@ headers {
 }
 
 tests {
-  test("the service role reads the allowlist: 20 pairs, seller-only payment confirmation", function () {
+  test("the service role reads the allowlist: 21 pairs, seller-only payment confirmation", function () {
     const rows = res.getBody();
-    expect(rows).to.have.length(20);
+    expect(rows).to.have.length(21);
     const pairs = rows.map((r) => r.event_kind + ":" + r.recipient_role);
     expect(pairs).to.include("order.payment_confirmed:seller");
     expect(pairs).to.not.include("order.payment_confirmed:buyer");
+    expect(pairs).to.include("shipment.payout_blocked:seller");
     expect(rows.filter((r) => r.channel === "activity").map((r) => r.event_kind).sort()).to.deep.equal(["product.available", "product.interest"]);
   });
 }
 
 docs {
-  The seeded matrix from the push outbox migration (L4), plus the two buyer shipment milestone pairs (T4), the seller funds released pair (T5), the buyer refund pair (T6b) and the seller label deadline pair (T7).
+  The seeded matrix from the push outbox migration (L4), plus the two buyer shipment milestone pairs (T4), the seller funds released pair (T5), the buyer refund pair (T6b) the seller label deadline pair (T7), and the seller held payout pair (odd/tasks/held-payout-seller-notice.md T2).
 }

@@ -7,11 +7,14 @@ const sellerName = (index: number) =>
   `Vendedor ${String(index).padStart(3, '0')}`;
 
 // Two shipments per seller ensure pages count complete groups, not raw rows.
+// Vendedor 001's Stripe account has payouts disabled; the account gate does not
+// change eligibility, so its shipments stay selectable.
 const rows: ConnectPayoutReleaseQueueRow[] = Array.from(
   { length: 45 },
   (_, i) =>
     [1, 2].map((shipment) => ({
       completed_at: '2026-01-01T12:00:00.000Z',
+      days_since_completed: i === 0 ? (shipment === 1 ? 5 : 1) : 3,
       ineligible_reason: null,
       is_eligible: true,
       is_retryable: false,
@@ -27,6 +30,7 @@ const rows: ConnectPayoutReleaseQueueRow[] = Array.from(
       retry_of_run_id: null,
       seller_id: `seller-${i + 1}`,
       seller_name: sellerName(i + 1),
+      seller_payout_block_reason: i === 0 ? 'payouts_disabled' : null,
       shipment_id: `shipment-${i + 1}-${shipment}`,
       status: 'completed' as const,
       stripe_account_id: `acct_fake_${i + 1}`,
@@ -493,5 +497,45 @@ test('financial requests are denied before any connection, even when explicitly 
   expect(audit.mutations).toEqual([
     'POST /functions/v1/release-connect-payout',
   ]);
+  expect(audit.unexpected).toEqual([]);
+});
+
+test('shows why a seller cannot be paid and how long each payout is held', async ({
+  page,
+  context,
+  baseURL,
+}, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!);
+  const blockedSeller = page.getByRole('button', {
+    name: 'Ver detalle de Vendedor 001',
+    exact: true,
+  });
+  await expect(blockedSeller).toContainText('Stripe deshabilitó los pagos');
+  await expect(
+    page.getByRole('button', {
+      name: 'Ver detalle de Vendedor 002',
+      exact: true,
+    }),
+  ).not.toContainText('Stripe deshabilitó los pagos');
+  await blockedSeller.click();
+  const detail = page.getByRole('region', { name: 'Detalle de liberación' });
+  await expect(detail).toBeVisible();
+  await expect(
+    detail.getByText('Cuenta del vendedor: Stripe deshabilitó los pagos'),
+  ).toHaveCount(2);
+  await expect(
+    detail.locator('code', { hasText: 'payouts_disabled' }),
+  ).toHaveCount(2);
+  await expect(
+    detail.getByText('Retenido hace 5 días', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    detail.getByText('Retenido hace 1 día', { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('seller-block-reason-and-days-held.png'),
+    fullPage: true,
+  });
+  expect(audit.mutations).toEqual([]);
   expect(audit.unexpected).toEqual([]);
 });

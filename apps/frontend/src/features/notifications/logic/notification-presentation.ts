@@ -63,6 +63,7 @@ const catalogue = {
   'shipment.label_deadline': {
     seller: ['clock-alert-outline', 'primary', 'shipment'],
   },
+  'shipment.payout_blocked': { seller: ['cash-lock', 'primary', 'sale'] },
 } as const;
 
 // Only catalogue kind/role pairs with a stable source key qualify as typed events.
