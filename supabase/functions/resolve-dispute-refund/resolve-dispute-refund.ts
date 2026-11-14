@@ -21,6 +21,23 @@ export function refundIntentBlockedReason(
   return paymentIntentId ? null : 'SHIPMENT_WITHOUT_PAYMENT_INTENT';
 }
 
+/**
+ * Refund for a disputed shipment, in integer cents: the item prices plus their
+ * shipping amounts, read from the cents columns without conversion.
+ */
+export function disputeRefundAmountCents(
+  items: {
+    price_at_purchase_cents: number;
+    shipping_amount_cents: number | null;
+  }[],
+): number {
+  return items.reduce(
+    (sum, item) =>
+      sum + item.price_at_purchase_cents + (item.shipping_amount_cents ?? 0),
+    0,
+  );
+}
+
 /** Stripe refund id, or null when the refund was already made earlier. */
 export function extractRefundId(
   refund: { id?: string } | null | undefined,

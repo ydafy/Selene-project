@@ -69,7 +69,7 @@ const log = (
 // --- 2. TIPOS E INTERFACES ---
 
 interface ShipmentItem {
-  price_at_purchase: number;
+  price_at_purchase_cents: number;
   product: {
     package_preset: string;
     category: string;
@@ -90,7 +90,7 @@ interface ShipmentData {
   origin_address?: unknown;
   order: {
     id: string;
-    total_amount: number;
+    total_amount_cents: number;
     shipping_address: unknown;
   };
   items: ShipmentItem[];
@@ -167,9 +167,9 @@ export function createGenerateShippingLabelHandler(
            id, seller_id, status, tracking_number, label_url,
            label_quote_carrier, label_quote_service, label_quote_cost_cents,
            label_quote_reference, label_quote_input_hash, origin_address,
-          order:order_id(id, total_amount, shipping_address),
+          order:order_id(id, total_amount_cents, shipping_address),
           items:order_items!shipment_id(
-            price_at_purchase,
+            price_at_purchase_cents,
             product:products(package_preset, category)
           )
         `,
@@ -190,12 +190,12 @@ export function createGenerateShippingLabelHandler(
         throw new ApiError(500, 'Error cargando configuración del sistema');
 
       const shipment = shipmentRes.data as unknown as ShipmentData;
-      const declaredValue = shipment.items.reduce(
-        (total, item) => total + item.price_at_purchase,
+      const declaredValueCents = shipment.items.reduce(
+        (total, item) => total + item.price_at_purchase_cents,
         0,
       );
 
-      if (!Number.isFinite(declaredValue) || declaredValue <= 0)
+      if (!Number.isFinite(declaredValueCents) || declaredValueCents <= 0)
         throw new ApiError(
           422,
           'El envío no tiene un valor asegurable válido.',
@@ -331,6 +331,8 @@ export function createGenerateShippingLabelHandler(
       if (!runtimeConfiguration)
         throw new ApiError(503, 'ENVIA_CONFIGURATION_INVALID');
 
+      // Envia takes the declared value and the insurance amount in pesos.
+      const declaredValue = declaredValueCents / 100;
       const payload = {
         origin: {
           ...sellerOrigin!,

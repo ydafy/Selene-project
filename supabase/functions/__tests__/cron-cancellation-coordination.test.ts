@@ -160,7 +160,7 @@ async function runCron(name: Name, s: Scenario = {}) {
 
   const order = {
     stripe_charge_id: 'ch',
-    total_amount: 7569.59,
+    total_amount_cents: 756959,
     stripe_payment_intent_id: s.missingPI ? null : 'pi_order',
     actual_stripe_fee_cents: s.feeCents === undefined ? 31959 : s.feeCents,
     stripe_fee_reconciled_at: null,
@@ -168,10 +168,14 @@ async function runCron(name: Name, s: Scenario = {}) {
   const items = [
     {
       shipment_id: 'target',
-      price_at_purchase: s.invalid ? 0 : 3250,
-      shipping_amount: 900,
+      price_at_purchase_cents: s.invalid ? 0 : 325000,
+      shipping_amount_cents: 90000,
     },
-    { shipment_id: 'sibling', price_at_purchase: 4000, shipping_amount: 900 },
+    {
+      shipment_id: 'sibling',
+      price_at_purchase_cents: 400000,
+      shipping_amount_cents: 90000,
+    },
   ];
   const recoveryOperation = () => ({
     operation_key: 'cancel_shipment_target',

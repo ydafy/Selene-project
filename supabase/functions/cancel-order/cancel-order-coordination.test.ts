@@ -245,8 +245,8 @@ it('never completes after an uncertain refund or already-refunded error', async 
 
 it('serializes fractional-price seguro share as integer cents and preserves allocation', () => {
   const item = {
-    price_at_purchase: 0.29,
-    shipping_amount: 10,
+    price_at_purchase_cents: 29,
+    shipping_amount_cents: 1000,
     shipment_id: 'shipment',
   };
   const plan = resolveManualShipmentCancelPlan({

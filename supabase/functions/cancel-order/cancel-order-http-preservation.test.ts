@@ -55,7 +55,7 @@ async function invoke(options: InvokeOptions = {}) {
         ? null
         : {
             buyer_id: 'buyer',
-            total_amount: 110,
+            total_amount_cents: 11000,
             actual_stripe_fee_cents: 500,
             stripe_charge_id: null,
             ...options.order,
@@ -73,7 +73,11 @@ async function invoke(options: InvokeOptions = {}) {
             ...options.shipment,
           },
     items: options.items ?? [
-      { shipment_id: 'target', price_at_purchase: 100, shipping_amount: 900 },
+      {
+        shipment_id: 'target',
+        price_at_purchase_cents: 10000,
+        shipping_amount_cents: 90000,
+      },
     ],
     products: [{ id: 'product', status: 'SOLD', reserved: true }],
     notifications: [],
@@ -798,7 +802,7 @@ describe('cancel-order handler wiring', () => {
       [
         [
           'select',
-          'buyer_id, total_amount, stripe_charge_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
+          'buyer_id, total_amount_cents, stripe_charge_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
         ],
         ['eq', 'id', 'order'],
       ],
@@ -938,10 +942,18 @@ describe('cancel-order handler wiring', () => {
 
   test('refunds only the target shipment, from server amounts, ignoring amounts in the body', async () => {
     const result = await invoke({
-      order: { total_amount: 440, actual_stripe_fee_cents: 500 },
+      order: { total_amount_cents: 44000, actual_stripe_fee_cents: 500 },
       items: [
-        { shipment_id: 'target', price_at_purchase: 100, shipping_amount: 90 },
-        { shipment_id: 'other', price_at_purchase: 300, shipping_amount: 90 },
+        {
+          shipment_id: 'target',
+          price_at_purchase_cents: 10000,
+          shipping_amount_cents: 9000,
+        },
+        {
+          shipment_id: 'other',
+          price_at_purchase_cents: 30000,
+          shipping_amount_cents: 9000,
+        },
       ],
       body: {
         orderId: 'order',
@@ -954,7 +966,10 @@ describe('cancel-order handler wiring', () => {
     expect(result.response.status).toBe(200);
     expect(opsOf(result, 'order_items')).toEqual([
       [
-        ['select', 'price_at_purchase, shipping_amount, shipment_id'],
+        [
+          'select',
+          'price_at_purchase_cents, shipping_amount_cents, shipment_id',
+        ],
         ['eq', 'order_id', 'order'],
       ],
     ]);
@@ -1029,7 +1044,7 @@ describe('cancel-order handler wiring', () => {
   test('reads the charge after the claim, persists its actual fee and allocates it as the loss', async () => {
     const result = await invoke({
       order: {
-        total_amount: 999,
+        total_amount_cents: 99900,
         stripe_charge_id: 'ch_1',
         actual_stripe_fee_cents: null,
       },
@@ -1059,7 +1074,7 @@ describe('cancel-order handler wiring', () => {
       ['eq', 'id', 'order'],
       ['is', 'actual_stripe_fee_cents', null],
     ]);
-    // The charge amount, not total_amount, is the refund basis.
+    // The charge amount, not total_amount_cents, is the refund basis.
     expect(result.starts).toEqual([
       expect.objectContaining({
         p_refund_request: expect.objectContaining({ amount: 11000 }),

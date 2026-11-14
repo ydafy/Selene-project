@@ -9,8 +9,8 @@ export class ApiError extends Error {
 }
 
 export interface ShipmentCancelItem {
-  price_at_purchase: number;
-  shipping_amount: number | null;
+  price_at_purchase_cents: number;
+  shipping_amount_cents: number | null;
   shipment_id?: string | null;
 }
 
@@ -31,13 +31,13 @@ export interface CancellationLossWeightInput {
 export function computeShipmentRefundAmountCents(
   input: ShipmentRefundBasisInput,
 ): number {
-  const shipmentSubtotalCents = Math.round(
-    input.shipmentItems.reduce((sum, item) => sum + item.price_at_purchase, 0) *
-      100,
+  const shipmentSubtotalCents = input.shipmentItems.reduce(
+    (sum, item) => sum + item.price_at_purchase_cents,
+    0,
   );
-  const orderSubtotalCents = Math.round(
-    input.orderItems.reduce((sum, item) => sum + item.price_at_purchase, 0) *
-      100,
+  const orderSubtotalCents = input.orderItems.reduce(
+    (sum, item) => sum + item.price_at_purchase_cents,
+    0,
   );
 
   if (shipmentSubtotalCents <= 0 || orderSubtotalCents <= 0) {
@@ -101,12 +101,15 @@ function feeRoundingExcessCents(
   const subtotals = new Map<string, number>();
   items.forEach((item, index) => {
     const key = item.shipment_id ?? `item:${index}`;
-    subtotals.set(key, (subtotals.get(key) ?? 0) + item.price_at_purchase);
+    subtotals.set(
+      key,
+      (subtotals.get(key) ?? 0) + item.price_at_purchase_cents,
+    );
   });
   let sharesCents = 0;
-  for (const subtotal of subtotals.values()) {
+  for (const subtotalCents of subtotals.values()) {
     sharesCents += Math.round(
-      (buyerFeeCents * Math.round(subtotal * 100)) / orderSubtotalCents,
+      (buyerFeeCents * subtotalCents) / orderSubtotalCents,
     );
   }
   return Math.max(0, sharesCents - buyerFeeCents);
