@@ -8,15 +8,14 @@ begin;
 select plan(55);
 \ir ../fixtures/money.psql
 
--- Users: 64001 seller, 64002 buyer, 64003 admin, 64004 suspended admin, 64005 admin
--- with a NULL status.
+-- Users: 64001 seller, 64002 buyer, 64003 admin, 64004 suspended admin, 64005 a
+-- second active admin (status is NOT NULL since #308).
 select pg_temp.money_user(64001);
 select pg_temp.money_user(64002);
 select pg_temp.money_user(64003, 'admin');
 select pg_temp.money_user(64004, 'admin');
 select pg_temp.money_user(64005, 'admin');
 update public.profiles_private set status = 'suspended' where id = pg_temp.mu(64004);
-update public.profiles_private set status = null where id = pg_temp.mu(64005);
 
 -- Claims shipment p_n for p_source with the real RPCs and, unless p_start is false,
 -- starts its refund of 11000 cents with the frozen loss p_loss.
@@ -289,7 +288,7 @@ select is(
   '2:cancelled', 'resolve: no second cancellation notice, and the audit row records the cancelled status');
 select is(pg_temp.resolve(64303, 64005, repeat('r', 200))::jsonb - 'reference',
   '{"resolved": true, "shipment_cancelled": true, "amount_owed_cents": 11000}'::jsonb,
-  'resolve: a canceled refund of a timeout operation resolves and completes as system; a NULL-status admin and a 200-character reference are accepted');
+  'resolve: a canceled refund of a timeout operation resolves and completes as system; a second admin and a 200-character reference are accepted');
 select is(pg_temp.resolve(64310, 64003)::jsonb,
   '{"resolved": true, "shipment_cancelled": true, "amount_owed_cents": 11000, "reference": "SPEI-123"}'::jsonb,
   'resolve: an escalated operation without a refund is resolvable and completes the cancellation');

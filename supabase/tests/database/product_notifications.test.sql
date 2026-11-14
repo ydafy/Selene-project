@@ -69,14 +69,14 @@ create function pg_temp.ready_of(p_product integer) returns text language sql as
 $$;
 
 -- Sellers: 7601 can be paid; 7602 no Stripe account; 7603 onboarding pending
--- (completes later); 7604 suspended; 7605 banned; 7606 status NULL (counts as
--- OK); 7607 onboarding rejected. Buyers: 7611-7640.
+-- (completes later); 7604 suspended; 7605 banned; 7606 a second active
+-- seller (status is NOT NULL since #308); 7607 onboarding rejected. Buyers: 7611-7640.
 select pg_temp.seller(7601, 'acct_t6_1', 'complete', 'active');
 select pg_temp.seller(7602, null, 'complete', 'active');
 select pg_temp.seller(7603, 'acct_t6_3', 'pending', 'active');
 select pg_temp.seller(7604, 'acct_t6_4', 'complete', 'suspended');
 select pg_temp.seller(7605, 'acct_t6_5', 'complete', 'banned');
-select pg_temp.seller(7606, 'acct_t6_6', 'complete', null);
+select pg_temp.seller(7606, 'acct_t6_6', 'complete', 'active');
 select pg_temp.seller(7607, 'acct_t6_7', 'rejected', 'active');
 select pg_temp.money_user(n) from generate_series(7611, 7640) as n;
 
@@ -128,7 +128,7 @@ select is(pg_temp.notes('product.available', 7707), 0::bigint, 'a seller without
 select is(pg_temp.notes('product.available', 7708), 0::bigint, 'a seller whose onboarding is not complete: no notice');
 select is(pg_temp.notes('product.available', 7709), 0::bigint, 'a suspended seller: no notice');
 select is(pg_temp.notes('product.available', 7710), 0::bigint, 'a banned seller: no notice');
-select is(pg_temp.notes('product.available', 7711), 1::bigint, 'a seller with a NULL account status is notified for');
+select is(pg_temp.notes('product.available', 7711), 1::bigint, 'an active seller with Connect complete is notified for');
 
 -- product.available: the helper filters what it is given
 
@@ -216,7 +216,7 @@ select is(pg_temp.milestones(7724), '1', 'VERIFIED with onboarding not complete:
 select is(pg_temp.milestones(7725), '1', 'VERIFIED with a suspended seller: the seller is notified');
 select is(pg_temp.milestones(7726), '1', 'VERIFIED with a banned seller: the seller is notified');
 select is(pg_temp.milestones(7727), '', 'VERIFIED with a seller who can be paid: no notice');
-select is(pg_temp.milestones(7728), '', 'VERIFIED with a NULL account status and Connect complete: no notice');
+select is(pg_temp.milestones(7728), '', 'VERIFIED with a second active seller and Connect complete: no notice');
 
 select pg_temp.listing(7729, 7602, 'SOLD');
 select pg_temp.listing(7730, 7602, 'REJECTED');
@@ -287,7 +287,7 @@ select is(pg_temp.ready_of(7742), 'false', 'a seller without a Stripe account do
 select is(pg_temp.ready_of(7743), 'false', 'a seller whose onboarding is not complete does not');
 select is(pg_temp.ready_of(7744), 'false', 'a suspended seller does not');
 select is(pg_temp.ready_of(7745), 'false', 'a banned seller does not');
-select is(pg_temp.ready_of(7746), 'true', 'a NULL account status counts as active');
+select is(pg_temp.ready_of(7746), 'true', 'a second active seller with Connect complete accepts payments');
 select is((select count(*) from public.fn_product_seller_payment_readiness(
     array[pg_temp.mu(7747), pg_temp.mu(7748), pg_temp.mu(7749), pg_temp.mu(7750)])),
   0::bigint, 'listings that are not VERIFIED get no row');

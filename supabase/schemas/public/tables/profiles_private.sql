@@ -1,7 +1,7 @@
 CREATE TABLE "public"."profiles_private" (
   "id"                 uuid NOT NULL,
   "email"              text,
-  "role"               text DEFAULT 'user'::text,
+  "role"               public.user_role DEFAULT 'user'::public.user_role NOT NULL,
   "stripe_customer_id" text,
   "phone_number"       text,
   CONSTRAINT "profiles_private_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -12,7 +12,7 @@ ALTER TABLE "public"."profiles_private"
   ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."profiles_private"
-  ADD COLUMN "status" public.account_status DEFAULT 'active'::public.account_status;
+  ADD COLUMN "status" public.account_status DEFAULT 'active'::public.account_status NOT NULL;
 
 ALTER TABLE "public"."profiles_private"
   ADD COLUMN "status_reason" text;
@@ -27,13 +27,13 @@ ALTER TABLE "public"."profiles_private"
   ADD COLUMN "last_sign_in_at" timestamp WITH time zone;
 
 ALTER TABLE "public"."profiles_private"
-  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT now();
+  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT now() NOT NULL;
 
 ALTER TABLE "public"."profiles_private"
   ADD COLUMN "stripe_account_id" text;
 
 ALTER TABLE "public"."profiles_private"
-  ADD COLUMN "stripe_onboarding_status" public.stripe_onboarding_status DEFAULT 'pending'::public.stripe_onboarding_status;
+  ADD COLUMN "stripe_onboarding_status" public.stripe_onboarding_status DEFAULT 'pending'::public.stripe_onboarding_status NOT NULL;
 
 ALTER TABLE "public"."profiles_private"
   ADD COLUMN "stripe_onboarding_refreshed_at" timestamp WITH time zone;

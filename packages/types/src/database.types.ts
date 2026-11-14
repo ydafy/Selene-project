@@ -1420,17 +1420,16 @@ export type Database = {
           id: string;
           last_sign_in_at: string | null;
           phone_number: string | null;
-          role: string | null;
-          status: Database['public']['Enums']['account_status'] | null;
+          role: Database['public']['Enums']['user_role'];
+          status: Database['public']['Enums']['account_status'];
           status_reason: string | null;
           status_updated_at: string | null;
           status_updated_by: string | null;
           stripe_account_id: string | null;
           stripe_customer_id: string | null;
           stripe_onboarding_refreshed_at: string | null;
-          stripe_onboarding_status:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at: string | null;
+          stripe_onboarding_status: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1438,34 +1437,32 @@ export type Database = {
           id: string;
           last_sign_in_at?: string | null;
           phone_number?: string | null;
-          role?: string | null;
-          status?: Database['public']['Enums']['account_status'] | null;
+          role?: Database['public']['Enums']['user_role'];
+          status?: Database['public']['Enums']['account_status'];
           status_reason?: string | null;
           status_updated_at?: string | null;
           status_updated_by?: string | null;
           stripe_account_id?: string | null;
           stripe_customer_id?: string | null;
           stripe_onboarding_refreshed_at?: string | null;
-          stripe_onboarding_status?:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at?: string | null;
+          stripe_onboarding_status?: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at?: string;
         };
         Update: {
           email?: string | null;
           id?: string;
           last_sign_in_at?: string | null;
           phone_number?: string | null;
-          role?: string | null;
-          status?: Database['public']['Enums']['account_status'] | null;
+          role?: Database['public']['Enums']['user_role'];
+          status?: Database['public']['Enums']['account_status'];
           status_reason?: string | null;
           status_updated_at?: string | null;
           status_updated_by?: string | null;
           stripe_account_id?: string | null;
           stripe_customer_id?: string | null;
           stripe_onboarding_refreshed_at?: string | null;
-          stripe_onboarding_status?:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at?: string | null;
+          stripe_onboarding_status?: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -2856,8 +2853,7 @@ export type Database = {
           email: string | null;
           id: string;
           stripe_account_id: string | null;
-          stripe_onboarding_status:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
+          stripe_onboarding_status: Database['public']['Enums']['stripe_onboarding_status'];
           username: string | null;
         };
         ComputedFields: never;
@@ -2870,7 +2866,7 @@ export type Database = {
           email: string | null;
           id: string;
           is_verified_seller: boolean | null;
-          role: string | null;
+          role: Database['public']['Enums']['user_role'] | null;
           status: Database['public']['Enums']['account_status'] | null;
           username: string | null;
         };
@@ -4059,6 +4055,7 @@ export type Database = {
         | 'exception'
         | 'returned';
       stripe_onboarding_status: 'pending' | 'complete' | 'rejected';
+      user_role: 'user' | 'admin';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -4234,6 +4231,7 @@ export const Constants = {
         'returned',
       ],
       stripe_onboarding_status: ['pending', 'complete', 'rejected'],
+      user_role: ['user', 'admin'],
     },
   },
 } as const;

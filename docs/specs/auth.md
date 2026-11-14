@@ -7,7 +7,7 @@ How identity, account states, sign-in, account closure, and CAPTCHA work today, 
 Three tables describe a user. `auth.users` belongs to Supabase Auth. `profiles` holds the public part. `profiles_private` holds the trusted part.
 
 - `profiles`: `username`, `avatar_url`, `is_verified_seller`, rating and sales counters, `deleted_at`. Everyone can read it. A user can update only their own `username`, `avatar_url`, and `updated_at`.
-- `profiles_private`: `email`, `role` (`user` or `admin`), `status` (`account_status`: `active`, `suspended`, `banned`), `status_reason`, `phone_number`, and the Stripe ids. A user can read only their own row, and an admin can read every row. No client writes it.
+- `profiles_private`: `email`, `role` (`user_role`: `user` or `admin`, default `user`), `status` (`account_status`: `active`, `suspended`, `banned`; never NULL), `status_reason`, `phone_number`, and the Stripe ids. A user can read only their own row, and an admin can read every row. No client writes it.
 - Roles live in `profiles_private.role`, never in JWT claims or Auth metadata. `is_admin()` reads that row and is true only for an `admin` whose status is `active`.
 
 Inserting a row in `auth.users` fires the trigger `tr_on_auth_user_created`, which runs `fn_on_auth_user_created`. It creates the `profiles` row and the `profiles_private` row (role `user`, status `active`). It ignores `role` and `status` in signup metadata.
