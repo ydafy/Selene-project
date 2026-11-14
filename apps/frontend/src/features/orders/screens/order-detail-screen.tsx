@@ -65,7 +65,7 @@ export function OrderDetailScreen() {
     isSharing,
     isSellerCancel,
     isMultiShipment,
-    displayedTotal,
+    displayedTotalCents,
     reviewData,
     canReviewProductFn,
     openReviewFor,
@@ -299,7 +299,7 @@ export function OrderDetailScreen() {
           items={currentShipment.items}
           isBuyer={order.isBuyer}
           isSeller={currentShipment.isSeller}
-          total={displayedTotal}
+          totalCents={displayedTotalCents}
           isReviewed={(productId) =>
             reviewData.some(
               (r: ReviewData[number]) => r.product_id === productId,

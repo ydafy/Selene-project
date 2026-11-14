@@ -72,22 +72,22 @@ describe('summary initial data policy', () => {
 
 describe('saved summary amounts', () => {
   const items = [
-    { price_at_purchase: 0.1 },
-    { price_at_purchase: 0.2 },
-    { price_at_purchase: 19.99 },
+    { price_at_purchase_cents: 10 },
+    { price_at_purchase_cents: 20 },
+    { price_at_purchase_cents: 1_999 },
   ];
   it('sums saved prices in cents and keeps persisted buyer total', () => {
-    expect(summaryAmounts('buyer', items, 24.56)).toEqual({
+    expect(summaryAmounts('buyer', items, 2_456)).toEqual({
       subtotalCents: 2029,
       totalPaidCents: 2456,
     });
   });
   it('seller only gets their supplied visible items, never buyer total', () => {
-    expect(summaryAmounts('seller', items.slice(2), 24.56)).toEqual({
+    expect(summaryAmounts('seller', items.slice(2), 2_456)).toEqual({
       subtotalCents: 1999,
       totalPaidCents: null,
     });
-    expect(summaryAmounts('seller', [], 24.56).subtotalCents).toBe(0);
+    expect(summaryAmounts('seller', [], 2_456).subtotalCents).toBe(0);
   });
   it('screen wires policy, amounts, localized retry and buyer-only total', () => {
     const source = compact(

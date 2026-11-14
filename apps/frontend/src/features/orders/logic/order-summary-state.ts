@@ -2,25 +2,31 @@ import type { Tables } from '@selene/types';
 
 export function summaryAmounts(
   role: 'buyer' | 'seller',
-  visibleItems: readonly Pick<Tables<'order_items'>, 'price_at_purchase'>[],
-  persistedTotal: Tables<'orders'>['total_amount'],
+  visibleItems: readonly Pick<
+    Tables<'order_items'>,
+    'price_at_purchase_cents'
+  >[],
+  persistedTotalCents: Tables<'orders'>['total_amount_cents'],
 ) {
   return {
     subtotalCents: visibleItems.reduce(
-      (sum, item) => sum + Math.round(Number(item.price_at_purchase) * 100),
+      (sum, item) => sum + item.price_at_purchase_cents,
       0,
     ),
-    totalPaidCents: role === 'buyer' ? Math.round(persistedTotal * 100) : null,
+    totalPaidCents: role === 'buyer' ? persistedTotalCents : null,
   };
 }
 
 /** Amount shown on an orders list card: buyers see what they paid, sellers only their own items. */
 export function orderCardAmountCents(
   role: 'buyer' | 'seller',
-  visibleItems: readonly Pick<Tables<'order_items'>, 'price_at_purchase'>[],
-  persistedTotal: Tables<'orders'>['total_amount'],
+  visibleItems: readonly Pick<
+    Tables<'order_items'>,
+    'price_at_purchase_cents'
+  >[],
+  persistedTotalCents: Tables<'orders'>['total_amount_cents'],
 ): number {
-  const amounts = summaryAmounts(role, visibleItems, persistedTotal);
+  const amounts = summaryAmounts(role, visibleItems, persistedTotalCents);
   return amounts.totalPaidCents ?? amounts.subtotalCents;
 }
 

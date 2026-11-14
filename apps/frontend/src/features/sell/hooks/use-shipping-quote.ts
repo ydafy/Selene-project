@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { invokeEdge } from '@/shared/lib/edge-client';
 import { ShippingOption } from '@selene/types';
 import { RequestRaceGuard } from '@/features/sell/logic/request-race-guard';
+import { tryPesosToCents } from '@/shared/utils/money/pesos-to-cents';
 
 export const useShippingQuote = () => {
   const { t } = useTranslation('sell');
@@ -57,12 +58,12 @@ export const useShippingQuote = () => {
         if (__DEV__) {
           console.info('[get-shipping-quote]', {
             packageId,
-            priceCents: Math.round(price * 100),
+            priceCents: tryPesosToCents(price),
             destinationZip: destinationZip || '06500',
             rates: rates.map((rate) => ({
               carrier: rate.carrier,
               service: rate.service,
-              quoteCents: Math.round(rate.price * 100),
+              quoteCents: tryPesosToCents(rate.price),
             })),
           });
         }

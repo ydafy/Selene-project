@@ -20,7 +20,7 @@ import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { OrderShipmentCard } from '@/features/orders/components/order-shipment-card';
 import { useOrderById } from '@/features/orders/hooks/use-orders';
 import { useShipmentsByOrder } from '@/features/orders/hooks/use-shipments';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { formatDate } from '@/shared/utils/format-date';
 import { Theme } from '@/shared/theme';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
@@ -218,9 +218,9 @@ export default function OrderSummaryScreen() {
   const amounts = summaryAmounts(
     view.role,
     visibleShipments.flatMap((shipment) => shipment.items),
-    order.total_amount,
+    order.total_amount_cents,
   );
-  const visibleTotal = (amounts.totalPaidCents ?? 0) / 100;
+  const visibleTotalCents = amounts.totalPaidCents ?? 0;
 
   // ── Render ──
   return (
@@ -264,7 +264,7 @@ export default function OrderSummaryScreen() {
               {t('summary.subtotal')}
             </Text>
             <Text variant="subheader-lg" color="primary">
-              {formatCurrency(amounts.subtotalCents / 100)}
+              {formatCents(amounts.subtotalCents)}
             </Text>
           </Box>
 
@@ -278,7 +278,7 @@ export default function OrderSummaryScreen() {
                 {t('summary.totalPaid')}
               </Text>
               <Text variant="subheader-lg" color="primary">
-                {formatCurrency(visibleTotal)}
+                {formatCents(visibleTotalCents)}
               </Text>
             </Box>
           )}

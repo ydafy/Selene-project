@@ -19,6 +19,7 @@ import {
   resolveCommissionPercent,
 } from '@/features/sell/logic/seller-proceeds-estimate';
 import { getCategoryResetFields } from '@/features/sell/logic/sell-category-reset';
+import { tryPesosToCents } from '@/shared/utils/money/pesos-to-cents';
 import {
   sellDetailsSchema,
   SellDetailsInput,
@@ -124,8 +125,8 @@ export const useSellDetailsForm = () => {
     const commissionPct = resolveCommissionPercent(
       systemConfig?.service_fee_pct,
     );
-    const priceNum = parseFloat(price) || 0;
-    if (priceNum === 0 || !systemConfig) {
+    const priceCents = tryPesosToCents(price) ?? 0;
+    if (priceCents === 0 || !systemConfig) {
       return {
         commission: '0.00',
         shipping: '0.00',
@@ -134,11 +135,10 @@ export const useSellDetailsForm = () => {
       };
     }
 
-    const subtotalCents = Math.round(priceNum * 100);
-    const enviaCents = Math.round(shippingCost * 100);
+    // shippingCost is the Envia quote in pesos (the external boundary).
     const estimate = calculateSellerProceedsEstimate({
-      priceCents: subtotalCents,
-      quoteCents: enviaCents,
+      priceCents,
+      quoteCents: tryPesosToCents(shippingCost) ?? 0,
       settings: systemConfig,
     });
 

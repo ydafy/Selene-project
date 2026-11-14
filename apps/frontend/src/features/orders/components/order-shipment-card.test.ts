@@ -45,7 +45,7 @@ test('uses the joined seller profile for a clipped avatar and safe fallback', ()
 test('shows the shipment identity while preserving the complete shipment total', () => {
   expect(source).toContain('const item = shipment.items[0];');
   expect(source).toContain(
-    '(sum, shipmentItem) => sum + Number(shipmentItem.price_at_purchase)',
+    '(sum, shipmentItem) => sum + shipmentItem.price_at_purchase_cents',
   );
   expect(source).toContain('flexWrap="wrap"');
   expect(source).toContain('style={{ minWidth: 96, flexShrink: 1 }}');

@@ -33,3 +33,33 @@ export const pesosToCents = (value: number | string): number => {
   }
   return cents;
 };
+
+/**
+ * Like `pesosToCents`, but returns null instead of throwing. For live form
+ * values that may be half-typed (an empty input, "12abc").
+ */
+export const tryPesosToCents = (value: number | string): number | null => {
+  try {
+    return pesosToCents(value);
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Formats integer cents as the plain pesos string the sell form edits:
+ * whole pesos without decimals (100000 -> "1000"), otherwise two decimals
+ * (15050 -> "150.50"). `pesosToCents` reads it back to the same cents.
+ *
+ * Throws `INVALID_CENTS_AMOUNT` for negative, fractional, or unsafe cents.
+ */
+export const centsToPesosInput = (cents: number): string => {
+  if (!Number.isSafeInteger(cents) || cents < 0) {
+    throw new Error('INVALID_CENTS_AMOUNT');
+  }
+  const pesos = Math.trunc(cents / 100);
+  const remainder = cents % 100;
+  return remainder === 0
+    ? String(pesos)
+    : `${pesos}.${String(remainder).padStart(2, '0')}`;
+};

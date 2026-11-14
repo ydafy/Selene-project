@@ -39,13 +39,13 @@ describe('buildPreviewProduct', () => {
 
     expect(preview.id).toBe('preview_mode');
     expect(preview.name).toBe('RTX 3080');
-    expect(preview.price).toBe(5000);
+    expect(preview.price_cents).toBe(500_000);
     expect(preview.category).toBe('GPU');
     expect(preview.condition).toBe('Used');
     expect(preview.usage).toBe('1 year');
     expect(preview.images).toEqual(['file://photo.jpg']);
     expect(preview.specifications).toEqual({ brand: 'ASUS' });
-    expect(preview.shipping_cost).toBe(150);
+    expect(preview.shipping_cost_cents).toBe(15_000);
     expect(preview.origin_zip).toBe('64000');
   });
 
@@ -65,6 +65,22 @@ describe('buildPreviewProduct', () => {
     expect(preview.status_before_account_hold).toBeNull();
   });
 
+  it('converts odd pesos strings to exact cents', () => {
+    const preview = buildPreviewProduct(
+      { ...baseDraft, price: '19.99', shipping_cost: '150.5' },
+      seller,
+    );
+
+    expect(preview.price_cents).toBe(1_999);
+    expect(preview.shipping_cost_cents).toBe(15_050);
+  });
+
+  it('shows zero for a price the form has not validated yet', () => {
+    expect(
+      buildPreviewProduct({ ...baseDraft, price: '' }, seller).price_cents,
+    ).toBe(0);
+  });
+
   it('keeps the draft id when present', () => {
     const preview = buildPreviewProduct(
       { ...baseDraft, id: 'prod-123' },
@@ -80,7 +96,7 @@ describe('buildPreviewProduct', () => {
       seller,
     );
 
-    expect(preview.shipping_cost).toBe(0);
+    expect(preview.shipping_cost_cents).toBe(0);
     expect(preview.shipping_payer).toBe('buyer');
   });
 });

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { pesosToCents } from './pesos-to-cents';
+import {
+  centsToPesosInput,
+  pesosToCents,
+  tryPesosToCents,
+} from './pesos-to-cents';
 
 describe('pesosToCents', () => {
   it.each([
@@ -38,4 +42,45 @@ describe('pesosToCents', () => {
   ])('rejects %p with INVALID_PESOS_AMOUNT', (pesos) => {
     expect(() => pesosToCents(pesos)).toThrow('INVALID_PESOS_AMOUNT');
   });
+});
+
+describe('tryPesosToCents', () => {
+  it('converts valid pesos like pesosToCents', () => {
+    expect(tryPesosToCents('150.5')).toBe(15_050);
+    expect(tryPesosToCents(19.99)).toBe(1_999);
+  });
+
+  it.each(['', '12abc', '-5', Number.NaN])(
+    'returns null for %p instead of throwing',
+    (pesos) => {
+      expect(tryPesosToCents(pesos)).toBeNull();
+    },
+  );
+});
+
+describe('centsToPesosInput', () => {
+  it.each([
+    [100_000, '1000'],
+    [15_050, '150.50'],
+    [1_999, '19.99'],
+    [1, '0.01'],
+    [0, '0'],
+    [50_000_000, '500000'],
+  ])('formats %i cents as the pesos input %p', (cents, text) => {
+    expect(centsToPesosInput(cents)).toBe(text);
+  });
+
+  it.each([100_000, 15_050, 1_999, 1, 0])(
+    'round-trips %i cents through pesosToCents',
+    (cents) => {
+      expect(pesosToCents(centsToPesosInput(cents))).toBe(cents);
+    },
+  );
+
+  it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    'rejects %p with INVALID_CENTS_AMOUNT',
+    (cents) => {
+      expect(() => centsToPesosInput(cents)).toThrow('INVALID_CENTS_AMOUNT');
+    },
+  );
 });

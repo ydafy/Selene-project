@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { Product, ProductCategory, ShippingPayer } from '@selene/types';
+import { centsToPesosInput } from '@/shared/utils/money/pesos-to-cents';
 
 import { getCategoryResetFields } from '../logic/sell-category-reset';
 
@@ -26,18 +27,13 @@ export type PublicationEconomicsSnapshot = {
   insuranceRate: number;
 };
 
+/** Rates are fractions in 0..1 (`numeric(5,4)` with a CHECK); anything else is rejected. */
 const normalizePublicationRate = (value: number | null): number => {
-  if (value === null || !Number.isFinite(value) || value < 0) {
+  if (value === null || !Number.isFinite(value) || value < 0 || value > 1) {
     throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
   }
 
-  const normalized =
-    value <= 1 ? value : value <= 100 ? value / 100 : value / 10_000;
-  if (normalized > 1) {
-    throw new Error('PUBLICATION_ECONOMICS_ACCEPTANCE_REQUIRED');
-  }
-
-  return normalized;
+  return value;
 };
 
 export const buildPublicationEconomicsSnapshot = ({
@@ -174,7 +170,7 @@ export const useSellStore = create<SellState>((set) => ({
       category: product.category as ProductCategory,
       name: product.name || '',
       description: product.description || '',
-      price: (product.price || 0).toString(),
+      price: centsToPesosInput(product.price_cents),
       condition: product.condition || '',
       usage: product.usage || '',
       specifications: (product.specifications as Record<string, unknown>) || {},
@@ -184,7 +180,7 @@ export const useSellStore = create<SellState>((set) => ({
       shipping_payer: (product.shipping_payer as ShippingPayer) || 'seller',
       insurance_enabled: true,
       origin_zip: product.origin_zip || '',
-      shipping_cost: (product.shipping_cost || 0).toString(),
+      shipping_cost: centsToPesosInput(product.shipping_cost_cents),
       publicationEconomics: null,
     };
 

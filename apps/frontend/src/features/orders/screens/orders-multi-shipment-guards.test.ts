@@ -57,16 +57,16 @@ describe('orders detail screen shipment-aware source guards', () => {
   });
 
   it('shows the shipment subtotal for multi-shipment orders', () => {
-    expect(hook).toContain('const shipmentSubtotal = useMemo(');
+    expect(hook).toContain('const shipmentSubtotalCents = useMemo(');
     expect(hook).toContain('const isMultiShipment =');
     expect(hook).toContain(
-      'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
+      'const displayedTotalCents = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotalCents : (order?.total_amount_cents ?? 0);',
     );
     expect(detail).toContain('<ShipmentItemsCard');
-    expect(detail).toContain('total={displayedTotal}');
+    expect(detail).toContain('totalCents={displayedTotalCents}');
     expect(
       read('src/features/orders/components/shipment-items-card.tsx'),
-    ).toContain('formatCurrency(total)');
+    ).toContain('formatCents(totalCents)');
   });
 
   it('passes the current shipment seller id to the review modal', () => {
@@ -271,7 +271,7 @@ describe('orders summary canonical shipment source guard', () => {
       'if (order?.shipments && order.shipments.length > 0)',
     );
     expect(summary).toContain('return shipments ?? [];');
-    expect(summary).toContain('formatCurrency(visibleTotal)');
+    expect(summary).toContain('formatCents(visibleTotalCents)');
   });
 });
 
