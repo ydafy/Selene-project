@@ -106,8 +106,9 @@ export type ReleaseConnectPayoutResponse =
       currency?: 'mxn';
     };
 
+/** `overdue`: run-less shipments held 30 days or more because the seller cannot be paid (#549). */
 export type ConnectPayoutQueueBucket =
-  'ready' | 'processing' | 'action-required' | 'history';
+  'ready' | 'overdue' | 'processing' | 'action-required' | 'history';
 export type ConnectPayoutQueueScope = 'page' | 'selection';
 export type ConnectPayoutQueueCounts = Record<ConnectPayoutQueueBucket, number>;
 
@@ -132,6 +133,33 @@ export type ConnectPayoutReleaseQueueResponse = {
   selectedGroupCount?: number;
   selectionComplete?: boolean;
 };
+
+/** Admin keeps an overdue held payout on hold with a note (#549). */
+export type RecordPayoutHoldNoteRequest = {
+  shipment_id: string;
+  /** 1 to 1000 characters after trimming. */
+  note: string;
+};
+
+export type RecordPayoutHoldNoteResponse =
+  | {
+      id: string;
+      shipment_id: string;
+      note: string;
+      noted_at: string;
+      noted_by: string;
+    }
+  | {
+      error:
+        | 'METHOD_NOT_ALLOWED'
+        | 'AUTH_REQUIRED'
+        | 'ADMIN_ONLY'
+        | 'INVALID_SHIPMENT_ID'
+        | 'INVALID_HOLD_NOTE'
+        | 'SHIPMENT_NOT_FOUND'
+        | 'PAYOUT_NOT_OVERDUE'
+        | 'INTERNAL_ERROR';
+    };
 
 export type ConnectPaymentErrorCode =
   'RESERVATION_EXPIRED' | 'RESERVATION_FAILED' | 'PI_CREATION_FAILED';
@@ -297,6 +325,10 @@ export interface EdgeFunctionRegistry {
   'release-connect-payout': {
     payload: ConnectPayoutReleaseRequest;
     response: ReleaseConnectPayoutResponse;
+  };
+  'record-payout-hold-note': {
+    payload: RecordPayoutHoldNoteRequest;
+    response: RecordPayoutHoldNoteResponse;
   };
   'get-shipping-quote': {
     payload: {

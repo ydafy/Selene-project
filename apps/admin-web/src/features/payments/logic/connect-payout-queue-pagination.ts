@@ -22,7 +22,14 @@ export interface ValidatedPayoutQueueResponse extends PayoutQueueRequest {
   selectionComplete: boolean;
 }
 
-const buckets = ['ready', 'processing', 'action-required', 'history'] as const;
+// The admin-web does not read the `overdue` bucket yet (held-payout-overdue-refund T6), so a
+// request for it is refused here like any unknown bucket.
+const buckets: readonly ConnectPayoutQueueBucket[] = [
+  'ready',
+  'processing',
+  'action-required',
+  'history',
+];
 const count = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 const invalid = (): never => {

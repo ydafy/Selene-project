@@ -14,7 +14,16 @@ export interface QueueDependencies {
   legacy(search: string): Promise<ConnectPayoutReleaseQueueRow[]>;
   rpc(args: Args): Promise<unknown>;
 }
-const buckets = ['ready', 'processing', 'action-required', 'history'];
+// The five buckets fn_get_admin_payout_queue counts; `overdue` holds run-less shipments
+// held 30 days or more (#549).
+const buckets = [
+  'ready',
+  'overdue',
+  'processing',
+  'action-required',
+  'history',
+];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const json = (body: unknown, status: number) =>
   new Response(JSON.stringify(body), {
     status,
@@ -49,6 +58,7 @@ function parse(body: Record<string, unknown>): Args {
 }
 const stringFields = [
   'completed_at',
+  'latest_hold_note',
   'ineligible_reason',
   'order_id',
   'payout_run_failed_at',
@@ -78,6 +88,14 @@ function validRow(value: unknown): value is Record<string, unknown> {
     ['is_eligible', 'is_retryable', 'requires_manual_review'].every(
       (key) => value[key] === null || typeof value[key] === 'boolean',
     ) &&
+    // The view always computes it; null would hide an overdue shipment.
+    typeof value.is_payout_overdue === 'boolean' &&
+    (value.latest_hold_noted_at === null ||
+      (typeof value.latest_hold_noted_at === 'string' &&
+        !Number.isNaN(Date.parse(value.latest_hold_noted_at)))) &&
+    (value.latest_hold_noted_by === null ||
+      (typeof value.latest_hold_noted_by === 'string' &&
+        UUID.test(value.latest_hold_noted_by))) &&
     [
       'days_since_completed',
       'payout_run_amount_cents',
@@ -118,7 +136,7 @@ function validate(
     !Array.isArray(data.rows) ||
     !data.rows.every(validRow) ||
     !object(data.counts) ||
-    Object.keys(data.counts).length !== 4 ||
+    Object.keys(data.counts).length !== buckets.length ||
     !buckets.every((key) =>
       integer((data.counts as Record<string, unknown>)[key]),
     )
@@ -139,11 +157,14 @@ function validate(
     data.totalPages !== Math.max(1, Math.ceil(data.totalGroups / 20))
   )
     return fail();
+  // The same group keys as the SQL: a run-less overdue shipment leaves its seller's group.
   const groupIds = new Set(
     data.rows.map((row) =>
-      row.payout_run_id === null
-        ? `seller:${row.seller_id}`
-        : `run:${row.payout_run_id}`,
+      row.payout_run_id !== null
+        ? `run:${row.payout_run_id}`
+        : row.is_payout_overdue === true
+          ? `overdue:${row.seller_id}`
+          : `seller:${row.seller_id}`,
     ),
   );
   if (
