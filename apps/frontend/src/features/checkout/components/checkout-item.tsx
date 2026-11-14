@@ -5,7 +5,7 @@ import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { AppChip } from '@/shared/ui/app-chip';
 
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 
 interface CheckoutItemProps {
   product: Product;
@@ -56,7 +56,7 @@ export const CheckoutItem = ({ product, isUnavailable }: CheckoutItemProps) => {
           </Box>
         </Box>
         <Text variant="body-md" color="primary" fontWeight="700">
-          {formatCurrency(product.price)}
+          {formatCents(product.price_cents)}
         </Text>
       </Box>
     </Box>

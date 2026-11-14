@@ -37,7 +37,7 @@ import { Skeleton } from '@/shared/ui/feedback/skeleton';
 import { useProfile } from '@/features/profile/hooks/use-profile';
 import { useProducts } from '@/shared/hooks/use-products';
 import { useSellerReviews } from '@/features/profile/hooks/use-seller-reviews';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { isClosedAccount } from '@/shared/utils/public-identity';
 import {
   ACTIVE_LISTING_STATUSES,
@@ -419,7 +419,7 @@ export default function PublicProfileScreen() {
                             color="primary"
                             marginTop="xs"
                           >
-                            {formatCurrency(Number(item.price))}
+                            {formatCents(item.price_cents)}
                           </Text>
                         </Box>
                       </Box>

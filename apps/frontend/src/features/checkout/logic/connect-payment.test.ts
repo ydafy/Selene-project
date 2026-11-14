@@ -12,9 +12,9 @@ describe('connect payment helpers', () => {
       addressId: 'addr-1',
       idempotencyKey: 'idem-1',
       items: [
-        { id: 'gpu-1', seller_id: 'seller-a', price: 500 },
-        { id: 'cpu-1', seller_id: 'seller-b', price: 300 },
-        { id: 'gpu-1', seller_id: 'seller-a', price: 500 },
+        { id: 'gpu-1', seller_id: 'seller-a', price_cents: 50_000 },
+        { id: 'cpu-1', seller_id: 'seller-b', price_cents: 30_000 },
+        { id: 'gpu-1', seller_id: 'seller-a', price_cents: 50_000 },
       ],
     });
 
@@ -85,11 +85,17 @@ describe('connect payment helpers', () => {
     );
   });
 
-  it('calculates Seguro Selene as Stripe fee approximation', () => {
-    expect(calculateSeguroSelene(1_000)).toBe(47.22);
+  it('calculates Seguro Selene in integer cents from a cents subtotal', () => {
+    expect(calculateSeguroSelene(100_000)).toBe(4_722);
   });
 
   it('keeps Seguro Selene calculation stable for order summary totals', () => {
-    expect(calculateSeguroSelene(1_000)).toBe(47.22);
+    expect(calculateSeguroSelene(800)).toBe(399);
+  });
+
+  it('rejects a subtotal that is not integer cents', () => {
+    expect(() => calculateSeguroSelene(1_000.5)).toThrow(
+      'INVALID_STRIPE_FEE_GROSS_UP_INPUT:subtotalCents',
+    );
   });
 });

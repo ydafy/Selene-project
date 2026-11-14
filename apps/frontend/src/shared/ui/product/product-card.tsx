@@ -14,7 +14,7 @@ import { PublicProduct } from '@selene/types';
 import { Box, Text } from '../base';
 import { AppImage } from '../media/app-image';
 import { Theme } from '../../theme';
-import { formatCurrency } from '../../utils/money/format-currency';
+import { formatCents } from '../../utils/money/format-cents';
 import { getSharedStyles } from '../../theme/shared-styles';
 import { isInVerification } from '../../utils/product-listing-status';
 import { VerificationPill } from './verification-pill';
@@ -142,7 +142,7 @@ export const ProductCard = memo(
                     borderRadius="s"
                   >
                     <Text variant="body-sm" fontWeight="bold" color="primary">
-                      {formatCurrency(product.price)}
+                      {formatCents(product.price_cents)}
                     </Text>
                   </Box>
 

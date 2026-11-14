@@ -4,19 +4,19 @@ import { useTranslation } from 'react-i18next';
 import { Box, Text } from '@/shared/ui/base';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Theme } from '@/shared/theme';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { getTabDockMetrics } from '@/shared/config/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type CartSummaryProps = {
-  total: number;
+  totalCents: number;
   onCheckout: () => void;
   itemCount: number;
   disabled?: boolean;
 };
 
 export const CartSummary = ({
-  total,
+  totalCents,
   onCheckout,
   itemCount,
   disabled = false,
@@ -59,7 +59,7 @@ export const CartSummary = ({
             color={disabled ? 'textSecondary' : 'primary'}
             style={{ fontFamily: 'Montserrat-Bold' }}
           >
-            {formatCurrency(total)}
+            {formatCents(totalCents)}
           </Text>
         </Box>
       </Box>

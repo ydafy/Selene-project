@@ -8,6 +8,10 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { PublicProduct } from '@selene/types';
 import { BUYER_LISTED_STATUSES } from '@/shared/utils/product-listing-status';
+import {
+  priceRangeFilterCents,
+  searchSortOrder,
+} from '../logic/search-price-query';
 
 export type SearchFilters = {
   query?: string;
@@ -48,11 +52,12 @@ export const useSearchProducts = (filters: SearchFilters) => {
         queryBuilder = queryBuilder.eq('category', filters.category);
       }
 
-      // 3. Filtro de Precio
+      // 3. Filtro de Precio (slider in pesos, column in integer cents)
       if (filters.priceRange) {
+        const price = priceRangeFilterCents(filters.priceRange);
         queryBuilder = queryBuilder
-          .gte('price', filters.priceRange[0])
-          .lte('price', filters.priceRange[1]);
+          .gte(price.column, price.minCents)
+          .lte(price.column, price.maxCents);
       }
 
       // 4. Filtro de Condición
@@ -87,14 +92,10 @@ export const useSearchProducts = (filters: SearchFilters) => {
       }
 
       // 7. Ordenamiento
-      const sortMap = {
-        price_asc: { col: 'price', asc: true },
-        price_desc: { col: 'price', asc: false },
-        newest: { col: 'created_at', asc: false },
-      };
-
-      const sort = sortMap[filters.orderBy || 'newest'] || sortMap.newest;
-      queryBuilder = queryBuilder.order(sort.col, { ascending: sort.asc });
+      const sort = searchSortOrder(filters.orderBy);
+      queryBuilder = queryBuilder.order(sort.column, {
+        ascending: sort.ascending,
+      });
 
       // 8. Paginación
       const from = pageParam * PAGE_SIZE;
