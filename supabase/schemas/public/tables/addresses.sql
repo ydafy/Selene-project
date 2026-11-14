@@ -20,7 +20,7 @@ CREATE TABLE "public"."addresses" (
   "street_number" text,
   CONSTRAINT "addresses_country_check" CHECK ((country = 'MX'::text)),
   CONSTRAINT "addresses_pkey" PRIMARY KEY (id),
-  CONSTRAINT "addresses_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT "addresses_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
   CONSTRAINT "addresses_zip_code_check" CHECK (((zip_code ~ '^[0-9]{5}$'::text) OR ((deleted_at IS NOT NULL) AND (zip_code = ''::text))))
 );
 

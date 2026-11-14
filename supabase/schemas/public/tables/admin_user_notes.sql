@@ -5,7 +5,7 @@ CREATE TABLE "public"."admin_user_notes" (
   "content"    text                     NOT NULL,
   "created_at" timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "admin_user_notes_pkey" PRIMARY KEY (id),
-  CONSTRAINT "admin_user_notes_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id),
+  CONSTRAINT "admin_user_notes_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id) ON DELETE RESTRICT,
   CONSTRAINT "admin_user_notes_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 

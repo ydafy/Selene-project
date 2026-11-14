@@ -6,7 +6,7 @@ CREATE TABLE "public"."admin_audit_logs" (
   "details"     jsonb,
   "created_at"  timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "admin_audit_logs_pkey" PRIMARY KEY (id),
-  CONSTRAINT "admin_audit_logs_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id)
+  CONSTRAINT "admin_audit_logs_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id) ON DELETE RESTRICT
 );
 
 ALTER TABLE "public"."admin_audit_logs"

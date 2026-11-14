@@ -11,7 +11,7 @@ CREATE TABLE "public"."push_tokens" (
   CONSTRAINT "push_tokens_platform_check" CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text]))),
   CONSTRAINT "push_tokens_token_key" UNIQUE (token),
   CONSTRAINT "push_tokens_token_shape_chk" CHECK (((char_length(token) <= 255) AND (token ~ '^Expo(nent)?PushToken\[[^\]\s]+\]$'::text))),
-  CONSTRAINT "push_tokens_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+  CONSTRAINT "push_tokens_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
 ALTER TABLE "public"."push_tokens"

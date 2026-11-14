@@ -10,7 +10,7 @@ CREATE TABLE "public"."orders" (
   CONSTRAINT "orders_currency_check" CHECK ((currency = 'MXN'::text)),
   CONSTRAINT "orders_service_fee_amount_cents_check" CHECK ((service_fee_amount_cents >= 0)),
   CONSTRAINT "orders_total_amount_cents_check" CHECK ((total_amount_cents >= 0)),
-  CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES auth.users(id),
+  CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE RESTRICT,
   CONSTRAINT "orders_pkey" PRIMARY KEY (id)
 );
 

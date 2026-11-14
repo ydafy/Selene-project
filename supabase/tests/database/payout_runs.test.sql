@@ -125,9 +125,10 @@ select throws_ok($$select pg_temp.map_row(305, pg_temp.mu(999), 100, 'pending_re
 select throws_ok($$select pg_temp.map_row(999, pg_temp.mu(104), 100, 'pending_reconciliation')$$,
   '23503', null, 'a mapping points to an existing run');
 select pg_temp.map_row(305, pg_temp.mu(103), 100, 'pending_reconciliation');
+select throws_ok($$delete from public.connect_payout_runs where id = pg_temp.mu(305)$$,
+  '23503', null, 'a run with shipment mappings cannot be deleted');
+delete from public.connect_payout_run_shipments where run_id = pg_temp.mu(305);
 delete from public.connect_payout_runs where id = pg_temp.mu(305);
-select is((select count(*)::integer from public.connect_payout_run_shipments where shipment_id = pg_temp.mu(103)),
-  0, 'deleting a run deletes its shipment mappings');
 delete from public.order_items where shipment_id = pg_temp.mu(101);
 select throws_like($$delete from public.shipments where id = pg_temp.mu(101)$$,
   '%connect_payout_run_shipments_shipment_id_fkey%', 'a shipment mapped to a run cannot be deleted');

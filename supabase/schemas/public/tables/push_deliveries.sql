@@ -24,7 +24,7 @@ CREATE TABLE "public"."push_deliveries" (
   CONSTRAINT "push_deliveries_pkey" PRIMARY KEY (id),
   CONSTRAINT "push_deliveries_receipt_status_check" CHECK ((receipt_status = ANY (ARRAY['ok'::text, 'error'::text, 'missing'::text]))),
   CONSTRAINT "push_deliveries_status_check" CHECK ((status = ANY (ARRAY['pending'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text]))),
-  CONSTRAINT "push_deliveries_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT "push_deliveries_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
   CONSTRAINT "push_deliveries_push_token_id_fkey" FOREIGN KEY (push_token_id) REFERENCES public.push_tokens(id) ON DELETE CASCADE
 );
 

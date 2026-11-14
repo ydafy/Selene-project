@@ -74,7 +74,43 @@ export type Database = {
           user_id?: string;
           zip_code?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       admin_audit_logs: {
         Row: {
@@ -977,7 +1013,43 @@ export type Database = {
           type?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       order_items: {
         Row: {
@@ -1054,6 +1126,41 @@ export type Database = {
             columns: ['product_id'];
             isOneToOne: false;
             referencedRelation: 'products_public';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
@@ -1155,7 +1262,43 @@ export type Database = {
           total_amount_cents?: number;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       payment_methods: {
         Row: {
@@ -1543,6 +1686,41 @@ export type Database = {
             referencedRelation: 'push_tokens';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
         ];
       };
       push_event_policy: {
@@ -1596,7 +1774,43 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       reports: {
         Row: {

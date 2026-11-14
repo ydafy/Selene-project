@@ -14,7 +14,7 @@ CREATE TABLE "internal"."account_closures" (
   CONSTRAINT "account_closures_storage_cleanup_check" CHECK ((storage_cleanup = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text, 'not_needed'::text]))),
   CONSTRAINT "account_closures_stripe_account_cleanup_check" CHECK ((stripe_account_cleanup = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text, 'not_needed'::text]))),
   CONSTRAINT "account_closures_stripe_customer_cleanup_check" CHECK ((stripe_customer_cleanup = ANY (ARRAY['pending'::text, 'done'::text, 'failed'::text, 'not_needed'::text]))),
-  CONSTRAINT "account_closures_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id)
+  CONSTRAINT "account_closures_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE RESTRICT
 );
 
 ALTER TABLE "internal"."account_closures"

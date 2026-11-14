@@ -14,7 +14,7 @@ CREATE TABLE "public"."connect_payout_run_shipments" (
   CONSTRAINT "connect_payout_run_shipments_status_check"
     CHECK ((status = ANY (ARRAY['pending_reconciliation'::text, 'paid'::text, 'failed'::text, 'canceled'::text, 'reconciliation_needed'::text]))),
   CONSTRAINT "connect_payout_run_shipments_transfer_start_pair" CHECK (((transfer_started_at IS NULL) = (transfer_token IS NULL))),
-  CONSTRAINT "connect_payout_run_shipments_run_id_fkey" FOREIGN KEY (run_id) REFERENCES public.connect_payout_runs(id) ON DELETE CASCADE,
+  CONSTRAINT "connect_payout_run_shipments_run_id_fkey" FOREIGN KEY (run_id) REFERENCES public.connect_payout_runs(id) ON DELETE RESTRICT,
   CONSTRAINT "connect_payout_run_shipments_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE RESTRICT
 );
 

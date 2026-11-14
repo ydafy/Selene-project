@@ -106,7 +106,7 @@ ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
 
 ALTER TABLE "public"."products"
-  ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id);
+  ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id) ON DELETE RESTRICT;
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE CASCADE;

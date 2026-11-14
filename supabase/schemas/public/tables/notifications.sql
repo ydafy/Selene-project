@@ -29,7 +29,7 @@ CREATE TABLE "public"."notifications" (
   CONSTRAINT "notifications_pkey" PRIMARY KEY (id),
   CONSTRAINT "notifications_source_event_key_nonempty_chk" CHECK (((source_event_key IS NULL) OR (length(btrim(source_event_key)) > 0))),
   CONSTRAINT "notifications_type_check" CHECK ((type = ANY (ARRAY['info'::text, 'success'::text, 'error'::text, 'warning'::text]))),
-  CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+  CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
 ALTER TABLE "public"."notifications"
