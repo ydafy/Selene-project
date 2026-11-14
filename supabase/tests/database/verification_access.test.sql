@@ -30,9 +30,9 @@ returns uuid language sql as $$
     '{}'::jsonb, pg_temp.mu(p_seller), 100, '06600', 'gpu_1',
     case when p_deleted then now() end,
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
   returning id
 $$;

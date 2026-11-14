@@ -72,10 +72,10 @@ ALTER TABLE "public"."products"
   ADD COLUMN "publication_shipping_reserve_cents" bigint;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "publication_commission_rate" numeric;
+  ADD COLUMN "publication_commission_rate" numeric(5,4);
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "publication_insurance_rate" numeric;
+  ADD COLUMN "publication_insurance_rate" numeric(5,4);
 
 ALTER TABLE "public"."products"
   ADD COLUMN "status_before_account_hold" public.product_status_enum;

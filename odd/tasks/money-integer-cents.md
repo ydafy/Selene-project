@@ -1,0 +1,37 @@
+# Money as integer cents everywhere
+
+Roadmap #299, item 8 (#307, closes #294). Worktree `supabase-health`, branch `feat/money-integer-cents` from `origin/main` `05422f17`. One PR; commits per layer (SQL, Edge Functions, frontend, admin-web). Plan approved on 2026-11-13 (L3). Work may span several sessions (L3).
+
+## Specs
+
+- S1. "guardar la plata como centavos enteros en toda la base." From #307, done when: "No money column is stored in pesos, and the property tests and pgTAP tests pass. Closes #294."
+- S2. Columns renamed with a `_cents` suffix and typed `bigint NOT NULL DEFAULT 0 CHECK (>= 0)` (D1, D2): `products.price` -> `price_cents`, `products.shipping_cost` -> `shipping_cost_cents`, `orders.total_amount` -> `total_amount_cents`, `orders.service_fee_amount` -> `service_fee_amount_cents`, `order_items.price_at_purchase` -> `price_at_purchase_cents`, `order_items.commission_amount` -> `commission_amount_cents`, `order_items.shipping_amount` -> `shipping_amount_cents`, `order_items.net_payout` -> `net_payout_cents`. Columns that are NOT NULL without default today (`price`, `total_amount`, `price_at_purchase`) keep no default.
+- S3. `products.price_cents` has `CHECK (price_cents BETWEEN 1000 AND 50000000)`, the range of `apps/frontend/src/features/sell/logic/sell-schema.ts` ($10 to $500,000) (D2, #294 server side).
+- S4. Existing rows convert in the migration with `RENAME COLUMN` plus `ALTER COLUMN ... TYPE bigint USING round(col * 100)::bigint` (D3); no backfill or compatibility path.
+- S5. `order_items.insurance_amount` and `order_items.sat_tax_withholding` are dropped: nothing writes them (D4).
+- S6. Rates `service_fee_pct`, `insurance_rate`, `isr_withholding_pct`, `iva_withholding_pct` in `system_settings` become `numeric(5,4) NOT NULL` with `CHECK (x >= 0 AND x <= 1)`, and the product snapshot rates `publication_commission_rate`, `publication_insurance_rate` become `numeric(5,4)` (their 0..1 check already exists); `internal.normalize_publication_rate` is dropped and its callers read the fraction directly (D5).
+- S7. #294: `calculateCheckoutAllocation` rejects any subtotal <= 0 with `INVALID_CHECKOUT_INPUT:non_positive_subtotal`; the property "rejects a checkout where every subtotal is 0" in `fee-calculator.property.test.ts` asserts that code (D6).
+- S8. `fn_create_shipments_from_single_payment` stores integer cents (no `/ 100.0`); its proportional split keeps today's rule (the last item absorbs the remainder) in integers. `admin_connect_payout_release_view` computes `release_amount_cents` from `net_payout_cents` with no `* 100`.
+- S9. SQL, Edge Functions, both apps and the types read and write cents; pesos appear only at external boundaries (Envia, the sell form input, display). Frontend: one `formatCents(cents)` formatter and one `pesosToCents` helper in `apps/frontend/src/shared/utils/money/`, replacing local `toCents` copies (D7).
+- S10. Out of scope, recorded on their issues: `fn_log_return_payment.p_amount` (unused) and the pesos `amount` in the `create-return-intent` response (#261); cents columns without the suffix (`shipments.shipping_cost`, `connect_payout_runs.amount`, `connect_payout_run_shipments.net_payout`) (#308).
+
+## Tasks
+
+- T1 (S6) [done, commit: the `refactor(db)` money rates commit] SQL: rates to `numeric(5,4)` with checks, drop `normalize_publication_rate`, pgTAP. Commit C1.
+- T2 (S2-S4) [pending] SQL: `products` to cents with the price check; publication triggers, `fn_reserve_products`, `products_public`, `admin_product_queue_view`, `money.psql`, pgTAP, types. Commit C2.
+- T3 (S2, S4, S5, S8) [pending] SQL: `orders` and `order_items` to cents, drop the two dead columns, settlement function, `admin_disputes_monitor_view`, `admin_connect_payout_release_view`, pgTAP, types. Commit C3.
+- T4 (S7, S9) [pending] Edge: `create-connect-payment` and `stripe-webhooks`. Commit C4.
+- T5 (S9) [pending] Edge: cancellation (`cancel-order`, `_shared/cancellation/refund-basis`, `auto-cancel-orders`, `auto-cancel-preparing`), `resolve-dispute-refund`, `generate-shipping-label`. Commit C5. Local payments loop after T4-T5.
+- T6 (S9) [pending] Frontend: money helpers and read screens. Commit C6.
+- T7 (S9) [pending] Frontend: sell flow writes and orders. Commit C7.
+- T8 (S9) [pending] admin-web screens and local Playwright seeds. Commit C8.
+- T9 (S1, S10) [pending] `seed.sql`, Bruno, docs (TLC sync note), out-of-scope comments, close. Commit C9.
+
+Session split (parent's choice, L3): session 1 T1-T3; session 2 T4-T5 and the payments loop; session 3 T6-T9.
+
+## Log
+
+- L1. User request (2026-11-13): "Seguimos con el roadmap #299, ítem 8 (#307): guardar la plata como centavos enteros en toda la base. Worktree supabase-health, rama nueva desde main actualizado (el worktree quedó en docs/internal-schema-close, ya mergeada). Antes de nada leé #299, #307 y #294, y en Engram el último resumen de sesión y roadmap/supabase-health. Es camino de plata: planificá los commits por capa desde el arranque para que entren en la review nativa, y corré el loop de pagos local. Investigá primero (qué columnas siguen en pesos, quién las lee y escribe en SQL, Edge Functions, frontend y admin-web) y proponeme el plan antes de escribir."
+- L2. Investigation (two explorers plus parent). Pesos columns: 10 `numeric` columns in `products`, `orders`, `order_items`, none with a check. `fn_create_shipments_from_single_payment` computes cents and stores `/ 100.0`; `admin_connect_payout_release_view` subtracts cents `shipments.shipping_cost` from `sum(net_payout) * 100`. `insurance_amount` and `sat_tax_withholding` have no writer. Rates are unchecked `numeric`, and `normalize_publication_rate` accepts fractions, percents or basis points. Consumers: 4 SQL functions and 4 views; about 15 Edge Function files, 30 frontend files, 10 admin-web files, about 40 test and fixture files. Remote (MCP read): 157 products, 56 orders, no price <= 0; rates 0.06, 0.012, 0.00, 0.00.
+- L3. Maintainer approved D1-D7 and the C1-C9 commit plan: "paruebo todo, nomas un detalle master. No es obligatorio hacer todo enesta seison, me refiero, que el todo no necesariamente tien que quedar con 17 cosas pendientes, osea poedmos hacer la mitad aqui y leugo abro sesion para la otra mitad, o una parte aqui y otra en otra sesion y otra para otra etcetc, digo eso lo decides tu, nomas te recuerdo que podemos hacer eso. SIN mas que decir pudes arrancar"
+- L4. T1 evidence (worker in place, parent cleanup). Migration `20261113235648_money_rates.sql` (declarative sync): drops `internal.normalize_publication_rate`, retypes the six rates to `numeric(5,4)` (NOT NULL on the four settings), recreates the two publication economics functions, adds `system_settings_rates_check`; the only noise is a no-op `DROP DEFAULT` on the two product snapshot rates. RED: `money_rates.test.sql` 7 of 9. GREEN after `supabase db reset`: `test:db` 69 files 2521 PASS, `db:schema:check` and `db:types:check` match, `bun test scripts supabase/functions` 3090/0, format and lint clean (27 pre-existing warnings). Mutation: dropping `system_settings_rates_check` fails tests 3-6. `supabase db schema declarative generate --overwrite` reformats about 40 unrelated schema files and reorders grants, so the parent kept only the T1 edits and removed the helper from `.pgdelta-export.json` by hand; `db:schema:check` still matches.

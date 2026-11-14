@@ -9,7 +9,7 @@ select plan(25);
 create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
 returns bigint language sql security definer as $$
   select round(p_shipping * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(p_price * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint
+    + ceil(round(p_price * 100)::numeric * s.insurance_rate)::bigint
   from public.system_settings s where s.id = 1
 $$;
 
@@ -24,8 +24,8 @@ returns void language sql as $$
     array['https://example.test/p.png'], p_status::public.product_status_enum,
     '{"brand": "MSI"}'::jsonb, p_seller, 100, '06600', 'gpu_1',
     pg_temp.fresh_reserve(1000, 100),
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
 $$;
 

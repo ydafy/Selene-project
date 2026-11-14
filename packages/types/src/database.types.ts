@@ -2424,10 +2424,10 @@ export type Database = {
           envia_print_size: string | null;
           envia_service: string | null;
           id: number;
-          insurance_rate: number | null;
+          insurance_rate: number;
           is_maintenance: boolean | null;
-          isr_withholding_pct: number | null;
-          iva_withholding_pct: number | null;
+          isr_withholding_pct: number;
+          iva_withholding_pct: number;
           listing_quote_reference_destination: Json | null;
           min_payout_amount_cents: number | null;
           min_version_android: string | null;
@@ -2440,7 +2440,7 @@ export type Database = {
           preparing_expiration_hours: number | null;
           return_label_fee_cents: number | null;
           service_fee_fixed_cents: number | null;
-          service_fee_pct: number | null;
+          service_fee_pct: number;
           shipping_buffer_cents: number | null;
           trusted_active_limit: number | null;
           updated_at: string | null;
@@ -2454,10 +2454,10 @@ export type Database = {
           envia_print_size?: string | null;
           envia_service?: string | null;
           id: number;
-          insurance_rate?: number | null;
+          insurance_rate?: number;
           is_maintenance?: boolean | null;
-          isr_withholding_pct?: number | null;
-          iva_withholding_pct?: number | null;
+          isr_withholding_pct?: number;
+          iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
           min_payout_amount_cents?: number | null;
           min_version_android?: string | null;
@@ -2470,7 +2470,7 @@ export type Database = {
           preparing_expiration_hours?: number | null;
           return_label_fee_cents?: number | null;
           service_fee_fixed_cents?: number | null;
-          service_fee_pct?: number | null;
+          service_fee_pct?: number;
           shipping_buffer_cents?: number | null;
           trusted_active_limit?: number | null;
           updated_at?: string | null;
@@ -2483,10 +2483,10 @@ export type Database = {
           envia_print_size?: string | null;
           envia_service?: string | null;
           id?: number;
-          insurance_rate?: number | null;
+          insurance_rate?: number;
           is_maintenance?: boolean | null;
-          isr_withholding_pct?: number | null;
-          iva_withholding_pct?: number | null;
+          isr_withholding_pct?: number;
+          iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
           min_payout_amount_cents?: number | null;
           min_version_android?: string | null;
@@ -2499,7 +2499,7 @@ export type Database = {
           preparing_expiration_hours?: number | null;
           return_label_fee_cents?: number | null;
           service_fee_fixed_cents?: number | null;
-          service_fee_pct?: number | null;
+          service_fee_pct?: number;
           shipping_buffer_cents?: number | null;
           trusted_active_limit?: number | null;
           updated_at?: string | null;

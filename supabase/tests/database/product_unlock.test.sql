@@ -42,9 +42,9 @@ create function pg_temp.listing(
     case when p_locked_by is null then null else now() - p_lock_age end,
     now() - p_reserved_age,
     round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+      + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
   returning id
 $$;
