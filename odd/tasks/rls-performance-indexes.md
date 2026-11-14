@@ -22,7 +22,7 @@ Roadmap #299, item 11 (#310). Worktree `supabase-health`, branch `feat/rls-perfo
 - T4 (S5, S7) [done, commits: the `test(db)` banned-admin commit and the `perf(db)` foreign key indexes commit] Indexes and the foreign key guard. Commit C4.
 - T5 (S6, S7) [done, commit: the `refactor(db)` policy roles commit] `TO PUBLIC` to explicit roles and its guard. Commit C5.
 - T6 (S8) [done, commit: the `perf(db)` storage uuid lookups commit] Storage policies compare uuids; `storage_access.test.sql` cases. Commit C6.
-- T7 (S1) [pending] Types, schema check, full checks, local advisors, PR; remote advisors after the maintainer's green light for the push.
+- T7 (S1) [in progress: PR open, remote advisors after the push] Types, schema check, full checks, local advisors, PR; remote advisors after the maintainer's green light for the push.
 
 ## Log
 
