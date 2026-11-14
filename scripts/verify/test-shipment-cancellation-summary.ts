@@ -78,8 +78,8 @@ async function as(tx: Tx, who: Who) {
 }
 
 async function fixture(tx: Tx) {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-    VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid', ${paymentIntent})`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+    VALUES (${ids.order}, ${ids.buyer}, 18000, '{}'::jsonb, 'paid', ${paymentIntent})`;
   await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id, label_generation_state)
     VALUES (${ids.shipment}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}, 'unclaimed'),
            (${ids.paid}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}, 'unclaimed')`;
@@ -291,8 +291,8 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     'the buyer is read from the order recorded on the cancellation operation',
     async (tx) => {
       await claim(tx, 'seller');
-      await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-        VALUES ('7b550000-0000-4000-8000-000000000002', ${ids.other}, 180, '{}'::jsonb, 'paid', 'pi_b55_other')`;
+      await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+        VALUES ('7b550000-0000-4000-8000-000000000002', ${ids.other}, 18000, '{}'::jsonb, 'paid', 'pi_b55_other')`;
       await tx`UPDATE public.shipments SET order_id = '7b550000-0000-4000-8000-000000000002' WHERE id = ${ids.shipment}`;
       assert.equal((await summary(tx, 'other')).length, 0);
       assert.equal((await summary(tx, 'buyer')).length, 1);

@@ -93,14 +93,14 @@ function request(shipmentId: string, callerRole: string) {
 }
 
 async function fixture(tx: Tx) {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
-    VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid', ${paymentIntent}, 500)`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id, actual_stripe_fee_cents)
+    VALUES (${ids.order}, ${ids.buyer}, 18000, '{}'::jsonb, 'paid', ${paymentIntent}, 500)`;
   await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
     VALUES (${ids.shipment}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}),
            (${ids.sibling}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent})`;
-  await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-    VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 7500, 7000, ${ids.shipment}),
-           (${ids.order}, ${ids.siblingProduct}, ${ids.seller}, 3900, 3500, ${ids.sibling})`;
+  await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+    VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 750000, 700000, ${ids.shipment}),
+           (${ids.order}, ${ids.siblingProduct}, ${ids.seller}, 390000, 350000, ${ids.sibling})`;
   await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
   await asService(tx);
 }

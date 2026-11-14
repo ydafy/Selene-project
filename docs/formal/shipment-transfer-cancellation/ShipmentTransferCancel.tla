@@ -110,7 +110,7 @@ ConfirmDelivery(s) ==
                    mapStatus, wpc, beginAmt, op, opGen, opExpired, actorTok,
                    refundAtStripe, refundStatus>>
 
-\* Inputs of the release view change (order_items.net_payout, shipping_cost).
+\* Inputs of the release view change (order_items.net_payout_cents, shipments.shipping_cost).
 \* Assumption: only before any transfer fence or Stripe transfer exists.
 Reprice(s) ==
     /\ viewAmt[s] = Amt

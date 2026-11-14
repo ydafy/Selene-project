@@ -170,8 +170,8 @@ async function cleanup(sql: SQL) {
 
 async function fixture(sql: SQL) {
   // No stripe_payment_intent_id anywhere and no stripe_charge_id: the handler cannot reach Stripe.
-  await sql`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status)
-    VALUES (${ids.order}, ${ids.buyer}, 500, '{}'::jsonb, 'paid')`;
+  await sql`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+    VALUES (${ids.order}, ${ids.buyer}, 50000, '{}'::jsonb, 'paid')`;
   for (const [index, shipment] of Object.values(shipments).entries()) {
     await sql`INSERT INTO public.shipments (id, order_id, seller_id, status, tracking_number, created_at)
       VALUES (${shipment.id}, ${ids.order}, ${ids.seller}, ${shipment.status}, ${shipment.tracking},
@@ -180,8 +180,8 @@ async function fixture(sql: SQL) {
     if (shipment.labelState)
       await sql`UPDATE public.shipments SET label_generation_state = ${shipment.labelState}, claim_token = gen_random_uuid()
         WHERE id = ${shipment.id}`;
-    await sql`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-      VALUES (${ids.order}, ${productIds[index]}, ${ids.seller}, 1000, 900, ${shipment.id})`;
+    await sql`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+      VALUES (${ids.order}, ${productIds[index]}, ${ids.seller}, 100000, 90000, ${shipment.id})`;
   }
 }
 
