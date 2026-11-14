@@ -68,7 +68,8 @@ select is(
   || 'return.delivered/seller/orders,return.seller_evidence_submitted/buyer/orders,'
   || 'shipment.cancelled/buyer/orders,shipment.cancelled/seller/orders,shipment.delivered/buyer/orders,'
   || 'shipment.funds_released/seller/orders,shipment.in_transit/buyer/orders,'
-  || 'shipment.label_deadline/seller/orders,shipment.refund_failed/buyer/orders,shipment.refunded/buyer/orders',
+  || 'shipment.label_deadline/seller/orders,shipment.payout_blocked/seller/orders,'
+  || 'shipment.refund_failed/buyer/orders,shipment.refunded/buyer/orders',
   'push_event_policy holds exactly the allowlist matrix');
 select is_empty(
   $$select 1 from public.push_event_policy where event_kind = 'order.payment_confirmed' and recipient_role = 'buyer'$$,

@@ -8,10 +8,12 @@ import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
 import { Notification } from '@selene/types';
 import { formatSmartTime } from '@/shared/utils/format-date';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import {
   getNotificationPresentation,
   getVerifiedEventIdentity,
 } from '../logic/notification-presentation';
+import { getNotificationText } from '../logic/notification-text';
 
 interface Props {
   notification: Notification;
@@ -25,6 +27,7 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
   const isUnread = !notification.read;
   const presentation = getNotificationPresentation(notification);
   const iconColor = theme.colors[presentation.accent];
+  const text = getNotificationText(notification, t, formatCents);
 
   const identity = getVerifiedEventIdentity(notification);
   const emphasizeMessage =
@@ -39,8 +42,8 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
         readState: t(
           isUnread ? 'notifications:unreadState' : 'notifications:readState',
         ),
-        title: notification.title,
-        message: notification.message || '',
+        title: text.title,
+        message: text.message || '',
       })}
       accessibilityRole="button"
     >
@@ -81,7 +84,7 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
                 fontWeight={isUnread ? 'bold' : 'regular'}
                 color="textPrimary"
               >
-                {notification.title}
+                {text.title}
               </Text>
               {isUnread && (
                 <Box
@@ -98,7 +101,7 @@ export const NotificationItem = ({ notification, onPress }: Props) => {
               marginTop="xs"
               fontStyle={emphasizeMessage ? 'italic' : 'normal'}
             >
-              {notification.message}
+              {text.message}
             </Text>
             <Text variant="caption-md" color="textSecondary" marginTop="s">
               {formatSmartTime(notification.created_at)}

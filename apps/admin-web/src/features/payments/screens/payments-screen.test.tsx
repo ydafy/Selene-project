@@ -47,15 +47,18 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
     eligibleShipmentCount: 1,
     ineligibleShipmentCount: 0,
     releaseState: 'ready',
+    sellerPayoutBlockReason: null,
     shipments: [
       {
         shipmentId: `shipment-${i}`,
         orderId: `order-${i}`,
         completedAt: null,
+        daysSinceCompleted: null,
         isEligible: true,
         ineligibleReason: null,
         releaseAmountCents: 100,
         reconciliationIndicator: 'ready_for_release',
+        sellerPayoutBlockReason: null,
         status: 'completed',
         stripePaymentIntentId: null,
       },

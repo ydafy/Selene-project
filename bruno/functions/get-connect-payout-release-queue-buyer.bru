@@ -1,0 +1,33 @@
+meta {
+  name: get-connect-payout-release-queue-buyer
+  type: http
+  seq: 159
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "bucket": "ready"
+  }
+}
+
+tests {
+  test("a signed-in buyer cannot read the release queue", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "ADMIN_REQUIRED" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). The role check runs before any queue read.
+}

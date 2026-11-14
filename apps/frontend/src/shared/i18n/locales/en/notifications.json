@@ -18,6 +18,16 @@
     "return": "Return update",
     "shipment": "Shipment update"
   },
+  "payoutBlocked": {
+    "title": "We can't send you the payment for a sale",
+    "reminderTitle": "Your payment is still on hold",
+    "messages": {
+      "onboardingRejected": "Stripe rejected your payout account. Check your payment setup to receive {{amount}}.",
+      "onboardingPending": "Stripe needs more details about your payout account. Check your payment setup to receive {{amount}}.",
+      "payoutsDisabled": "Stripe paused payouts to your account. Check your payment setup to receive {{amount}}.",
+      "bankAccount": "There is a problem with your bank account. Check your payment setup to receive {{amount}}."
+    }
+  },
   "markAll": "Mark all as read",
   "markReadLabel": "Mark notification as read: {{title}}",
   "emptyTitle": "Empty Inbox",

@@ -24,7 +24,7 @@ CREATE TABLE "public"."notifications" (
     'return.delivered'::text,
     'product.available'::text,
     'product.interest'::text,
-    'shipment.in_transit'::text, 'shipment.delivered'::text, 'shipment.funds_released'::text, 'shipment.refunded'::text, 'shipment.label_deadline'::text])))),
+    'shipment.in_transit'::text, 'shipment.delivered'::text, 'shipment.funds_released'::text, 'shipment.refunded'::text, 'shipment.label_deadline'::text, 'shipment.payout_blocked'::text])))),
   CONSTRAINT "notifications_event_payload_object_chk" CHECK ((jsonb_typeof(event_payload) = 'object'::text)),
   CONSTRAINT "notifications_pkey" PRIMARY KEY (id),
   CONSTRAINT "notifications_source_event_key_nonempty_chk" CHECK (((source_event_key IS NULL) OR (length(btrim(source_event_key)) > 0))),

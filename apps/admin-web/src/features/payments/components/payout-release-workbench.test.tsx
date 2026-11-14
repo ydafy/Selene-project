@@ -13,15 +13,18 @@ const batch: ReleaseQueueBatch = {
   eligibleShipmentCount: 1,
   ineligibleShipmentCount: 1,
   releaseState: 'partial',
+  sellerPayoutBlockReason: 'verification_failed',
   shipments: [
     {
       shipmentId: 'shipment-ready',
       orderId: 'order-a',
       completedAt: '2026-10-01T12:00:00Z',
+      daysSinceCompleted: 4,
       isEligible: true,
       ineligibleReason: null,
       releaseAmountCents: 12500,
       reconciliationIndicator: 'ready_for_release',
+      sellerPayoutBlockReason: 'verification_failed',
       status: 'completed',
       stripePaymentIntentId: 'pi_a',
     },
@@ -29,10 +32,12 @@ const batch: ReleaseQueueBatch = {
       shipmentId: 'shipment-blocked',
       orderId: 'order-b',
       completedAt: null,
+      daysSinceCompleted: null,
       isEligible: false,
-      ineligibleReason: 'SHIPMENT_NOT_COMPLETED',
+      ineligibleReason: 'shipment_not_completed',
       releaseAmountCents: 90000,
       reconciliationIndicator: 'blocked',
+      sellerPayoutBlockReason: null,
       status: 'delivered',
       stripePaymentIntentId: 'pi_b',
     },
@@ -578,6 +583,48 @@ it('preserves existing seller detail contents inside the modal', () => {
   expect(html).toContain('aria-label="Detalle de liberación"');
   expect(html).toContain('acct_a');
   expect(html).toContain('shipment-blocked');
+});
+it('shows the seller account block reason with its code and the days held', () => {
+  const h = harness();
+  const list = renderToStaticMarkup(h.render());
+  expect(list).toContain('Cuenta bancaria con error');
+  h.openDetail();
+  const tree = h.render();
+  const html = renderToStaticMarkup(tree);
+  expect(html).toContain('Cuenta bancaria con error');
+  // The code tells apart the three bank errors that share one label.
+  const code = nodes(tree).find(
+    (node) =>
+      node.type === 'code' &&
+      label(node.props.children as React.ReactNode) === 'verification_failed',
+  );
+  expect(code).toBeDefined();
+  expect(html).toContain('Retenido hace 4 días');
+  // The not-completed shipment has no days held and no account reason.
+  expect(html.match(/Retenido hace|Completado hoy/g)).toHaveLength(1);
+  // The eligibility label stays as it was.
+  expect(html).toContain('shipment not completed');
+});
+it('says when a shipment completed today and labels an unknown gate code', () => {
+  const h = harness({
+    batches: [
+      {
+        ...batch,
+        sellerPayoutBlockReason: 'brand_new_gate',
+        shipments: [
+          {
+            ...batch.shipments[0],
+            daysSinceCompleted: 0,
+            sellerPayoutBlockReason: 'brand_new_gate',
+          },
+        ],
+      },
+    ],
+  });
+  h.openDetail();
+  const html = renderToStaticMarkup(h.render());
+  expect(html).toContain('Completado hoy');
+  expect(html).toContain('La cuenta no puede cobrar (brand_new_gate)');
 });
 it('requires review then explicit confirmation and excludes blocked or stale selection from the amount', async () => {
   const h = harness();

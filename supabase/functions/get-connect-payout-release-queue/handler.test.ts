@@ -47,6 +47,8 @@ const queueRow = (seller_id = 'seller-1') =>
       'requires_manual_review',
       'payout_run_amount_cents',
       'release_amount_cents',
+      'seller_payout_block_reason',
+      'days_since_completed',
     ]
       .map((key) => [key, null])
       .concat([['seller_id', seller_id]]),
@@ -210,3 +212,44 @@ test('legacy search-only body remains unchanged', async () => {
   });
   expect(calls).toEqual(['auth', 'profile', ['legacy', 'Ada%']]);
 });
+const blockedRows = (fields: Record<string, unknown>) => ({
+  ...result(),
+  rows: [{ ...queueRow('s0'), ...fields }, ...result().rows.slice(1)],
+});
+test('passes the seller block reason and days held through to the client', async () => {
+  for (const fields of [
+    { seller_payout_block_reason: 'payouts_disabled', days_since_completed: 4 },
+    {
+      seller_payout_block_reason: 'onboarding_rejected',
+      days_since_completed: 0,
+    },
+    // A gate code this function does not know yet still reaches the admin.
+    { seller_payout_block_reason: 'brand_new_gate', days_since_completed: 31 },
+    { seller_payout_block_reason: null, days_since_completed: null },
+  ]) {
+    const data = blockedRows(fields);
+    const { request } = setup({ data });
+    const response = await request({ bucket: 'ready' });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual({ success: true, ...data });
+    expect(body.rows[0]).toMatchObject(fields);
+  }
+});
+for (const [label, fields] of [
+  ['numeric reason', { seller_payout_block_reason: 42 }],
+  ['missing reason', { seller_payout_block_reason: undefined }],
+  ['string days', { days_since_completed: '3' }],
+  ['fractional days', { days_since_completed: 1.5 }],
+  ['missing days', { days_since_completed: undefined }],
+] as const)
+  test(`malformed block reason or days held fails closed: ${label}`, async () => {
+    const { request, calls } = setup({ data: blockedRows(fields) });
+    const response = await request({ bucket: 'ready' });
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: 'INVALID_QUEUE_RESPONSE',
+    });
+    expect(calls.length).toBe(3);
+  });

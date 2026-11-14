@@ -13,6 +13,10 @@ import {
   getSelectedEligibleShipmentIds,
   type ReleaseQueueBatch,
 } from '../logic/connect-payout-release-queue';
+import {
+  daysHeldLabel,
+  sellerPayoutBlockReasonLabel,
+} from '../logic/seller-payout-block-reason';
 import { formatCurrency } from '@/shared/utils/format-currency';
 
 import { PAYOUT_PAGE_SIZE, PayoutPagination } from './payout-workbench-layout';
@@ -429,6 +433,16 @@ export const PayoutReleaseWorkbench = ({
                       ? ` · ${item.ineligibleShipmentCount} pendientes`
                       : ''}
                   </span>
+                  {item.sellerPayoutBlockReason ? (
+                    <span
+                      title={item.sellerPayoutBlockReason}
+                      className="mt-2 block text-xs font-semibold text-fire"
+                    >
+                      {sellerPayoutBlockReasonLabel(
+                        item.sellerPayoutBlockReason,
+                      )}
+                    </span>
+                  ) : null}
                   {selected > 0 ? (
                     <span className="mt-2 block text-xs font-semibold text-forest">
                       {selected} de {eligible.length} seleccionados
@@ -568,6 +582,20 @@ export const PayoutReleaseWorkbench = ({
                         ? 'Elegible para liberar'
                         : reasonLabel(shipment.ineligibleReason)}
                     </span>
+                    {shipment.sellerPayoutBlockReason ? (
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-fire">
+                        Cuenta del vendedor:{' '}
+                        {sellerPayoutBlockReasonLabel(
+                          shipment.sellerPayoutBlockReason,
+                        )}
+                        <code
+                          title="Código del motivo en Stripe"
+                          className="break-all text-[10px] text-blue-light"
+                        >
+                          {shipment.sellerPayoutBlockReason}
+                        </code>
+                      </span>
+                    ) : null}
                     <details className="mt-2 break-all font-mono text-[10px] leading-relaxed text-blue-light">
                       <summary>Referencias técnicas</summary>
                       <span>
@@ -583,6 +611,11 @@ export const PayoutReleaseWorkbench = ({
                       <span className="mt-1 block text-[10px] text-blue-light">
                         Completado:{' '}
                         {new Date(shipment.completedAt).toLocaleString('es-MX')}
+                      </span>
+                    ) : null}
+                    {shipment.daysSinceCompleted !== null ? (
+                      <span className="mt-1 block text-[10px] font-semibold text-platinum">
+                        {daysHeldLabel(shipment.daysSinceCompleted)}
                       </span>
                     ) : null}
                     {!shipment.isEligible && shipment.ineligibleReason ? (
