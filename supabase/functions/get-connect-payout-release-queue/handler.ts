@@ -59,6 +59,8 @@ const stringFields = [
   'retry_of_run_id',
   'seller_id',
   'seller_name',
+  // Any string: an account gate code added later must still reach the admin.
+  'seller_payout_block_reason',
   'shipment_id',
   'status',
   'stripe_account_id',
@@ -76,7 +78,11 @@ function validRow(value: unknown): value is Record<string, unknown> {
     ['is_eligible', 'is_retryable', 'requires_manual_review'].every(
       (key) => value[key] === null || typeof value[key] === 'boolean',
     ) &&
-    ['payout_run_amount_cents', 'release_amount_cents'].every(
+    [
+      'days_since_completed',
+      'payout_run_amount_cents',
+      'release_amount_cents',
+    ].every(
       (key) =>
         value[key] === null ||
         (typeof value[key] === 'number' && Number.isSafeInteger(value[key])),
