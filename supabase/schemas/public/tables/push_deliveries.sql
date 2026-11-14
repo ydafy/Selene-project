@@ -17,6 +17,7 @@ CREATE TABLE "public"."push_deliveries" (
   "receipt_status"     text,
   "receipt_error"      text,
   "receipt_checked_at" timestamp with time zone,
+  CONSTRAINT "push_deliveries_attempts_check" CHECK ((attempts >= 0)),
   CONSTRAINT "push_deliveries_channel_check" CHECK ((channel = ANY (ARRAY['orders'::text, 'activity'::text]))),
   CONSTRAINT "push_deliveries_notification_id_fkey" FOREIGN KEY (notification_id) REFERENCES public.notifications(id) ON DELETE CASCADE,
   CONSTRAINT "push_deliveries_notification_id_push_token_id_key" UNIQUE (notification_id, push_token_id),

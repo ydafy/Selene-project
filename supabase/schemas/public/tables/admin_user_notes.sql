@@ -1,9 +1,9 @@
 CREATE TABLE "public"."admin_user_notes" (
   "id"         uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "user_id"    uuid,
-  "admin_id"   uuid,
+  "user_id"    uuid                     NOT NULL,
+  "admin_id"   uuid                     NOT NULL,
   "content"    text                     NOT NULL,
-  "created_at" timestamp with time zone DEFAULT now(),
+  "created_at" timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "admin_user_notes_pkey" PRIMARY KEY (id),
   CONSTRAINT "admin_user_notes_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id),
   CONSTRAINT "admin_user_notes_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE

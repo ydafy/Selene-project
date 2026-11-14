@@ -19,7 +19,7 @@ export type Database = {
           full_name: string;
           id: string;
           instructions: string | null;
-          is_default: boolean | null;
+          is_default: boolean;
           label: string;
           latitude: number | null;
           longitude: number | null;
@@ -41,7 +41,7 @@ export type Database = {
           full_name: string;
           id?: string;
           instructions?: string | null;
-          is_default?: boolean | null;
+          is_default?: boolean;
           label: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -62,7 +62,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           instructions?: string | null;
-          is_default?: boolean | null;
+          is_default?: boolean;
           label?: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -79,8 +79,8 @@ export type Database = {
       admin_audit_logs: {
         Row: {
           action_type: string;
-          admin_id: string | null;
-          created_at: string | null;
+          admin_id: string;
+          created_at: string;
           details: Json | null;
           id: string;
           target_id: string | null;
@@ -88,16 +88,16 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           action_type: string;
-          admin_id?: string | null;
-          created_at?: string | null;
+          admin_id: string;
+          created_at?: string;
           details?: Json | null;
           id?: string;
           target_id?: string | null;
         };
         Update: {
           action_type?: string;
-          admin_id?: string | null;
-          created_at?: string | null;
+          admin_id?: string;
+          created_at?: string;
           details?: Json | null;
           id?: string;
           target_id?: string | null;
@@ -142,26 +142,26 @@ export type Database = {
       };
       admin_user_notes: {
         Row: {
-          admin_id: string | null;
+          admin_id: string;
           content: string;
-          created_at: string | null;
+          created_at: string;
           id: string;
-          user_id: string | null;
+          user_id: string;
         };
         ComputedFields: never;
         Insert: {
-          admin_id?: string | null;
+          admin_id: string;
           content: string;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
-          user_id?: string | null;
+          user_id: string;
         };
         Update: {
-          admin_id?: string | null;
+          admin_id?: string;
           content?: string;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
-          user_id?: string | null;
+          user_id?: string;
         };
         Relationships: [
           {
@@ -334,20 +334,20 @@ export type Database = {
           category_name: string;
           filter_fields: NonNullable<Json>;
           sell_fields: NonNullable<Json>;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
           category_name: string;
           filter_fields: NonNullable<Json>;
           sell_fields: NonNullable<Json>;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           category_name?: string;
           filter_fields?: NonNullable<Json>;
           sell_fields?: NonNullable<Json>;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -942,10 +942,10 @@ export type Database = {
           event_payload: NonNullable<Json>;
           id: string;
           message: string | null;
-          read: boolean | null;
+          read: boolean;
           source_event_key: string | null;
           title: string;
-          type: string | null;
+          type: string;
           user_id: string;
         };
         ComputedFields: never;
@@ -957,10 +957,10 @@ export type Database = {
           event_payload?: NonNullable<Json>;
           id?: string;
           message?: string | null;
-          read?: boolean | null;
+          read?: boolean;
           source_event_key?: string | null;
           title: string;
-          type?: string | null;
+          type: string;
           user_id: string;
         };
         Update: {
@@ -971,10 +971,10 @@ export type Database = {
           event_payload?: NonNullable<Json>;
           id?: string;
           message?: string | null;
-          read?: boolean | null;
+          read?: boolean;
           source_event_key?: string | null;
           title?: string;
-          type?: string | null;
+          type?: string;
           user_id?: string;
         };
         Relationships: [];
@@ -1226,7 +1226,7 @@ export type Database = {
           status: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at: string | null;
+          updated_at: string;
           usage: string;
           verification_data: Json | null;
           verified_at: string | null;
@@ -1261,7 +1261,7 @@ export type Database = {
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at?: string | null;
+          updated_at?: string;
           usage: string;
           verification_data?: Json | null;
           verified_at?: string | null;
@@ -1295,7 +1295,7 @@ export type Database = {
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at?: string | null;
+          updated_at?: string;
           usage?: string;
           verification_data?: Json | null;
           verified_at?: string | null;
@@ -1381,10 +1381,10 @@ export type Database = {
           created_at: string;
           deleted_at: string | null;
           id: string;
-          is_verified_seller: boolean | null;
+          is_verified_seller: boolean;
           total_reviews: number;
           total_sales: number;
-          updated_at: string | null;
+          updated_at: string;
           username: string | null;
         };
         ComputedFields: never;
@@ -1394,10 +1394,10 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           id: string;
-          is_verified_seller?: boolean | null;
+          is_verified_seller?: boolean;
           total_reviews?: number;
           total_sales?: number;
-          updated_at?: string | null;
+          updated_at?: string;
           username?: string | null;
         };
         Update: {
@@ -1406,10 +1406,10 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           id?: string;
-          is_verified_seller?: boolean | null;
+          is_verified_seller?: boolean;
           total_reviews?: number;
           total_sales?: number;
-          updated_at?: string | null;
+          updated_at?: string;
           username?: string | null;
         };
         Relationships: [];
@@ -2499,33 +2499,33 @@ export type Database = {
       };
       webhook_dlq: {
         Row: {
-          created_at: string | null;
+          created_at: string;
           error_message: string;
-          event_type: string | null;
+          event_type: string;
           id: string;
           payload: NonNullable<Json>;
-          resolved: boolean | null;
+          resolved: boolean;
           resolved_at: string | null;
           resolved_by: string | null;
         };
         ComputedFields: never;
         Insert: {
-          created_at?: string | null;
+          created_at?: string;
           error_message: string;
-          event_type?: string | null;
+          event_type?: string;
           id?: string;
           payload: NonNullable<Json>;
-          resolved?: boolean | null;
+          resolved?: boolean;
           resolved_at?: string | null;
           resolved_by?: string | null;
         };
         Update: {
-          created_at?: string | null;
+          created_at?: string;
           error_message?: string;
-          event_type?: string | null;
+          event_type?: string;
           id?: string;
           payload?: NonNullable<Json>;
-          resolved?: boolean | null;
+          resolved?: boolean;
           resolved_at?: string | null;
           resolved_by?: string | null;
         };
@@ -2708,7 +2708,7 @@ export type Database = {
           shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
-          updated_at: string | null;
+          updated_at: string;
           usage: string;
           verification_data: Json | null;
           verified_at: string | null;
@@ -2865,7 +2865,7 @@ export type Database = {
           created_at: string;
           email: string | null;
           id: string;
-          is_verified_seller: boolean | null;
+          is_verified_seller: boolean;
           role: Database['public']['Enums']['user_role'] | null;
           status: Database['public']['Enums']['account_status'] | null;
           username: string | null;

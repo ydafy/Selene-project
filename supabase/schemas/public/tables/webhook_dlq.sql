@@ -1,10 +1,10 @@
 CREATE TABLE "public"."webhook_dlq" (
   "id"            uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "event_type"    text                     DEFAULT 'unknown'::text,
+  "event_type"    text                     NOT NULL DEFAULT 'unknown'::text,
   "payload"       jsonb                    NOT NULL,
   "error_message" text                     NOT NULL,
-  "resolved"      boolean                  DEFAULT false,
-  "created_at"    timestamp with time zone DEFAULT now(),
+  "resolved"      boolean                  NOT NULL DEFAULT false,
+  "created_at"    timestamp with time zone NOT NULL DEFAULT now(),
   "resolved_at"   timestamp with time zone,
   "resolved_by"   uuid,
   CONSTRAINT "webhook_dlq_pkey" PRIMARY KEY (id),

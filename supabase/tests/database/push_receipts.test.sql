@@ -17,8 +17,8 @@ create function pg_temp.scenario(p_s integer) returns uuid language plpgsql as $
 begin
   insert into public.push_tokens (id, user_id, token, platform, updated_at)
   values (pg_temp.mu(2600 + p_s), pg_temp.mu(1341), 'ExponentPushToken[t13-r' || p_s || ']', 'ios', now() - interval '1 day');
-  insert into public.notifications (id, user_id, title, event_kind, source_event_key)
-  values (pg_temp.mu(2700 + p_s), pg_temp.mu(1341), 'Title', 'dispute.opened', 't13-r' || p_s);
+  insert into public.notifications (id, user_id, type, title, event_kind, source_event_key)
+  values (pg_temp.mu(2700 + p_s), pg_temp.mu(1341), 'info', 'Title', 'dispute.opened', 't13-r' || p_s);
   insert into public.push_deliveries (id, notification_id, push_token_id, user_id, channel, status, attempts,
     expo_ticket_id, sent_at, updated_at)
   values (pg_temp.mu(2800 + p_s), pg_temp.mu(2700 + p_s), pg_temp.mu(2600 + p_s), pg_temp.mu(1341), 'orders',

@@ -14,6 +14,7 @@ CREATE TABLE "internal"."connect_account_actionability" (
   "current_currency"             text,
   "current_default_for_currency" boolean,
   "current_mxn_default_count"    integer,
+  CONSTRAINT "connect_account_actionability_current_mxn_default_count_check" CHECK ((current_mxn_default_count >= 0)),
   CONSTRAINT "connect_account_actionability_pkey" PRIMARY KEY (stripe_account_id),
   CONSTRAINT "connect_account_actionability_refresh_generation_check" CHECK ((refresh_generation >= 0))
 );

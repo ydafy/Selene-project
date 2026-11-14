@@ -1,10 +1,10 @@
 CREATE TABLE "public"."admin_audit_logs" (
   "id"          uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "admin_id"    uuid,
+  "admin_id"    uuid                     NOT NULL,
   "action_type" text                     NOT NULL,
   "target_id"   uuid,
   "details"     jsonb,
-  "created_at"  timestamp with time zone DEFAULT now(),
+  "created_at"  timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "admin_audit_logs_pkey" PRIMARY KEY (id),
   CONSTRAINT "admin_audit_logs_admin_id_fkey" FOREIGN KEY (admin_id) REFERENCES public.profiles(id)
 );

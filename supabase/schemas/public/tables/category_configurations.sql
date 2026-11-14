@@ -2,7 +2,7 @@ CREATE TABLE "public"."category_configurations" (
   "category_name" text                     NOT NULL,
   "sell_fields"   jsonb                    NOT NULL,
   "filter_fields" jsonb                    NOT NULL,
-  "updated_at"    timestamp with time zone DEFAULT now(),
+  "updated_at"    timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "category_configurations_pkey" PRIMARY KEY (category_name)
 );
 

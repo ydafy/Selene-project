@@ -354,11 +354,7 @@ describe('launch digest', () => {
     ).toBe('new');
   });
 
-  test('null read is unread; empty list has no digest', () => {
-    expect(
-      selectLaunchDigest([row('null', '2025-01-01', { read: null })], 'owner')
-        ?.id,
-    ).toBe('null');
+  test('empty list has no digest', () => {
     expect(selectLaunchDigest([], 'owner')).toBeNull();
   });
 

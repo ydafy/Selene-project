@@ -48,7 +48,7 @@ ALTER TABLE "public"."products"
   ADD COLUMN "package_preset" text;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT now();
+  ADD COLUMN "updated_at" timestamp WITH time zone NOT NULL DEFAULT now();
 
 ALTER TABLE "public"."products"
   ADD COLUMN "reserved_at" timestamp WITH time zone;
@@ -92,6 +92,15 @@ ALTER TABLE "public"."products"
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_cost_cents_check" CHECK ((shipping_cost_cents >= 0));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_views_check" CHECK ((views >= 0));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_aspect_ratio_check" CHECK ((aspect_ratio > (0)::double precision));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_origin_zip_check" CHECK ((origin_zip ~ '^[0-9]{5}$'::text));
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
