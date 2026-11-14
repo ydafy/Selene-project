@@ -176,6 +176,12 @@ describe('notification presentation', () => {
         'buyer',
         { icon: 'clock-alert-outline', accent: 'primary', state: 'shipment' },
       ],
+      [
+        'shipment.payout_blocked',
+        'seller',
+        'buyer',
+        { icon: 'cash-lock', accent: 'primary', state: 'sale' },
+      ],
     ] as const;
     for (const [kind, role, otherRole, presentation] of cases) {
       const base = {

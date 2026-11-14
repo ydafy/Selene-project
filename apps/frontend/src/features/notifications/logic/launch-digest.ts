@@ -23,6 +23,7 @@ const priority: Record<
   'shipment.funds_released': { seller: 2 },
   'shipment.refunded': { buyer: 2 },
   'shipment.label_deadline': { seller: 3 },
+  'shipment.payout_blocked': { seller: 3 },
 };
 
 function rank(row: Notification): number {

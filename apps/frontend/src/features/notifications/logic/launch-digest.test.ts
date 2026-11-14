@@ -173,6 +173,37 @@ describe('launch digest', () => {
     ).toBe(inTransit);
   });
 
+  test('a held seller payout is an action notice: it outranks routine sale updates and only counts for the seller', () => {
+    const funds = typed(
+      'funds',
+      '2026-04-05',
+      'shipment.funds_released',
+      'seller',
+    );
+    const sale = typed(
+      'sale',
+      '2026-04-04',
+      'order.payment_confirmed',
+      'seller',
+    );
+    const blocked = typed(
+      'blocked',
+      '2026-04-01',
+      'shipment.payout_blocked',
+      'seller',
+    );
+    expect(selectLaunchDigest([funds, sale, blocked], 'owner')).toBe(blocked);
+    expect(
+      selectLaunchDigest(
+        [
+          typed('wrong-role', '2026-04-06', 'shipment.payout_blocked', 'buyer'),
+          funds,
+        ],
+        'owner',
+      ),
+    ).toBe(funds);
+  });
+
   test('ranks approved typed priority above newer legacy and across two typed levels', () => {
     expect(
       selectLaunchDigest(

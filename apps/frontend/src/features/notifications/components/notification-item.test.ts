@@ -18,4 +18,9 @@ test('item uses presentation policy and localized read state without implicit ma
     "fontStyle={emphasizeMessage ? 'italic' : 'normal'}",
   );
   expect(source).toContain('onPress={() => onPress(notification)}');
+  // Kinds with localized text render it in place of the stored server copy.
+  expect(source).toContain('getNotificationText(');
+  expect(source).toContain('{text.title}');
+  expect(source).toContain('{text.message}');
+  expect(source).not.toContain('{notification.title}');
 });

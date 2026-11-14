@@ -62,6 +62,9 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
   mock.module('@/shared/utils/format-date', () => ({
     formatSmartTime: () => 'now',
   }));
+  mock.module('@/shared/utils/money/format-currency', () => ({
+    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+  }));
   mock.module('@/shared/ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),
   }));
@@ -148,5 +151,61 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
       />,
     );
     expect(messageNode()!.props.fontStyle).toBe('normal');
+  });
+
+  test('a held payout notice shows localized text from its payload and keeps the stored text when malformed', async () => {
+    const onPress = mock(() => {});
+    const blocked: Notification = {
+      ...notification,
+      type: 'warning',
+      action_path: '/sell/onboarding',
+      event_kind: 'shipment.payout_blocked',
+      source_event_key: 'shipment.payout_blocked:ship-1:3',
+      event_payload: {
+        order_id: 'order-1',
+        shipment_id: 'ship-1',
+        amount_cents: 123450,
+        currency: 'mxn',
+        recipient_role: 'seller',
+        block_reason: 'payouts_disabled',
+        reminder_stage: 3,
+        is_reminder: true,
+      },
+    };
+    const view = await render(
+      <NotificationItem notification={blocked} onPress={onPress} />,
+    );
+    const texts = () =>
+      view.container
+        .queryAll((node) => node.type === 'Text')
+        .map((node) => node.props.children);
+    expect(texts()).toContain('notifications:payoutBlocked.reminderTitle');
+    expect(texts()).toContain(
+      'notifications:payoutBlocked.messages.payoutsDisabled:{"amount":"$1234.50"}',
+    );
+    expect(texts()).not.toContain(notification.title);
+    const button = view.container.queryAll(
+      (node) => node.type === 'Pressable',
+    )[0];
+    expect(button.props.accessibilityLabel).toContain(
+      'notifications:payoutBlocked.reminderTitle',
+    );
+    await fireEvent.press(button);
+    expect(onPress).toHaveBeenCalledWith(blocked);
+
+    await view.rerender(
+      <NotificationItem
+        notification={{
+          ...blocked,
+          event_payload: {
+            ...(blocked.event_payload as object),
+            amount_cents: 1.5,
+          },
+        }}
+        onPress={onPress}
+      />,
+    );
+    expect(texts()).toContain(notification.title);
+    expect(texts()).toContain(notification.message);
   });
 }
