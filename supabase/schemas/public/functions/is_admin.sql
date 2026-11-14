@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION public.is_admin()
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
-  SET search_path TO 'public'
+  SET search_path TO ''
   AS $function$
 
 DECLARE

@@ -54,9 +54,7 @@ CREATE POLICY "shipment tracking events are visible to participants and admins" 
   USING (((EXISTS ( SELECT 1
    FROM (public.shipments s
      JOIN public.orders o ON ((o.id = s.order_id)))
-  WHERE ((s.id = shipment_tracking_events.shipment_id) AND ((o.buyer_id = ( SELECT auth.uid() AS uid)) OR (s.seller_id = ( SELECT auth.uid() AS uid)))))) OR (EXISTS ( SELECT 1
-   FROM public.profiles_private pp
-  WHERE ((pp.id = ( SELECT auth.uid() AS uid)) AND (pp.role = 'admin'::text))))));
+  WHERE ((s.id = shipment_tracking_events.shipment_id) AND ((o.buyer_id = ( SELECT auth.uid() AS uid)) OR (s.seller_id = ( SELECT auth.uid() AS uid)))))) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipment_tracking_events" TO "service_role";
 

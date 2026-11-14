@@ -5,7 +5,7 @@
 -- policy merge (S3) must keep. Counts are restricted to this file's own ids.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(49);
+select plan(57);
 \ir ../fixtures/money.psql
 
 -- Users: 14001 seller A, 14002 buyer, 14003 admin, 14004 unrelated user,
@@ -77,6 +77,10 @@ select is((select count(*)::integer from public.orders where id = pg_temp.mu(142
   'orders: a seller sees the order that holds their shipment');
 select ok(exists(select 1 from public.order_items where shipment_id = pg_temp.mu(14101)),
   'order_items: a seller sees the item of their own shipment');
+select is((select count(*)::integer from public.order_items where order_id = pg_temp.mu(14201)), 1,
+  'order_items: a seller reads only the order items of their own shipments');
+select is((select count(*)::integer from public.order_items where shipment_id = pg_temp.mu(14102)), 0,
+  'order_items: a seller reads no item of another seller''s shipment in the same order');
 select is(pg_temp.short_ids(array(select id from public.products
     where id in (pg_temp.mu(14101), pg_temp.mu(14102), pg_temp.mu(14301)))), '{14101,14301}',
   'products: a seller sees their own listings, not another seller''s');
@@ -123,6 +127,12 @@ set local role authenticated;
 select is(pg_temp.short_ids(array(select id from public.shipments
     where id in (pg_temp.mu(14101), pg_temp.mu(14102)))), '{14102}',
   'shipments: the second seller sees only their own shipment');
+select is((select count(*)::integer from public.orders where id = pg_temp.mu(14201)), 1,
+  'orders: the second seller sees the order that holds their shipment');
+select is((select count(*)::integer from public.order_items where order_id = pg_temp.mu(14201)), 1,
+  'order_items: the second seller reads only the order items of their own shipments');
+select is((select count(*)::integer from public.order_items where shipment_id = pg_temp.mu(14101)), 0,
+  'order_items: the second seller reads no item of seller A''s shipment');
 select is(pg_temp.short_ids(array(select id from public.products
     where id in (pg_temp.mu(14101), pg_temp.mu(14102), pg_temp.mu(14301)))), '{14102}',
   'products: the second seller does not see seller A''s listings');
@@ -202,6 +212,13 @@ select is((select count(*)::integer from public.addresses
 select is((select count(*)::integer from public.shipments
     where id in (pg_temp.mu(14101), pg_temp.mu(14102))), 0,
   'shipments: a suspended admin sees none');
+select is((select count(*)::integer from public.orders where id = pg_temp.mu(14201)), 0,
+  'orders: a suspended admin reads no other user''s order');
+select is((select count(*)::integer from public.order_items where order_id = pg_temp.mu(14201)), 0,
+  'order_items: a suspended admin reads no other user''s order items');
+select is((select count(*)::integer from public.shipment_tracking_events
+    where shipment_id in (pg_temp.mu(14101), pg_temp.mu(14102))), 0,
+  'shipment_tracking_events: a suspended admin reads no other user''s tracking events');
 select is((select count(*)::integer from public.products
     where id in (pg_temp.mu(14101), pg_temp.mu(14102), pg_temp.mu(14301))), 0,
   'products: a suspended admin sees no listing');
