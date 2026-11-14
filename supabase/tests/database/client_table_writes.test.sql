@@ -203,11 +203,11 @@ select throws_ok(
     values ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000002',
       'e1000000-0000-4000-8000-000000000001', 1, 'Product without shipment', 'e1000000-0000-4000-8000-0000000a0001')$$,
   '42501', null, 'a product review must name its shipment');
-select lives_ok(
+select throws_ok(
   $$insert into public.reviews (order_id, seller_id, reviewer_id, rating, comment, shipment_id)
     values ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000002',
       'e1000000-0000-4000-8000-000000000001', 4, 'Good seller', 'e1000000-0000-4000-8000-0000000c0001')$$,
-  'the buyer reviews a completed shipment without naming a product');
+  '23505', null, 'a seller review of a shipment the buyer already reviewed with its product is rejected');
 select throws_ok(
   $$insert into public.reviews (order_id, seller_id, reviewer_id, rating, comment, shipment_id)
     values ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000002',
@@ -227,12 +227,11 @@ reset role;
 
 select is(
   (select count(*) from public.reviews where order_id in ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000b0002')),
-  2::bigint, 'only the allowed reviews were stored');
+  1::bigint, 'only the allowed review was stored');
 select is(
   (select string_agg(row(seller_id, shipment_id, product_id, rating)::text, ', ' order by rating desc) from public.reviews where order_id = 'e1000000-0000-4000-8000-0000000b0001'),
-  row('e1000000-0000-4000-8000-000000000002'::uuid, 'e1000000-0000-4000-8000-0000000c0001'::uuid, 'e1000000-0000-4000-8000-0000000a0001'::uuid, 5)::text
-    || ', ' || row('e1000000-0000-4000-8000-000000000002'::uuid, 'e1000000-0000-4000-8000-0000000c0001'::uuid, null::uuid, 4)::text,
-  'the stored reviews are the completed shipment reviews');
+  row('e1000000-0000-4000-8000-000000000002'::uuid, 'e1000000-0000-4000-8000-0000000c0001'::uuid, 'e1000000-0000-4000-8000-0000000a0001'::uuid, 5)::text,
+  'the stored review is the completed shipment review');
 
 -- Client roles hold only read privileges and read policies on these tables.
 select is(

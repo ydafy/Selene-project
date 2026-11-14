@@ -7,15 +7,14 @@ CREATE TABLE "public"."reviews" (
   "rating"      integer                  NOT NULL,
   "comment"     text,
   "order_id"    uuid,
-  "shipment_id" uuid,
+  "shipment_id" uuid                     NOT NULL,
   CONSTRAINT "no_self_rating" CHECK ((reviewer_id <> seller_id)),
   CONSTRAINT "reviews_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE,
   CONSTRAINT "reviews_pkey" PRIMARY KEY (id),
   CONSTRAINT "reviews_product_id_fkey" FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE SET NULL,
   CONSTRAINT "reviews_rating_check" CHECK (((rating >= 1) AND (rating <= 5))),
   CONSTRAINT "reviews_reviewer_id_fkey" FOREIGN KEY (reviewer_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
-  CONSTRAINT "reviews_reviewer_id_product_id_key" UNIQUE (reviewer_id, product_id),
-  CONSTRAINT "reviews_reviewer_shipment_product_unique" UNIQUE NULLS NOT DISTINCT (reviewer_id, shipment_id, product_id),
+  CONSTRAINT "reviews_reviewer_id_shipment_id_key" UNIQUE (reviewer_id, shipment_id),
   CONSTRAINT "reviews_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
   CONSTRAINT "reviews_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE RESTRICT
 );

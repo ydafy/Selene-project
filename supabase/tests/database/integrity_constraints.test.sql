@@ -2,7 +2,7 @@
 -- each rule is a constraint, and a write that breaks it fails.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(70);
+select plan(78);
 \ir ../fixtures/money.psql
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -381,6 +381,61 @@ select throws_ok(
   $$update internal.connect_account_actionability set current_mxn_default_count = -1
     where stripe_account_id = 'acct_integrity_308'$$,
   '23514', null, 'a negative connect_account_actionability.current_mxn_default_count is rejected');
+
+-- S5: one default live address per user. Buyer 308102 already holds a deleted
+-- address (308130); seller 308101 gets its own default.
+insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label, is_default)
+values (pg_temp.mu(308150), pg_temp.mu(308102), 'Integrity Buyer', '5512345678', 'Calle 2',
+        'CDMX', 'CMX', '06600', 'Casa', true);
+
+select throws_ok(
+  $$insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label, is_default)
+    values (pg_temp.mu(308151), pg_temp.mu(308102), 'Integrity Buyer', '5512345678', 'Calle 3',
+            'CDMX', 'CMX', '06600', 'Oficina', true)$$,
+  '23505', null, 'a second default live address for the same user is rejected');
+
+select lives_ok(
+  $$insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label, is_default)
+    values (pg_temp.mu(308152), pg_temp.mu(308101), 'Integrity Seller', '5512345678', 'Calle 4',
+            'CDMX', 'CMX', '06600', 'Casa', true)$$,
+  'another user may hold their own default address');
+
+select lives_ok(
+  $$insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label, is_default, deleted_at)
+    values (pg_temp.mu(308153), pg_temp.mu(308102), 'Integrity Buyer', '5512345678', 'Calle 5',
+            'CDMX', 'CMX', '06600', 'Vieja', true, now())$$,
+  'a deleted address may keep is_default next to the live default');
+
+-- S5: one review per shipment. Buyer 308102 reviews shipment 308111 (listing
+-- 308111) of seller 308101; shipment 308141 is a repeat purchase from the same seller.
+select pg_temp.money_shipment(308140, 308141, 308101, 308102);
+insert into public.reviews (reviewer_id, seller_id, product_id, rating, order_id, shipment_id)
+values (pg_temp.mu(308102), pg_temp.mu(308101), pg_temp.mu(308111), 5, pg_temp.mu(308110), pg_temp.mu(308111));
+
+select throws_ok(
+  $$insert into public.reviews (reviewer_id, seller_id, rating, order_id, shipment_id)
+    values (pg_temp.mu(308102), pg_temp.mu(308101), 4, pg_temp.mu(308110), pg_temp.mu(308111))$$,
+  '23505', null, 'a second review by the same reviewer for the same shipment is rejected');
+
+select lives_ok(
+  $$insert into public.reviews (reviewer_id, seller_id, product_id, rating, order_id, shipment_id)
+    values (pg_temp.mu(308102), pg_temp.mu(308101), pg_temp.mu(308111), 4, pg_temp.mu(308140), pg_temp.mu(308141))$$,
+  'the same reviewer may review the same product bought again in another shipment');
+
+select throws_ok(
+  $$insert into public.reviews (reviewer_id, seller_id, rating, order_id, shipment_id)
+    values (pg_temp.mu(308102), pg_temp.mu(308101), 3, pg_temp.mu(308140), null)$$,
+  '23502', null, 'a review without a shipment is rejected');
+
+select is(
+  (select array_agg(conname::text order by conname) from pg_constraint
+    where conrelid = 'public.reviews'::regclass and contype = 'u'),
+  array['reviews_reviewer_id_shipment_id_key'],
+  'reviews has one unique key, (reviewer_id, shipment_id)');
+
+-- S5: webhook deliveries are idempotent per provider delivery.
+select col_is_unique('internal', 'webhook_deliveries', array['provider', 'delivery_id'],
+  'internal.webhook_deliveries is unique on (provider, delivery_id)');
 
 select * from finish();
 rollback;

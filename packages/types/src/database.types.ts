@@ -1675,7 +1675,7 @@ export type Database = {
           rating: number;
           reviewer_id: string;
           seller_id: string;
-          shipment_id: string | null;
+          shipment_id: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1687,7 +1687,7 @@ export type Database = {
           rating: number;
           reviewer_id: string;
           seller_id: string;
-          shipment_id?: string | null;
+          shipment_id: string;
         };
         Update: {
           comment?: string | null;
@@ -1698,7 +1698,7 @@ export type Database = {
           rating?: number;
           reviewer_id?: string;
           seller_id?: string;
-          shipment_id?: string | null;
+          shipment_id?: string;
         };
         Relationships: [
           {

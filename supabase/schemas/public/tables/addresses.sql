@@ -27,6 +27,8 @@ CREATE TABLE "public"."addresses" (
 ALTER TABLE "public"."addresses"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE UNIQUE INDEX addresses_one_default_per_user_idx ON public.addresses USING btree (user_id) WHERE (is_default AND (deleted_at IS NULL));
+
 CREATE INDEX idx_addresses_user_id ON public.addresses USING btree (user_id);
 
 CREATE POLICY "addresses_delete_policy" ON "public"."addresses"
