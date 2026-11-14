@@ -6,6 +6,7 @@ import {
   isCodegraphHello,
   leftoverAdminDir,
   parseDaemonLock,
+  pendingMarkerName,
   parseStackIdentity,
   orphanScopes,
   parseArgs,
@@ -543,5 +544,20 @@ describe('isCodegraphHello', () => {
     expect(isCodegraphHello(hello(1234), 7652)).toBe(false);
     expect(isCodegraphHello('{"pid":7652}', 7652)).toBe(false);
     expect(isCodegraphHello('garbage', 7652)).toBe(false);
+  });
+});
+
+describe('pendingMarkerName', () => {
+  it('names a folder the same way whatever its slashes or case', () => {
+    const name = pendingMarkerName('C:/dev/School-portal-worktrees/gone');
+    const B = String.fromCharCode(92);
+    const windows = ['c:', 'dev', 'school-portal-worktrees', 'gone', ''].join(
+      B,
+    );
+    expect(pendingMarkerName(windows)).toBe(name);
+    expect(name).toMatch(/^[a-z0-9_-]+$/);
+    expect(pendingMarkerName('C:/dev/School-portal-worktrees/other')).not.toBe(
+      name,
+    );
   });
 });
