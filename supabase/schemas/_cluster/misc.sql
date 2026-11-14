@@ -68,6 +68,8 @@ SELECT cron.schedule_in_database('dispute-payout-timeout-job', '0 * * * *', 'sel
 
 SELECT cron.schedule_in_database('dispute-shipping-timeout-job', '0 * * * *', 'select public.fn_cron_dispute_shipping_timeout()', 'postgres', NULL, true);
 
+SELECT cron.schedule_in_database('held-payout-seller-notices', '20 * * * *', 'select internal.fn_notify_held_payouts()', 'postgres', NULL, true);
+
 SELECT cron.schedule_in_database('purge-cron-run-details', '0 3 * * *', 'delete from cron.job_run_details where end_time < now() - interval ''7 days''', 'postgres', NULL, true);
 
 SELECT
