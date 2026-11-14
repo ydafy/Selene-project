@@ -10,8 +10,8 @@ select plan(53);
 
 -- Snapshot values under the current settings (authenticated cannot read them).
 create function pg_temp.fresh_reserve() returns bigint language sql security definer as $$
-  select round(100 * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint
+  select 10000::bigint + s.shipping_buffer_cents
+    + ceil(100000::numeric * s.insurance_rate)::bigint
   from public.system_settings s where s.id = 1
 $$;
 create function pg_temp.commission_rate() returns numeric language sql security definer as $$
@@ -25,12 +25,12 @@ $$;
 create function pg_temp.owner_insert(p_id uuid, p_seller uuid) returns text language sql as $$
   select format($f$
     insert into public.products (
-      id, name, description, price, category, condition, usage, images, status,
-      specifications, seller_id, shipping_cost, origin_zip, package_preset,
+      id, name, description, price_cents, category, condition, usage, images, status,
+      specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
       publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
     ) values (
-      %L, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
-      array['https://example.test/p.png'], 'PENDING_VERIFICATION', '{}'::jsonb, %L, 100,
+      %L, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
+      array['https://example.test/p.png'], 'PENDING_VERIFICATION', '{}'::jsonb, %L, 10000,
       '06600', 'gpu_1', pg_temp.fresh_reserve(), pg_temp.commission_rate(), pg_temp.insurance_rate()
     )$f$, p_id, p_seller)
 $$;
@@ -48,13 +48,13 @@ $$;
 create function pg_temp.make_listing(p_id uuid, p_seller uuid, p_status text) returns void
 language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
   ) values (
-    p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+    p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb,
-    p_seller, 100, '06600', 'gpu_1',
+    p_seller, 10000, '06600', 'gpu_1',
     pg_temp.fresh_reserve(), pg_temp.commission_rate(), pg_temp.insurance_rate()
   )
 $$;

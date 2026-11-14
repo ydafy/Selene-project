@@ -3,7 +3,7 @@ CREATE TABLE "public"."products" (
   "created_at"  timestamp with time zone NOT NULL DEFAULT now(),
   "name"        text                     NOT NULL,
   "description" text                     NOT NULL,
-  "price"       numeric                  NOT NULL,
+  "price_cents" bigint                   NOT NULL,
   "category"    text                     NOT NULL,
   "condition"   text                     NOT NULL,
   "usage"       text                     NOT NULL,
@@ -36,7 +36,7 @@ ALTER TABLE "public"."products"
   ADD COLUMN "rejection_reason" text;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "shipping_cost" numeric DEFAULT 0;
+  ADD COLUMN "shipping_cost_cents" bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "shipping_payer" text DEFAULT 'buyer'::text;
@@ -86,6 +86,12 @@ ALTER TABLE "public"."products"
     ((((publication_shipping_reserve_cents IS NULL) AND (publication_commission_rate IS NULL) AND (publication_insurance_rate IS NULL)) OR ((publication_shipping_reserve_cents >=
     0) AND (publication_commission_rate >= (0)::numeric) AND (publication_commission_rate <= (1)::numeric) AND (publication_insurance_rate >= (0)::numeric) AND
     (publication_insurance_rate <= (1)::numeric))));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_price_cents_check" CHECK (((price_cents >= 1000) AND (price_cents <= 50000000)));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_shipping_cost_cents_check" CHECK ((shipping_cost_cents >= 0));
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id);

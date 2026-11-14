@@ -18,17 +18,17 @@ create function pg_temp.make_product(
   p_n integer, p_seller integer, p_status text, p_age interval default null
 ) returns void language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     reserved_at, publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.u(p_n), 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select pg_temp.u(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum,
-    '{}'::jsonb, pg_temp.u(p_seller), 100, '06600', 'gpu_1',
+    '{}'::jsonb, pg_temp.u(p_seller), 10000, '06600', 'gpu_1',
     now() - p_age,
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint,
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1
@@ -103,7 +103,7 @@ select pg_temp.remember(array[103, 105]);
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000101']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a cart with only a suspended seller expired reservation is refused');
@@ -115,10 +115,10 @@ select is(pg_temp.st(101), 'HIDDEN:VERIFIED:true',
 -- reserved by this call.
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000102']::uuid[])),
-  'true:-:1000', 'reserve: a cart with only an active seller expired reservation succeeds');
+  'true:-:100000', 'reserve: a cart with only an active seller expired reservation succeeds');
 reset role;
 select is(pg_temp.st(102), 'RESERVED:-:false',
   'reserve: the active seller listing was released to sale and reserved again by this call');
@@ -127,7 +127,7 @@ select is(pg_temp.st(102), 'RESERVED:-:false',
 -- The expired one is released, reserved, then rolled back; the fresh one is untouched.
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000104', 'e0000000-0000-4000-8000-000000000105']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a cart with a fresh reservation of another buyer is refused');
@@ -140,7 +140,7 @@ select ok(pg_temp.unchanged(103), 'reserve: a fresh reservation outside the cart
 -- Suspended and active expired reservations in one cart.
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000106', 'e0000000-0000-4000-8000-000000000107']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a mixed cart of suspended and active expired reservations is refused');
@@ -160,7 +160,7 @@ select pg_temp.remember(array[202, 203, 206]);
 -- Reservable (active seller) plus unreservable (hidden): the reservation is undone.
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000201', 'e0000000-0000-4000-8000-000000000202']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'rollback: a cart with a hidden listing is refused');
@@ -172,7 +172,7 @@ select ok(pg_temp.unchanged(202), 'rollback: the hidden listing is unchanged');
 -- Reservable (active seller) plus VERIFIED listing of a suspended seller.
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000203', 'e0000000-0000-4000-8000-000000000204']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'rollback: a cart with a suspended seller listing is refused');
@@ -199,7 +199,7 @@ create trigger rel_midcall_suspend after update on public.products
   execute function pg_temp.suspend_midcall();
 set local role service_role;
 select is(
-  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price::text
+  (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
    from public.fn_reserve_products('e0000000-0000-4000-8000-000000000003',
      array['e0000000-0000-4000-8000-000000000205', 'e0000000-0000-4000-8000-000000000206']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'rollback: a cart whose seller is suspended mid-call is refused');

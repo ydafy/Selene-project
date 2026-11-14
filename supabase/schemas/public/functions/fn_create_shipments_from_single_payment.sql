@@ -230,7 +230,7 @@ BEGIN
 
       v_item_index := 0;
       FOR v_product_record IN
-        SELECT id, price
+        SELECT id, price_cents
         FROM public.products
         WHERE id = ANY(v_product_ids)
           AND seller_id = v_seller_id
@@ -246,15 +246,15 @@ BEGIN
           v_item_net := v_residual_net;
         ELSE
           v_item_commission := round(
-            (v_commission_cents / 100.0) * (v_product_record.price / v_seller_gross_pesos),
+            (v_commission_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
             2
           );
           v_item_shipping := round(
-            (v_shipping_cents / 100.0) * (v_product_record.price / v_seller_gross_pesos),
+            (v_shipping_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
             2
           );
           v_item_net := round(
-            (v_net_cents / 100.0) * (v_product_record.price / v_seller_gross_pesos),
+            (v_net_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
             2
           );
           v_residual_commission := v_residual_commission - v_item_commission;
@@ -277,7 +277,7 @@ BEGIN
           v_shipment_id,
           v_seller_id,
           v_product_record.id,
-          v_product_record.price,
+          v_product_record.price_cents / 100.0,
           v_item_commission,
           v_item_shipping,
           'seller',

@@ -24,21 +24,21 @@ create function pg_temp.listing(
   p_rejection_reason text default null
 ) returns uuid language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     rejection_reason, locked_by, locked_at, verified_at, updated_at,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum,
-    '{}'::jsonb, pg_temp.mu(5102), 100, '06600', 'gpu_1', p_rejection_reason,
+    '{}'::jsonb, pg_temp.mu(5102), 10000, '06600', 'gpu_1', p_rejection_reason,
     case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
     case when p_locked_by is null then null else now() - p_lock_age end,
     case when p_status = 'VERIFIED' then now() - interval '1 day' end,
     now() - interval '1 day',
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint,
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1

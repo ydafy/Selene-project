@@ -1219,14 +1219,14 @@ export type Database = {
           name: string;
           origin_zip: string | null;
           package_preset: string | null;
-          price: number;
+          price_cents: number;
           publication_commission_rate: number | null;
           publication_insurance_rate: number | null;
           publication_shipping_reserve_cents: number | null;
           rejection_reason: string | null;
           reserved_at: string | null;
           seller_id: string;
-          shipping_cost: number | null;
+          shipping_cost_cents: number;
           shipping_payer: string | null;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
@@ -1254,14 +1254,14 @@ export type Database = {
           name: string;
           origin_zip?: string | null;
           package_preset?: string | null;
-          price: number;
+          price_cents: number;
           publication_commission_rate?: number | null;
           publication_insurance_rate?: number | null;
           publication_shipping_reserve_cents?: number | null;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id: string;
-          shipping_cost?: number | null;
+          shipping_cost_cents?: number;
           shipping_payer?: string | null;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
@@ -1288,14 +1288,14 @@ export type Database = {
           name?: string;
           origin_zip?: string | null;
           package_preset?: string | null;
-          price?: number;
+          price_cents?: number;
           publication_commission_rate?: number | null;
           publication_insurance_rate?: number | null;
           publication_shipping_reserve_cents?: number | null;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id?: string;
-          shipping_cost?: number | null;
+          shipping_cost_cents?: number;
           shipping_payer?: string | null;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
@@ -2707,11 +2707,11 @@ export type Database = {
           name: string;
           origin_zip: string | null;
           package_preset: string | null;
-          price: number;
+          price_cents: number;
           rejection_reason: string | null;
           reserved_at: string | null;
           seller_id: string;
-          shipping_cost: number | null;
+          shipping_cost_cents: number;
           shipping_payer: string | null;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
@@ -2737,11 +2737,11 @@ export type Database = {
           name?: string | null;
           origin_zip?: string | null;
           package_preset?: string | null;
-          price?: number | null;
+          price_cents?: number | null;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost_cents?: number | null;
           shipping_payer?: string | null;
           specifications?: Json | null;
           status?: Database['public']['Enums']['product_status_enum'] | null;
@@ -2766,11 +2766,11 @@ export type Database = {
           name?: string | null;
           origin_zip?: string | null;
           package_preset?: string | null;
-          price?: number | null;
+          price_cents?: number | null;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost_cents?: number | null;
           shipping_payer?: string | null;
           specifications?: Json | null;
           status?: Database['public']['Enums']['product_status_enum'] | null;
@@ -2892,7 +2892,7 @@ export type Database = {
           id: string;
           images: string[];
           name: string;
-          price: number;
+          price_cents: number;
           seller_id: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
@@ -2910,7 +2910,7 @@ export type Database = {
           id?: string | null;
           images?: string[] | null;
           name?: string | null;
-          price?: number | null;
+          price_cents?: number | null;
           seller_id?: string | null;
           specifications?: Json | null;
           status?: Database['public']['Enums']['product_status_enum'] | null;
@@ -2927,7 +2927,7 @@ export type Database = {
           id?: string | null;
           images?: string[] | null;
           name?: string | null;
-          price?: number | null;
+          price_cents?: number | null;
           seller_id?: string | null;
           specifications?: Json | null;
           status?: Database['public']['Enums']['product_status_enum'] | null;
@@ -3860,7 +3860,7 @@ export type Database = {
         Returns: {
           error_message: string;
           success: boolean;
-          total_price: number;
+          total_price_cents: number;
         }[];
       };
       fn_resolve_dispute_to_buyer: {

@@ -29,20 +29,20 @@ create function pg_temp.listing(
   p_reserved_age interval default null
 ) returns uuid language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     locked_by, locked_at, reserved_at,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum,
-    '{}'::jsonb, pg_temp.mu(5202), 100, '06600', 'gpu_1',
+    '{}'::jsonb, pg_temp.mu(5202), 10000, '06600', 'gpu_1',
     case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
     case when p_locked_by is null then null else now() - p_lock_age end,
     now() - p_reserved_age,
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * s.insurance_rate)::bigint,
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1

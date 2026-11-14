@@ -21,11 +21,11 @@ create function pg_temp.address(p_n integer, p_user integer) returns uuid langua
   returning id
 $$;
 
--- A listing of p_seller at p_price pesos in status p_status (RESERVED by checkout).
-create function pg_temp.listing(p_n integer, p_seller integer, p_price numeric, p_status text default 'RESERVED')
+-- A listing of p_seller at p_price_cents in status p_status (RESERVED by checkout).
+create function pg_temp.listing(p_n integer, p_seller integer, p_price_cents bigint, p_status text default 'RESERVED')
 returns uuid language plpgsql as $$
 begin
-  perform pg_temp.money_product(p_n, p_seller, p_price);
+  perform pg_temp.money_product(p_n, p_seller, p_price_cents);
   update public.products set status = p_status::public.product_status_enum, reserved_at = now()
   where id = pg_temp.mu(p_n);
   return pg_temp.mu(p_n);
@@ -67,19 +67,19 @@ $$;
 
 select pg_temp.address(5101, 5001);
 select pg_temp.address(5102, 5004);
-select pg_temp.listing(5201, 5002, 1000);
-select pg_temp.listing(5202, 5003, 2500);
-select pg_temp.listing(5203, 5001, 500);
-select pg_temp.listing(5211, 5002, 1000);
-select pg_temp.listing(5212, 5003, 1000, 'VERIFIED');
-select pg_temp.listing(5221, 5002, 1000);
-select pg_temp.listing(5222, 5002, 1000);
-select pg_temp.listing(5231, 5003, 1000);
-select pg_temp.listing(5241, 5002, 1000);
-select pg_temp.listing(5251, 5002, 1000);
-select pg_temp.listing(5261, 5002, 1000);
-select pg_temp.listing(5271, 5002, 1000);
-select pg_temp.listing(5272, 5003, 1000);
+select pg_temp.listing(5201, 5002, 100000);
+select pg_temp.listing(5202, 5003, 250000);
+select pg_temp.listing(5203, 5001, 50000);
+select pg_temp.listing(5211, 5002, 100000);
+select pg_temp.listing(5212, 5003, 100000, 'VERIFIED');
+select pg_temp.listing(5221, 5002, 100000);
+select pg_temp.listing(5222, 5002, 100000);
+select pg_temp.listing(5231, 5003, 100000);
+select pg_temp.listing(5241, 5002, 100000);
+select pg_temp.listing(5251, 5002, 100000);
+select pg_temp.listing(5261, 5002, 100000);
+select pg_temp.listing(5271, 5002, 100000);
+select pg_temp.listing(5272, 5003, 100000);
 
 -- 1. Grants, security mode and signature ---------------------------------------------
 select is(

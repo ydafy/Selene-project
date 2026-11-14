@@ -5,25 +5,25 @@
 begin;
 select plan(25);
 
--- Snapshot reserve for a price and shipping cost (pesos) under the current settings.
-create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
+-- Snapshot reserve for a price and shipping cost (cents) under the current settings.
+create function pg_temp.fresh_reserve(p_price_cents bigint, p_shipping_cents bigint)
 returns bigint language sql security definer as $$
-  select round(p_shipping * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(p_price * 100)::numeric * s.insurance_rate)::bigint
+  select p_shipping_cents + s.shipping_buffer_cents
+    + ceil(p_price_cents::numeric * s.insurance_rate)::bigint
   from public.system_settings s where s.id = 1
 $$;
 
 create function pg_temp.make_listing(p_id uuid, p_seller uuid, p_status text)
 returns void language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
   )
-  select p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum,
-    '{"brand": "MSI"}'::jsonb, p_seller, 100, '06600', 'gpu_1',
-    pg_temp.fresh_reserve(1000, 100),
+    '{"brand": "MSI"}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    pg_temp.fresh_reserve(100000, 10000),
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1
@@ -118,8 +118,8 @@ select throws_ok(
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
   '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'specifications cannot change while VERIFIED');
 select throws_ok(
-  $$update public.products set price = 1200,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 100)
+  $$update public.products set price_cents = 120000,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 10000)
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
   '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the price cannot change while VERIFIED, even with a fresh snapshot');
 select throws_ok(
@@ -127,8 +127,8 @@ select throws_ok(
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
   '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the category cannot change while VERIFIED');
 select throws_ok(
-  $$update public.products set shipping_cost = 150,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1000, 150)
+  $$update public.products set shipping_cost_cents = 15000,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(100000, 15000)
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
   '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the shipping cost cannot change while VERIFIED, even with a fresh snapshot');
 reset role;

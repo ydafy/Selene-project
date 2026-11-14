@@ -5,25 +5,25 @@
 begin;
 select plan(24);
 
--- Snapshot reserve for a price and shipping cost (pesos) under the current settings.
-create function pg_temp.fresh_reserve(p_price numeric, p_shipping numeric)
+-- Snapshot reserve for a price and shipping cost (cents) under the current settings.
+create function pg_temp.fresh_reserve(p_price_cents bigint, p_shipping_cents bigint)
 returns bigint language sql security definer as $$
-  select round(p_shipping * 100)::bigint + s.shipping_buffer_cents
-    + ceil(round(p_price * 100)::numeric * s.insurance_rate)::bigint
+  select p_shipping_cents + s.shipping_buffer_cents
+    + ceil(p_price_cents::numeric * s.insurance_rate)::bigint
   from public.system_settings s where s.id = 1
 $$;
 
 create function pg_temp.make_listing(p_id uuid, p_seller uuid, p_status text, p_reserved_at timestamptz)
 returns void language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset, reserved_at,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset, reserved_at,
     publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
   )
-  select p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
+  select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb,
-    p_seller, 100, '06600', 'gpu_1', p_reserved_at,
-    pg_temp.fresh_reserve(1000, 100),
+    p_seller, 10000, '06600', 'gpu_1', p_reserved_at,
+    pg_temp.fresh_reserve(100000, 10000),
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1
@@ -120,47 +120,47 @@ select is(
 
 -- The snapshot itself stays immutable without a price change ---------------------
 select throws_ok(
-  $$update public.products set publication_shipping_reserve_cents = pg_temp.fresh_reserve(1000, 100)
+  $$update public.products set publication_shipping_reserve_cents = pg_temp.fresh_reserve(100000, 10000)
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'PUBLICATION_ECONOMICS_IMMUTABLE',
   'the snapshot cannot be refreshed without a price or shipping change');
 
 -- A price or shipping-cost change is a new deal ----------------------------------
 select throws_ok(
-  $$update public.products set price = 1200 where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  $$update public.products set price_cents = 120000 where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'a new price with the old snapshot is rejected');
 select throws_ok(
-  $$update public.products set shipping_cost = 150 where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  $$update public.products set shipping_cost_cents = 15000 where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'a new shipping cost with the old snapshot is rejected');
 select throws_ok(
-  $$update public.products set price = 1200, status = 'HIDDEN'
+  $$update public.products set price_cents = 120000, status = 'HIDDEN'
     where id = 'd0000000-0000-4000-8000-0000000000a2'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'hiding the listing does not skip the check of a new price');
 select throws_ok(
-  $$update public.products set price = 1200,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1000, 100)
+  $$update public.products set price_cents = 120000,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(100000, 10000)
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'a snapshot computed for the old price is rejected');
 select throws_ok(
-  $$update public.products set price = 1200, publication_shipping_reserve_cents = null,
+  $$update public.products set price_cents = 120000, publication_shipping_reserve_cents = null,
       publication_commission_rate = null, publication_insurance_rate = null
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'PUBLICATION_SNAPSHOT_REQUIRED',
   'a price change cannot clear the snapshot');
 select throws_ok(
-  $$update public.products set price = 1200, publication_commission_rate = null,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 100)
+  $$update public.products set price_cents = 120000, publication_commission_rate = null,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 10000)
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'a price change with a partial snapshot is rejected');
 select is(
-  (select price::text || ':' || publication_shipping_reserve_cents::text
+  (select price_cents::text || ':' || publication_shipping_reserve_cents::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),
-  '1000:' || (pg_temp.fresh_reserve(1000, 100) - 500)::text,
+  '100000:' || (pg_temp.fresh_reserve(100000, 10000) - 500)::text,
   'the rejected updates left price and snapshot unchanged');
 
 -- The owner re-prices through RLS with a fresh snapshot and the listing goes to review.
@@ -168,15 +168,15 @@ select set_config('request.jwt.claims',
   '{"sub": "d0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
 set local role authenticated;
 select throws_ok(
-  $$update public.products set price = 1200, shipping_cost = 150,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 150) - 500,
+  $$update public.products set price_cents = 120000, shipping_cost_cents = 15000,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000) - 500,
       status = 'PENDING_VERIFICATION'
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'the owner cannot re-price with a snapshot from the old settings');
 select lives_ok(
-  $$update public.products set price = 1200, shipping_cost = 150,
-      publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 150),
+  $$update public.products set price_cents = 120000, shipping_cost_cents = 15000,
+      publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000),
       status = 'PENDING_VERIFICATION'
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'the owner re-prices with a snapshot fresh against the current settings');
@@ -187,10 +187,10 @@ select throws_ok(
   'the owner cannot rewrite the snapshot without a price change');
 reset role;
 select is(
-  (select status::text || ':' || price::text || ':' || shipping_cost::text || ':'
-     || (publication_shipping_reserve_cents = pg_temp.fresh_reserve(1200, 150))::text
+  (select status::text || ':' || price_cents::text || ':' || shipping_cost_cents::text || ':'
+     || (publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000))::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a3'),
-  'PENDING_VERIFICATION:1200:150:true',
+  'PENDING_VERIFICATION:120000:15000:true',
   'the re-priced listing stores the new price and the fresh snapshot');
 select lives_ok(
   $$update public.products set status = 'VERIFIED', verified_at = now()

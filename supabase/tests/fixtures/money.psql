@@ -32,21 +32,21 @@ begin
   return pg_temp.mu(p_n);
 end $$;
 
--- A sold listing of p_seller priced at p_price pesos, with the publication
+-- A sold listing of p_seller priced at p_price_cents, with the publication
 -- economics fields computed from system_settings like a real publication.
-create function pg_temp.money_product(p_n integer, p_seller integer, p_price numeric default 1000)
+create function pg_temp.money_product(p_n integer, p_seller integer, p_price_cents bigint default 100000)
 returns uuid language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price, 'GPU', 'used', 'gaming',
+  select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price_cents, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], 'SOLD'::public.product_status_enum,
-    '{}'::jsonb, pg_temp.mu(p_seller), 100, '06600', 'gpu_1',
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(p_price * 100)::numeric * s.insurance_rate)::bigint,
+    '{}'::jsonb, pg_temp.mu(p_seller), 10000, '06600', 'gpu_1',
+    10000 + s.shipping_buffer_cents
+      + ceil(p_price_cents::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1

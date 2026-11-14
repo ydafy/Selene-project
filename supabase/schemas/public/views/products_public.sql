@@ -5,7 +5,7 @@ CREATE VIEW "public"."products_public" WITH (security_barrier=true) AS  SELECT i
     seller_id,
     name,
     description,
-    price,
+    price_cents,
     category,
     condition,
     usage,

@@ -26,7 +26,7 @@ export type PublicProduct = Pick<
   | 'seller_id'
   | 'name'
   | 'description'
-  | 'price'
+  | 'price_cents'
   | 'category'
   | 'condition'
   | 'usage'
@@ -460,7 +460,7 @@ export interface DisputeSummary {
 }
 
 export interface OrderItemWithProduct extends Tables<'order_items'> {
-  product: Pick<Product, 'name' | 'images' | 'price'>;
+  product: Pick<Product, 'name' | 'images' | 'price_cents'>;
   orders: Pick<Order, 'status'> | null;
 }
 
