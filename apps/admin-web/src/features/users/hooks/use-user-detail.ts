@@ -127,7 +127,7 @@ export const useUserDetail = (userId: string) => {
           supabase
             .from('order_items')
             .select(
-              '*, product:products(name, images, price), orders!inner(status, buyer_id, created_at)',
+              '*, product:products(name, images, price_cents), orders!inner(status, buyer_id, created_at)',
             )
             .eq('orders.buyer_id', userId)
             .order('created_at', { ascending: false })
@@ -137,7 +137,7 @@ export const useUserDetail = (userId: string) => {
         /* volume */ safeQuery(
           supabase
             .from('order_items')
-            .select('price_at_purchase, orders!inner(status)')
+            .select('price_at_purchase_cents, orders!inner(status)')
             .eq('seller_id', userId)
             .eq('orders.status', 'completed'),
           [],
@@ -219,9 +219,9 @@ export const useUserDetail = (userId: string) => {
         { won: 0, lost: 0, pending: 0 },
       );
 
-      const totalVolume =
+      const totalVolumeCents =
         volumeRes.data?.reduce(
-          (acc: number, item) => acc + (item.price_at_purchase || 0),
+          (acc: number, item) => acc + item.price_at_purchase_cents,
           0,
         ) || 0;
 
@@ -257,7 +257,7 @@ export const useUserDetail = (userId: string) => {
           cancelledPurchases: cancelledPurchasesRes.count || 0,
           totalCancellations:
             (cancelledSalesRes.count || 0) + (cancelledPurchasesRes.count || 0),
-          totalVolume,
+          totalVolumeCents,
           totalDisputes: disputes.length,
           wonDisputes: disputeStats.won,
           lostDisputes: disputeStats.lost,

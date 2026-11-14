@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Gavel, ChevronRight, Calendar } from 'lucide-react';
 import { StatusBadge } from '@/shared/ui/status-badge';
 import { DataTable, type ColumnDef } from '@/shared/ui/data-table';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { formatTime } from '@/shared/utils/format-date';
 import type { StatusType } from '@/shared/ui/status-badge';
@@ -38,14 +39,14 @@ export const DisputesTable = ({
         header: 'Orden / Monto',
         cell: ({ row }) => {
           const orderId = row.original.order_id || '--------';
-          const amount = row.original.total_amount || 0;
+          const amountCents = row.original.total_amount_cents ?? 0;
           return (
             <div>
               <p className="text-sm font-bold text-platinum">
                 #{orderId.slice(0, 8).toUpperCase()}
               </p>
               <p className="text-xs font-bold text-forest mt-0.5">
-                {formatCurrency(amount)}
+                {formatCurrency(centsToMoney(amountCents))}
               </p>
             </div>
           );

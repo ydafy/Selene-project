@@ -12,7 +12,7 @@ import type { ProductStatus } from '@selene/types';
 interface AdminProduct {
   id: string;
   name: string;
-  price: number;
+  price_cents: number;
   status: string;
   category: string;
   condition: string;

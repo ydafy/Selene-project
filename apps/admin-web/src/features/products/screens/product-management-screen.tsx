@@ -7,6 +7,8 @@ import { useDebounce } from '@/shared/hooks/use-debounce';
 import { StatusBadge } from '@/shared/ui/status-badge';
 import { InputModal } from '@/shared/ui/input-modal';
 import { ErrorState } from '@/shared/ui/error-state';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
 
 const TABS: { id: ProductTab; label: string }[] = [
   { id: 'active', label: 'Activos' },
@@ -256,7 +258,7 @@ export const ProductManagementPage = () => {
                           <StatusBadge status={product.status as any} />
                         </td>
                         <td className="p-4 text-right text-platinum">
-                          ${product.price.toLocaleString()}
+                          {formatCurrency(centsToMoney(product.price_cents))}
                         </td>
                         <td className="p-4 text-blue-light text-xs">
                           {new Date(product.created_at).toLocaleDateString(

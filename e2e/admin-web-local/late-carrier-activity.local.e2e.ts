@@ -80,7 +80,7 @@ test.beforeAll(async () => {
     db.from('orders').insert({
       id: orderId,
       buyer_id: buyerId,
-      total_amount: 500,
+      total_amount_cents: 50000,
       shipping_address: {},
       status: 'paid',
       stripe_payment_intent_id: paymentIntent,

@@ -39,10 +39,10 @@ export const useActiveDisputes = (
       // 3. Ordenamiento (MVP++)
       switch (sortBy) {
         case 'amount_desc':
-          query = query.order('total_amount', { ascending: false });
+          query = query.order('total_amount_cents', { ascending: false });
           break;
         case 'amount_asc':
-          query = query.order('total_amount', { ascending: true });
+          query = query.order('total_amount_cents', { ascending: true });
           break;
         case 'oldest':
           query = query.order('dispute_date', { ascending: true });

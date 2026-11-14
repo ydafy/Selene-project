@@ -3,6 +3,8 @@ import { Package } from 'lucide-react';
 import { StatusBadge } from '@/shared/ui/status-badge';
 import { DataTable, type ColumnDef } from '@/shared/ui/data-table';
 import { SecureImage } from '@/shared/ui/secure-image';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
 import type { StatusType } from '@/shared/ui/status-badge';
 import type { Product } from '@selene/types';
 
@@ -31,13 +33,13 @@ export const InventoryTable = ({ products, total }: Props) => {
         ),
       },
       {
-        accessorKey: 'price',
+        accessorKey: 'price_cents',
         header: 'Precio',
         cell: ({ getValue }) => {
-          const price = getValue() as number;
+          const priceCents = getValue() as number;
           return (
             <span className="text-sm text-platinum">
-              ${(price || 0).toLocaleString()}
+              {formatCurrency(centsToMoney(priceCents))}
             </span>
           );
         },
