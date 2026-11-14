@@ -33,10 +33,10 @@ script:post-response {
 }
 
 tests {
-  test("reads the seeded listing b4 (price 2400) as a template", function () {
+  test("reads the seeded listing b4 (price_cents 240000) as a template", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody().length).to.equal(1);
-    expect(Number(res.getBody()[0].price)).to.equal(2400);
+    expect(res.getBody()[0].price_cents).to.equal(240000);
   });
 }
 

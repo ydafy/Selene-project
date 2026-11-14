@@ -22,7 +22,7 @@ script:pre-request {
   req.setBody({
     name: "Verified edit GPU",
     description: "Original description",
-    price: 8000,
+    price_cents: 800000,
     category: "GPU",
     condition: "used",
     usage: "gaming",
@@ -30,7 +30,7 @@ script:pre-request {
     status: "VERIFIED",
     specifications: { chipset: "NVIDIA", brand: "MSI", model: "RTX 3070", memory: "8 GB" },
     seller_id: "00000000-0000-4000-8000-000000000002",
-    shipping_cost: 100,
+    shipping_cost_cents: 10000,
     origin_zip: "06600",
     package_preset: "gpu_1",
     verified_at: new Date().toISOString(),

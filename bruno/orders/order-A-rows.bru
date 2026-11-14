@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/orders?stripe_payment_intent_id=eq.{{intentA}}&select=id,status,buyer_id,total_amount,shipments(id,status,seller_id),order_items(product_id,seller_id,shipment_id)
+  url: {{baseUrl}}/rest/v1/orders?stripe_payment_intent_id=eq.{{intentA}}&select=id,status,buyer_id,total_amount_cents,shipments(id,status,seller_id),order_items(product_id,seller_id,shipment_id)
   body: none
   auth: none
 }

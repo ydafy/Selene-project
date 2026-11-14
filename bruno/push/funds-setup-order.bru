@@ -19,7 +19,7 @@ headers {
 body:json {
   {
     "buyer_id": "{{fdBuyerId}}",
-    "total_amount": 100,
+    "total_amount_cents": 10000,
     "shipping_address": {}
   }
 }
@@ -38,5 +38,5 @@ tests {
 }
 
 docs {
-  Local stack only. Service-role insert; only buyer_id, total_amount and shipping_address are required.
+  Local stack only. Service-role insert; only buyer_id, total_amount_cents and shipping_address are required.
 }
