@@ -9,28 +9,28 @@ const card = readFileSync(
 
 describe('order card amount by role', () => {
   const sellerItems = [
-    { price_at_purchase: 0.1 },
-    { price_at_purchase: 19.99 },
+    { price_at_purchase_cents: 10 },
+    { price_at_purchase_cents: 1_999 },
   ];
 
   it('shows the seller only the sum of their own items, never the buyer total', () => {
-    expect(orderCardAmountCents('seller', sellerItems, 124.56)).toBe(2009);
+    expect(orderCardAmountCents('seller', sellerItems, 12_456)).toBe(2009);
   });
 
   it('shows the seller zero when no own items are loaded', () => {
-    expect(orderCardAmountCents('seller', [], 124.56)).toBe(0);
+    expect(orderCardAmountCents('seller', [], 12_456)).toBe(0);
   });
 
   it('keeps the persisted order total for the buyer', () => {
-    expect(orderCardAmountCents('buyer', sellerItems, 124.56)).toBe(12456);
+    expect(orderCardAmountCents('buyer', sellerItems, 12_456)).toBe(12456);
   });
 
   it('wires the card price through the role-aware amount', () => {
     expect(card).toContain(
-      "orderCardAmountCents( isSeller ? 'seller' : 'buyer', order.items, order.total_amount, )",
+      "orderCardAmountCents( isSeller ? 'seller' : 'buyer', order.items, order.total_amount_cents, )",
     );
-    expect(card).toContain('formatCurrency(cardAmountCents / 100)');
-    expect(card).not.toContain('formatCurrency(order.total_amount)');
+    expect(card).toContain('formatCents(cardAmountCents)');
+    expect(card).not.toContain('formatCents(order.total_amount_cents)');
   });
 });
 
@@ -59,7 +59,7 @@ describe('order detail total by role', () => {
   it('shows the seller their shipment subtotal even on single-seller orders', () => {
     expect(detail).toContain('useOrderDetail(');
     expect(detailHook).toContain(
-      'const displayedTotal = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotal : (order?.total_amount ?? 0);',
+      'const displayedTotalCents = isMultiShipment || currentShipment?.isSeller ? shipmentSubtotalCents : (order?.total_amount_cents ?? 0);',
     );
   });
 

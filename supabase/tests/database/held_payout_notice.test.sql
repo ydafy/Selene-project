@@ -67,7 +67,7 @@ select pg_temp.gate_row(19, false, 'destination_undetermined');
 select pg_temp.gate_row(20, true, null);
 select pg_temp.gate_row(25, false, null);
 select pg_temp.money_shipment(200 + n, 100 + n, n, 9) from generate_series(11, 25) as n;
-update public.order_items set net_payout = 12345.67 where shipment_id = pg_temp.mu(111);
+update public.order_items set net_payout_cents = 1234567 where shipment_id = pg_temp.mu(111);
 select pg_temp.complete(100 + n) from generate_series(11, 23) as n;
 select pg_temp.complete(125);
 select pg_temp.complete(112, '10 days 1 hour');

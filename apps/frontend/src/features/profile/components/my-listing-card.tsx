@@ -8,7 +8,7 @@ import { Product } from '@selene/types';
 import { Box, Text } from '@/shared/ui/base';
 import { AppImage } from '@/shared/ui/media/app-image';
 import { Theme } from '@/shared/theme';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import { formatDate } from '@/shared/utils/format-date';
 import {
   getStatusColor,
@@ -112,7 +112,7 @@ export const MyListingCard = ({
       onPress={handlePress}
       activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${formatCurrency(product.price)}`}
+      accessibilityLabel={`${product.name}, ${formatCents(product.price_cents)}`}
       accessibilityHint={t('listings.a11y.cardHint')}
     >
       <Box
@@ -155,7 +155,7 @@ export const MyListingCard = ({
               {product.name}
             </Text>
             <Text variant="subheader-lg" color="primary" marginTop="xs">
-              {formatCurrency(product.price)}
+              {formatCents(product.price_cents)}
             </Text>
           </Box>
 

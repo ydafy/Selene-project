@@ -11,17 +11,17 @@ select plan(49);
 create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status text default 'SOLD')
 returns void language sql as $$
   insert into public.products (
-    id, name, description, price, category, condition, usage, images, status,
-    specifications, seller_id, shipping_cost, origin_zip, package_preset,
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
-  select p_id, 'Test GPU', 'Test listing', 1000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb, p_seller, 100, '06600', 'gpu_1',
-    round(100 * 100)::bigint + s.shipping_buffer_cents
-      + ceil(round(1000 * 100)::numeric * internal.normalize_publication_rate(s.insurance_rate))::bigint,
-    internal.normalize_publication_rate(s.service_fee_pct),
-    internal.normalize_publication_rate(s.insurance_rate)
+  select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
+    array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    10000::bigint + s.shipping_buffer_cents
+      + ceil(100000::numeric * s.insurance_rate)::bigint,
+    s.service_fee_pct,
+    s.insurance_rate
   from public.system_settings s where s.id = 1
 $$;
 
@@ -36,13 +36,13 @@ declare
   v_product uuid := ('d0000000-0000-4000-8000-0000000a' || lpad(p_n::text, 4, '0'))::uuid;
 begin
   perform pg_temp.make_product(v_product, p_seller);
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status)
-  values (v_order, p_buyer, 1000, '{}'::jsonb, p_status);
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+  values (v_order, p_buyer, 100000, '{}'::jsonb, p_status);
   insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
   values (v_shipment, v_order, p_seller, p_status,
     case when p_status = 'completed' then now() end, p_pi);
-  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-  values (v_order, v_product, p_seller, 1000, 900, v_shipment);
+  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+  values (v_order, v_product, p_seller, 100000, 90000, v_shipment);
   -- The shipment trigger derives the order status; pin it to the requested one.
   update public.orders set status = p_status where id = v_order;
 end $$;

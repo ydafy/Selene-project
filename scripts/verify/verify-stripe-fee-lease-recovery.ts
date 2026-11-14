@@ -302,9 +302,9 @@ function ownerDb(sql: SQL): Ports['db'] {
     insertOrder: async (orderId, paymentIntentId) => {
       await sql`
         INSERT INTO public.orders (
-          id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id
+          id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id
         ) VALUES (
-          ${orderId}, ${FIXTURE_BUYER}, 100, '{}'::jsonb, 'paid', ${paymentIntentId}
+          ${orderId}, ${FIXTURE_BUYER}, 10000, '{}'::jsonb, 'paid', ${paymentIntentId}
         )`;
     },
     jobs: async (orderId) => {

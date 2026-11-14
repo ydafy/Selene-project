@@ -50,11 +50,11 @@ select pg_temp.money_shipment(8202, 8102, 8001, 8002, 'completed', interval '3 d
 select pg_temp.money_shipment(8203, 8103, 8001, 8002, 'shipped');
 select pg_temp.money_shipment(8200 + n, 8100 + n, 8001, 8002, 'delivered', interval '3 days')
 from unnest(array[5, 7, 9, 10, 21, 22, 23]) n;
-select pg_temp.money_shipment(8208, 8108, 8001, 8002, 'delivered', interval '3 days', 900, null);
+select pg_temp.money_shipment(8208, 8108, 8001, 8002, 'delivered', interval '3 days', 90000, null);
 select pg_temp.money_shipment(8211, 8111, 8001, 8002, 'delivered');
 select pg_temp.money_shipment(8212, 8112, 8001, 8002, 'delivered', interval '48 hours' - interval '1 second');
 select pg_temp.money_shipment(8213, 8113, 8001, 8002, 'delivered', interval '48 hours');
-select pg_temp.money_shipment(8214, 8114, 8001, 8002, 'delivered', interval '1 hour', 900, null);
+select pg_temp.money_shipment(8214, 8114, 8001, 8002, 'delivered', interval '1 hour', 90000, null);
 select pg_temp.money_shipment(8220, 8120, 8001, 8002, 'delivered', interval '1 hour');
 select pg_temp.money_dispute(8303, 8103);
 select pg_temp.money_dispute(8305, 8105);

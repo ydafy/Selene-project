@@ -38,10 +38,10 @@ where id = 'f2000000-0000-4000-8000-000000000004';
 
 -- Order 1: bought by the buyer, one shipment of the seller.
 -- Order 2: bought by the stranger, one shipment of another seller (the admin account).
-insert into public.orders (id, buyer_id, total_amount, shipping_address)
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
 values
-  ('f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000001', 1000, '{}'::jsonb),
-  ('f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000003', 1000, '{}'::jsonb);
+  ('f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb),
+  ('f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000003', 100000, '{}'::jsonb);
 insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
 values
   ('f2000000-0000-4000-8000-0000000c0001', 'f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000002', 'paid', 'pi_test_sta_1'),

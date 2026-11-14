@@ -9,8 +9,12 @@ describe('computeShipmentRefundAmountCents', () => {
   it('keeps the buyer-paid refund basis for a real paid-shipment example', () => {
     expect(
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
-        orderItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
+        orderItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
         orderChargeCents: 362_900,
       }),
     ).toBe(362_900);
@@ -19,10 +23,12 @@ describe('computeShipmentRefundAmountCents', () => {
   it('splits a multi-shipment buyer-paid fee proportionally by subtotal', () => {
     expect(
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 3_000, shipping_amount: 110 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 300_000, shipping_amount_cents: 11000 },
+        ],
         orderItems: [
-          { price_at_purchase: 3_000, shipping_amount: 110 },
-          { price_at_purchase: 2_000, shipping_amount: 75 },
+          { price_at_purchase_cents: 300_000, shipping_amount_cents: 11000 },
+          { price_at_purchase_cents: 200_000, shipping_amount_cents: 7500 },
         ],
         orderChargeCents: 510_000,
       }),
@@ -32,10 +38,12 @@ describe('computeShipmentRefundAmountCents', () => {
   it('ignores seller-paid shipping amounts in the refund basis', () => {
     expect(
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 1_200, shipping_amount: 999 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 120_000, shipping_amount_cents: 99900 },
+        ],
         orderItems: [
-          { price_at_purchase: 1_200, shipping_amount: 999 },
-          { price_at_purchase: 800, shipping_amount: 12_345 },
+          { price_at_purchase_cents: 120_000, shipping_amount_cents: 99900 },
+          { price_at_purchase_cents: 80000, shipping_amount_cents: 1_234_500 },
         ],
         orderChargeCents: 220_000,
       }),
@@ -103,12 +111,28 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
   // FU1 (order 2514c6e9…): 5,000 + 6,000 + 5,000 pesos, buyer fee 70,092 cents. The first two
   // refunds rounded their fee shares up (21,904 and 26,285), leaving 521,903 for the last one.
   const orderItems = [
-    { price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'a' },
-    { price_at_purchase: 6_000, shipping_amount: null, shipment_id: 'b' },
-    { price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'c' },
+    {
+      price_at_purchase_cents: 500_000,
+      shipping_amount_cents: null,
+      shipment_id: 'a',
+    },
+    {
+      price_at_purchase_cents: 600_000,
+      shipping_amount_cents: null,
+      shipment_id: 'b',
+    },
+    {
+      price_at_purchase_cents: 500_000,
+      shipping_amount_cents: null,
+      shipment_id: 'c',
+    },
   ];
   const lastShipment = [
-    { price_at_purchase: 5_000, shipping_amount: null, shipment_id: 'c' },
+    {
+      price_at_purchase_cents: 500_000,
+      shipping_amount_cents: null,
+      shipment_id: 'c',
+    },
   ];
 
   it('refunds exactly what is left of the charge when only rounding exceeds it', () => {
@@ -149,15 +173,15 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
       computeShipmentRefundAmountCents({
         shipmentItems: [
           {
-            price_at_purchase: 10_000,
-            shipping_amount: null,
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: null,
             shipment_id: 'only',
           },
         ],
         orderItems: [
           {
-            price_at_purchase: 10_000,
-            shipping_amount: null,
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: null,
             shipment_id: 'only',
           },
         ],
@@ -171,11 +195,23 @@ describe('computeShipmentRefundAmountCents: last shipment rounding remainder', (
     expect(() =>
       computeShipmentRefundAmountCents({
         shipmentItems: [
-          { price_at_purchase: 10, shipping_amount: null, shipment_id: 'x' },
+          {
+            price_at_purchase_cents: 1000,
+            shipping_amount_cents: null,
+            shipment_id: 'x',
+          },
         ],
         orderItems: [
-          { price_at_purchase: 10, shipping_amount: null, shipment_id: 'x' },
-          { price_at_purchase: 10, shipping_amount: null, shipment_id: 'y' },
+          {
+            price_at_purchase_cents: 1000,
+            shipping_amount_cents: null,
+            shipment_id: 'x',
+          },
+          {
+            price_at_purchase_cents: 1000,
+            shipping_amount_cents: null,
+            shipment_id: 'y',
+          },
         ],
         orderChargeCents: 2_003,
         remainingRefundableCents: 999,

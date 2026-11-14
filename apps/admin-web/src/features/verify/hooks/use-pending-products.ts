@@ -18,7 +18,7 @@ export const usePendingProducts = () => {
       const { data: rawProducts, error: pError } = await supabase
         .from('products')
         .select(
-          'id, name, price, category, condition, images, description, specifications, verification_data, status, created_at, seller_id, locked_by, aspect_ratio, views, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
+          'id, name, price_cents, category, condition, images, description, specifications, verification_data, status, created_at, seller_id, locked_by, aspect_ratio, views, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
         )
         .eq('status', 'IN_REVIEW')
         .order('created_at', { ascending: false });

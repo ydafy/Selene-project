@@ -35,7 +35,7 @@ apps/frontend/src/
 
 Large shared folders group files by topic, not by type, one level deep: `apps/frontend/src/shared/ui/` has the topic folders address, button, feedback, form, icons, layout, media, and product, and `apps/frontend/src/shared/utils/` has money. A topic folder needs at least two modules; a file with no topic yet stays directly in the parent folder, as `apps/frontend/src/shared/utils/format-date.ts` does. Smaller folders (`apps/frontend/src/shared/hooks/`, `apps/frontend/src/shared/lib/`) stay flat until a clear cluster appears, as `apps/frontend/src/shared/lib/auth/` did.
 
-An import that leaves its top-level folder (the app folder, the shared folder, or one feature) uses the `@/` alias, which maps to `apps/frontend/src/`: `import { formatCurrency } from '@/shared/utils/money/format-currency'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`, which also checks the first argument of `mock.module()`, `jest.mock()`, and `require()`.
+An import that leaves its top-level folder (the app folder, the shared folder, or one feature) uses the `@/` alias, which maps to `apps/frontend/src/`: `import { formatCents } from '@/shared/utils/money/format-cents'`. Imports inside the same folder stay relative. `bun run lint` enforces it with the local rule `relative-import-outside-folder` in `eslint.config.js`, which also checks the first argument of `mock.module()`, `jest.mock()`, and `require()`.
 
 `apps/frontend/src/features/<domain>/logic/` holds pure TypeScript with no React imports. Test it without React. Example: `apps/frontend/src/features/checkout/logic/checkout-payment-flow.ts` and its test belong in `apps/frontend/src/features/checkout/logic/`.
 
@@ -87,7 +87,7 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 
 ## File naming
 
-- Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/money/format-currency.ts` exports `formatCurrency`. Identifiers inside the file keep their usual case.
+- Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/money/format-cents.ts` exports `formatCents`. Identifiers inside the file keep their usual case.
 - Why: Windows and macOS file systems ignore case and the Linux CI does not, so an import that differs only in case works locally and fails in CI. All-lowercase names remove that class of error. The Expo SDK 55 template and bulletproof-react use the same style.
 - Exception: route files under the Expo Router `apps/frontend/src/app/` directory. Their names are URLs and deep links (`apps/frontend/src/app/(auth)/resetPassword.tsx` is `/resetPassword`), so rename one only as a deliberate route change.
 - `bun run lint` enforces it for all of `apps/admin-web/src` and `supabase/functions`, and for `apps/frontend/src` outside `apps/frontend/src/app/` (`check-file/filename-naming-convention` in `eslint.config.js`). Only the part before the first dot is checked, so `apps/frontend/src/features/orders/components/order-action-card.cancelled-banner.test.ts` and `apps/frontend/src/shared/lib/auth/captcha.logic.ts` pass.

@@ -3,6 +3,8 @@ import { ShoppingBag } from 'lucide-react';
 import { StatusBadge } from '@/shared/ui/status-badge';
 import { DataTable, type ColumnDef } from '@/shared/ui/data-table';
 import { SecureImage } from '@/shared/ui/secure-image';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
 import type { StatusType } from '@/shared/ui/status-badge';
 import type { OrderItemWithProduct } from '@selene/types';
 
@@ -30,13 +32,13 @@ export const PurchasesTable = ({ items }: Props) => {
         ),
       },
       {
-        accessorKey: 'price_at_purchase',
+        accessorKey: 'price_at_purchase_cents',
         header: 'Precio Pagado',
         cell: ({ getValue }) => {
-          const price = getValue() as number;
+          const priceCents = getValue() as number;
           return (
             <span className="text-sm text-platinum">
-              ${price?.toLocaleString()}
+              {formatCurrency(centsToMoney(priceCents))}
             </span>
           );
         },

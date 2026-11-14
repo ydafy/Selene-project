@@ -3,6 +3,10 @@ import { describe, expect, it } from 'bun:test';
 import {
   findOrphanStacks,
   findStacksForRoot,
+  isCodegraphHello,
+  leftoverAdminDir,
+  parseDaemonLock,
+  pendingMarkerName,
   parseStackIdentity,
   orphanScopes,
   parseArgs,
@@ -169,6 +173,7 @@ describe('planWorktreeClean', () => {
     expect(plan.blockers).toEqual([]);
     expect(plan.steps).toEqual([
       'supabase stop (inside the worktree)',
+      'stop the CodeGraph daemon of the worktree, if one runs',
       'git worktree remove C:/dev/School-portal-worktrees/auth',
       'git worktree prune',
       'git branch -D fix/auth',
@@ -181,6 +186,54 @@ describe('planWorktreeClean', () => {
     const plan = planWorktreeClean(input({ target: 'C:/dev/elsewhere' }));
     expect(plan.blockers).toEqual([
       'C:/dev/elsewhere is not a worktree of this repository',
+    ]);
+    expect(plan.steps).toEqual([]);
+  });
+
+  it('plans to finish a removal that git stopped halfway, with a warning', () => {
+    const leftover = 'C:/dev/School-portal-worktrees/gone';
+    const plan = planWorktreeClean(
+      input({
+        target: leftover,
+        leftover: true,
+        headMerged: false,
+        changedFiles: null,
+        untrackedFiles: null,
+        evidenceFiles: 2,
+      }),
+    );
+    expect(plan.blockers).toEqual([]);
+    expect(plan.warnings).toEqual([
+      `${leftover} is left over from a removal that stopped halfway: git already dropped its registration, so it can no longer check the folder for uncommitted work`,
+      'verification-evidence/ holds 2 files and is deleted with the folder: copy it first if a PR needs it',
+    ]);
+    expect(plan.steps).toEqual([
+      'stop the CodeGraph daemon of the worktree, if one runs',
+      `delete the leftover folder ${leftover}`,
+      'git worktree prune',
+      'git fetch --prune origin',
+      'delete Supabase stack data C:/Users/me/.supabase/stacks/abc',
+    ]);
+  });
+
+  it('refuses a leftover target that contains a registered worktree', () => {
+    const plan = planWorktreeClean(
+      input({ target: 'C:/dev/School-portal-worktrees', leftover: true }),
+    );
+    expect(plan.blockers).toEqual([
+      'C:/dev/School-portal-worktrees contains the worktree C:/dev/School-portal-worktrees/auth',
+      'C:/dev/School-portal-worktrees contains the worktree C:/dev/School-portal-worktrees/spike',
+    ]);
+    expect(plan.steps).toEqual([]);
+  });
+
+  it('refuses to delete a leftover folder the command runs in', () => {
+    const leftover = 'C:/dev/School-portal-worktrees/gone';
+    const plan = planWorktreeClean(
+      input({ target: leftover, leftover: true, currentRoot: leftover }),
+    );
+    expect(plan.blockers).toEqual([
+      'this command runs inside the target worktree: run it from the main checkout',
     ]);
     expect(plan.steps).toEqual([]);
   });
@@ -395,5 +448,116 @@ describe('planStaleStacks', () => {
       ['old-main', 'current branch of C:/dev/School-portal'],
       ['old-busy', 'running: stop it first'],
     ]);
+  });
+});
+
+describe('leftoverAdminDir', () => {
+  const common = 'C:/dev/School-portal/.git';
+
+  it('returns the registration folder a worktree .git file points to', () => {
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:/dev/School-portal/.git/worktrees/gone\n',
+        common,
+      ),
+    ).toBe('C:/dev/School-portal/.git/worktrees/gone');
+  });
+
+  it('accepts Windows paths and a .. that stays inside .git/worktrees', () => {
+    expect(
+      leftoverAdminDir(
+        'gitdir: c:\\Dev\\school-PORTAL\\.git\\worktrees\\gone\r\n',
+        common,
+      ),
+    ).toBe('c:/Dev/school-PORTAL/.git/worktrees/gone');
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:\\dev\\School-portal\\.git\\worktrees\\tmp\\..\\gone\n',
+        common,
+      ),
+    ).toBe('C:/dev/School-portal/.git/worktrees/gone');
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:/dev/School-portal/.git/worktrees/gone/..\n',
+        common,
+      ),
+    ).toBeNull();
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:/dev/School-portal/.git/worktrees-evil/x\n',
+        common,
+      ),
+    ).toBeNull();
+  });
+
+  it('ignores a gitdir nested below a registration folder', () => {
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:/dev/School-portal/.git/worktrees/a/b\n',
+        common,
+      ),
+    ).toBeNull();
+  });
+
+  it('ignores a gitdir that escapes .git/worktrees with ..', () => {
+    expect(
+      leftoverAdminDir(
+        'gitdir: C:/dev/School-portal/.git/worktrees/../../../other/.git/worktrees/x\n',
+        common,
+      ),
+    ).toBeNull();
+  });
+
+  it('ignores a .git file of another repository or without a gitdir line', () => {
+    expect(
+      leftoverAdminDir('gitdir: C:/dev/other/.git/worktrees/gone\n', common),
+    ).toBeNull();
+    expect(leftoverAdminDir('not a git file', common)).toBeNull();
+  });
+});
+
+describe('parseDaemonLock', () => {
+  it('reads the pid and socket of a CodeGraph daemon lock file', () => {
+    const lock = JSON.stringify({
+      pid: 7652,
+      version: '1.6.0',
+      socketPath: '\\.\pipe\codegraph-bfb0',
+    });
+    expect(parseDaemonLock(lock)).toEqual({
+      pid: 7652,
+      socketPath: '\\.\pipe\codegraph-bfb0',
+    });
+  });
+
+  it('returns null for an unreadable lock file', () => {
+    expect(parseDaemonLock('{')).toBeNull();
+    expect(parseDaemonLock('{"pid":"x","socketPath":"p"}')).toBeNull();
+  });
+});
+
+describe('isCodegraphHello', () => {
+  const hello = (pid: number) =>
+    JSON.stringify({ codegraph: '1.6.0', pid, socketPath: 'p', protocol: 1 });
+
+  it('accepts only the hello of a CodeGraph daemon with the locked pid', () => {
+    expect(isCodegraphHello(hello(7652), 7652)).toBe(true);
+    expect(isCodegraphHello(hello(1234), 7652)).toBe(false);
+    expect(isCodegraphHello('{"pid":7652}', 7652)).toBe(false);
+    expect(isCodegraphHello('garbage', 7652)).toBe(false);
+  });
+});
+
+describe('pendingMarkerName', () => {
+  it('names a folder the same way whatever its slashes or case', () => {
+    const name = pendingMarkerName('C:/dev/School-portal-worktrees/gone');
+    const B = String.fromCharCode(92);
+    const windows = ['c:', 'dev', 'school-portal-worktrees', 'gone', ''].join(
+      B,
+    );
+    expect(pendingMarkerName(windows)).toBe(name);
+    expect(name).toMatch(/^[a-z0-9_-]+$/);
+    expect(pendingMarkerName('C:/dev/School-portal-worktrees/other')).not.toBe(
+      name,
+    );
   });
 });

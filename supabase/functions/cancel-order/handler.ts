@@ -97,7 +97,7 @@ export function createCancelOrderHandler(deps: CancelOrderDependencies) {
       const { data: order, error: orderError } = await supabaseAdmin
         .from('orders')
         .select(
-          'buyer_id, total_amount, stripe_charge_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
+          'buyer_id, total_amount_cents, stripe_charge_id, actual_stripe_fee_cents, stripe_fee_reconciled_at',
         )
         .eq('id', orderId)
         .single();
@@ -193,7 +193,9 @@ export function createCancelOrderHandler(deps: CancelOrderDependencies) {
         prepare: async (winner) => {
           const { data: orderItems, error: itemsError } = await supabaseAdmin
             .from('order_items')
-            .select('price_at_purchase, shipping_amount, shipment_id')
+            .select(
+              'price_at_purchase_cents, shipping_amount_cents, shipment_id',
+            )
             .eq('order_id', orderId);
 
           if (itemsError) {
@@ -262,7 +264,7 @@ export function createCancelOrderHandler(deps: CancelOrderDependencies) {
 
           const orderChargeCents = refundCharge?.amount
             ? refundCharge.amount
-            : Math.round(Number(order.total_amount) * 100);
+            : Number(order.total_amount_cents);
           const remainingRefundableCents = refundCharge?.amount
             ? refundCharge.amount - refundCharge.amount_refunded
             : null;

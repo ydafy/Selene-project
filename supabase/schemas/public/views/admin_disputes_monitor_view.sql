@@ -5,7 +5,7 @@ CREATE VIEW "public"."admin_disputes_monitor_view" WITH (security_invoker=true) 
     "left"(d.description, 100) AS dispute_description_preview,
     d.resolution_type,
     o.id AS order_id,
-    o.total_amount,
+    o.total_amount_cents,
     o.status AS order_status,
     b.id AS buyer_id,
     b.username AS buyer_username,

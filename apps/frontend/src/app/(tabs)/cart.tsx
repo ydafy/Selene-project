@@ -42,8 +42,8 @@ export default function CartScreen() {
   const { items, removeItem } = useCartStore();
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
-  const total = useMemo(() => {
-    return items.reduce((sum, item) => sum + Number(item.price), 0);
+  const totalCents = useMemo(() => {
+    return items.reduce((sum, item) => sum + item.price_cents, 0);
   }, [items]);
 
   const handleItemPress = (product: Product) => {
@@ -114,7 +114,7 @@ export default function CartScreen() {
 
       {/* El resumen se oculta solo si no hay items (lógica interna del componente) */}
       <CartSummary
-        total={total}
+        totalCents={totalCents}
         itemCount={items.length}
         onCheckout={handleCheckout}
         disabled={hasUnavailableItems || isValidating}

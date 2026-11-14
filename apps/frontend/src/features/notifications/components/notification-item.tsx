@@ -8,15 +8,12 @@ import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
 import { Notification } from '@selene/types';
 import { formatSmartTime } from '@/shared/utils/format-date';
-import { formatCurrency } from '@/shared/utils/money/format-currency';
+import { formatCents } from '@/shared/utils/money/format-cents';
 import {
   getNotificationPresentation,
   getVerifiedEventIdentity,
 } from '../logic/notification-presentation';
 import { getNotificationText } from '../logic/notification-text';
-
-// Payload amounts are integer cents; decimals exist only for display.
-const formatCents = (cents: number) => formatCurrency(cents / 100);
 
 interface Props {
   notification: Notification;

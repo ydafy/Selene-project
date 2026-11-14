@@ -20,8 +20,8 @@ import { grossUpDomesticMx } from '@/shared/utils/money/stripe-fee-gross-up';
 type CartLikeItem = {
   id: string;
   seller_id?: string;
-  price?: number;
-  shipping_cost?: number | null;
+  price_cents?: number;
+  shipping_cost_cents?: number;
   productId?: string;
   quantity?: 1;
 };
@@ -94,13 +94,9 @@ export function normalizeConnectPaymentResponse(
   };
 }
 
-const centsToMoney = (cents: number) => cents / 100;
-
-export function calculateSeguroSelene(subtotal: number): number {
-  const subtotalCents = Math.round(subtotal * 100);
-  const seguroCents = grossUpDomesticMx(subtotalCents).seguroCents;
-
-  return centsToMoney(seguroCents);
+/** Seguro Selene in integer cents for a subtotal in integer cents. */
+export function calculateSeguroSelene(subtotalCents: number): number {
+  return grossUpDomesticMx(subtotalCents).seguroCents;
 }
 
 export function paymentIntentIdFromClientSecret(clientSecret: string): string {

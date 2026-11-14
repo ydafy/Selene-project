@@ -3,7 +3,7 @@ import i18next from 'i18next';
 import type { Notification } from '@selene/types';
 import en from '@/shared/i18n/locales/en/notifications.json';
 import es from '@/shared/i18n/locales/es/notifications.json';
-import { formatCurrencyWithLocale } from '@/shared/utils/money/format-currency-with-locale';
+import { formatCentsWithLocale } from '@/shared/utils/money/format-cents-with-locale';
 import { getNotificationText } from './notification-text';
 
 const storedTitle = 'No podemos enviarte el pago de una venta';
@@ -50,8 +50,7 @@ async function translator(lng: 'es' | 'en') {
       key: string,
       values?: Record<string, unknown>,
     ) => string,
-    formatAmount: (cents: number) =>
-      formatCurrencyWithLocale(cents / 100, locale),
+    formatAmount: (cents: number) => formatCentsWithLocale(cents, locale),
   };
 }
 

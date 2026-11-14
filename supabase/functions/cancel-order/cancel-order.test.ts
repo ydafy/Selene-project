@@ -35,8 +35,12 @@ describe('computeShipmentRefundAmountCents', () => {
   it('excludes seller-paid shipping and keeps the buyer-paid fee in the refund basis', () => {
     expect(
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
-        orderItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
+        orderItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
         orderChargeCents: 362_900,
       }),
     ).toBe(362_900);
@@ -45,10 +49,12 @@ describe('computeShipmentRefundAmountCents', () => {
   it('reconciles a multi-shipment refund basis without seller shipping', () => {
     expect(
       computeShipmentRefundAmountCents({
-        shipmentItems: [{ price_at_purchase: 3_000, shipping_amount: 110 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 300_000, shipping_amount_cents: 11000 },
+        ],
         orderItems: [
-          { price_at_purchase: 3_000, shipping_amount: 110 },
-          { price_at_purchase: 2_000, shipping_amount: 75 },
+          { price_at_purchase_cents: 300_000, shipping_amount_cents: 11000 },
+          { price_at_purchase_cents: 200_000, shipping_amount_cents: 7500 },
         ],
         orderChargeCents: 510_000,
       }),
@@ -91,13 +97,13 @@ describe('resolveManualShipmentCancelPlan', () => {
   it('supports sequential shipment cancellations without exceeding the actual fee', () => {
     const orderItems = [
       {
-        price_at_purchase: 3_000,
-        shipping_amount: 110,
+        price_at_purchase_cents: 300_000,
+        shipping_amount_cents: 11000,
         shipment_id: 'shipment-a',
       },
       {
-        price_at_purchase: 2_000,
-        shipping_amount: 75,
+        price_at_purchase_cents: 200_000,
+        shipping_amount_cents: 7500,
         shipment_id: 'shipment-b',
       },
     ];
@@ -153,8 +159,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         actualStripeFeeCents: 20_000,
         reason: 'Cancelación solicitada por el usuario',
@@ -202,8 +218,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'preparing',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         actualStripeFeeCents: null,
         reason: 'Cancelación solicitada por el usuario',
@@ -225,8 +251,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
         actualStripeFeeCents: null,
@@ -250,8 +286,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
         onCritical: (message, metadata) => {
@@ -277,8 +323,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
       }),
@@ -299,8 +355,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'shipped',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
       }),
@@ -319,8 +385,18 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: 'tr_123',
-        shipmentItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
-        orderItems: [{ price_at_purchase: 10_000, shipping_amount: 1_000 }],
+        shipmentItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
+        orderItems: [
+          {
+            price_at_purchase_cents: 1_000_000,
+            shipping_amount_cents: 100_000,
+          },
+        ],
         orderChargeCents: 1_050_000,
         reason: 'Cancelación solicitada por el usuario',
       }),
@@ -341,8 +417,12 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
-        orderItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
+        orderItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
         orderChargeCents: 362_900,
         actualStripeFeeCents: null,
         reason: 'Cancelación solicitada por el usuario',
@@ -412,8 +492,12 @@ describe('resolveManualShipmentCancelPlan', () => {
         shipmentStatus: 'paid',
         shipmentStripePaymentIntentId: 'pi_123',
         shipmentStripeTransferId: null,
-        shipmentItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
-        orderItems: [{ price_at_purchase: 3_500, shipping_amount: 242 }],
+        shipmentItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
+        orderItems: [
+          { price_at_purchase_cents: 350_000, shipping_amount_cents: 24200 },
+        ],
         orderChargeCents: 362_900,
         remainingRefundableCents: 362_800,
         reason: 'Cancelación solicitada por el usuario',

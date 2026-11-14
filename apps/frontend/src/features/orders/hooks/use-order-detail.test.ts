@@ -59,9 +59,9 @@ describe('useOrderDetail data wiring', () => {
     );
   });
 
-  it('sums price_at_purchase over the shipment items', () => {
+  it('sums price_at_purchase_cents over the shipment items', () => {
     expect(hook).toContain(
-      'return currentShipment.items.reduce((sum, i) => sum + Number(i.price_at_purchase ?? 0), 0); }, [currentShipment]);',
+      'return currentShipment.items.reduce((sum, i) => sum + i.price_at_purchase_cents, 0); }, [currentShipment]);',
     );
   });
 });

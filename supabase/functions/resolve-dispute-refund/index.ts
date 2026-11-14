@@ -4,6 +4,7 @@ import Stripe from '../_shared/stripe/sdk.ts';
 import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import {
+  disputeRefundAmountCents,
   extractRefundId,
   refundBlockedReason,
   refundIntentBlockedReason,
@@ -141,7 +142,7 @@ Deno.serve(
       if (dispute.shipment_id) {
         const { data: orderItems, error: itemsError } = await supabaseAdmin
           .from('order_items')
-          .select('price_at_purchase, shipping_amount')
+          .select('price_at_purchase_cents, shipping_amount_cents')
           .eq('shipment_id', dispute.shipment_id);
 
         if (itemsError || !orderItems || orderItems.length === 0) {
@@ -162,20 +163,16 @@ Deno.serve(
         }
 
         const refundItems = orderItems as Array<{
-          price_at_purchase: number;
-          shipping_amount: number | null;
+          price_at_purchase_cents: number;
+          shipping_amount_cents: number | null;
         }>;
 
-        const totalRefundAmount = refundItems.reduce<number>(
-          (sum, item) =>
-            sum + item.price_at_purchase + (item.shipping_amount ?? 0),
-          0,
-        );
+        const totalRefundAmountCents = disputeRefundAmountCents(refundItems);
 
-        refundAmountCents = Math.round(totalRefundAmount * 100);
+        refundAmountCents = totalRefundAmountCents;
         log('INFO', 'Monto de reembolso calculado', {
           shipmentId: dispute.shipment_id,
-          totalRefundAmount,
+          totalRefundAmountCents,
           refundAmountCents,
         });
       }

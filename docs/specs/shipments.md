@@ -142,7 +142,7 @@ The system MUST store per-shipment allocation fields that correlate the shipment
 
 - GIVEN shipments are created from a single-charge order
 - WHEN allocation is computed
-- THEN each shipment stores `shipping_cost` and links to order_items with `commission_amount`, `shipping_amount`, `shipping_payer`, and `net_payout`
+- THEN each shipment stores `shipping_cost` (cents) and links to order_items with `commission_amount_cents`, `shipping_amount_cents`, `shipping_payer`, and `net_payout_cents`
 - AND the shipment transitions to `paid` only after allocation persistence succeeds
 
 ### Requirement: Manual Cancellation is Shipment-Scoped
@@ -428,7 +428,7 @@ Auth & validation:
 
 Refund:
 
-- Amount: `SUM(price_at_purchase)` from shipment items + proportional buyer-paid fee share, excluding seller-paid shipping
+- Amount: `SUM(price_at_purchase_cents)` from shipment items + proportional buyer-paid fee share, excluding seller-paid shipping
 - Capped against `charge.amount - charge.amount_refunded` when charge is available
 - Idempotency key: `cancel_shipment_{shipmentId}`
 - Metadata: `{ shipment_id, order_id, caller_role, reason }`
@@ -444,7 +444,7 @@ DB mutation: calls `fn_cancel_shipment(p_shipment_id, p_cancelled_by_role : 'buy
 
 After `fn_reserve_products`:
 
-1. Query `products` for each `product_id` → get `seller_id` and `shipping_cost`
+1. Query `products` for each `product_id` → get `seller_id` and `shipping_cost_cents`
 2. Group reserved items by `seller_id`
 3. Sum shipping costs per seller (buyer-pays only)
 4. Add to PaymentIntent metadata:

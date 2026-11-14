@@ -65,7 +65,7 @@ test.beforeAll(async () => {
     db.from('orders').insert({
       id: orderId,
       buyer_id: buyerId,
-      total_amount: 900,
+      total_amount_cents: 90000,
       shipping_address: { city: 'Guadalajara', zip_code: '44100' },
       status: 'paid',
       stripe_payment_intent_id: paymentIntent,

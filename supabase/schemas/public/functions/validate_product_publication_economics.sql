@@ -25,8 +25,8 @@ BEGIN
       AND OLD.publication_commission_rate IS NULL
       AND OLD.publication_insurance_rate IS NULL;
 
-    IF NEW.price IS NOT DISTINCT FROM OLD.price
-      AND NEW.shipping_cost IS NOT DISTINCT FROM OLD.shipping_cost THEN
+    IF NEW.price_cents IS NOT DISTINCT FROM OLD.price_cents
+      AND NEW.shipping_cost_cents IS NOT DISTINCT FROM OLD.shipping_cost_cents THEN
       IF NEW.publication_shipping_reserve_cents IS NOT DISTINCT FROM OLD.publication_shipping_reserve_cents
         AND NEW.publication_commission_rate IS NOT DISTINCT FROM OLD.publication_commission_rate
         AND NEW.publication_insurance_rate IS NOT DISTINCT FROM OLD.publication_insurance_rate THEN
@@ -47,8 +47,8 @@ BEGIN
 
   SELECT
     shipping_buffer_cents,
-    internal.normalize_publication_rate(service_fee_pct),
-    internal.normalize_publication_rate(insurance_rate)
+    service_fee_pct,
+    insurance_rate
   INTO v_shipping_buffer_cents, v_commission_rate, v_insurance_rate
   FROM public.system_settings
   WHERE id = 1;
@@ -56,14 +56,14 @@ BEGIN
   IF v_shipping_buffer_cents IS NULL
     OR v_commission_rate IS NULL
     OR v_insurance_rate IS NULL
-    OR NEW.shipping_cost IS NULL THEN
+    OR NEW.shipping_cost_cents IS NULL THEN
     RAISE EXCEPTION 'PUBLICATION_ECONOMICS_CONFIGURATION_REQUIRED';
   END IF;
 
   v_expected_reserve_cents :=
-    round(NEW.shipping_cost * 100)::BIGINT
+    NEW.shipping_cost_cents
     + v_shipping_buffer_cents
-    + ceil(round(NEW.price * 100)::NUMERIC * v_insurance_rate)::BIGINT;
+    + ceil(NEW.price_cents::NUMERIC * v_insurance_rate)::BIGINT;
 
   IF NEW.publication_shipping_reserve_cents IS DISTINCT FROM v_expected_reserve_cents
     OR NEW.publication_commission_rate IS DISTINCT FROM v_commission_rate

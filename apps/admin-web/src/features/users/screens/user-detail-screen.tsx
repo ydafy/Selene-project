@@ -20,6 +20,8 @@ import { useUserDetail } from '../hooks/use-user-detail';
 import { UserAvatar } from '@/shared/ui/user-avatar';
 import { UserSafetyActions } from '@/shared/ui/user-safety-actions';
 import { getRank } from '@/shared/utils/ranks';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
+import { formatCurrency } from '@/shared/utils/format-currency';
 import { isClosedAccount } from '@/shared/lib/account-status';
 import { ErrorState } from '@/shared/ui/error-state';
 import { StatCard } from '@/shared/ui/stat-card';
@@ -289,7 +291,7 @@ export const UserDetailPage = () => {
               />
               <StatCard
                 title="Volumen Total de Ventas"
-                value={`$${metrics.totalVolume.toLocaleString()}`}
+                value={formatCurrency(centsToMoney(metrics.totalVolumeCents))}
                 icon={TrendingUp}
                 color="text-lion"
               />

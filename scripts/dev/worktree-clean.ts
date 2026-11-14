@@ -11,15 +11,21 @@
 // It refuses uncommitted or untracked work, an unmerged branch, the main
 // checkout, and the worktree it runs in. Stack data is only deleted when its
 // state.json names the worktree, so nothing unidentified is ever removed.
+// It stops the worktree's CodeGraph daemon first: the daemon outlives the
+// terminal that started it and keeps files of the folder open on Windows.
+// A folder that git dropped halfway through a removal is finished on a rerun.
+import { connect } from 'node:net';
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, join, posix, resolve } from 'node:path';
 
 export interface Worktree {
   path: string;
@@ -47,6 +53,8 @@ export interface CleanInput {
   headMerged: boolean;
   stackDirs: string[];
   evidenceFiles: number;
+  /** The target folder belongs to a worktree whose registration git already dropped. */
+  leftover?: boolean;
 }
 
 export interface CleanPlan {
@@ -239,10 +247,95 @@ export function parseArgs(args: string[]) {
   return { mode: 'worktree' as const, target, apply };
 }
 
+/**
+ * The registration folder a worktree's `.git` file points to, when it lies in
+ * this repository's `.git/worktrees`; null for any other `.git` file.
+ */
+export function leftoverAdminDir(gitFile: string, gitCommonDir: string) {
+  const raw = /^gitdir:\s*(.+?)\s*$/m.exec(gitFile)?.[1];
+  if (!raw) return null;
+  // Resolve `..` so a gitdir cannot climb out of .git/worktrees.
+  const gitdir = posix.normalize(raw.replace(/\\/g, '/'));
+  // git keeps each registration exactly one level below .git/worktrees.
+  const worktrees = `${gitCommonDir.replace(/\\/g, '/')}/worktrees`;
+  return samePath(posix.dirname(gitdir), worktrees) ? gitdir : null;
+}
+
+/**
+ * The file name of the marker an in-progress removal leaves in
+ * `.git/worktree-clean-pending/`: the same for any spelling of the path.
+ */
+export const pendingMarkerName = (path: string) =>
+  normalize(path).replace(/[^a-z0-9]+/g, '_');
+
+/** The pid and socket of `.codegraph/daemon.pid`, or null when unreadable. */
+export function parseDaemonLock(text: string) {
+  try {
+    const lock = JSON.parse(text);
+    if (!Number.isInteger(lock?.pid) || typeof lock?.socketPath !== 'string')
+      return null;
+    return { pid: lock.pid as number, socketPath: lock.socketPath as string };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A CodeGraph daemon greets every connection with one JSON line naming its pid.
+ * Only that answer proves the lock's pid is still the daemon and not a process
+ * that reused the pid after a crash.
+ */
+export function isCodegraphHello(line: string, pid: number) {
+  try {
+    const hello = JSON.parse(line);
+    return typeof hello?.codegraph === 'string' && hello.pid === pid;
+  } catch {
+    return false;
+  }
+}
+
+const DAEMON_STEP = 'stop the CodeGraph daemon of the worktree, if one runs';
+
+const evidenceWarnings = (files: number) =>
+  files > 0
+    ? [
+        `verification-evidence/ holds ${files} files and is deleted with the folder: copy it first if a PR needs it`,
+      ]
+    : [];
+
+const RUNS_INSIDE =
+  'this command runs inside the target worktree: run it from the main checkout';
+
+function planLeftover(input: CleanInput): CleanPlan {
+  if (isInside(input.currentRoot, input.target))
+    return { blockers: [RUNS_INSIDE], warnings: [], steps: [] };
+  // Every registered worktree, the main checkout included, stays untouched.
+  const contained = input.worktrees
+    .filter((wt) => isInside(wt.path, input.target))
+    .map((wt) => `${input.target} contains the worktree ${wt.path}`);
+  if (contained.length > 0)
+    return { blockers: contained, warnings: [], steps: [] };
+  return {
+    blockers: [],
+    warnings: [
+      `${input.target} is left over from a removal that stopped halfway: git already dropped its registration, so it can no longer check the folder for uncommitted work`,
+      ...evidenceWarnings(input.evidenceFiles),
+    ],
+    steps: [
+      DAEMON_STEP,
+      `delete the leftover folder ${input.target}`,
+      'git worktree prune',
+      'git fetch --prune origin',
+      ...input.stackDirs.map((dir) => `delete Supabase stack data ${dir}`),
+    ],
+  };
+}
+
 export function planWorktreeClean(input: CleanInput): CleanPlan {
   const worktree = input.worktrees.find((entry) =>
     samePath(entry.path, input.target),
   );
+  if (!worktree && input.leftover) return planLeftover(input);
   if (!worktree) {
     return {
       blockers: [`${input.target} is not a worktree of this repository`],
@@ -269,20 +362,13 @@ export function planWorktreeClean(input: CleanInput): CleanPlan {
   const head = worktree.branch ? `branch ${worktree.branch}` : 'detached HEAD';
   if (!input.headMerged)
     blockers.push(`${head} is not merged into origin/main`);
-  if (samePath(input.currentRoot, input.target))
-    blockers.push(
-      'this command runs inside the target worktree: run it from the main checkout',
-    );
+  if (samePath(input.currentRoot, input.target)) blockers.push(RUNS_INSIDE);
 
-  const warnings =
-    input.evidenceFiles > 0
-      ? [
-          `verification-evidence/ holds ${input.evidenceFiles} files and is deleted with the folder: copy it first if a PR needs it`,
-        ]
-      : [];
+  const warnings = evidenceWarnings(input.evidenceFiles);
 
   const steps = [
     'supabase stop (inside the worktree)',
+    DAEMON_STEP,
     `git worktree remove ${worktree.path}`,
     'git worktree prune',
     ...(worktree.branch ? [`git branch -D ${worktree.branch}`] : []),
@@ -472,7 +558,118 @@ function cleanStaleStacks(apply: boolean) {
   return finish(problems);
 }
 
-function cleanWorktree(arg: string, apply: boolean) {
+/** The first line a socket sends, or null when nothing answers in time. */
+function firstLine(socketPath: string, timeoutMs: number) {
+  return new Promise<string | null>((resolve) => {
+    let buffer = '';
+    const socket = connect(socketPath);
+    const done = (line: string | null) => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(line);
+    };
+    const timer = setTimeout(() => done(null), timeoutMs);
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString();
+      const end = buffer.indexOf('\n');
+      if (end >= 0) done(buffer.slice(0, end));
+    });
+    socket.on('error', () => done(null));
+  });
+}
+
+const isAlive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Stops the CodeGraph daemon that `.codegraph/daemon.pid` names, after the
+ * daemon itself confirms its pid. Returns a problem to report, or null.
+ */
+async function stopCodegraphDaemon(dir: string): Promise<string | null> {
+  const lockFile = join(dir, '.codegraph', 'daemon.pid');
+  if (!existsSync(lockFile)) return null;
+  const lock = parseDaemonLock(readFileSync(lockFile, 'utf8'));
+  if (!lock) return null;
+  const hello = await firstLine(lock.socketPath, 2_000);
+  // No answer: the daemon already exited and left a stale lock file.
+  if (hello === null || !isCodegraphHello(hello, lock.pid)) return null;
+  try {
+    process.kill(lock.pid);
+  } catch (error) {
+    return `could not stop CodeGraph daemon ${lock.pid}: ${String(error)}`;
+  }
+  for (let waited = 0; waited < 10_000; waited += 200) {
+    if (!isAlive(lock.pid)) return null;
+    await Bun.sleep(200);
+  }
+  return `CodeGraph daemon ${lock.pid} did not exit`;
+}
+
+// Deleting node_modules prints nothing for minutes on Windows: say so, or the
+// command looks stuck and gets interrupted halfway.
+const announceDelete = (target: string) =>
+  console.log(
+    `[worktree-clean] deleting ${target}: node_modules can take a few minutes, do not interrupt it`,
+  );
+
+const LOCKED_HINT =
+  '[worktree-clean] close terminals, editors and agent sessions in that folder (or restart Docker Desktop), then run this command again: it finishes the removal';
+
+/** The worktree folder a name or path means, for a folder git no longer lists. */
+const unregisteredPath = (arg: string, mainRoot: string) =>
+  // resolve: the containment checks compare absolute paths, and rmSync on
+  // Windows rejects a path that starts with `..`.
+  /[\\/]/.test(arg) ? resolve(arg) : join(`${mainRoot}-worktrees`, arg);
+
+const gitCommonDir = () => {
+  const common = run([
+    'git',
+    'rev-parse',
+    '--path-format=absolute',
+    '--git-common-dir',
+  ]);
+  return common.ok ? common.out : null;
+};
+
+// Before deleting a folder the command writes a marker naming it, and removes
+// the marker once the folder is gone. Deletion order is not ours to choose
+// (git worktree remove may delete the .git file first), so after an
+// interrupted run the marker is what still proves the folder was ours.
+const pendingMarker = (common: string, dir: string) =>
+  join(common, 'worktree-clean-pending', pendingMarkerName(dir));
+
+function markPending(dir: string) {
+  const common = gitCommonDir();
+  if (!common) return;
+  mkdirSync(join(common, 'worktree-clean-pending'), { recursive: true });
+  writeFileSync(pendingMarker(common, dir), dir);
+}
+
+function clearPending(dir: string) {
+  const common = gitCommonDir();
+  if (common) rmSync(pendingMarker(common, dir), { force: true });
+}
+
+function isLeftover(dir: string) {
+  if (!existsSync(dir)) return false;
+  const common = gitCommonDir();
+  if (!common) return false;
+  const marker = pendingMarker(common, dir);
+  if (existsSync(marker) && samePath(readFileSync(marker, 'utf8'), dir))
+    return true;
+  const gitFile = join(dir, '.git');
+  if (!existsSync(gitFile) || statSync(gitFile).isDirectory()) return false;
+  const admin = leftoverAdminDir(readFileSync(gitFile, 'utf8'), common);
+  return admin !== null && !existsSync(admin);
+}
+
+async function cleanWorktree(arg: string, apply: boolean) {
   run(['git', 'fetch', '-q', 'origin']);
   const worktrees = parseWorktrees(
     run(['git', 'worktree', 'list', '--porcelain']).out,
@@ -480,11 +677,15 @@ function cleanWorktree(arg: string, apply: boolean) {
   const match = worktrees.find(
     (entry) => samePath(entry.path, arg) || basename(entry.path) === arg,
   );
-  const target = match?.path ?? arg;
+  const unregistered =
+    !match && worktrees[0] ? unregisteredPath(arg, worktrees[0].path) : null;
+  const leftover = unregistered !== null && isLeftover(unregistered);
+  const target = match?.path ?? (leftover && unregistered ? unregistered : arg);
   const present = Boolean(match) && existsSync(target);
 
   const plan = planWorktreeClean({
     target,
+    leftover,
     currentRoot: run(['git', 'rev-parse', '--show-toplevel']).out,
     worktrees,
     changedFiles: present
@@ -498,9 +699,10 @@ function cleanWorktree(arg: string, apply: boolean) {
           .ok
       : false,
     stackDirs: findStacksForRoot(readStacks(), target),
-    evidenceFiles: present
-      ? countFiles(join(target, 'verification-evidence'))
-      : 0,
+    evidenceFiles:
+      present || leftover
+        ? countFiles(join(target, 'verification-evidence'))
+        : 0,
   });
 
   for (const blocker of plan.blockers)
@@ -516,6 +718,7 @@ function cleanWorktree(arg: string, apply: boolean) {
   }
 
   const problems: string[] = [];
+  if (leftover) return finishLeftover(target);
   if (present) {
     const stopped = run(['supabase', 'stop'], target);
     // A worktree without a running stack is the normal case, not a problem.
@@ -523,9 +726,15 @@ function cleanWorktree(arg: string, apply: boolean) {
       console.log(
         `[worktree-clean] warning: supabase stop did not run: ${stopped.err || stopped.out}`,
       );
+    const daemon = await stopCodegraphDaemon(target);
+    if (daemon) console.log(`[worktree-clean] warning: ${daemon}`);
   }
   // --force: only line-ending noise is left. core.longpaths: node_modules holds
   // paths over 260 characters, which git on Windows cannot delete without it.
+  if (present) {
+    announceDelete(target);
+    markPending(target);
+  }
   const removed = present
     ? run([
         'git',
@@ -546,11 +755,10 @@ function cleanWorktree(arg: string, apply: boolean) {
     console.error(
       `[worktree-clean] git worktree remove failed: ${removed.err}`,
     );
-    console.error(
-      '[worktree-clean] close terminals and editors in that folder (or restart Docker Desktop), delete it by hand, then rerun this command',
-    );
+    console.error(LOCKED_HINT);
     return 1;
   }
+  clearPending(target);
   run(['git', 'worktree', 'prune']);
   // -d also compares against the branch's upstream, which can lag behind a
   // branch that is merged into origin/main. -D runs only after checking the
@@ -572,6 +780,37 @@ function cleanWorktree(arg: string, apply: boolean) {
   run(['git', 'fetch', '-q', '--prune', 'origin']);
   for (const dir of findStacksForRoot(readStacks(), target)) {
     const problem = removeDir(dir);
+    if (problem) problems.push(problem);
+  }
+  return finish(problems);
+}
+
+async function finishLeftover(target: string) {
+  const daemon = await stopCodegraphDaemon(target);
+  if (daemon) console.log(`[worktree-clean] warning: ${daemon}`);
+  announceDelete(target);
+  markPending(target);
+  const removed = removeDir(target);
+  if (removed !== null || existsSync(target)) {
+    console.error(
+      `[worktree-clean] ${removed ?? `could not delete ${target}`}`,
+    );
+    console.error(LOCKED_HINT);
+    return 1;
+  }
+  clearPending(target);
+  run(['git', 'worktree', 'prune']);
+  run(['git', 'fetch', '-q', '--prune', 'origin']);
+  const problems: string[] = [];
+  for (const dir of findStacksForRoot(readStacks(), target)) {
+    // supabase stop cannot run without the worktree: never delete the data of
+    // a stack whose containers still run. When Docker cannot answer, keep it.
+    const filter = `label=com.supabase.stack=${basename(dir)}`;
+    const containers = run(['docker', 'ps', '-q', '--filter', filter]);
+    const problem =
+      !containers.ok || containers.out !== ''
+        ? `${dir} may still have running containers: run supabase stack destroy --stack-id ${basename(dir)} --yes`
+        : removeDir(dir);
     if (problem) problems.push(problem);
   }
   return finish(problems);
@@ -599,5 +838,5 @@ if (import.meta.main) {
   if (parsed.mode === 'orphans') process.exit(cleanOrphans(parsed.apply));
   if (parsed.mode === 'stale-stacks')
     process.exit(cleanStaleStacks(parsed.apply));
-  process.exit(cleanWorktree(parsed.target, parsed.apply));
+  process.exit(await cleanWorktree(parsed.target, parsed.apply));
 }

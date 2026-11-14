@@ -9,6 +9,7 @@ import {
 import { useAdminStats } from '../hooks/use-admin-stats';
 import { ActivityFeed } from '../components/activity-feed';
 import { StatCard } from '@/shared/ui/stat-card';
+import { centsToMoney } from '@/shared/utils/cents-to-money';
 import { formatCurrency } from '@/shared/utils/format-currency';
 import { CatalogHealthCard } from '../components/catalog-health-card';
 import { ErrorState } from '@/shared/ui/error-state';
@@ -72,7 +73,7 @@ export const DashboardHome = () => {
           />
           <StatCard
             title="Por Dispersar (Connect)"
-            value={formatCurrency(stats?.totalToPay ?? 0)}
+            value={formatCurrency(centsToMoney(stats?.totalToPayCents ?? 0))}
             icon={Wallet}
             color="text-forest"
             isLoading={isLoading}
@@ -97,7 +98,7 @@ export const DashboardHome = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
             title="GMV Mensual (Volumen Total)"
-            value={formatCurrency(stats?.monthlyGmv ?? 0)}
+            value={formatCurrency(centsToMoney(stats?.monthlyGmvCents ?? 0))}
             icon={DollarSign}
             color="text-platinum"
             isLoading={isLoading}
@@ -105,14 +106,16 @@ export const DashboardHome = () => {
           />
           <StatCard
             title="Ingresos Selene (Comisiones 6%)"
-            value={formatCurrency(stats?.monthlyRevenue ?? 0)}
+            value={formatCurrency(
+              centsToMoney(stats?.monthlyRevenueCents ?? 0),
+            )}
             icon={TrendingUp}
             color="text-forest"
             isLoading={isLoading}
           />
           <StatCard
             title="Ticket Promedio (AOV)"
-            value={formatCurrency(stats?.averageTicket ?? 0)}
+            value={formatCurrency(centsToMoney(stats?.averageTicketCents ?? 0))}
             icon={Wallet}
             color="text-purple-200"
             isLoading={isLoading}

@@ -1,5 +1,7 @@
 import { ProductCategory, ProductWithSeller, Profile } from '@selene/types';
 
+import { tryPesosToCents } from '@/shared/utils/money/pesos-to-cents';
+
 import { SellDraft } from '../store/use-sell-store';
 
 /**
@@ -27,7 +29,8 @@ export const buildPreviewProduct = (
   id: draft.id || 'preview_mode',
   name: draft.name,
   description: draft.description,
-  price: Number(draft.price),
+  // The preview renders before publish validates; an unparsable input shows 0.
+  price_cents: tryPesosToCents(draft.price) ?? 0,
   category: draft.category as ProductCategory,
   condition: draft.condition,
   usage: draft.usage,
@@ -49,7 +52,7 @@ export const buildPreviewProduct = (
   package_preset: draft.package_preset || '',
   rejection_reason: null,
   reserved_at: null,
-  shipping_cost: Number(draft.shipping_cost || 0),
+  shipping_cost_cents: tryPesosToCents(draft.shipping_cost || '0') ?? 0,
   shipping_payer: draft.shipping_payer || 'buyer',
   verification_data: null,
   verified_at: null,

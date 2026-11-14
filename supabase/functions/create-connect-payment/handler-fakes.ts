@@ -24,7 +24,7 @@ export const STRIPE_SECRET = 'sk_test_fake';
 export const CUSTOMER_ID = 'cus_existing';
 
 export const PRODUCTS_SELECT =
-  'id, seller_id, price, name, shipping_cost, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate';
+  'id, seller_id, price_cents, name, shipping_cost_cents, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate';
 
 type Row = Record<string, unknown>;
 type DbResult = {
@@ -35,9 +35,9 @@ type DbResult = {
 export const productRow = (overrides: Row = {}): Row => ({
   id: PRODUCT_1,
   seller_id: SELLER_A,
-  price: 1234.5,
+  price_cents: 123_450,
   name: 'GPU',
-  shipping_cost: 150,
+  shipping_cost_cents: 15_000,
   publication_shipping_reserve_cents: 15_000,
   publication_commission_rate: 0.06,
   publication_insurance_rate: 0.012,

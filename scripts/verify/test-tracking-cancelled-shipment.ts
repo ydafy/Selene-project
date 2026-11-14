@@ -51,8 +51,8 @@ function databaseUrl(): string {
 class Rollback extends Error {}
 
 async function fixture(tx: Tx) {
-  await tx`INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status)
-    VALUES (${ids.order}, ${ids.buyer}, 180, '{}'::jsonb, 'paid')`;
+  await tx`INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+    VALUES (${ids.order}, ${ids.buyer}, 18000, '{}'::jsonb, 'paid')`;
   await tx`INSERT INTO public.shipments (id, order_id, seller_id, status, label_generation_state, tracking_number, carrier)
     VALUES (${ids.cancelled}, ${ids.order}, ${ids.seller}, 'cancelled', 'generated', 'TRK-B44B-1', 'estafeta'),
            (${ids.preparing}, ${ids.order}, ${ids.seller}, 'preparing', 'generated', 'TRK-B44B-2', 'estafeta')`;

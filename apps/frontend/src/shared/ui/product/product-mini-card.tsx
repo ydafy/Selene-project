@@ -11,7 +11,7 @@ import { IconButton } from 'react-native-paper';
 import { Box, Text } from '../base';
 import { AppImage } from '../media/app-image';
 import { Theme } from '../../theme';
-import { formatCurrency } from '../../utils/money/format-currency';
+import { formatCents } from '../../utils/money/format-cents';
 import { PublicProduct } from '@selene/types';
 import { getSharedStyles } from '../../theme/shared-styles';
 import { isInVerification } from '../../utils/product-listing-status';
@@ -139,7 +139,7 @@ export const ProductMiniCard = ({ product, onPress, cardHeight }: Props) => {
               borderRadius="s"
             >
               <Text variant="caption-md" fontWeight="bold" color="primary">
-                {formatCurrency(product.price)}
+                {formatCents(product.price_cents)}
               </Text>
             </Box>
           )}

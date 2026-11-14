@@ -43,8 +43,8 @@ select pg_temp.money_shipment(n + 100, n, 11, 19) from generate_series(101, 115)
 select pg_temp.money_shipment(216, 116, 12, 19);
 select pg_temp.money_shipment(217, 117, 13, 19);
 select pg_temp.money_shipment(n + 100, n, 11, 19) from generate_series(118, 119) as n;
-update public.order_items set net_payout = 4700 where shipment_id in (pg_temp.mu(101), pg_temp.mu(102), pg_temp.mu(103));
-update public.order_items set net_payout = 100 where shipment_id = pg_temp.mu(104);
+update public.order_items set net_payout_cents = 470000 where shipment_id in (pg_temp.mu(101), pg_temp.mu(102), pg_temp.mu(103));
+update public.order_items set net_payout_cents = 10000 where shipment_id = pg_temp.mu(104);
 select pg_temp.complete(101, 28700);
 select pg_temp.complete(102, 0);
 select pg_temp.complete(103, null);

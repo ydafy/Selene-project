@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
+
+import { pendingMarkerName } from './worktree-clean';
 import { delimiter, join } from 'node:path';
 
 // Runs the real command against a throwaway repository: a bare origin, a main
@@ -18,7 +20,7 @@ const SCRIPT = join(import.meta.dir, 'worktree-clean.ts');
 // Each test spawns git and the command several times: about 2.5 s alone on
 // Windows, past the 5 s default when the full suite runs in parallel (#203).
 const REAL_REPO_TIMEOUT_MS = 30_000;
-const it = (name: string, fn: () => void) =>
+const it = (name: string, fn: () => void | Promise<void>) =>
   bunIt(name, fn, REAL_REPO_TIMEOUT_MS);
 let root = '';
 let main = '';
@@ -124,6 +126,10 @@ function withStubs(stacks: object[]) {
       "writeFileSync(join(calls, `${order} ${args.join(' ')}`), '');",
       "if (args[1] === 'stack' && args[2] === 'list')",
       `  console.log(${JSON.stringify(list)});`,
+      '// FAKE_RUNNING names a stack whose containers `docker ps` reports.',
+      'const running = process.env.FAKE_RUNNING;',
+      "if (args[1] === 'ps' && running && args.join(' ').includes(running))",
+      "  console.log('c0ffee');",
     ].join('\n'),
   );
   for (const name of ['supabase', 'docker']) {
@@ -163,6 +169,65 @@ const listedStack = (
   owner,
 });
 
+/** A merged worktree under <main>-worktrees, ready to clean. */
+function mergedWorktree(name: string) {
+  const wt = join(`${main}-worktrees`, name);
+  sh(['git', 'worktree', 'add', '-q', '-b', `feat/${name}`, wt], main);
+  commit(wt, `${name}.md`);
+  sh(['git', 'merge', '-q', '--ff-only', `feat/${name}`], main);
+  sh(['git', 'push', '-q', 'origin', 'HEAD:main'], main);
+  return wt;
+}
+
+const alive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** Writes the lock file a CodeGraph daemon leaves in .codegraph/. */
+function daemonLock(wt: string, pid: number, socketPath: string) {
+  mkdirSync(join(wt, '.codegraph'), { recursive: true });
+  writeFileSync(
+    join(wt, '.codegraph', 'daemon.pid'),
+    JSON.stringify({ pid, version: 'test', socketPath, startedAt: 0 }),
+  );
+}
+
+const socketFor = (name: string) =>
+  process.platform === 'win32'
+    ? `\\\\.\\pipe\\worktree-clean-test-${name}-${process.pid}`
+    : join(root, `${name}.sock`);
+
+/** A process that answers like a CodeGraph daemon on its socket. */
+async function fakeDaemon(socketPath: string) {
+  const script = join(root, 'fake-daemon.ts');
+  writeFileSync(
+    script,
+    [
+      "import { createServer } from 'node:net';",
+      'const socketPath = Bun.argv[2];',
+      'createServer((socket) => {',
+      '  const hello = { codegraph: "test", pid: process.pid, socketPath, protocol: 1 };',
+      "  socket.write(JSON.stringify(hello) + '\\n');",
+      "}).listen(socketPath, () => console.log('ready'));",
+    ].join('\n'),
+  );
+  const proc = Bun.spawn(['bun', script, socketPath], { env, stdout: 'pipe' });
+  const reader = proc.stdout.getReader();
+  await reader.read();
+  reader.releaseLock();
+  return proc;
+}
+
+async function exitedWithin(proc: { exited: Promise<number> }, ms: number) {
+  const timeout = Bun.sleep(ms).then(() => false);
+  return Promise.race([proc.exited.then(() => true), timeout]);
+}
+
 describe('worktree:clean against a real repository', () => {
   it('removes a merged worktree, its branch and only the stack data that names it', () => {
     const wt = join(`${main}-worktrees`, 'merged');
@@ -179,6 +244,10 @@ describe('worktree:clean against a real repository', () => {
     expect(existsSync(wt)).toBe(true);
 
     const run = clean('merged', '--yes');
+    // git reports registered worktree paths with forward slashes
+    expect(run.out).toContain(
+      `[worktree-clean] deleting ${wt.replaceAll('\\', '/')}: node_modules can take a few minutes, do not interrupt it`,
+    );
     expect(run.out).toContain('[worktree-clean] done');
     expect(run.code).toBe(0);
     expect(existsSync(wt)).toBe(false);
@@ -291,5 +360,196 @@ describe('worktree:clean against a real repository', () => {
     ]);
     expect(existsSync(oldGone)).toBe(false);
     expect(existsSync(oldMain)).toBe(true);
+  });
+  it('finishes a removal that git stopped halfway when the command runs again', () => {
+    const wt = mergedWorktree('halfway');
+    const stackDir = fakeStack('halfway', wt);
+    // git worktree remove drops the registration even when Windows keeps
+    // files of the folder open, so the folder outlives it.
+    rmSync(join(main, '.git', 'worktrees', 'halfway'), {
+      recursive: true,
+      force: true,
+    });
+
+    const stubs = withStubs([]);
+    const plan = cleanWith(stubs.env, ['halfway']);
+    expect(plan.code).toBe(0);
+    expect(plan.out).toContain(
+      'is left over from a removal that stopped halfway',
+    );
+    expect(plan.out).toContain(`would run: delete the leftover folder ${wt}`);
+    expect(existsSync(wt)).toBe(true);
+
+    const run = cleanWith(stubs.env, ['halfway', '--yes']);
+    expect(run.out).toContain(
+      `[worktree-clean] deleting ${wt}: node_modules can take a few minutes, do not interrupt it`,
+    );
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(existsSync(wt)).toBe(false);
+    expect(existsSync(stackDir)).toBe(false);
+  });
+
+  it('keeps the stack data of a leftover folder whose containers still run', () => {
+    const wt = mergedWorktree('busy');
+    const stackDir = fakeStack('busy-stack', wt);
+    rmSync(join(main, '.git', 'worktrees', 'busy'), {
+      recursive: true,
+      force: true,
+    });
+    const stubs = withStubs([]);
+
+    const run = cleanWith({ ...stubs.env, FAKE_RUNNING: 'busy-stack' }, [
+      'busy',
+      '--yes',
+    ]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(
+      `failed: ${stackDir} may still have running containers: run supabase stack destroy --stack-id busy-stack --yes`,
+    );
+    expect(existsSync(wt)).toBe(false);
+    expect(existsSync(stackDir)).toBe(true);
+  });
+
+  it('refuses a leftover target that contains a registered worktree', () => {
+    const inner = mergedWorktree('inner');
+    writeFileSync(join(inner, 'keep.md'), 'keep');
+    const fakeGit = join(`${main}-worktrees`, '.git');
+    const ghost = `${main.replaceAll('\\', '/')}/.git/worktrees/ghost`;
+    writeFileSync(
+      fakeGit,
+      `gitdir: ${ghost}
+`,
+    );
+    try {
+      const run = clean('.', '--yes');
+      expect(run.code).toBe(1);
+      expect(run.out).toContain(`contains the worktree`);
+      expect(existsSync(join(inner, 'keep.md'))).toBe(true);
+    } finally {
+      rmSync(fakeGit, { force: true });
+    }
+  });
+
+  it('finishes a leftover given as a relative path', () => {
+    const wt = mergedWorktree('relative');
+    rmSync(join(main, '.git', 'worktrees', 'relative'), {
+      recursive: true,
+      force: true,
+    });
+    const stubs = withStubs([]);
+
+    const run = cleanWith(stubs.env, ['../repo-worktrees/relative', '--yes']);
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(existsSync(wt)).toBe(false);
+  });
+
+  it('refuses a relative leftover target that contains a registered worktree', () => {
+    const inner = mergedWorktree('inner-rel');
+    writeFileSync(join(inner, 'keep.md'), 'keep');
+    const fakeGit = join(`${main}-worktrees`, '.git');
+    const ghost = `${main.replaceAll('\\', '/')}/.git/worktrees/ghost`;
+    writeFileSync(fakeGit, `gitdir: ${ghost}\n`);
+    try {
+      const run = clean('../repo-worktrees', '--yes');
+      expect(run.code).toBe(1);
+      expect(run.out).toContain('contains the worktree');
+      expect(existsSync(join(inner, 'keep.md'))).toBe(true);
+    } finally {
+      rmSync(fakeGit, { force: true });
+    }
+  });
+
+  it('finishes a removal interrupted after its .git file was deleted', () => {
+    const wt = mergedWorktree('interrupted');
+    const stubs = withStubs([]);
+    const pending = join(main, '.git', 'worktree-clean-pending');
+    // What an interrupted run leaves: the marker it wrote before deleting,
+    // no registration, and a folder that already lost its .git file.
+    const first = cleanWith(stubs.env, ['interrupted', '--yes']);
+    expect(first.code).toBe(0);
+    expect(existsSync(pending) ? readdirSync(pending) : []).toEqual([]);
+    mkdirSync(join(wt, 'node_modules', 'x'), { recursive: true });
+    mkdirSync(pending, { recursive: true });
+    writeFileSync(join(pending, pendingMarkerName(wt)), wt);
+
+    const plan = cleanWith(stubs.env, ['interrupted']);
+    expect(plan.code).toBe(0);
+    expect(plan.out).toContain(
+      'is left over from a removal that stopped halfway',
+    );
+
+    const run = cleanWith(stubs.env, ['interrupted', '--yes']);
+    expect(run.out).toContain('[worktree-clean] done');
+    expect(run.code).toBe(0);
+    expect(existsSync(wt)).toBe(false);
+    expect(readdirSync(pending)).toEqual([]);
+  });
+
+  it('refuses a folder without .git when no interrupted run marked it', () => {
+    const lone = join(`${main}-worktrees`, 'lone');
+    mkdirSync(lone, { recursive: true });
+    writeFileSync(join(lone, 'keep.md'), 'keep');
+
+    const run = clean('lone', '--yes');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('is not a worktree of this repository');
+    expect(existsSync(join(lone, 'keep.md'))).toBe(true);
+  });
+
+  it('still refuses a folder that was never a worktree of this repository', () => {
+    const stray = join(`${main}-worktrees`, 'stray');
+    mkdirSync(stray, { recursive: true });
+    writeFileSync(join(stray, 'keep.md'), 'keep');
+    writeFileSync(
+      join(stray, '.git'),
+      'gitdir: C:/elsewhere/.git/worktrees/x\n',
+    );
+
+    const run = clean('stray', '--yes');
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('is not a worktree of this repository');
+    expect(existsSync(join(stray, 'keep.md'))).toBe(true);
+  });
+
+  it('stops the CodeGraph daemon of the worktree before removing it', async () => {
+    writeFileSync(join(main, '.gitignore'), 'node_modules/\n.codegraph/\n');
+    sh(['git', 'add', '.gitignore'], main);
+    sh(['git', 'commit', '-q', '-m', 'ignore .codegraph'], main);
+    sh(['git', 'push', '-q', 'origin', 'HEAD:main'], main);
+    const wt = mergedWorktree('indexed');
+    const socketPath = socketFor('indexed');
+    const daemon = await fakeDaemon(socketPath);
+    try {
+      daemonLock(wt, daemon.pid, socketPath);
+
+      const run = clean('indexed', '--yes');
+      expect(run.out).toContain('[worktree-clean] done');
+      expect(run.code).toBe(0);
+      expect(existsSync(wt)).toBe(false);
+      expect(await exitedWithin(daemon, 5_000)).toBe(true);
+    } finally {
+      daemon.kill();
+    }
+  });
+
+  it('leaves alone a process whose pid a stale lock file names', async () => {
+    const wt = mergedWorktree('stale-lock');
+    const other = Bun.spawn(['bun', '-e', 'setInterval(() => {}, 1000)'], {
+      env,
+    });
+    try {
+      daemonLock(wt, other.pid, socketFor('nobody-listens'));
+
+      const run = clean('stale-lock', '--yes');
+      expect(run.out).toContain('[worktree-clean] done');
+      expect(run.code).toBe(0);
+      expect(existsSync(wt)).toBe(false);
+      expect(alive(other.pid)).toBe(true);
+    } finally {
+      other.kill();
+      await other.exited;
+    }
   });
 });

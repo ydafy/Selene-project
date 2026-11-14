@@ -303,6 +303,46 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     ]);
   });
 
+  it('rejects a zero subtotal among positive rows and a negative subtotal (#294)', () => {
+    const positive = {
+      sellerId: 'seller-a',
+      shipmentId: 'ship-a',
+      subtotalCents: 100_000,
+      shippingCents: 20_000,
+    };
+
+    expect(() =>
+      calculateCheckoutAllocation([
+        positive,
+        {
+          sellerId: 'seller-b',
+          shipmentId: 'ship-zero',
+          subtotalCents: 0,
+          shippingCents: 0,
+        },
+        { ...positive, shipmentId: 'ship-c' },
+      ]),
+    ).toThrow(new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'));
+
+    expect(() =>
+      calculateCheckoutAllocation([
+        {
+          sellerId: 'seller-a',
+          shipmentId: 'ship-negative',
+          subtotalCents: -1,
+          shippingCents: 0,
+        },
+      ]),
+    ).toThrow(new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'));
+
+    // A non-integer subtotal keeps the money-flow code it had before #294.
+    for (const subtotalCents of [1.5, Number.NaN]) {
+      expect(() =>
+        calculateCheckoutAllocation([{ ...positive, subtotalCents }]),
+      ).toThrow(new Error('INVALID_MONEY_FLOW_INPUT:subtotalCents'));
+    }
+  });
+
   it('rejects negative seller nets during allocation', () => {
     expect(() =>
       calculateCheckoutAllocation([

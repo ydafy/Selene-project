@@ -62,8 +62,8 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'item') {
   mock.module('@/shared/utils/format-date', () => ({
     formatSmartTime: () => 'now',
   }));
-  mock.module('@/shared/utils/money/format-currency', () => ({
-    formatCurrency: (amount: number) => `$${amount.toFixed(2)}`,
+  mock.module('@/shared/utils/money/format-cents', () => ({
+    formatCents: (cents: number) => `$${(cents / 100).toFixed(2)}`,
   }));
   mock.module('@/shared/ui/feedback/confirm-dialog', () => ({
     ConfirmDialog: host('ConfirmDialog'),

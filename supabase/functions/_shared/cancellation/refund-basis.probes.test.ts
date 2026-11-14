@@ -8,8 +8,8 @@ const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32;
 const int = (lo: number, hi: number) => lo + Math.floor(rnd() * (hi - lo + 1));
 const items = (prices: number[]) =>
   prices.map((p, i) => ({
-    price_at_purchase: p,
-    shipping_amount: null,
+    price_at_purchase_cents: p * 100,
+    shipping_amount_cents: null,
     shipment_id: `s${i}`,
   }));
 function shuffled(n: number): number[] {

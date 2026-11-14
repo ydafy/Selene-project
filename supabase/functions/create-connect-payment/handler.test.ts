@@ -261,7 +261,7 @@ describe('create-connect-payment handler: successful checkout', () => {
     const second = productRow({
       id: PRODUCT_2,
       seller_id: SELLER_B,
-      price: 500,
+      price_cents: 50_000,
     });
     const result = await runCreateConnectPayment({
       body: { productIds: [PRODUCT_1, PRODUCT_2], addressId: ADDRESS_ID },
@@ -428,7 +428,10 @@ describe('create-connect-payment handler: failures before the charge', () => {
   it('answers 422 INVALID_CONNECT_ECONOMICS when shipping exceeds the price, after releasing', async () => {
     const result = await runCreateConnectPayment({
       products: [
-        productRow({ price: 100, publication_shipping_reserve_cents: 20_000 }),
+        productRow({
+          price_cents: 10_000,
+          publication_shipping_reserve_cents: 20_000,
+        }),
       ],
     });
 
@@ -486,13 +489,27 @@ describe('create-connect-payment handler: PaymentIntent failure and unmapped err
   it('answers 400 for an unmapped error and keeps its message', async () => {
     const result = await runCreateConnectPayment({
       sellerProfiles: [readySeller(SELLER_A)],
-      products: [productRow({ price: -1 })],
+      products: [productRow({ price_cents: -1 })],
     });
 
     expect(result.status).toBe(400);
     expect(result.body).toEqual({
-      error: 'INVALID_MONEY_FLOW_INPUT:subtotalCents',
+      error: 'INVALID_CHECKOUT_INPUT:non_positive_subtotal',
     });
+    expect(result.paymentIntentsCreate).toEqual([]);
+  });
+
+  it('answers 400 non_positive_subtotal for a zero price, after releasing, with no PaymentIntent', async () => {
+    const result = await runCreateConnectPayment({
+      products: [productRow({ price_cents: 0 })],
+    });
+
+    expect(result.status).toBe(400);
+    expect(result.body).toEqual({
+      error: 'INVALID_CHECKOUT_INPUT:non_positive_subtotal',
+    });
+    expect(result.rpcs).toEqual([RESERVE_RPC, RELEASE_RPC]);
+    expect(result.calls.at(-1)).toBe('rpc:fn_release_products');
     expect(result.paymentIntentsCreate).toEqual([]);
   });
 });

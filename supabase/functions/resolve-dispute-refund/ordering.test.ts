@@ -26,6 +26,14 @@ describe('resolve-dispute-refund ordering', () => {
     expect(src.slice(refusal, refund)).toContain('status: 422');
   });
 
+  test('reads the shipment items in cents and refunds their sum without converting', () => {
+    expect(src).toContain(
+      ".select('price_at_purchase_cents, shipping_amount_cents')",
+    );
+    expect(src).toContain('disputeRefundAmountCents(');
+    expect(src).not.toMatch(/\* 100\b/);
+  });
+
   test('has no non-Connect refund branch', () => {
     expect(src).not.toContain('fn_complete_shipment_refund');
     expect(src).not.toContain('isConnectPayment');
