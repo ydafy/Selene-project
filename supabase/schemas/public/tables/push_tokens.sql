@@ -20,6 +20,8 @@ ALTER TABLE "public"."push_tokens"
 CREATE INDEX push_tokens_active_user_idx ON public.push_tokens USING btree (user_id)
   WHERE (disabled_at IS NULL);
 
+CREATE INDEX push_tokens_user_id_idx ON public.push_tokens USING btree (user_id);
+
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."push_tokens" TO "service_role";
 
 COMMENT ON TABLE "public"."push_tokens" IS 'Expo push tokens, one row per device. Written only by fn_register_push_token / fn_unregister_push_token and the push dispatcher (service role). disabled_at is set when Expo reports the token as dead.';

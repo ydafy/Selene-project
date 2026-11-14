@@ -18,6 +18,8 @@ CREATE TABLE "public"."shipment_label_events" (
 ALTER TABLE "public"."shipment_label_events"
   ENABLE ROW LEVEL SECURITY;
 
+CREATE INDEX shipment_label_events_shipment_id_idx ON public.shipment_label_events USING btree (shipment_id);
+
 CREATE POLICY "shipment label events are append-only" ON "public"."shipment_label_events"
   FOR ALL
   TO PUBLIC

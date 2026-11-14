@@ -85,9 +85,6 @@ CREATE INDEX idx_orders_stripe_charge_id ON public.orders USING btree (stripe_ch
 CREATE UNIQUE INDEX idx_orders_stripe_transfer_group_unique ON public.orders USING btree (stripe_transfer_group)
   WHERE (stripe_transfer_group IS NOT NULL);
 
-CREATE INDEX idx_orders_stripe_transfer_group ON public.orders USING btree (stripe_transfer_group)
-  WHERE (stripe_transfer_group IS NOT NULL);
-
 CREATE INDEX ix_orders_buyer_id ON public.orders USING btree (buyer_id);
 
 CREATE INDEX orders_checkout_recovery_claim_idx ON public.orders USING btree (next_compensation_retry_at, created_at)

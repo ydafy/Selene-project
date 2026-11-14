@@ -35,7 +35,7 @@ CREATE TABLE "public"."notifications" (
 ALTER TABLE "public"."notifications"
   ENABLE ROW LEVEL SECURITY;
 
-CREATE INDEX ix_notifications_user_id ON public.notifications USING btree (user_id);
+CREATE INDEX ix_notifications_user_id_created_at ON public.notifications USING btree (user_id, created_at DESC, id DESC);
 
 CREATE UNIQUE INDEX notifications_source_event_key_user_id_uidx ON public.notifications USING btree (source_event_key, user_id)
   WHERE (source_event_key IS NOT NULL);

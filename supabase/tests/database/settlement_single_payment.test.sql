@@ -300,12 +300,11 @@ select is(
   'columns: the settlement columns, with payment_processing NOT NULL DEFAULT false');
 select is(
   (select string_agg(indexname || ':' || regexp_replace(indexdef, '^.* USING ', ''), ',' order by indexname)
-   from pg_indexes where schemaname = 'public' and indexname in ('idx_orders_stripe_transfer_group',
+   from pg_indexes where schemaname = 'public' and indexname in (
      'idx_orders_stripe_transfer_group_unique', 'idx_orders_payment_processing', 'idx_orders_stripe_charge_id',
      'idx_shipments_stripe_transfer_id')),
   'idx_orders_payment_processing:btree (payment_processing) WHERE (payment_processing = true),'
     || 'idx_orders_stripe_charge_id:btree (stripe_charge_id) WHERE (stripe_charge_id IS NOT NULL),'
-    || 'idx_orders_stripe_transfer_group:btree (stripe_transfer_group) WHERE (stripe_transfer_group IS NOT NULL),'
     || 'idx_orders_stripe_transfer_group_unique:btree (stripe_transfer_group) WHERE (stripe_transfer_group IS NOT NULL),'
     || 'idx_shipments_stripe_transfer_id:btree (stripe_transfer_id) WHERE (stripe_transfer_id IS NOT NULL)',
   'indexes: the settlement lookup and recovery indexes are partial');

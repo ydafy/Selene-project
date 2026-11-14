@@ -89,8 +89,6 @@ CREATE INDEX idx_disputes_order_id ON public.disputes USING btree (order_id);
 
 CREATE INDEX idx_disputes_return_last_tracked ON public.disputes USING btree (return_last_tracked_at);
 
-CREATE INDEX idx_disputes_shipment_id ON public.disputes USING btree (shipment_id);
-
 CREATE INDEX idx_disputes_status ON public.disputes USING btree (status);
 
 CREATE INDEX ix_disputes_buyer_id ON public.disputes USING btree (buyer_id);

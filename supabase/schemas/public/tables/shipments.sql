@@ -138,6 +138,8 @@ CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (
 
 CREATE INDEX idx_shipments_order_id ON public.shipments USING btree (order_id);
 
+CREATE INDEX idx_shipments_origin_address_id ON public.shipments USING btree (origin_address_id);
+
 CREATE INDEX idx_shipments_seller_id ON public.shipments USING btree (seller_id);
 
 CREATE INDEX idx_shipments_stripe_payment_intent_id ON public.shipments USING btree (stripe_payment_intent_id)

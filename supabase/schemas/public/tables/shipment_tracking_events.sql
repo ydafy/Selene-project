@@ -48,6 +48,8 @@ CREATE INDEX shipment_tracking_events_dispute_timeline ON public.shipment_tracki
 
 CREATE INDEX shipment_tracking_events_shipment_timeline ON public.shipment_tracking_events USING btree (shipment_id, event_at, received_at, id);
 
+CREATE INDEX shipment_tracking_events_webhook_delivery_id_idx ON public.shipment_tracking_events USING btree (webhook_delivery_id);
+
 CREATE POLICY "shipment tracking events are visible to participants and admins" ON "public"."shipment_tracking_events"
   FOR SELECT
   TO "authenticated"
