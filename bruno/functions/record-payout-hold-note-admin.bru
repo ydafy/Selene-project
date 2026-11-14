@@ -1,0 +1,42 @@
+meta {
+  name: record-payout-hold-note-admin
+  type: http
+  seq: 165
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: "  " + bru.getVar("poNote") + "\n" });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an admin keeps the overdue payout on hold with a trimmed note", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(Object.keys(body).sort()).to.deep.equal(["id", "note", "noted_at", "noted_by", "shipment_id"]);
+    expect(body.shipment_id).to.equal(bru.getVar("poShipment"));
+    expect(body.note).to.equal(bru.getVar("poNote"));
+    expect(body.noted_by).to.equal("00000000-0000-4000-8000-000000000001");
+    expect(Number.isNaN(Date.parse(body.noted_at))).to.equal(false);
+    bru.setVar("poNoteId", body.id);
+  });
+}
+
+docs {
+  Run after the payout-overdue-setup-* requests and functions/login-admin (S2). The body is built in
+  the pre-request script from this run's shipment id.
+}

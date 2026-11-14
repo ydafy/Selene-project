@@ -1,0 +1,34 @@
+meta {
+  name: payout-overdue-read-seller
+  type: http
+  seq: 160
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000004&select=stripe_account_id,stripe_onboarding_status
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200 && res.getBody().length === 1) {
+    bru.setVar("poSellerBefore", JSON.stringify(res.getBody()[0]));
+  }
+}
+
+tests {
+  test("the fixture seller's Connect fields are saved for the cleanup", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+  });
+}
+
+docs {
+  Local stack only. Starts the overdue held payout fixture (#549): saves the fixture seller's
+  stripe_account_id and stripe_onboarding_status so payout-overdue-cleanup-seller restores them.
+}

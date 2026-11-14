@@ -1,0 +1,29 @@
+meta {
+  name: record-payout-hold-note-notes-unchanged
+  type: http
+  seq: 176
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipment_payout_hold_notes?shipment_id=in.({{poShipment}},00000000-0000-4000-8000-0000000000f4)&select=id,shipment_id
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+tests {
+  test("only the admin's note exists: the refused requests wrote nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal([
+      { id: bru.getVar("poNoteId"), shipment_id: bru.getVar("poShipment") },
+    ]);
+  });
+}
+
+docs {
+  Local stack only. Read-back after the buyer, anonymous and invalid requests.
+}

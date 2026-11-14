@@ -1,0 +1,32 @@
+meta {
+  name: record-payout-hold-note-audit-log
+  type: http
+  seq: 167
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_audit_logs?target_id=eq.{{poShipment}}&action_type=eq.PAYOUT_HOLD_NOTED&select=admin_id,details
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+tests {
+  test("one audit row records the admin, the note and why the payout is held", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows.length).to.equal(1);
+    expect(rows[0].admin_id).to.equal("00000000-0000-4000-8000-000000000001");
+    expect(rows[0].details.note_id).to.equal(bru.getVar("poNoteId"));
+    expect(rows[0].details.note).to.equal(bru.getVar("poNote"));
+    expect(rows[0].details.seller_payout_block_reason).to.equal("onboarding_rejected");
+  });
+}
+
+docs {
+  Local stack only. Read-back of the side effect of record-payout-hold-note-admin.
+}

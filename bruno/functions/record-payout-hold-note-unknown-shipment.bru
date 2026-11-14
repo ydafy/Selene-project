@@ -1,0 +1,34 @@
+meta {
+  name: record-payout-hold-note-unknown-shipment
+  type: http
+  seq: 175
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000c2",
+    "note": "Bruno: unknown shipment"
+  }
+}
+
+tests {
+  test("an unknown shipment is SHIPMENT_NOT_FOUND", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody()).to.deep.equal({ error: "SHIPMENT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. No shipment has this id in the seed.
+}

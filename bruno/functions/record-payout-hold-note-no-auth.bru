@@ -1,0 +1,34 @@
+meta {
+  name: record-payout-hold-note-no-auth
+  type: http
+  seq: 169
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: "Bruno: no auth" });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a request without a session is AUTH_REQUIRED", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  verify_jwt = false: the function's own check refuses the request before any lookup.
+}

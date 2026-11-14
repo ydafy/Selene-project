@@ -1,0 +1,35 @@
+meta {
+  name: record-payout-hold-note-blank-note
+  type: http
+  seq: 171
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: " \n\t " });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a blank note is refused with a stable code", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_HOLD_NOTE" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. The note is required: 1 to 1000 characters after trimming.
+}

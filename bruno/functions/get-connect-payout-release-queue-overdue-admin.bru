@@ -1,0 +1,57 @@
+meta {
+  name: get-connect-payout-release-queue-overdue-admin
+  type: http
+  seq: 164
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "bucket": "overdue",
+    "page": 0,
+    "scope": "page"
+  }
+}
+
+tests {
+  test("an admin reads the overdue bucket with the five bucket counts", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(body.success).to.equal(true);
+    expect(body.bucket).to.equal("overdue");
+    expect(Object.keys(body.counts).sort()).to.deep.equal(["action-required", "history", "overdue", "processing", "ready"]);
+    expect(body.counts.overdue).to.be.at.least(1);
+    expect(body.totalGroups).to.equal(body.counts.overdue);
+  });
+
+  test("the fixture shipment is overdue, held by the rejected account, with no note yet", function () {
+    const row = res.getBody().rows.find((r) => r.shipment_id === bru.getVar("poShipment"));
+    expect(row).to.not.equal(undefined);
+    expect(row.is_payout_overdue).to.equal(true);
+    expect(row.payout_run_id).to.equal(null);
+    expect(row.seller_payout_block_reason).to.equal("onboarding_rejected");
+    expect(row.days_since_completed).to.be.at.least(30);
+    expect(row.is_eligible).to.equal(false);
+    expect(row.latest_hold_note).to.equal(null);
+    expect(row.latest_hold_noted_at).to.equal(null);
+    expect(row.latest_hold_noted_by).to.equal(null);
+  });
+
+  test("every overdue row carries the overdue flag", function () {
+    for (const row of res.getBody().rows) expect(row.is_payout_overdue).to.equal(true);
+  });
+}
+
+docs {
+  Run after the payout-overdue-setup-* requests and functions/login-admin. Read-only (S1).
+}

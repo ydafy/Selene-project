@@ -1,0 +1,35 @@
+meta {
+  name: record-payout-hold-note-not-overdue
+  type: http
+  seq: 174
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000000000f4",
+    "note": "Bruno: not overdue"
+  }
+}
+
+tests {
+  test("a shipment that is not overdue cannot be held with a note", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "PAYOUT_NOT_OVERDUE" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. Seeded f4 was delivered an hour ago and is not completed, so the
+  RPC refuses it after locking the shipment.
+}

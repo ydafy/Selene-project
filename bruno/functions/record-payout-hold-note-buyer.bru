@@ -1,0 +1,36 @@
+meta {
+  name: record-payout-hold-note-buyer
+  type: http
+  seq: 168
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: "Bruno: buyer" });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a signed-in buyer cannot hold a payout", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). record-payout-hold-note-notes-unchanged proves
+  nothing was written.
+}
