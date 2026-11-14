@@ -1,18 +1,19 @@
 -- Row-level security per client role (#310 T1): which rows a buyer, a
--- seller, an admin, a suspended admin, an unrelated user and anon see and
--- change in addresses, shipments, orders, order_items, products, profiles,
+-- seller, an admin, a suspended admin, a banned admin, an unrelated user and
+-- anon see and change in addresses, shipments, orders, order_items, products, profiles,
 -- profiles_private and shipment_tracking_events. It pins the behavior the
 -- policy merge (S3) must keep. Counts are restricted to this file's own ids.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(57);
+select plan(64);
 \ir ../fixtures/money.psql
 
 -- Users: 14001 seller A, 14002 buyer, 14003 admin, 14004 unrelated user,
--- 14005 suspended admin, 14006 seller B.
+-- 14005 suspended admin, 14006 seller B, 14007 banned admin.
 select pg_temp.money_user(n) from unnest(array[14001, 14002, 14004, 14006]) n;
-select pg_temp.money_user(n, 'admin') from unnest(array[14003, 14005]) n;
+select pg_temp.money_user(n, 'admin') from unnest(array[14003, 14005, 14007]) n;
 update public.profiles_private set status = 'suspended' where id = pg_temp.mu(14005);
+update public.profiles_private set status = 'banned' where id = pg_temp.mu(14007);
 
 create function pg_temp.as_user(p_n integer) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -117,7 +118,7 @@ select is((select count(*)::integer from public.shipment_tracking_events
     where shipment_id in (pg_temp.mu(14101), pg_temp.mu(14102))), 2,
   'shipment_tracking_events: the buyer sees the events of both shipments');
 select is((select count(*)::integer from public.profiles_private
-    where id in (select pg_temp.mu(n) from generate_series(14001, 14006) n)), 1,
+    where id in (select pg_temp.mu(n) from generate_series(14001, 14007) n)), 1,
   'profiles_private: a user sees only their own row');
 
 -- 3. Seller B -----------------------------------------------------------------------
@@ -165,7 +166,7 @@ select is((select count(*)::integer from public.products
     where id in (pg_temp.mu(14101), pg_temp.mu(14102), pg_temp.mu(14301))), 0,
   'products: an unrelated user sees no row of the base table');
 select is((select count(*)::integer from public.profiles
-    where id in (select pg_temp.mu(n) from generate_series(14001, 14006) n)), 6,
+    where id in (select pg_temp.mu(n) from generate_series(14001, 14007) n)), 7,
   'profiles: an unrelated user sees every public profile');
 select is((select count(*)::integer from public.shipment_tracking_events
     where shipment_id in (pg_temp.mu(14101), pg_temp.mu(14102))), 0,
@@ -192,7 +193,7 @@ select lives_ok(
   format($$update public.products set name = 'Renamed by admin' where id = %L$$, pg_temp.mu(14301)),
   'products: an admin renames a seller''s verified listing');
 select is((select count(*)::integer from public.profiles_private
-    where id in (select pg_temp.mu(n) from generate_series(14001, 14006) n)), 6,
+    where id in (select pg_temp.mu(n) from generate_series(14001, 14007) n)), 7,
   'profiles_private: an admin sees every row');
 select is((select count(*)::integer from public.shipment_tracking_events
     where shipment_id in (pg_temp.mu(14101), pg_temp.mu(14102))), 2,
@@ -226,22 +227,47 @@ select lives_ok(
   format($$update public.products set name = 'Renamed by suspended admin' where id = %L$$, pg_temp.mu(14301)),
   'products: a suspended admin''s update raises nothing (RLS filters it)');
 select is((select count(*)::integer from public.profiles_private
-    where id in (select pg_temp.mu(n) from generate_series(14001, 14006) n)), 1,
+    where id in (select pg_temp.mu(n) from generate_series(14001, 14007) n)), 1,
   'profiles_private: a suspended admin sees only their own row');
 
 reset role;
 select is((select name from public.products where id = pg_temp.mu(14301)), 'Renamed by admin',
   'products: a suspended admin''s update leaves the listing unchanged');
 
--- 7. Anon ---------------------------------------------------------------------------
+-- 7. Banned admin -------------------------------------------------------------------
+select pg_temp.as_user(14007);
+set local role authenticated;
+
+select is((select count(*)::integer from public.orders where id = pg_temp.mu(14201)), 0,
+  'orders: a banned admin reads no other user''s order');
+select is((select count(*)::integer from public.order_items where order_id = pg_temp.mu(14201)), 0,
+  'order_items: a banned admin reads no other user''s order items');
+select is((select count(*)::integer from public.shipment_tracking_events
+    where shipment_id in (pg_temp.mu(14101), pg_temp.mu(14102))), 0,
+  'shipment_tracking_events: a banned admin reads no other user''s tracking events');
+
+reset role;
+
+-- 8. Anon ---------------------------------------------------------------------------
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
 
 select is((select count(*)::integer from public.profiles
-    where id in (select pg_temp.mu(n) from generate_series(14001, 14006) n)), 6,
+    where id in (select pg_temp.mu(n) from generate_series(14001, 14007) n)), 7,
   'profiles: anon sees every public profile');
+select throws_ok('select 1 from public.orders', '42501', null,
+  'orders: anon has no SELECT privilege');
+select throws_ok('select 1 from public.order_items', '42501', null,
+  'order_items: anon has no SELECT privilege');
+select throws_ok('select 1 from public.shipment_tracking_events', '42501', null,
+  'shipment_tracking_events: anon has no SELECT privilege');
 
 reset role;
+
+-- 9. is_admin() configuration ------------------------------------------------------
+select is((select proconfig from pg_proc where oid = 'public.is_admin()'::regprocedure),
+  array['search_path=""'],
+  'is_admin(): runs with an empty search_path');
 
 select * from finish();
 rollback;
