@@ -30,23 +30,23 @@ CREATE INDEX idx_addresses_user_id ON public.addresses USING btree (user_id);
 CREATE POLICY "addresses_delete_policy" ON "public"."addresses"
   FOR DELETE
   TO "authenticated"
-  USING ((auth.uid() = user_id));
+  USING ((( SELECT auth.uid() AS uid) = user_id));
 
 CREATE POLICY "addresses_insert_policy" ON "public"."addresses"
   FOR INSERT
   TO "authenticated"
-  WITH CHECK ((auth.uid() = user_id));
+  WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
 
 CREATE POLICY "addresses_select_policy" ON "public"."addresses"
   FOR SELECT
   TO "authenticated"
-  USING (((auth.uid() = user_id) OR public.is_admin()));
+  USING (((( SELECT auth.uid() AS uid) = user_id) OR ( SELECT public.is_admin() AS is_admin)));
 
 CREATE POLICY "addresses_update_policy" ON "public"."addresses"
   FOR UPDATE
   TO "authenticated"
-  USING ((auth.uid() = user_id))
-  WITH CHECK ((auth.uid() = user_id));
+  USING ((( SELECT auth.uid() AS uid) = user_id))
+  WITH CHECK ((( SELECT auth.uid() AS uid) = user_id));
 
 REVOKE ALL ON TABLE "public"."addresses" FROM "anon", "authenticated";
 

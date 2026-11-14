@@ -4,6 +4,7 @@ CREATE OR REPLACE FUNCTION internal.fn_check_order_access (
 )
   RETURNS boolean
   LANGUAGE plpgsql
+  STABLE
   SECURITY DEFINER
   SET search_path TO 'public'
   AS $function$

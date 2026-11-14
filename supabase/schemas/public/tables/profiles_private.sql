@@ -51,7 +51,7 @@ CREATE TRIGGER trg_product_available_on_connect_complete
 CREATE POLICY "profiles_private_access" ON "public"."profiles_private"
   FOR SELECT
   TO "authenticated"
-  USING (((( SELECT auth.uid() AS uid) = id) OR public.is_admin()));
+  USING (((( SELECT auth.uid() AS uid) = id) OR ( SELECT public.is_admin() AS is_admin)));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."profiles_private" TO "service_role";
 

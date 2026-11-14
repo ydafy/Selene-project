@@ -23,11 +23,6 @@ CREATE TRIGGER tr_profiles_reserve_deleted_username
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_reserve_deleted_username();
 
-CREATE POLICY "admin_payments_select" ON "public"."profiles"
-  FOR SELECT
-  TO "authenticated"
-  USING (public.is_admin());
-
 CREATE POLICY "profiles_public_read" ON "public"."profiles"
   FOR SELECT
   TO PUBLIC

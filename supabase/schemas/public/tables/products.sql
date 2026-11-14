@@ -146,33 +146,23 @@ CREATE POLICY "products_insert" ON "public"."products"
     (((( SELECT auth.uid() AS uid) = seller_id) AND (status = 'PENDING_VERIFICATION'::public.product_status_enum) AND (verified_at IS NULL) AND (deleted_at IS NULL) AND
     (reserved_at IS NULL) AND (locked_by IS NULL) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
 
-CREATE POLICY "products_select_admin" ON "public"."products"
+CREATE POLICY "products_select_owner_or_admin" ON "public"."products"
   FOR SELECT
-  TO PUBLIC
-  USING (public.is_admin());
+  TO "authenticated"
+  USING (((seller_id = ( SELECT auth.uid() AS uid)) OR ( SELECT public.is_admin() AS is_admin)));
 
-CREATE POLICY "products_select_owner" ON "public"."products"
-  FOR SELECT
-  TO PUBLIC
-  USING ((seller_id = ( SELECT auth.uid() AS uid)));
-
-CREATE POLICY "products_update_admin" ON "public"."products"
-  FOR UPDATE
-  TO PUBLIC
-  USING (public.is_admin());
-
-CREATE POLICY "products_update_owner" ON "public"."products"
+CREATE POLICY "products_update_owner_or_admin" ON "public"."products"
   FOR UPDATE
   TO "authenticated"
   USING
-    (((seller_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status_enum,
+    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status_enum,
     'VERIFIED'::public.product_status_enum,
-    'HIDDEN'::public.product_status_enum, 'REJECTED'::public.product_status_enum])) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)))
+    'HIDDEN'::public.product_status_enum, 'REJECTED'::public.product_status_enum])) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))))
   WITH
     CHECK
-    (((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status_enum, 'VERIFIED'::public.product_status_enum,
+    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status_enum, 'VERIFIED'::public.product_status_enum,
     'HIDDEN'::public.product_status_enum,
-    'IN_REVIEW'::public.product_status_enum])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
+    'IN_REVIEW'::public.product_status_enum])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))));
 
 REVOKE ALL ON TABLE "public"."products" FROM "anon", "authenticated";
 
