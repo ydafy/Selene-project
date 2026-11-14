@@ -39,7 +39,7 @@ ALTER TABLE "public"."products"
   ADD COLUMN "shipping_cost_cents" bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "shipping_payer" text DEFAULT 'buyer'::text;
+  ADD COLUMN "shipping_payer" text NOT NULL DEFAULT 'buyer'::text;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "origin_zip" text;
@@ -92,6 +92,9 @@ ALTER TABLE "public"."products"
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_cost_cents_check" CHECK ((shipping_cost_cents >= 0));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id);

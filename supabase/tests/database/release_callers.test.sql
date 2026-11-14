@@ -297,8 +297,13 @@ insert into public.orders (
 select pg_temp.u(o.n), pg_temp.u(3), 100000, '{}'::jsonb, 'pending', 'pi_release_' || o.n,
   true, 'test', 'refund_pending'
 from (values (701), (702), (703)) as o(n);
-insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents)
-select pg_temp.u(i.o), pg_temp.u(i.p), pg_temp.u(i.s), 100000, 90000
+-- Every order item belongs to a shipment (shipment n + 400 for listing n), as
+-- fn_create_shipments_from_single_payment seeds them before the recovery.
+insert into public.shipments (id, order_id, seller_id, status)
+select pg_temp.u(i.p + 400), pg_temp.u(i.o), pg_temp.u(i.s), 'preparing'
+from (values (701, 401, 2), (701, 402, 2), (702, 403, 1), (703, 404, 2), (703, 405, 1)) as i(o, p, s);
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+select pg_temp.u(i.o), pg_temp.u(i.p), pg_temp.u(i.s), 100000, 90000, pg_temp.u(i.p + 400)
 from (values (701, 401, 2), (701, 402, 2), (702, 403, 1), (703, 404, 2), (703, 405, 1)) as i(o, p, s);
 select pg_temp.remember(array[402, 406]);
 

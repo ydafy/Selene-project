@@ -12,6 +12,8 @@ CREATE TABLE "internal"."checkout_recovery_shells" (
   "created_at"                    timestamp with time zone NOT NULL DEFAULT now(),
   "updated_at"                    timestamp with time zone NOT NULL DEFAULT now(),
   "stripe_charge_id"              text,
+  CONSTRAINT "checkout_recovery_shells_charged_amount_cents_check" CHECK ((charged_amount_cents >= 0)),
+  CONSTRAINT "checkout_recovery_shells_compensation_attempt_count_check" CHECK ((compensation_attempt_count >= 0)),
   CONSTRAINT "checkout_recovery_shells_compensation_state_check"
     CHECK ((compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text, 'reconciliation_needed'::text]))),
   CONSTRAINT "checkout_recovery_shells_pkey" PRIMARY KEY (stripe_payment_intent_id)

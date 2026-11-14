@@ -982,43 +982,43 @@ export type Database = {
       order_items: {
         Row: {
           commission_amount_cents: number;
-          created_at: string | null;
+          created_at: string;
           id: string;
           net_payout_cents: number;
           order_id: string;
           price_at_purchase_cents: number;
           product_id: string;
           seller_id: string;
-          shipment_id: string | null;
+          shipment_id: string;
           shipping_amount_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
         };
         ComputedFields: never;
         Insert: {
           commission_amount_cents?: number;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
           net_payout_cents?: number;
           order_id: string;
           price_at_purchase_cents: number;
           product_id: string;
           seller_id: string;
-          shipment_id?: string | null;
+          shipment_id: string;
           shipping_amount_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
         };
         Update: {
           commission_amount_cents?: number;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
           net_payout_cents?: number;
           order_id?: string;
           price_at_purchase_cents?: number;
           product_id?: string;
           seller_id?: string;
-          shipment_id?: string | null;
+          shipment_id?: string;
           shipping_amount_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
         };
         Relationships: [
           {
@@ -1082,8 +1082,8 @@ export type Database = {
           compensation_lease_expires_at: string | null;
           compensation_state: string | null;
           completed_at: string | null;
-          created_at: string | null;
-          currency: string | null;
+          created_at: string;
+          currency: string;
           delivered_at: string | null;
           id: string;
           next_compensation_retry_at: string | null;
@@ -1098,7 +1098,7 @@ export type Database = {
           stripe_refund_id: string | null;
           stripe_transfer_group: string | null;
           total_amount_cents: number;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1110,8 +1110,8 @@ export type Database = {
           compensation_lease_expires_at?: string | null;
           compensation_state?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          currency?: string | null;
+          created_at?: string;
+          currency?: string;
           delivered_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
@@ -1126,7 +1126,7 @@ export type Database = {
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
           total_amount_cents: number;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           actual_stripe_fee_cents?: number | null;
@@ -1137,8 +1137,8 @@ export type Database = {
           compensation_lease_expires_at?: string | null;
           compensation_state?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          currency?: string | null;
+          created_at?: string;
+          currency?: string;
           delivered_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
@@ -1153,7 +1153,7 @@ export type Database = {
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
           total_amount_cents?: number;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -1221,7 +1221,7 @@ export type Database = {
           reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold:
@@ -1256,7 +1256,7 @@ export type Database = {
           reserved_at?: string | null;
           seller_id: string;
           shipping_cost_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
@@ -1290,7 +1290,7 @@ export type Database = {
           reserved_at?: string | null;
           seller_id?: string;
           shipping_cost_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
@@ -2201,7 +2201,7 @@ export type Database = {
           claim_expires_at: string | null;
           claim_token: string | null;
           completed_at: string | null;
-          created_at: string | null;
+          created_at: string;
           delivered_at: string | null;
           envia_shipment_id: string | null;
           id: string;
@@ -2226,14 +2226,14 @@ export type Database = {
           seller_id: string;
           service: string | null;
           shipped_at: string | null;
-          shipping_cost: number | null;
+          shipping_cost: number;
           shipping_evidence: Json | null;
           status: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id: string | null;
           stripe_payout_id: string | null;
           stripe_transfer_id: string | null;
           tracking_number: string | null;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -2242,7 +2242,7 @@ export type Database = {
           claim_expires_at?: string | null;
           claim_token?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
+          created_at?: string;
           delivered_at?: string | null;
           envia_shipment_id?: string | null;
           id?: string;
@@ -2267,14 +2267,14 @@ export type Database = {
           seller_id: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
           tracking_number?: string | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           buyer_confirmed_at?: string | null;
@@ -2282,7 +2282,7 @@ export type Database = {
           claim_expires_at?: string | null;
           claim_token?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
+          created_at?: string;
           delivered_at?: string | null;
           envia_shipment_id?: string | null;
           id?: string;
@@ -2307,14 +2307,14 @@ export type Database = {
           seller_id?: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
           tracking_number?: string | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -2409,91 +2409,91 @@ export type Database = {
       system_settings: {
         Row: {
           checkout_recovery_enabled: boolean;
-          currency: string | null;
+          currency: string;
           envia_carrier: string | null;
           envia_print_format: string | null;
           envia_print_size: string | null;
           envia_service: string | null;
           id: number;
           insurance_rate: number;
-          is_maintenance: boolean | null;
+          is_maintenance: boolean;
           isr_withholding_pct: number;
           iva_withholding_pct: number;
           listing_quote_reference_destination: Json | null;
-          min_payout_amount_cents: number | null;
-          min_version_android: string | null;
-          min_version_ios: string | null;
-          novice_active_limit: number | null;
-          novice_completed_threshold: number | null;
-          order_expiration_hours: number | null;
-          package_presets: Json | null;
-          payout_fee_fixed_cents: number | null;
-          preparing_expiration_hours: number | null;
-          return_label_fee_cents: number | null;
-          service_fee_fixed_cents: number | null;
+          min_payout_amount_cents: number;
+          min_version_android: string;
+          min_version_ios: string;
+          novice_active_limit: number;
+          novice_completed_threshold: number;
+          order_expiration_hours: number;
+          package_presets: NonNullable<Json>;
+          payout_fee_fixed_cents: number;
+          preparing_expiration_hours: number;
+          return_label_fee_cents: number;
+          service_fee_fixed_cents: number;
           service_fee_pct: number;
-          shipping_buffer_cents: number | null;
-          trusted_active_limit: number | null;
-          updated_at: string | null;
+          shipping_buffer_cents: number;
+          trusted_active_limit: number;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
           checkout_recovery_enabled?: boolean;
-          currency?: string | null;
+          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
           envia_service?: string | null;
           id: number;
           insurance_rate?: number;
-          is_maintenance?: boolean | null;
+          is_maintenance?: boolean;
           isr_withholding_pct?: number;
           iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number | null;
-          min_version_android?: string | null;
-          min_version_ios?: string | null;
-          novice_active_limit?: number | null;
-          novice_completed_threshold?: number | null;
-          order_expiration_hours?: number | null;
-          package_presets?: Json | null;
-          payout_fee_fixed_cents?: number | null;
-          preparing_expiration_hours?: number | null;
-          return_label_fee_cents?: number | null;
-          service_fee_fixed_cents?: number | null;
+          min_payout_amount_cents?: number;
+          min_version_android?: string;
+          min_version_ios?: string;
+          novice_active_limit?: number;
+          novice_completed_threshold?: number;
+          order_expiration_hours?: number;
+          package_presets?: NonNullable<Json>;
+          payout_fee_fixed_cents?: number;
+          preparing_expiration_hours?: number;
+          return_label_fee_cents?: number;
+          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
-          shipping_buffer_cents?: number | null;
-          trusted_active_limit?: number | null;
-          updated_at?: string | null;
+          shipping_buffer_cents?: number;
+          trusted_active_limit?: number;
+          updated_at?: string;
         };
         Update: {
           checkout_recovery_enabled?: boolean;
-          currency?: string | null;
+          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
           envia_service?: string | null;
           id?: number;
           insurance_rate?: number;
-          is_maintenance?: boolean | null;
+          is_maintenance?: boolean;
           isr_withholding_pct?: number;
           iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number | null;
-          min_version_android?: string | null;
-          min_version_ios?: string | null;
-          novice_active_limit?: number | null;
-          novice_completed_threshold?: number | null;
-          order_expiration_hours?: number | null;
-          package_presets?: Json | null;
-          payout_fee_fixed_cents?: number | null;
-          preparing_expiration_hours?: number | null;
-          return_label_fee_cents?: number | null;
-          service_fee_fixed_cents?: number | null;
+          min_payout_amount_cents?: number;
+          min_version_android?: string;
+          min_version_ios?: string;
+          novice_active_limit?: number;
+          novice_completed_threshold?: number;
+          order_expiration_hours?: number;
+          package_presets?: NonNullable<Json>;
+          payout_fee_fixed_cents?: number;
+          preparing_expiration_hours?: number;
+          return_label_fee_cents?: number;
+          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
-          shipping_buffer_cents?: number | null;
-          trusted_active_limit?: number | null;
-          updated_at?: string | null;
+          shipping_buffer_cents?: number;
+          trusted_active_limit?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -2705,7 +2705,7 @@ export type Database = {
           reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
           updated_at: string | null;
