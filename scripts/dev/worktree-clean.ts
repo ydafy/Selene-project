@@ -602,6 +602,13 @@ async function stopCodegraphDaemon(dir: string): Promise<string | null> {
   return `CodeGraph daemon ${lock.pid} did not exit`;
 }
 
+// Deleting node_modules prints nothing for minutes on Windows: say so, or the
+// command looks stuck and gets interrupted halfway.
+const announceDelete = (target: string) =>
+  console.log(
+    `[worktree-clean] deleting ${target}: node_modules can take a few minutes, do not interrupt it`,
+  );
+
 const LOCKED_HINT =
   '[worktree-clean] close terminals, editors and agent sessions in that folder (or restart Docker Desktop), then run this command again: it finishes the removal';
 
@@ -687,6 +694,7 @@ async function cleanWorktree(arg: string, apply: boolean) {
   }
   // --force: only line-ending noise is left. core.longpaths: node_modules holds
   // paths over 260 characters, which git on Windows cannot delete without it.
+  if (present) announceDelete(target);
   const removed = present
     ? run([
         'git',
@@ -739,6 +747,7 @@ async function cleanWorktree(arg: string, apply: boolean) {
 async function finishLeftover(target: string) {
   const daemon = await stopCodegraphDaemon(target);
   if (daemon) console.log(`[worktree-clean] warning: ${daemon}`);
+  announceDelete(target);
   const removed = removeDir(target);
   if (removed !== null || existsSync(target)) {
     console.error(

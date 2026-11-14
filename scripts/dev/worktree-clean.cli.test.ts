@@ -242,6 +242,10 @@ describe('worktree:clean against a real repository', () => {
     expect(existsSync(wt)).toBe(true);
 
     const run = clean('merged', '--yes');
+    // git reports registered worktree paths with forward slashes
+    expect(run.out).toContain(
+      `[worktree-clean] deleting ${wt.replaceAll('\\', '/')}: node_modules can take a few minutes, do not interrupt it`,
+    );
     expect(run.out).toContain('[worktree-clean] done');
     expect(run.code).toBe(0);
     expect(existsSync(wt)).toBe(false);
@@ -375,6 +379,9 @@ describe('worktree:clean against a real repository', () => {
     expect(existsSync(wt)).toBe(true);
 
     const run = cleanWith(stubs.env, ['halfway', '--yes']);
+    expect(run.out).toContain(
+      `[worktree-clean] deleting ${wt}: node_modules can take a few minutes, do not interrupt it`,
+    );
     expect(run.out).toContain('[worktree-clean] done');
     expect(run.code).toBe(0);
     expect(existsSync(wt)).toBe(false);
