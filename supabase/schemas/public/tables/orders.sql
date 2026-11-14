@@ -2,11 +2,13 @@ CREATE TABLE "public"."orders" (
   "id"                       uuid                     NOT NULL DEFAULT gen_random_uuid(),
   "created_at"               timestamp with time zone DEFAULT now(),
   "buyer_id"                 uuid                     NOT NULL,
-  "total_amount"             numeric                  NOT NULL,
+  "total_amount_cents"       bigint                   NOT NULL,
   "stripe_payment_intent_id" text,
   "shipping_address"         jsonb                    NOT NULL,
-  "service_fee_amount"       numeric                  DEFAULT 0,
+  "service_fee_amount_cents" bigint                   NOT NULL DEFAULT 0,
   "currency"                 text                     DEFAULT 'MXN'::text,
+  CONSTRAINT "orders_service_fee_amount_cents_check" CHECK ((service_fee_amount_cents >= 0)),
+  CONSTRAINT "orders_total_amount_cents_check" CHECK ((total_amount_cents >= 0)),
   CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES auth.users(id),
   CONSTRAINT "orders_pkey" PRIMARY KEY (id)
 );
@@ -110,11 +112,15 @@ COMMENT ON COLUMN "public"."orders"."payment_processing" IS 'True when the platf
 
 COMMENT ON COLUMN "public"."orders"."payment_processing_reason" IS 'Human-readable reason for the current payment_processing recovery state. NULL when payment_processing=false.';
 
+COMMENT ON COLUMN "public"."orders"."service_fee_amount_cents" IS 'Sum of the Selene commission of every shipment in the order, in integer cents.';
+
 COMMENT ON COLUMN "public"."orders"."stripe_charge_id" IS 'Stripe Charge ID captured from the platform PaymentIntent on payment success. NULL until the webhook persists it.';
 
 COMMENT ON COLUMN "public"."orders"."stripe_payment_intent_id" IS 'Single PaymentIntent ID for legacy wallet-era orders. NULL for Connect-era orders (see shipments.stripe_payment_intent_id per shipment).';
 
 COMMENT ON COLUMN "public"."orders"."stripe_transfer_group" IS 'Stripe transfer_group used to group per-shipment platform->seller Transfers on manual release. NULL for legacy per-seller orders.';
+
+COMMENT ON COLUMN "public"."orders"."total_amount_cents" IS 'Amount the buyer paid for the order, in integer cents.';
 
 REVOKE ALL ON TABLE "public"."orders" FROM "anon";
 

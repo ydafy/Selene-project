@@ -36,13 +36,13 @@ declare
   v_product uuid := ('d0000000-0000-4000-8000-0000000a' || lpad(p_n::text, 4, '0'))::uuid;
 begin
   perform pg_temp.make_product(v_product, p_seller);
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status)
-  values (v_order, p_buyer, 1000, '{}'::jsonb, p_status);
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+  values (v_order, p_buyer, 100000, '{}'::jsonb, p_status);
   insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
   values (v_shipment, v_order, p_seller, p_status,
     case when p_status = 'completed' then now() end, p_pi);
-  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-  values (v_order, v_product, p_seller, 1000, 900, v_shipment);
+  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+  values (v_order, v_product, p_seller, 100000, 90000, v_shipment);
   -- The shipment trigger derives the order status; pin it to the requested one.
   update public.orders set status = p_status where id = v_order;
 end $$;

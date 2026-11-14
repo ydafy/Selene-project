@@ -21,7 +21,7 @@ select pg_temp.money_user(15002);
 create function pg_temp.case_dispute(p_k integer, p_status public.dispute_status)
 returns uuid language plpgsql as $$
 begin
-  perform pg_temp.money_shipment(15200 + p_k, 15100 + p_k, 15001, 15002, 'delivered', null, 900, null);
+  perform pg_temp.money_shipment(15200 + p_k, 15100 + p_k, 15001, 15002, 'delivered', null, 90000, null);
   return pg_temp.money_dispute(15300 + p_k, 15100 + p_k, p_status);
 end $$;
 

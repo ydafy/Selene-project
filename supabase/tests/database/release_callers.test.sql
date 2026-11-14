@@ -61,13 +61,13 @@ create function pg_temp.make_shipment(
   p_order integer, p_shipment integer, p_seller integer, p_status public.order_status_enum, p_products integer[]
 ) returns void language plpgsql as $$
 begin
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status)
-  values (pg_temp.u(p_order), pg_temp.u(3), 1000, '{}'::jsonb, p_status)
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+  values (pg_temp.u(p_order), pg_temp.u(3), 100000, '{}'::jsonb, p_status)
   on conflict (id) do nothing;
   insert into public.shipments (id, order_id, seller_id, status)
   values (pg_temp.u(p_shipment), pg_temp.u(p_order), pg_temp.u(p_seller), p_status);
-  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
-  select pg_temp.u(p_order), pg_temp.u(n), pg_temp.u(p_seller), 1000, 900, pg_temp.u(p_shipment)
+  insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
+  select pg_temp.u(p_order), pg_temp.u(n), pg_temp.u(p_seller), 100000, 90000, pg_temp.u(p_shipment)
   from unnest(p_products) as n;
 end $$;
 
@@ -291,14 +291,14 @@ select pg_temp.make_product(404, 2, 'RESERVED', interval '1 minute');
 select pg_temp.make_product(405, 1, 'RESERVED', interval '1 minute');
 select pg_temp.make_product(406, 2, 'RESERVED', interval '1 minute');
 insert into public.orders (
-  id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id,
+  id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id,
   payment_processing, payment_processing_reason, compensation_state
 )
-select pg_temp.u(o.n), pg_temp.u(3), 1000, '{}'::jsonb, 'pending', 'pi_release_' || o.n,
+select pg_temp.u(o.n), pg_temp.u(3), 100000, '{}'::jsonb, 'pending', 'pi_release_' || o.n,
   true, 'test', 'refund_pending'
 from (values (701), (702), (703)) as o(n);
-insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout)
-select pg_temp.u(i.o), pg_temp.u(i.p), pg_temp.u(i.s), 1000, 900
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents)
+select pg_temp.u(i.o), pg_temp.u(i.p), pg_temp.u(i.s), 100000, 90000
 from (values (701, 401, 2), (701, 402, 2), (702, 403, 1), (703, 404, 2), (703, 405, 1)) as i(o, p, s);
 select pg_temp.remember(array[402, 406]);
 

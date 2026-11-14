@@ -981,49 +981,43 @@ export type Database = {
       };
       order_items: {
         Row: {
-          commission_amount: number | null;
+          commission_amount_cents: number;
           created_at: string | null;
           id: string;
-          insurance_amount: number | null;
-          net_payout: number | null;
+          net_payout_cents: number;
           order_id: string;
-          price_at_purchase: number;
+          price_at_purchase_cents: number;
           product_id: string;
-          sat_tax_withholding: number | null;
           seller_id: string;
           shipment_id: string | null;
-          shipping_amount: number | null;
+          shipping_amount_cents: number;
           shipping_payer: string | null;
         };
         ComputedFields: never;
         Insert: {
-          commission_amount?: number | null;
+          commission_amount_cents?: number;
           created_at?: string | null;
           id?: string;
-          insurance_amount?: number | null;
-          net_payout?: number | null;
+          net_payout_cents?: number;
           order_id: string;
-          price_at_purchase: number;
+          price_at_purchase_cents: number;
           product_id: string;
-          sat_tax_withholding?: number | null;
           seller_id: string;
           shipment_id?: string | null;
-          shipping_amount?: number | null;
+          shipping_amount_cents?: number;
           shipping_payer?: string | null;
         };
         Update: {
-          commission_amount?: number | null;
+          commission_amount_cents?: number;
           created_at?: string | null;
           id?: string;
-          insurance_amount?: number | null;
-          net_payout?: number | null;
+          net_payout_cents?: number;
           order_id?: string;
-          price_at_purchase?: number;
+          price_at_purchase_cents?: number;
           product_id?: string;
-          sat_tax_withholding?: number | null;
           seller_id?: string;
           shipment_id?: string | null;
-          shipping_amount?: number | null;
+          shipping_amount_cents?: number;
           shipping_payer?: string | null;
         };
         Relationships: [
@@ -1095,7 +1089,7 @@ export type Database = {
           next_compensation_retry_at: string | null;
           payment_processing: boolean;
           payment_processing_reason: string | null;
-          service_fee_amount: number | null;
+          service_fee_amount_cents: number;
           shipping_address: NonNullable<Json>;
           status: Database['public']['Enums']['order_status_enum'];
           stripe_charge_id: string | null;
@@ -1103,7 +1097,7 @@ export type Database = {
           stripe_payment_intent_id: string | null;
           stripe_refund_id: string | null;
           stripe_transfer_group: string | null;
-          total_amount: number;
+          total_amount_cents: number;
           updated_at: string | null;
         };
         ComputedFields: never;
@@ -1123,7 +1117,7 @@ export type Database = {
           next_compensation_retry_at?: string | null;
           payment_processing?: boolean;
           payment_processing_reason?: string | null;
-          service_fee_amount?: number | null;
+          service_fee_amount_cents?: number;
           shipping_address: NonNullable<Json>;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_charge_id?: string | null;
@@ -1131,7 +1125,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null;
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
-          total_amount: number;
+          total_amount_cents: number;
           updated_at?: string | null;
         };
         Update: {
@@ -1150,7 +1144,7 @@ export type Database = {
           next_compensation_retry_at?: string | null;
           payment_processing?: boolean;
           payment_processing_reason?: string | null;
-          service_fee_amount?: number | null;
+          service_fee_amount_cents?: number;
           shipping_address?: NonNullable<Json>;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_charge_id?: string | null;
@@ -1158,7 +1152,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null;
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
-          total_amount?: number;
+          total_amount_cents?: number;
           updated_at?: string | null;
         };
         Relationships: [];
@@ -2686,7 +2680,7 @@ export type Database = {
           resolved_at: string | null;
           seller_id: string | null;
           seller_username: string | null;
-          total_amount: number | null;
+          total_amount_cents: number | null;
         };
         ComputedFields: never;
         Relationships: [];

@@ -44,10 +44,10 @@ from (values
 
 -- Order 1: a completed shipment (seller_done) and a delivered one (seller_open).
 -- Order 2: a delivered shipment of seller_done with an open dispute.
-insert into public.orders (id, buyer_id, total_amount, shipping_address)
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
 values
-  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000001', 2000, '{}'::jsonb),
-  ('e1000000-0000-4000-8000-0000000b0002', 'e1000000-0000-4000-8000-000000000001', 1000, '{}'::jsonb);
+  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000001', 200000, '{}'::jsonb),
+  ('e1000000-0000-4000-8000-0000000b0002', 'e1000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb);
 insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
 values
   ('e1000000-0000-4000-8000-0000000c0001', 'e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000002', 'completed', now(), 'pi_test_ctw_1'),
@@ -56,11 +56,11 @@ values
 select pg_temp.make_product('e1000000-0000-4000-8000-0000000a0001', 'e1000000-0000-4000-8000-000000000002');
 select pg_temp.make_product('e1000000-0000-4000-8000-0000000a0002', 'e1000000-0000-4000-8000-000000000003');
 select pg_temp.make_product('e1000000-0000-4000-8000-0000000a0003', 'e1000000-0000-4000-8000-000000000002');
-insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
 values
-  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000a0001', 'e1000000-0000-4000-8000-000000000002', 1000, 900, 'e1000000-0000-4000-8000-0000000c0001'),
-  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000a0002', 'e1000000-0000-4000-8000-000000000003', 1000, 900, 'e1000000-0000-4000-8000-0000000c0002'),
-  ('e1000000-0000-4000-8000-0000000b0002', 'e1000000-0000-4000-8000-0000000a0003', 'e1000000-0000-4000-8000-000000000002', 1000, 900, 'e1000000-0000-4000-8000-0000000c0003');
+  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000a0001', 'e1000000-0000-4000-8000-000000000002', 100000, 90000, 'e1000000-0000-4000-8000-0000000c0001'),
+  ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000a0002', 'e1000000-0000-4000-8000-000000000003', 100000, 90000, 'e1000000-0000-4000-8000-0000000c0002'),
+  ('e1000000-0000-4000-8000-0000000b0002', 'e1000000-0000-4000-8000-0000000a0003', 'e1000000-0000-4000-8000-000000000002', 100000, 90000, 'e1000000-0000-4000-8000-0000000c0003');
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 insert into public.disputes (id, order_id, buyer_id, seller_id, reason, description, shipment_id)
 values ('e1000000-0000-4000-8000-0000000d0001', 'e1000000-0000-4000-8000-0000000b0002',
@@ -74,30 +74,30 @@ select
   (select count(*) from public.order_items where order_id in ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000b0002')) as items,
   (select count(*) from public.disputes where buyer_id = 'e1000000-0000-4000-8000-000000000001') as disputes,
   (select status::text from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001') as order_status,
-  (select total_amount from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001') as order_total,
+  (select total_amount_cents from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001') as order_total,
   (select status::text from public.disputes where id = 'e1000000-0000-4000-8000-0000000d0001') as dispute_status,
-  (select price_at_purchase from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001') as item_price;
+  (select price_at_purchase_cents from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001') as item_price;
 
 -- The buyer (authenticated) cannot write orders, order items or disputes.
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
 set local role authenticated;
 
 select throws_ok(
-  $$insert into public.orders (buyer_id, total_amount, shipping_address, status)
+  $$insert into public.orders (buyer_id, total_amount_cents, shipping_address, status)
     values ('e1000000-0000-4000-8000-000000000001', 1, '{}'::jsonb, 'paid')$$,
   '42501', 'permission denied for table orders', 'authenticated cannot insert orders');
 select throws_ok(
-  $$update public.orders set total_amount = 1 where id = 'e1000000-0000-4000-8000-0000000b0001'$$,
+  $$update public.orders set total_amount_cents = 1 where id = 'e1000000-0000-4000-8000-0000000b0001'$$,
   '42501', 'permission denied for table orders', 'authenticated cannot update orders');
 select throws_ok(
   $$delete from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001'$$,
   '42501', 'permission denied for table orders', 'authenticated cannot delete orders');
 select throws_ok(
-  $$insert into public.order_items (order_id, product_id, seller_id, price_at_purchase)
+  $$insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents)
     values ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000a0003', 'e1000000-0000-4000-8000-000000000002', 1)$$,
   '42501', 'permission denied for table order_items', 'authenticated cannot insert order items');
 select throws_ok(
-  $$update public.order_items set price_at_purchase = 1 where product_id = 'e1000000-0000-4000-8000-0000000a0001'$$,
+  $$update public.order_items set price_at_purchase_cents = 1 where product_id = 'e1000000-0000-4000-8000-0000000a0001'$$,
   '42501', 'permission denied for table order_items', 'authenticated cannot update order items');
 select throws_ok(
   $$delete from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001'$$,
@@ -131,7 +131,7 @@ reset role;
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
 select throws_ok(
-  $$insert into public.orders (buyer_id, total_amount, shipping_address)
+  $$insert into public.orders (buyer_id, total_amount_cents, shipping_address)
     values ('e1000000-0000-4000-8000-000000000001', 1, '{}'::jsonb)$$,
   '42501', 'permission denied for table orders', 'anon cannot insert orders');
 select throws_ok(
@@ -140,7 +140,7 @@ select throws_ok(
       'e1000000-0000-4000-8000-000000000003', 'damaged', 'Forged')$$,
   '42501', 'permission denied for table disputes', 'anon cannot insert disputes');
 select throws_ok(
-  $$update public.order_items set price_at_purchase = 1$$,
+  $$update public.order_items set price_at_purchase_cents = 1$$,
   '42501', 'permission denied for table order_items', 'anon cannot update order items');
 reset role;
 
@@ -152,9 +152,9 @@ select is(
     (select count(*) from public.order_items where order_id in ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-0000000b0002')),
     (select count(*) from public.disputes where buyer_id = 'e1000000-0000-4000-8000-000000000001'),
     (select status::text from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001'),
-    (select total_amount from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001'),
+    (select total_amount_cents from public.orders where id = 'e1000000-0000-4000-8000-0000000b0001'),
     (select status::text from public.disputes where id = 'e1000000-0000-4000-8000-0000000d0001'),
-    (select price_at_purchase from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001'))::text),
+    (select price_at_purchase_cents from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001'))::text),
   'orders, order items and disputes are unchanged after the client attempts');
 
 -- Reviews: only for a completed shipment of that seller in the buyer's order.
@@ -250,8 +250,8 @@ select is(
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select lives_ok(
-  $$insert into public.orders (id, buyer_id, total_amount, shipping_address)
-    values ('e1000000-0000-4000-8000-0000000b0003', 'e1000000-0000-4000-8000-000000000001', 1000, '{}'::jsonb)$$,
+  $$insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
+    values ('e1000000-0000-4000-8000-0000000b0003', 'e1000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb)$$,
   'the service role inserts orders');
 select lives_ok(
   $$update public.disputes set admin_notes = 'checked' where id = 'e1000000-0000-4000-8000-0000000d0001'$$,

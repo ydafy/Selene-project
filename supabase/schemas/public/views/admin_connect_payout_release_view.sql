@@ -15,8 +15,8 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             (s.stripe_payment_intent_id IS NOT NULL) AS has_connect_payment_intent,
             GREATEST(
                 CASE
-                    WHEN (o.stripe_transfer_group IS NOT NULL) THEN (round((COALESCE(sum(oi.net_payout), (0)::numeric) * (100)::numeric)))::integer
-                    ELSE ((round((COALESCE(sum(oi.net_payout), (0)::numeric) * (100)::numeric)))::integer - COALESCE(s.shipping_cost, 0))
+                    WHEN (o.stripe_transfer_group IS NOT NULL) THEN (COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer
+                    ELSE ((COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer - COALESCE(s.shipping_cost, 0))
                 END, 0) AS release_amount_cents,
             ((s.shipping_cost IS NOT NULL) AND (s.shipping_cost > 0)) AS has_shipping_cost_cents,
             (EXISTS ( SELECT 1

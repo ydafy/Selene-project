@@ -55,7 +55,7 @@ GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."action_required_reason" IS 'Why a run sits in the action_required stage. Only the account_not_actionable reason may be auto-resumed by a later actionable account update; every other action_required state requires an admin decision.';
 
-COMMENT ON COLUMN "public"."connect_payout_runs"."amount" IS 'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout; legacy orders retain the shipment shipping_cost deduction.';
+COMMENT ON COLUMN "public"."connect_payout_runs"."amount" IS 'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout_cents; legacy orders retain the shipment shipping_cost deduction.';
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."attempt_count" IS 'Number of executor attempts recorded for this run (deferrals increment it).';
 

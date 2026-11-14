@@ -32,8 +32,8 @@ end $$;
 
 -- A paid order of buyer 1 with payment intent pi_fee_<n>.
 create function pg_temp.fee_order(p_n integer) returns uuid language sql as $$
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id)
-  values (pg_temp.mu(p_n), pg_temp.mu(1), 1000, '{}'::jsonb, 'paid', 'pi_fee_' || p_n)
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
+  values (pg_temp.mu(p_n), pg_temp.mu(1), 100000, '{}'::jsonb, 'paid', 'pi_fee_' || p_n)
   returning id
 $$;
 

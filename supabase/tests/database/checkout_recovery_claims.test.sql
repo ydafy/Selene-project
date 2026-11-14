@@ -20,10 +20,10 @@ create function pg_temp.c_order(
   p_n integer, p_processing boolean, p_state text, p_next interval default null,
   p_lease interval default null, p_created_ago interval default interval '1 hour'
 ) returns void language sql as $$
-  insert into public.orders (id, buyer_id, total_amount, shipping_address, status, stripe_payment_intent_id,
+  insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id,
     payment_processing, compensation_state, next_compensation_retry_at, compensation_lease_expires_at,
     compensation_attempt_count, stripe_charge_id, created_at)
-  values (pg_temp.mu(p_n), pg_temp.mu(7001), 1000, '{}'::jsonb, 'pending', 'pi_crc_' || p_n,
+  values (pg_temp.mu(p_n), pg_temp.mu(7001), 100000, '{}'::jsonb, 'pending', 'pi_crc_' || p_n,
     p_processing, p_state, now() + p_next, now() + p_lease, 3, 'ch_' || p_n, now() - p_created_ago)
 $$;
 

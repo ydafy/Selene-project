@@ -180,8 +180,8 @@ WHERE s.id = 1;
 -- an open dispute; f3 is due and its dispute is resolved; f4 was delivered 1 hour ago.
 -- The complete-delivered-shipments cron must complete f1 and f3 only. The Stripe ids are fake:
 -- they only mark the shipments as Connect, so completion never touches the legacy wallets.
-INSERT INTO public.orders (id, buyer_id, total_amount, shipping_address, status) VALUES
-  ('00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-000000000005', 100,
+INSERT INTO public.orders (id, buyer_id, total_amount_cents, shipping_address, status) VALUES
+  ('00000000-0000-4000-8000-0000000000f0', '00000000-0000-4000-8000-000000000005', 10000,
    '{"street": "Av. Reforma 1", "city": "Ciudad de México", "zip": "06500"}'::jsonb, 'delivered');
 
 INSERT INTO public.shipments (id, order_id, seller_id, status, delivered_at, stripe_payment_intent_id) VALUES

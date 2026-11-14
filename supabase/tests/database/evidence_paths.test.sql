@@ -32,10 +32,10 @@ from (values
 
 -- Two orders of the buyer, each with one shipment of the seller and one dispute:
 -- dispute 1 waits for the seller's evidence, dispute 2 for the buyer's.
-insert into public.orders (id, buyer_id, total_amount, shipping_address)
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
 values
-  ('f3000000-0000-4000-8000-0000000b0001', 'f3000000-0000-4000-8000-000000000001', 1000, '{}'::jsonb),
-  ('f3000000-0000-4000-8000-0000000b0002', 'f3000000-0000-4000-8000-000000000001', 1000, '{}'::jsonb);
+  ('f3000000-0000-4000-8000-0000000b0001', 'f3000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb),
+  ('f3000000-0000-4000-8000-0000000b0002', 'f3000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb);
 insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
 values
   ('f3000000-0000-4000-8000-0000000c0001', 'f3000000-0000-4000-8000-0000000b0001', 'f3000000-0000-4000-8000-000000000002', 'delivered', 'pi_test_evp_1'),

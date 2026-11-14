@@ -14,7 +14,7 @@ DECLARE
   v_buyer_id UUID;
   v_address_id UUID;
   v_order_id UUID;
-  v_total_amount NUMERIC;
+  v_total_amount_cents BIGINT;
   v_addr_snapshot JSONB;
   v_existing_order RECORD;
   v_existing_order_id UUID;
@@ -32,17 +32,15 @@ DECLARE
   v_expected_product_count INT;
   v_found_product_count INT;
   v_reserved_product_count INT;
-  v_seller_gross_pesos NUMERIC;
   v_item_limit INT;
   v_item_index INT;
-  v_item_commission NUMERIC;
-  v_item_shipping NUMERIC;
-  v_item_net NUMERIC;
-  v_residual_commission NUMERIC := 0;
-  v_residual_shipping NUMERIC := 0;
-  v_residual_net NUMERIC := 0;
-  v_order_amount NUMERIC;
-  v_service_fee_amount NUMERIC := 0;
+  v_item_commission_cents BIGINT;
+  v_item_shipping_cents BIGINT;
+  v_item_net_cents BIGINT;
+  v_residual_commission_cents BIGINT := 0;
+  v_residual_shipping_cents BIGINT := 0;
+  v_residual_net_cents BIGINT := 0;
+  v_service_fee_amount_cents BIGINT := 0;
   v_failure_code TEXT;
 BEGIN
   -- 1. Validate + extract structured allocation payload fields.
@@ -52,7 +50,7 @@ BEGIN
     NULLIF(p_allocation ->> 'order_id', '')::UUID,
     NULLIF(p_allocation ->> 'order_group_id', '')::UUID
   );
-  v_total_amount := p_amount_received / 100.0;
+  v_total_amount_cents := p_amount_received;
 
   IF v_buyer_id IS NULL THEN
     RAISE EXCEPTION 'BUYER_ID_REQUIRED';
@@ -124,8 +122,8 @@ BEGIN
       stripe_charge_id,
       stripe_transfer_group,
       payment_processing,
-      service_fee_amount,
-      total_amount,
+      service_fee_amount_cents,
+      total_amount_cents,
       shipping_address
     ) VALUES (
       v_order_id,
@@ -136,7 +134,7 @@ BEGIN
       p_transfer_group,
       false,
       0,
-      v_total_amount,
+      v_total_amount_cents,
       v_addr_snapshot
     )
     RETURNING id INTO v_existing_order_id;
@@ -151,7 +149,7 @@ BEGIN
     -- Include numeric aggregation in the recovery boundary: malformed
     -- commission data must leave a durable payment_processing shell too.
     SELECT COALESCE(SUM((r->>'commission_cents')::BIGINT), 0)
-      INTO v_service_fee_amount
+      INTO v_service_fee_amount_cents
     FROM jsonb_array_elements(p_allocation -> 'rows') AS r;
 
     FOR v_row IN
@@ -222,11 +220,11 @@ BEGIN
       -- residual so SUM(items) reconciles EXACTLY to the seller row. The
       -- allocator upfront guarantees gross = commission + shipping + net at the
       -- seller level; we preserve that invariant per-seller, not per-item.
-      v_seller_gross_pesos := v_gross_cents / 100.0;
+      -- Every amount is integer cents; each share rounds to the nearest cent.
       v_item_limit := v_expected_product_count;
-      v_residual_commission := v_commission_cents / 100.0;
-      v_residual_shipping := v_shipping_cents / 100.0;
-      v_residual_net := v_net_cents / 100.0;
+      v_residual_commission_cents := v_commission_cents;
+      v_residual_shipping_cents := v_shipping_cents;
+      v_residual_net_cents := v_net_cents;
 
       v_item_index := 0;
       FOR v_product_record IN
@@ -241,25 +239,22 @@ BEGIN
         v_item_index := v_item_index + 1;
         IF v_item_index = v_item_limit THEN
           -- Last item: absorb the exact residual so the row sums reconcile.
-          v_item_commission := v_residual_commission;
-          v_item_shipping := v_residual_shipping;
-          v_item_net := v_residual_net;
+          v_item_commission_cents := v_residual_commission_cents;
+          v_item_shipping_cents := v_residual_shipping_cents;
+          v_item_net_cents := v_residual_net_cents;
         ELSE
-          v_item_commission := round(
-            (v_commission_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
-            2
-          );
-          v_item_shipping := round(
-            (v_shipping_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
-            2
-          );
-          v_item_net := round(
-            (v_net_cents / 100.0) * ((v_product_record.price_cents / 100.0) / v_seller_gross_pesos),
-            2
-          );
-          v_residual_commission := v_residual_commission - v_item_commission;
-          v_residual_shipping := v_residual_shipping - v_item_shipping;
-          v_residual_net := v_residual_net - v_item_net;
+          v_item_commission_cents := round(
+            v_commission_cents::NUMERIC * v_product_record.price_cents / v_gross_cents
+          )::BIGINT;
+          v_item_shipping_cents := round(
+            v_shipping_cents::NUMERIC * v_product_record.price_cents / v_gross_cents
+          )::BIGINT;
+          v_item_net_cents := round(
+            v_net_cents::NUMERIC * v_product_record.price_cents / v_gross_cents
+          )::BIGINT;
+          v_residual_commission_cents := v_residual_commission_cents - v_item_commission_cents;
+          v_residual_shipping_cents := v_residual_shipping_cents - v_item_shipping_cents;
+          v_residual_net_cents := v_residual_net_cents - v_item_net_cents;
         END IF;
 
         INSERT INTO public.order_items (
@@ -267,21 +262,21 @@ BEGIN
           shipment_id,
           seller_id,
           product_id,
-          price_at_purchase,
-          commission_amount,
-          shipping_amount,
+          price_at_purchase_cents,
+          commission_amount_cents,
+          shipping_amount_cents,
           shipping_payer,
-          net_payout
+          net_payout_cents
         ) VALUES (
           v_existing_order_id,
           v_shipment_id,
           v_seller_id,
           v_product_record.id,
-          v_product_record.price_cents / 100.0,
-          v_item_commission,
-          v_item_shipping,
+          v_product_record.price_cents,
+          v_item_commission_cents,
+          v_item_shipping_cents,
           'seller',
-          v_item_net
+          v_item_net_cents
         )
         ON CONFLICT DO NOTHING;
       END LOOP;
@@ -303,8 +298,8 @@ BEGIN
 
     -- All shipments are durable; pin the order's fee tally and derive status.
     UPDATE public.orders
-    SET service_fee_amount = COALESCE(v_service_fee_amount / 100.0, 0),
-        total_amount = v_total_amount,
+    SET service_fee_amount_cents = COALESCE(v_service_fee_amount_cents, 0),
+        total_amount_cents = v_total_amount_cents,
         updated_at = now()
     WHERE id = v_existing_order_id;
 

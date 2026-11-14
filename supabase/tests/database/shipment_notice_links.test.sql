@@ -52,18 +52,18 @@ update public.profiles_private set role = 'admin'
 where id = 'd0000000-0000-4000-8000-000000000021';
 
 -- One order, two shipments of the same seller; the dispute is on shipment 1.
-insert into public.orders (id, buyer_id, total_amount, shipping_address, status)
-values ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000022', 2000, '{}'::jsonb, 'completed');
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)
+values ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000022', 200000, '{}'::jsonb, 'completed');
 insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
 values
   ('d0000000-0000-4000-8000-0000000c0021', 'd0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000023', 'completed', now(), 'pi_test_links_1'),
   ('d0000000-0000-4000-8000-0000000c0022', 'd0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-000000000023', 'completed', now(), 'pi_test_links_2');
 select pg_temp.make_product('d0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023');
 select pg_temp.make_product('d0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023');
-insert into public.order_items (order_id, product_id, seller_id, price_at_purchase, net_payout, shipment_id)
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
 values
-  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023', 1000, 900, 'd0000000-0000-4000-8000-0000000c0021'),
-  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023', 1000, 900, 'd0000000-0000-4000-8000-0000000c0022');
+  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0021', 'd0000000-0000-4000-8000-000000000023', 100000, 90000, 'd0000000-0000-4000-8000-0000000c0021'),
+  ('d0000000-0000-4000-8000-0000000b0021', 'd0000000-0000-4000-8000-0000000a0022', 'd0000000-0000-4000-8000-000000000023', 100000, 90000, 'd0000000-0000-4000-8000-0000000c0022');
 update public.orders set status = 'completed' where id = 'd0000000-0000-4000-8000-0000000b0021';
 
 -- Producers filter by kind, so start from an empty inbox for these users.
