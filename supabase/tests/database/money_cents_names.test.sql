@@ -3,12 +3,13 @@
 -- its NOT NULL, default and `>= 0` check, and the old name is gone.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(10);
+select plan(18);
 \ir ../fixtures/money.psql
 
--- Seller 7701, buyer 7702; order 7710 with shipment and listing 7711.
+-- Seller 7701, buyer 7702, admin 7703; order 7710 with shipment and listing 7711.
 select pg_temp.money_user(7701);
 select pg_temp.money_user(7702);
+select pg_temp.money_user(7703);
 select pg_temp.money_shipment(7710, 7711, 7701, 7702);
 
 -- T7a: shipments.shipping_cost_cents ---------------------------------------------
@@ -47,6 +48,37 @@ select is(
   (select release_amount_cents from public.admin_connect_payout_release_view
     where shipment_id = pg_temp.mu(7711)),
   61300, 'a legacy shipment releases its net payout minus shipping_cost_cents');
+
+-- T7b: connect_payout_run_shipments.net_payout_cents ------------------------------
+select hasnt_column('public', 'connect_payout_run_shipments', 'net_payout',
+  'connect_payout_run_shipments has no net_payout column');
+select col_type_is('public', 'connect_payout_run_shipments', 'net_payout_cents', 'bigint',
+  'connect_payout_run_shipments.net_payout_cents is bigint');
+select col_not_null('public', 'connect_payout_run_shipments', 'net_payout_cents',
+  'connect_payout_run_shipments.net_payout_cents is NOT NULL');
+select col_hasnt_default('public', 'connect_payout_run_shipments', 'net_payout_cents',
+  'connect_payout_run_shipments.net_payout_cents has no default');
+select is(
+  (select pg_get_constraintdef(oid) from pg_constraint
+    where conrelid = 'public.connect_payout_run_shipments'::regclass
+      and conname = 'connect_payout_run_shipments_net_payout_cents_check'),
+  'CHECK ((net_payout_cents >= 0))',
+  'connect_payout_run_shipments_net_payout_cents_check requires net_payout_cents >= 0');
+
+-- Run 7720 maps shipment 7711 with its order_items net payout, 90000.
+select pg_temp.money_payout_run(7720, 7701, 7703, array[7711]);
+select throws_ok(
+  $$update public.connect_payout_run_shipments set net_payout_cents = -1
+      where run_id = pg_temp.mu(7720)$$,
+  '23514', null, 'a negative connect_payout_run_shipments.net_payout_cents is rejected');
+select throws_ok(
+  $$update public.connect_payout_run_shipments set net_payout_cents = null
+      where run_id = pg_temp.mu(7720)$$,
+  '23502', null, 'a NULL connect_payout_run_shipments.net_payout_cents is rejected');
+select is(
+  (select net_payout_cents from public.connect_payout_run_shipments
+    where run_id = pg_temp.mu(7720)),
+  90000::bigint, 'the rejected writes leave net_payout_cents unchanged');
 
 select * from finish();
 rollback;

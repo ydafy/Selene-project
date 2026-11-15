@@ -186,7 +186,7 @@ select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000017'), 'true|blk_co
 -- 11: the payout run is paid and mapped to the shipment.
 insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, paid_at)
 values ('d0000000-0000-4000-8000-0000000e0011', 'blockers-run-11', 'd0000000-0000-4000-8000-000000000011', 900, 'paid', 'd0000000-0000-4000-8000-000000000011', now());
-insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout, status)
+insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents, status)
 values ('d0000000-0000-4000-8000-0000000e0011', 'd0000000-0000-4000-8000-0000000c0001', 900, 'paid');
 -- 12 / 13: the runs are paid.
 update public.connect_payout_runs set status = 'paid', paid_at = now()

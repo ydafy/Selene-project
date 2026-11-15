@@ -47,7 +47,7 @@ const mapping: ReconciliationMapping = {
   id: 'OFFLINE-mapping',
   run_id: claim.run_id,
   shipment_id: 'OFFLINE-shipment',
-  net_payout: 100,
+  net_payout_cents: 100,
   status: 'pending_reconciliation',
 };
 const row: ReleaseQueueRow = {
@@ -234,7 +234,7 @@ export async function verifyPayoutRecoveryAdapters() {
         ['from', 'connect_payout_run_shipments'],
         [
           'select',
-          'id, run_id, shipment_id, net_payout, status',
+          'id, run_id, shipment_id, net_payout_cents, status',
           { count: 'exact' },
         ],
         ['eq', 'run_id', claim.run_id],

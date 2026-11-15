@@ -69,7 +69,7 @@ $$;
 -- Every column except the ones a resume may write.
 create function pg_temp.ident(p_run integer) returns jsonb language sql as $$
   select to_jsonb(r) - array['status', 'release_stage', 'release_stage_version', 'failure_reason', 'failed_at', 'updated_at']
-    || jsonb_build_object('mappings', (select jsonb_agg(jsonb_build_array(m.shipment_id, m.net_payout) order by m.shipment_id)
+    || jsonb_build_object('mappings', (select jsonb_agg(jsonb_build_array(m.shipment_id, m.net_payout_cents) order by m.shipment_id)
       from public.connect_payout_run_shipments m where m.run_id = r.id))
   from public.connect_payout_runs r where r.id = pg_temp.mu(p_run)
 $$;
@@ -203,14 +203,14 @@ select is(pg_temp.try('select 1',
   $$select pg_temp.resume(6201, 'pending', 'pending_reconciliation', 'release_accepted', 1, array[6101, 6103])$$),
   'refused', 'refuses a list naming a shipment the run does not map');
 select is(pg_temp.try_base('update public.connect_payout_runs set amount = amount + 1 where id = pg_temp.mu(6201)'),
-  'refused', 'refuses a run whose amount is not the sum of its mapped net_payout');
+  'refused', 'refuses a run whose amount is not the sum of its mapped net_payout_cents');
 select is(pg_temp.try_base($$update public.connect_payout_run_shipments set status = 'reconciliation_needed'
     where run_id = pg_temp.mu(6201) and shipment_id = pg_temp.mu(6102)$$),
   'refused', 'refuses a mapping whose status differs from the run');
-select is(pg_temp.try_base($$update public.connect_payout_run_shipments set net_payout = 0
+select is(pg_temp.try_base($$update public.connect_payout_run_shipments set net_payout_cents = 0
     where run_id = pg_temp.mu(6201) and shipment_id = pg_temp.mu(6102);
     update public.connect_payout_runs set amount = 90000 where id = pg_temp.mu(6201)$$),
-  'refused', 'refuses a mapping with a zero net_payout');
+  'refused', 'refuses a mapping with a zero net_payout_cents');
 select is(pg_temp.try_base('update public.shipments set seller_id = pg_temp.mu(6004) where id = pg_temp.mu(6102)'),
   'refused', 'refuses a shipment of another seller');
 select is(pg_temp.try_base($$update public.shipments set status = 'delivered' where id = pg_temp.mu(6102)$$),
@@ -249,7 +249,7 @@ select is(pg_temp.try_child('update public.connect_payout_runs set amount = amou
   'refused', 'refuses a parent with another amount');
 select is(pg_temp.try_child($$update public.connect_payout_run_shipments set status = 'canceled' where run_id = pg_temp.mu(6211)$$),
   'refused', 'refuses a parent mapping that is not failed');
-select is(pg_temp.try_child('update public.connect_payout_run_shipments set net_payout = net_payout + 1 where run_id = pg_temp.mu(6211)'),
+select is(pg_temp.try_child('update public.connect_payout_run_shipments set net_payout_cents = net_payout_cents + 1 where run_id = pg_temp.mu(6211)'),
   'refused', 'refuses a child mapping that differs from the parent mapping');
 
 -- 3. A failing mapping write rolls back the run write --------------------------

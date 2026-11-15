@@ -17,7 +17,7 @@ export type ResumeRpcOrThrow = (
 export interface ReconciliationMappingClient {
   from(table: 'connect_payout_run_shipments'): {
     select(
-      columns: 'id, run_id, shipment_id, net_payout, status',
+      columns: 'id, run_id, shipment_id, net_payout_cents, status',
       options: { count: 'exact' },
     ): {
       eq(
@@ -69,7 +69,7 @@ export function createReconciliationAdapters(
     loadReconciliationMappings: async (runId) => {
       const { data, error, count } = await client
         .from('connect_payout_run_shipments')
-        .select('id, run_id, shipment_id, net_payout, status', {
+        .select('id, run_id, shipment_id, net_payout_cents, status', {
           count: 'exact',
         })
         .eq('run_id', runId);

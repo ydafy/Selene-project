@@ -119,7 +119,7 @@ begin
     coalesce(sum(oi.net_payout_cents), 0)::integer, p_status, pg_temp.mu(p_actor), p_stage
   from unnest(p_shipments) as n
   left join public.order_items oi on oi.shipment_id = pg_temp.mu(n);
-  insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout, status)
+  insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents, status)
   select pg_temp.mu(p_run), pg_temp.mu(n), sum(oi.net_payout_cents)::integer, p_status
   from unnest(p_shipments) as n
   join public.order_items oi on oi.shipment_id = pg_temp.mu(n)

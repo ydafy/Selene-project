@@ -80,11 +80,11 @@ BEGIN
     PERFORM 1 FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id ORDER BY shipment_id FOR UPDATE;
     IF EXISTS (SELECT 1 FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id AND status <> 'failed')
       OR EXISTS (
-        (SELECT shipment_id, net_payout FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id
-         EXCEPT SELECT shipment_id, net_payout FROM public.connect_payout_run_shipments WHERE run_id = v_run.id)
+        (SELECT shipment_id, net_payout_cents FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id
+         EXCEPT SELECT shipment_id, net_payout_cents FROM public.connect_payout_run_shipments WHERE run_id = v_run.id)
         UNION ALL
-        (SELECT shipment_id, net_payout FROM public.connect_payout_run_shipments WHERE run_id = v_run.id
-         EXCEPT SELECT shipment_id, net_payout FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id)
+        (SELECT shipment_id, net_payout_cents FROM public.connect_payout_run_shipments WHERE run_id = v_run.id
+         EXCEPT SELECT shipment_id, net_payout_cents FROM public.connect_payout_run_shipments WHERE run_id = v_parent.id)
       )
     THEN RETURN NULL; END IF;
   END IF;
@@ -93,7 +93,7 @@ BEGIN
   -- unique index also rejects concurrent foreign activation atomically.
   PERFORM 1 FROM public.connect_payout_run_shipments WHERE run_id = v_run.id ORDER BY shipment_id FOR UPDATE;
   PERFORM 1 FROM public.shipments WHERE id = ANY(p_shipment_ids) ORDER BY id FOR UPDATE;
-  SELECT count(*), count(DISTINCT shipment_id), sum(net_payout)
+  SELECT count(*), count(DISTINCT shipment_id), sum(net_payout_cents)
     INTO v_count, v_unique, v_amount
     FROM public.connect_payout_run_shipments WHERE run_id = v_run.id;
   IF v_count <> cardinality(p_shipment_ids) OR v_unique <> v_count
@@ -102,7 +102,7 @@ BEGIN
       JOIN public.shipments s ON s.id = m.shipment_id
       WHERE m.run_id = v_run.id AND (
         NOT (m.shipment_id = ANY(p_shipment_ids)) OR m.status <> v_run.status
-        OR m.net_payout <= 0 OR s.seller_id <> v_run.seller_id
+        OR m.net_payout_cents <= 0 OR s.seller_id <> v_run.seller_id
         OR s.status <> 'completed' OR s.completed_at IS NULL
         OR (p_mode = 'pending' AND s.stripe_transfer_id IS NULL)))
     OR EXISTS (SELECT 1 FROM public.connect_payout_run_shipments

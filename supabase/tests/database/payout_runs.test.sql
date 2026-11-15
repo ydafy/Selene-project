@@ -29,7 +29,7 @@ $$;
 
 create function pg_temp.map_row(p_run integer, p_shipment uuid, p_net integer, p_status text)
 returns void language sql as $$
-  insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout, status)
+  insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents, status)
   values (pg_temp.mu(p_run), p_shipment, p_net, p_status)
 $$;
 
@@ -48,11 +48,11 @@ select results_eq(
 select results_eq(
   $$select attname::text collate "default", format_type(atttypid, atttypmod), attnotnull from pg_attribute
     where attrelid = 'public.connect_payout_run_shipments'::regclass
-      and attname in ('run_id', 'shipment_id', 'net_payout', 'status')
+      and attname in ('run_id', 'shipment_id', 'net_payout_cents', 'status')
     order by attnum$$,
-  $$values ('run_id', 'uuid', true), ('shipment_id', 'uuid', true), ('net_payout', 'integer', true),
+  $$values ('run_id', 'uuid', true), ('shipment_id', 'uuid', true), ('net_payout_cents', 'bigint', true),
     ('status', 'text', true)$$,
-  'connect_payout_run_shipments maps a run to shipments with an integer net_payout'
+  'connect_payout_run_shipments maps a run to shipments with a bigint net_payout_cents'
 );
 select results_eq(
   $$select attname::text collate "default", format_type(atttypid, atttypmod), attnotnull from pg_attribute
@@ -117,7 +117,7 @@ select lives_ok($$select pg_temp.map_row(304, pg_temp.mu(102), 100, 'pending_rec
 select throws_ok($$select pg_temp.map_row(304, pg_temp.mu(102), 100, 'failed')$$,
   '23505', null, 'a run maps each shipment once');
 select throws_ok($$select pg_temp.map_row(305, pg_temp.mu(104), -1, 'failed')$$,
-  '23514', null, 'a mapping net_payout cannot be negative');
+  '23514', null, 'a mapping net_payout_cents cannot be negative');
 select throws_ok($$select pg_temp.map_row(304, pg_temp.mu(104), 100, 'released')$$,
   '23514', null, 'a mapping status outside the five run states is rejected');
 select throws_ok($$select pg_temp.map_row(305, pg_temp.mu(999), 100, 'pending_reconciliation')$$,

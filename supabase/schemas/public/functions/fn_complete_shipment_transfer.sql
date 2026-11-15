@@ -55,10 +55,10 @@ BEGIN
       'shipment.funds_released',
       'shipment.funds_released:' || p_shipment_id::text,
       jsonb_build_object('order_id', v_shipment.order_id, 'shipment_id', p_shipment_id,
-        'amount_cents', v_mapping.net_payout, 'currency', 'mxn', 'recipient_role', 'seller'),
+        'amount_cents', v_mapping.net_payout_cents, 'currency', 'mxn', 'recipient_role', 'seller'),
       'success',
       'Liberamos el pago de tu venta',
-      'Enviamos $' || to_char(v_mapping.net_payout / 100.0, 'FM999,999,990.00')
+      'Enviamos $' || to_char(v_mapping.net_payout_cents / 100.0, 'FM999,999,990.00')
         || ' MXN a tu cuenta de vendedor. El depósito a tu banco puede tardar unos días hábiles.',
       '/profile/orders/' || v_shipment.order_id::text
         || COALESCE('?shipment_id=' || p_shipment_id::text, '')

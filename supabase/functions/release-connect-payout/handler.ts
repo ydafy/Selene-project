@@ -297,7 +297,7 @@ export function createSupabaseReleasePayoutPorts(
           input.shipments.map((shipment) => ({
             run_id: input.runId,
             shipment_id: shipment.shipmentId,
-            net_payout: shipment.netPayout,
+            net_payout_cents: shipment.netPayout,
             status: 'pending_reconciliation',
           })),
         );

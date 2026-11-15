@@ -70,7 +70,7 @@ async function fixture(tx: Tx) {
            (${ids.paid}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}, 'unclaimed', NULL, NULL, NULL)`;
   await tx`INSERT INTO public.connect_payout_runs (id, idempotency_key, seller_id, actor_id, amount, release_stage)
     VALUES (${ids.run}::uuid, 'b58-key', ${ids.seller}::uuid, ${ids.buyer}::uuid, 11000, 'release_accepted')`;
-  await tx`INSERT INTO public.connect_payout_run_shipments (run_id, shipment_id, net_payout)
+  await tx`INSERT INTO public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents)
     VALUES (${ids.run}::uuid, ${ids.preparing}::uuid, 10000)`;
   await tx`SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true)`;
   await tx`SET LOCAL ROLE service_role`;
