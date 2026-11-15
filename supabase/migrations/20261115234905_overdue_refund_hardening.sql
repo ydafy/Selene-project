@@ -1,0 +1,189 @@
+SET local check_function_bodies = off;
+
+CREATE OR REPLACE FUNCTION public.fn_lease_overdue_refund_replay (
+  p_shipment_id uuid
+)
+  RETURNS jsonb
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO ''
+  AS $function$
+DECLARE
+  v_shipment_status TEXT;
+  v_operation public.shipment_cancellation_operations%ROWTYPE;
+  v_expires_at TIMESTAMPTZ;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
+
+  -- Same lock order as the record and escalate RPCs: shipment first, then the operation.
+  SELECT status::text INTO v_shipment_status FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'SHIPMENT_NOT_FOUND'; END IF;
+  SELECT * INTO v_operation FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND OR v_operation.source IS DISTINCT FROM 'admin_overdue_payout'
+     OR v_operation.external_started_at IS NULL OR v_operation.refund_request IS NULL THEN
+    RAISE EXCEPTION 'OVERDUE_REFUND_NOT_STARTED';
+  END IF;
+  -- Inside Stripe's idempotency window the replay reuses the operation key, so
+  -- only the escalated replay past that window needs this lease.
+  IF v_operation.recovery_escalated_at IS NULL THEN RAISE EXCEPTION 'OVERDUE_REFUND_NOT_ESCALATED'; END IF;
+
+  -- A refund recorded or repaid by hand meanwhile, or a live lease of another
+  -- retry: this retry must not call Stripe. The next retry converges.
+  IF v_operation.refund_id IS NOT NULL OR v_operation.refund_status IS NOT NULL
+     OR v_operation.refund_resolved_at IS NOT NULL OR v_shipment_status = 'refunded'
+     OR v_operation.claim_expires_at > clock_timestamp() THEN
+    RETURN jsonb_build_object('status', 'busy');
+  END IF;
+
+  -- The started operation's claim lease is free to reuse: external_started_at
+  -- already fences every claim, start and transfer. Ten minutes outlive any
+  -- Edge Function run, so a lease holder's Stripe call has ended before the
+  -- next retry lists the refunds again.
+  v_expires_at := clock_timestamp() + interval '10 minutes';
+  UPDATE public.shipment_cancellation_operations SET claim_expires_at = v_expires_at
+    WHERE shipment_id = p_shipment_id;
+
+  RETURN jsonb_build_object('status', 'leased', 'lease_expires_at', v_expires_at);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION "public"."fn_lease_overdue_refund_replay"(uuid) FROM PUBLIC, "anon", "authenticated";
+
+CREATE OR REPLACE FUNCTION public.fn_resolve_shipment_cancellation_refund (
+  p_shipment_id uuid,
+  p_admin_id    uuid,
+  p_reference   text
+)
+  RETURNS jsonb
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO ''
+  AS $function$
+DECLARE
+  v_reference TEXT := btrim(p_reference);
+  v_shipment_status TEXT;
+  v_operation public.shipment_cancellation_operations%ROWTYPE;
+  v_amount_owed BIGINT;
+  v_unrecorded_escalated BOOLEAN;
+  v_cancelled BOOLEAN := FALSE;
+  v_cancel_success BOOLEAN;
+  v_cancel_error TEXT;
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
+  -- Defense in depth: the admin id is written to the audit log, so it must be an
+  -- active admin by the same rule as is_admin(), not only what the caller checked.
+  IF p_admin_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.profiles_private
+    WHERE id = p_admin_id AND role = 'admin' AND COALESCE(status::text, 'active') = 'active'
+  ) THEN
+    RAISE EXCEPTION 'ADMIN_REQUIRED';
+  END IF;
+  IF v_reference IS NULL OR v_reference = '' OR char_length(v_reference) > 200 THEN
+    RAISE EXCEPTION 'INVALID_RESOLUTION_REFERENCE';
+  END IF;
+
+  -- The lock order of fn_begin_shipment_transfer and fn_complete_overdue_payout_refund:
+  -- the payout runs and mappings of a completed shipment, then the shipment. A
+  -- cancelled shipment was never released, so it has none and only the shipment
+  -- is locked first, as in claim/start, record and fn_cancel_shipment.
+  PERFORM 1 FROM public.connect_payout_runs r
+    WHERE r.id IN (SELECT m.run_id FROM public.connect_payout_run_shipments m
+      WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed'))
+    ORDER BY r.id FOR UPDATE;
+  PERFORM 1 FROM public.connect_payout_run_shipments m
+    WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed')
+    ORDER BY m.id FOR UPDATE;
+  SELECT status::text INTO v_shipment_status
+    FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE'; END IF;
+
+  SELECT * INTO v_operation FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id FOR UPDATE;
+  IF NOT FOUND OR v_operation.external_started_at IS NULL OR v_operation.refund_request IS NULL THEN
+    RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE';
+  END IF;
+  -- Escalation markers stay as history: this function never clears them.
+  v_unrecorded_escalated := v_operation.refund_id IS NULL AND v_operation.refund_status IS NULL
+    AND v_operation.recovery_escalated_at IS NOT NULL;
+  IF NOT v_unrecorded_escalated AND (v_operation.refund_id IS NULL OR v_operation.refund_status IS NULL) THEN
+    RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE';
+  END IF;
+  v_amount_owed := (v_operation.refund_request->>'amount')::BIGINT;
+
+  -- Idempotent: a second resolve never overwrites the first admin or reference.
+  IF v_operation.refund_resolved_at IS NOT NULL THEN
+    RETURN jsonb_build_object('resolved', FALSE, 'shipment_cancelled', FALSE,
+      'amount_owed_cents', v_amount_owed, 'reference', v_operation.refund_resolution_reference);
+  END IF;
+
+  IF NOT v_unrecorded_escalated AND v_operation.refund_status NOT IN ('failed', 'canceled') THEN
+    RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE';
+  END IF;
+  IF v_operation.source = 'admin_overdue_payout' THEN
+    -- An overdue payout refund (#549) is repaid by hand only after Stripe
+    -- reported its refund failed or canceled, so the money is back in Selene's
+    -- balance; an escalated operation without a refund may still pay out (L11).
+    IF v_unrecorded_escalated THEN RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE'; END IF;
+    -- A refunded shipment here had its refund succeed, then Stripe failed it
+    -- (fn_record_shipment_cancellation_refund accepts succeeded -> failed): the
+    -- admin records the repayment and nothing else changes (T5b).
+    IF v_shipment_status IS DISTINCT FROM 'completed' AND v_shipment_status IS DISTINCT FROM 'refunded' THEN
+      RAISE EXCEPTION 'SHIPMENT_STATUS_UNEXPECTED: %', v_shipment_status;
+    END IF;
+  ELSIF v_shipment_status NOT IN ('paid', 'preparing', 'cancelled') THEN
+    RAISE EXCEPTION 'SHIPMENT_STATUS_UNEXPECTED: %', v_shipment_status;
+  END IF;
+
+  UPDATE public.shipment_cancellation_operations
+    SET refund_resolved_at = clock_timestamp(),
+        refund_resolved_by = p_admin_id,
+        refund_resolution_reference = v_reference
+    WHERE shipment_id = p_shipment_id;
+
+  INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
+  VALUES (p_admin_id, 'SHIPMENT_REFUND_RESOLVED', p_shipment_id,
+    jsonb_build_object(
+      'refund_id', v_operation.refund_id,
+      'refund_status', v_operation.refund_status,
+      'amount_owed_cents', v_amount_owed,
+      'reference', v_reference,
+      'shipment_status_before', v_shipment_status)
+    || CASE WHEN v_operation.recovery_escalation_reason IS NULL THEN '{}'::JSONB
+            ELSE jsonb_build_object('escalation_reason', v_operation.recovery_escalation_reason) END);
+
+  IF v_operation.source = 'admin_overdue_payout' THEN
+    -- The completion of a succeeded overdue refund: refunded, loss, run
+    -- mappings and buyer notice, once. A shipment already refunded keeps its
+    -- completion: no second loss or notice.
+    IF v_shipment_status = 'completed' THEN
+      PERFORM public.fn_complete_overdue_payout_refund(p_shipment_id);
+    END IF;
+  ELSIF v_shipment_status IN ('paid', 'preparing') THEN
+    -- Complete with the stored winner, reason and frozen loss, never the admin's.
+    SELECT c.success, c.error_message INTO v_cancel_success, v_cancel_error
+      FROM public.fn_cancel_shipment(
+        p_shipment_id,
+        CASE WHEN v_operation.source IN ('buyer', 'seller') THEN v_operation.source ELSE 'system' END,
+        v_operation.reason,
+        v_operation.cancellation_loss_cents) AS c;
+    IF v_cancel_success IS NOT TRUE OR v_cancel_error IS NOT NULL THEN
+      RAISE EXCEPTION 'CANCELLATION_COMPLETE_FAILED: %', COALESCE(v_cancel_error, 'UNKNOWN');
+    END IF;
+    v_cancelled := TRUE;
+  END IF;
+
+  RETURN jsonb_build_object('resolved', TRUE, 'shipment_cancelled', v_cancelled,
+    'amount_owed_cents', v_amount_owed, 'reference', v_reference);
+END;
+$function$;
+
+COMMENT ON FUNCTION "public"."fn_lease_overdue_refund_replay"(uuid) IS 'Service-only (SECURITY DEFINER; EXECUTE revoked from PUBLIC, anon and authenticated because it serializes a Stripe refund only an Edge Function makes): before an admin retry replays the frozen refund of an escalated overdue payout refund (#549) past Stripe''s idempotency window, takes an exclusive 10-minute lease on the operation (its claim_expires_at). Returns leased, or busy while another lease is live or once a refund was recorded, resolved or the shipment refunded. Raises OVERDUE_REFUND_NOT_STARTED or OVERDUE_REFUND_NOT_ESCALATED otherwise.';
+
+COMMENT ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) IS 'Service-only (SECURITY DEFINER): an admin marks a failed or canceled shipment refund, or an escalated operation without a refund, as resolved with a reference (audited) and, when the shipment is still open, completes the cancellation. A failed or canceled overdue payout refund (#549) of a completed shipment is resolved the same way and refunds the shipment through fn_complete_overdue_payout_refund; one that Stripe failed after the shipment was refunded only records the resolution. The caller must have verified the admin; the amount owed is the frozen request amount.';
+
+REVOKE ALL ON FUNCTION "public"."fn_lease_overdue_refund_replay"(uuid) FROM "postgres";
+
+GRANT EXECUTE ON FUNCTION "public"."fn_lease_overdue_refund_replay"(uuid) TO "postgres";
+
+GRANT EXECUTE ON FUNCTION "public"."fn_lease_overdue_refund_replay"(uuid) TO "service_role";
