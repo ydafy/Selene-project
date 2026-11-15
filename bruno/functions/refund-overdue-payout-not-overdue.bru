@@ -1,0 +1,36 @@
+meta {
+  name: refund-overdue-payout-not-overdue
+  type: http
+  seq: 188
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refund-overdue-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("roRecentShipment") });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a shipment held fewer than 30 days cannot be refunded", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "PAYOUT_NOT_OVERDUE" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. The seller is rejected but the shipment was completed 5 days
+  ago, so it is not overdue (S1); the function refuses before calling Stripe.
+}
