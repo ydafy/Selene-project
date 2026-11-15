@@ -214,7 +214,7 @@ if (process.env.A65_SSR_CHILD !== '1') {
     expect(navigation).toContain('w-fit');
     expect(navigation).toContain('max-w-full');
     expect(navigation).toContain('overflow-x-auto');
-    expect(html.match(/role="tab"/g)).toHaveLength(4);
+    expect(html.match(/role="tab"/g)).toHaveLength(5);
     expect(html).toMatch(/id="payments-tab-ready"[^>]*aria-selected="true"/);
     expect(html).toContain('aria-controls="payments-workspace"');
   });

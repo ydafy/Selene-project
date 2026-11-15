@@ -795,3 +795,18 @@ it('shows unavailable payment dates without using failure or retry dates and lea
     expect(h.calls).toEqual([]);
   }
 });
+
+it('marks a run that holds an overdue held payout, in the list and in its detail', () => {
+  const plain = harness();
+  expect(renderToStaticMarkup(plain.render())).not.toContain('vencido');
+  const marked = harness({
+    runs: [{ ...run, overdueShipmentCount: 2 }],
+  });
+  expect(renderToStaticMarkup(marked.render())).toContain('2 envíos vencidos');
+  marked.openDetail();
+  const html = renderToStaticMarkup(marked.render());
+  expect(html.match(/2 envíos vencidos/g)?.length).toBe(2);
+  expect(html).toContain('30 días o más');
+  const single = harness({ runs: [{ ...run, overdueShipmentCount: 1 }] });
+  expect(renderToStaticMarkup(single.render())).toContain('1 envío vencido');
+});

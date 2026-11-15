@@ -52,6 +52,8 @@ const paymentTime = (run: ReleaseQueueRun) =>
   ) : (
     'No disponible'
   );
+const overdueLabel = (count: number) =>
+  count === 1 ? '1 envío vencido' : `${count} envíos vencidos`;
 const sellerLabel = (run: ReleaseQueueRun) =>
   run.sellerName
     ? `@${run.sellerName}`
@@ -325,6 +327,16 @@ export const PayoutRunsWorkbench = ({
           {money(run.amountCents)}{' '}
           <span className="text-xs font-medium text-blue-light">MXN</span>
         </p>
+        {run.overdueShipmentCount ? (
+          <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-400">
+            <span className="font-bold">
+              {overdueLabel(run.overdueShipmentCount)}
+            </span>
+            {
+              ': completados hace 30 días o más sin que el vendedor pueda cobrar. Siguen en esta dispersión.'
+            }
+          </p>
+        ) : null}
       </header>
       <div
         className={
@@ -691,6 +703,11 @@ export const PayoutRunsWorkbench = ({
                       <span className={`mt-2 block text-xs ${tone}`}>
                         {statusLabel(item)}
                       </span>
+                      {item.overdueShipmentCount ? (
+                        <span className="mt-2 inline-block rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                          {overdueLabel(item.overdueShipmentCount)}
+                        </span>
+                      ) : null}
                       {mode === 'history' ? (
                         <span className="mt-2 block text-xs text-blue-light">
                           Fecha de pago observada: {paymentTime(item)}

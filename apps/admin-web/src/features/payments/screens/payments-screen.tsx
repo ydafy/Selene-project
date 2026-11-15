@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import {
   AlertTriangle,
+  CalendarClock,
   Clock3,
   RefreshCw,
   Search,
@@ -22,12 +23,15 @@ import { formatTime } from '@/shared/utils/format-date';
 import { PayoutReleaseWorkbench } from '../components/payout-release-workbench';
 import { ActionRequiredPanel } from '../components/action-required-panel';
 import { PayoutRunsWorkbench } from '../components/payout-runs-workbench';
+import { OverduePayoutsPanel } from '../components/overdue-payouts-panel';
 import { workbenchFocus } from '@/shared/ui/workbench-focus';
 
-export type PaymentTab = 'ready' | 'processing' | 'action-required' | 'history';
+export type PaymentTab =
+  'ready' | 'overdue' | 'processing' | 'action-required' | 'history';
 
 const WORKSPACES = [
   { id: 'ready', label: 'Por liberar', icon: Wallet },
+  { id: 'overdue', label: 'Pagos vencidos', icon: CalendarClock },
   { id: 'action-required', label: 'Necesita atención', icon: AlertTriangle },
   { id: 'processing', label: 'En proceso', icon: Clock3 },
   { id: 'history', label: 'Historial', icon: ShieldCheck },
@@ -55,6 +59,7 @@ export const PaymentsPage = () => {
     counts: serverCounts,
     fetchSelection,
     batches = [],
+    overduePayouts = [],
     processingRuns = [],
     actionRequiredRuns = [],
     historyRuns = [],
@@ -142,6 +147,7 @@ export const PaymentsPage = () => {
   });
   const counts = serverCounts ?? {
     ready: batches.length,
+    overdue: new Set(overduePayouts.map((payout) => payout.sellerId)).size,
     'action-required': actionRequiredRuns.length,
     processing: processingRuns.length,
     history: historyRuns.length,
@@ -339,7 +345,7 @@ export const PaymentsPage = () => {
         : historyRuns;
 
   const runsWorkbench =
-    activeTab === 'ready' ? null : (
+    activeTab === 'ready' || activeTab === 'overdue' ? null : (
       <PayoutRunsWorkbench
         key={`${activeTab}:${debouncedSearch}`}
         mode={activeTab}
@@ -432,8 +438,8 @@ export const PaymentsPage = () => {
             />
             <span>{label}</span>
             <span
-              aria-label={`${id === 'ready' ? 'Vendedores en cola' : 'Ejecuciones'}: ${queueUnresolved || isQueueError ? 'consultando' : counts[id]}`}
-              className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${id === 'action-required' && counts[id] > 0 ? 'bg-amber-400/10 text-amber-400' : 'bg-white/5'}`}
+              aria-label={`${id === 'ready' ? 'Vendedores en cola' : id === 'overdue' ? 'Vendedores con pagos vencidos' : 'Ejecuciones'}: ${queueUnresolved || isQueueError ? 'consultando' : counts[id]}`}
+              className={`rounded-md px-1.5 py-0.5 text-[10px] tabular-nums ${(id === 'action-required' || id === 'overdue') && counts[id] > 0 ? 'bg-amber-400/10 text-amber-400' : 'bg-white/5'}`}
             >
               {queueUnresolved || isQueueError ? '—' : counts[id]}
             </span>
@@ -539,6 +545,17 @@ export const PaymentsPage = () => {
             onBusyChange={setWorkbenchBusy}
             onRelease={handleRelease}
           />
+        ) : activeTab === 'overdue' ? (
+          <OverduePayoutsPanel
+            key={`overdue:${debouncedSearch}`}
+            payouts={isQueueError ? [] : overduePayouts}
+            pagination={pagination}
+            onPageChange={(next) => {
+              if (!financialBusy) setPage(next);
+            }}
+            isLoading={queueUnresolved || isQueueError}
+            onBusyChange={setWorkbenchBusy}
+          />
         ) : activeTab === 'action-required' ? (
           <ActionRequiredPanel payoutCount={actionRequiredRuns.length}>
             {runsWorkbench}
@@ -568,8 +585,8 @@ export const PaymentsPage = () => {
             ? 'Resultados de la búsqueda.'
             : 'Resultados de la consulta.'}{' '}
           Contadores de la consulta actual, no totales globales: vendedores en
-          Por liberar; ejecuciones en las demás pestañas. Los importes de la
-          cola no representan un saldo Stripe.
+          Por liberar y Pagos vencidos; ejecuciones en las demás pestañas. Los
+          importes de la cola no representan un saldo Stripe.
         </p>
       </div>
     </div>
