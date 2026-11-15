@@ -29,10 +29,10 @@ BEGIN
   ORDER BY created_at DESC
   LIMIT 1;
 
-  -- Fallback to PENDING_VERIFICATION if no admin log found (seller self-deleted).
-  -- Never auto-approve to VERIFIED — force re-moderation.
+  -- Fallback to pending_verification if no admin log found (seller self-deleted).
+  -- Never auto-approve to verified — force re-moderation.
   IF v_previous_status IS NULL THEN
-    v_previous_status := 'PENDING_VERIFICATION'::public.product_status;
+    v_previous_status := 'pending_verification'::public.product_status;
   END IF;
 
   UPDATE public.products

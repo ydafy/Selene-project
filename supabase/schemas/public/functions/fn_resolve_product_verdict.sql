@@ -47,8 +47,8 @@ BEGIN
     RAISE EXCEPTION 'LOCK_EXPIRED_OR_STOLEN';
   END IF;
 
-  IF (p_verdict = 'APPROVE' AND v_status = 'VERIFIED')
-     OR (p_verdict = 'REJECT' AND v_status = 'REJECTED') THEN
+  IF (p_verdict = 'APPROVE' AND v_status = 'verified')
+     OR (p_verdict = 'REJECT' AND v_status = 'rejected') THEN
     UPDATE public.products
     SET locked_by = NULL,
         locked_at = NULL
@@ -65,7 +65,7 @@ BEGIN
   -- 6. Actualizar Estado del Producto y liberar el lock
   IF p_verdict = 'REJECT' THEN
     UPDATE public.products
-    SET status = 'REJECTED'::public.product_status,
+    SET status = 'rejected'::public.product_status,
         rejection_reason = trim(p_public_note),
         locked_by = NULL,
         locked_at = NULL,
@@ -73,7 +73,7 @@ BEGIN
     WHERE id = p_product_id;
   ELSIF p_verdict = 'APPROVE' THEN
     UPDATE public.products
-    SET status = 'VERIFIED'::public.product_status,
+    SET status = 'verified'::public.product_status,
         rejection_reason = NULL,
         verified_at = now(),
         locked_by = NULL,

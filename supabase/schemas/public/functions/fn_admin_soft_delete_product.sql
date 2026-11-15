@@ -32,7 +32,7 @@ BEGIN
 
   UPDATE public.products
   SET deleted_at = now(),
-      status = 'HIDDEN'::public.product_status,
+      status = 'hidden'::public.product_status,
       updated_at = now()
   WHERE id = p_product_id
     AND deleted_at IS NULL;

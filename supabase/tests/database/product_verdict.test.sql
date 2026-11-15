@@ -1,7 +1,7 @@
 -- fn_resolve_product_verdict: an active admin who holds a fresh review lock
 -- (10 minutes or less) approves or rejects a listing. It refuses a call
 -- without a session, from a non-admin, or without that lock. APPROVE on a
--- VERIFIED listing or REJECT on a REJECTED one only releases the lock. A
+-- verified listing or REJECT on a rejected one only releases the lock. A
 -- verdict writes the listing status, one admin audit row and one seller
 -- notice whose source_event_key ends in the audit row id. A refusal changes
 -- nothing. Runs against the local database only: `supabase start`, then
@@ -35,7 +35,7 @@ create function pg_temp.listing(
     '{}'::jsonb, pg_temp.mu(5102), 10000, '06600', 'gpu_1', p_rejection_reason,
     case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
     case when p_locked_by is null then null else now() - p_lock_age end,
-    case when p_status = 'VERIFIED' then now() - interval '1 day' end,
+    case when p_status = 'verified' then now() - interval '1 day' end,
     now() - interval '1 day',
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
@@ -103,18 +103,18 @@ create function pg_temp.details(p_n integer, p_note text, p_verdict text) return
     'admin_note', p_note, 'verdict', p_verdict)::text
 $$;
 
-select pg_temp.listing(5121, 'IN_REVIEW', 5104, interval '1 minute');
-select pg_temp.listing(5122, 'IN_REVIEW', 5103, interval '1 minute');
-select pg_temp.listing(5123, 'IN_REVIEW', null, null);
-select pg_temp.listing(5124, 'IN_REVIEW', 5101, interval '10 minutes 1 second');
-select pg_temp.listing(5125, 'IN_REVIEW', 5101, interval '10 minutes');
-select pg_temp.listing(5126, 'VERIFIED', 5101, interval '1 minute');
-select pg_temp.listing(5127, 'REJECTED', 5101, interval '1 minute', 'Old reason');
-select pg_temp.listing(5128, 'IN_REVIEW', 5101, interval '1 minute');
-select pg_temp.listing(5129, 'IN_REVIEW', 5101, interval '1 minute', 'Old reason');
-select pg_temp.listing(5130, 'IN_REVIEW', 5101, interval '1 minute');
-select pg_temp.listing(5131, 'IN_REVIEW', 5101, interval '1 minute');
-select pg_temp.listing(5132, 'PENDING_VERIFICATION', 5101, interval '1 minute');
+select pg_temp.listing(5121, 'in_review', 5104, interval '1 minute');
+select pg_temp.listing(5122, 'in_review', 5103, interval '1 minute');
+select pg_temp.listing(5123, 'in_review', null, null);
+select pg_temp.listing(5124, 'in_review', 5101, interval '10 minutes 1 second');
+select pg_temp.listing(5125, 'in_review', 5101, interval '10 minutes');
+select pg_temp.listing(5126, 'verified', 5101, interval '1 minute');
+select pg_temp.listing(5127, 'rejected', 5101, interval '1 minute', 'Old reason');
+select pg_temp.listing(5128, 'in_review', 5101, interval '1 minute');
+select pg_temp.listing(5129, 'in_review', 5101, interval '1 minute', 'Old reason');
+select pg_temp.listing(5130, 'in_review', 5101, interval '1 minute');
+select pg_temp.listing(5131, 'in_review', 5101, interval '1 minute');
+select pg_temp.listing(5132, 'pending_verification', 5101, interval '1 minute');
 select pg_temp.remember(array[5121, 5122, 5123, 5124, 5128]);
 create table pg_temp.before_core as select n, pg_temp.core(n) as v from unnest(array[5126, 5127]) as n;
 
@@ -170,30 +170,30 @@ set local role authenticated;
 select is(public.fn_resolve_product_verdict(pg_temp.mu(5125), 'APPROVE'), true,
   'a lock exactly 10 minutes old still allows the verdict');
 reset role;
-select is((select status::text from public.products where id = pg_temp.mu(5125)), 'VERIFIED',
+select is((select status::text from public.products where id = pg_temp.mu(5125)), 'verified',
   'the verdict under a 10-minute-old lock is written');
 
 -- Same-status guard: only the lock is released ---------------------------------
 set local role authenticated;
 select is(public.fn_resolve_product_verdict(pg_temp.mu(5126), 'APPROVE', 'Note'), true,
-  'APPROVE on a VERIFIED listing returns true');
+  'APPROVE on a verified listing returns true');
 reset role;
-select is(pg_temp.lock_of(5126), '-|-', 'APPROVE on a VERIFIED listing releases the lock');
+select is(pg_temp.lock_of(5126), '-|-', 'APPROVE on a verified listing releases the lock');
 -- Releasing the lock is a write, so the updated_at trigger stamps now().
 select is(pg_temp.core(5126), (select regexp_replace(v, '[^|]*$', now()::text) from pg_temp.before_core where n = 5126),
-  'APPROVE on a VERIFIED listing keeps its status and verified_at; the lock release stamps updated_at');
-select is(pg_temp.audits(5126), 0::bigint, 'APPROVE on a VERIFIED listing writes no audit row');
-select is(pg_temp.notices(5126), 0::bigint, 'APPROVE on a VERIFIED listing sends no notice');
+  'APPROVE on a verified listing keeps its status and verified_at; the lock release stamps updated_at');
+select is(pg_temp.audits(5126), 0::bigint, 'APPROVE on a verified listing writes no audit row');
+select is(pg_temp.notices(5126), 0::bigint, 'APPROVE on a verified listing sends no notice');
 
 set local role authenticated;
 select is(public.fn_resolve_product_verdict(pg_temp.mu(5127), 'REJECT', 'New reason'), true,
-  'REJECT on a REJECTED listing returns true');
+  'REJECT on a rejected listing returns true');
 reset role;
-select is(pg_temp.lock_of(5127), '-|-', 'REJECT on a REJECTED listing releases the lock');
+select is(pg_temp.lock_of(5127), '-|-', 'REJECT on a rejected listing releases the lock');
 select is(pg_temp.core(5127), (select regexp_replace(v, '[^|]*$', now()::text) from pg_temp.before_core where n = 5127),
-  'REJECT on a REJECTED listing keeps its rejection reason; the lock release stamps updated_at');
+  'REJECT on a rejected listing keeps its rejection reason; the lock release stamps updated_at');
 select is(pg_temp.audits(5127) + pg_temp.notices(5127), 0::bigint,
-  'REJECT on a REJECTED listing writes no audit row and sends no notice');
+  'REJECT on a rejected listing writes no audit row and sends no notice');
 
 -- APPROVE without a public note; a blank private note is not stored -------------
 select pg_temp.remember(array[5129]);
@@ -202,8 +202,8 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), 'APPROVE', null, '
   'APPROVE returns true');
 reset role;
 select is(pg_temp.core(5129) || '|' || pg_temp.lock_of(5129),
-  'VERIFIED|-|' || now()::text || '|' || now()::text || '|-|-',
-  'APPROVE sets VERIFIED, clears the rejection reason and the lock, stamps verified_at and updated_at');
+  'verified|-|' || now()::text || '|' || now()::text || '|-|-',
+  'APPROVE sets verified, clears the rejection reason and the lock, stamps verified_at and updated_at');
 select is(pg_temp.audit_row(5129),
   pg_temp.mu(5101)::text || '|PRODUCT_APPROVE|' || pg_temp.details(5129, null, 'APPROVE'),
   'APPROVE writes one PRODUCT_APPROVE audit row for the admin');
@@ -241,8 +241,8 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5131), 'REJECT', '  Seria
   'REJECT returns true');
 reset role;
 select is(pg_temp.core(5131) || '|' || pg_temp.lock_of(5131),
-  'REJECTED|Serial number missing|-|' || now()::text || '|-|-',
-  'REJECT sets REJECTED with the trimmed reason, clears the lock and stamps updated_at');
+  'rejected|Serial number missing|-|' || now()::text || '|-|-',
+  'REJECT sets rejected with the trimmed reason, clears the lock and stamps updated_at');
 select is(pg_temp.audit_row(5131),
   pg_temp.mu(5101)::text || '|PRODUCT_REJECT|' || pg_temp.details(5131, 'Serial number missing', 'REJECT'),
   'REJECT writes one PRODUCT_REJECT audit row for the admin');

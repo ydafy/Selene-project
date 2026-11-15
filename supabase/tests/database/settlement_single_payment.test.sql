@@ -1,6 +1,6 @@
 -- Single-payment settlement (#276 T5): fn_create_shipments_from_single_payment
 -- validates the allocation, creates the order shell before the allocation, then
--- writes one paid shipment per row with its order item and SOLD listing, and
+-- writes one paid shipment per row with its order item and sold listing, and
 -- notifies the buyer and every seller once. A replay is a duplicate; an
 -- allocation failure keeps the shell with payment_processing for recovery and
 -- returns a typed payload; a later call on that shell settles it. Also: the
@@ -21,8 +21,8 @@ create function pg_temp.address(p_n integer, p_user integer) returns uuid langua
   returning id
 $$;
 
--- A listing of p_seller at p_price_cents in status p_status (RESERVED by checkout).
-create function pg_temp.listing(p_n integer, p_seller integer, p_price_cents bigint, p_status text default 'RESERVED')
+-- A listing of p_seller at p_price_cents in status p_status (reserved by checkout).
+create function pg_temp.listing(p_n integer, p_seller integer, p_price_cents bigint, p_status text default 'reserved')
 returns uuid language plpgsql as $$
 begin
   perform pg_temp.money_product(p_n, p_seller, p_price_cents);
@@ -71,7 +71,7 @@ select pg_temp.listing(5201, 5002, 100000);
 select pg_temp.listing(5202, 5003, 250000);
 select pg_temp.listing(5203, 5001, 50000);
 select pg_temp.listing(5211, 5002, 100000);
-select pg_temp.listing(5212, 5003, 100000, 'VERIFIED');
+select pg_temp.listing(5212, 5003, 100000, 'verified');
 select pg_temp.listing(5221, 5002, 100000);
 select pg_temp.listing(5222, 5002, 100000);
 select pg_temp.listing(5231, 5003, 100000);
@@ -148,7 +148,7 @@ select is(
   'settle: each order item carries the row commission, shipping and net in cents, and the seller pays shipping');
 select is(
   (select string_agg(status::text, ',' order by id) from public.products where id in (pg_temp.mu(5201), pg_temp.mu(5202))),
-  'SOLD,SOLD', 'settle: the reserved listings are SOLD');
+  'sold,sold', 'settle: the reserved listings are sold');
 select is(
   (select string_agg(right(n.user_id::text, 4) || ':' || n.event_kind || ':' || n.source_event_key || ':'
      || (n.event_payload ->> 'recipient_role') || ':' || (n.event_payload ->> 'order_id') || ':' || n.type || ':'
@@ -209,8 +209,8 @@ select is(
     || (select count(*) from public.order_items where order_id = pg_temp.mu(5402))::text || ':'
     || (select string_agg(status::text, ',' order by id) from public.products where id in (pg_temp.mu(5211), pg_temp.mu(5212))) || ':'
     || (select count(*) from public.notifications where source_event_key = 'order.payment_confirmed:' || pg_temp.mu(5402))::text,
-  '0:0:RESERVED,VERIFIED:0',
-  'recovery: the valid first row is rolled back too: no shipment, no item, no notice, its listing still RESERVED');
+  '0:0:reserved,verified:0',
+  'recovery: the valid first row is rolled back too: no shipment, no item, no notice, its listing still reserved');
 set local role service_role;
 
 select is(pg_temp.settle('pi_t5_4', 'ch_t5_4', 200000, 'tg_t5_4', 5001, 5101, 5404,
@@ -256,10 +256,10 @@ reset role;
 select is(
   (select count(*) from public.shipments where order_id = pg_temp.mu(5409))::text || ':'
     || (select string_agg(status::text, ',' order by id) from public.products where id in (pg_temp.mu(5271), pg_temp.mu(5272))),
-  '0:RESERVED,RESERVED', 'recovery: the incomplete allocation is rolled back, its listings stay RESERVED');
+  '0:reserved,reserved', 'recovery: the incomplete allocation is rolled back, its listings stay reserved');
 
 -- 6. A later call settles the shell ------------------------------------------------------
-update public.products set status = 'RESERVED' where id = pg_temp.mu(5212);
+update public.products set status = 'reserved' where id = pg_temp.mu(5212);
 set local role service_role;
 select is(pg_temp.settle('pi_t5_2', 'ch_t5_2b', 200000, 'tg_t5_2b', 5001, 5101, 5402, (select r from t5_rec)),
   jsonb_build_object('success', true, 'order_id', pg_temp.mu(5402), 'status', 'created'),

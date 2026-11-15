@@ -66,7 +66,7 @@ BEGIN
   ) OR EXISTS (
     SELECT 1 FROM public.products p
     WHERE p.seller_id = p_user_id
-      AND p.status IN ('RESERVED', 'IN_DISPUTE')
+      AND p.status IN ('reserved', 'in_dispute')
       AND p.deleted_at IS NULL
   ) THEN
     RETURN jsonb_build_object('status', 'blocked', 'reason', 'active_shipments');
@@ -206,19 +206,19 @@ BEGIN
 
   -- Listings never sold are soft-deleted like fn_admin_soft_delete_product does.
   -- Listings that appear in order_items stay as ledger rows but are hidden from
-  -- sale unless already SOLD.
-  UPDATE public.products SET deleted_at = now(), status = 'HIDDEN',
+  -- sale unless already sold.
+  UPDATE public.products SET deleted_at = now(), status = 'hidden',
     status_before_account_hold = NULL, updated_at = now()
   WHERE seller_id = p_user_id
     AND deleted_at IS NULL
     AND NOT EXISTS (
       SELECT 1 FROM public.order_items oi WHERE oi.product_id = products.id
     );
-  UPDATE public.products SET status = 'HIDDEN',
+  UPDATE public.products SET status = 'hidden',
     status_before_account_hold = NULL, updated_at = now()
   WHERE seller_id = p_user_id
     AND deleted_at IS NULL
-    AND status NOT IN ('SOLD', 'HIDDEN');
+    AND status NOT IN ('sold', 'hidden');
 
   -- E. Auth side. The auth.users row stays (ledger foreign keys point to it)
   -- but loses every credential and identifier, and is banned for good. The

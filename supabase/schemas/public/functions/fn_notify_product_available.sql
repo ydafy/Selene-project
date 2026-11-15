@@ -25,7 +25,7 @@ BEGIN
   JOIN public.profiles_private pp ON pp.id = p.seller_id
   JOIN public.favorites f ON f.product_id = p.id
   WHERE p.id = ANY(p_product_ids)
-    AND p.status = 'VERIFIED'
+    AND p.status = 'verified'
     AND p.deleted_at IS NULL
     AND pp.stripe_account_id IS NOT NULL
     AND pp.stripe_onboarding_status = 'complete'

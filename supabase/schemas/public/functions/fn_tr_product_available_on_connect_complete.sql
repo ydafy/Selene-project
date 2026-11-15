@@ -10,7 +10,7 @@ BEGIN
       SELECT p.id
       FROM public.products p
       WHERE p.seller_id = NEW.id
-        AND p.status = 'VERIFIED'
+        AND p.status = 'verified'
         AND p.deleted_at IS NULL
     )
   );

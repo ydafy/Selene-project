@@ -122,7 +122,7 @@ select throws_ok($$select pg_temp.rec(63101, '  ', 'pending')$$, 'P0001', 'INVAL
   'record: a blank refund id is INVALID_REFUND_ID');
 select throws_ok($$select pg_temp.rec(63101, null, 'pending')$$, 'P0001', 'INVALID_REFUND_ID',
   'record: a NULL refund id is INVALID_REFUND_ID');
-select is(pg_temp.sig(63101), 'paid|SOLD|-|-|-|-|0', 'record: the rejected calls left the operation without a refund');
+select is(pg_temp.sig(63101), 'paid|sold|-|-|-|-|0', 'record: the rejected calls left the operation without a refund');
 
 select is(pg_temp.rec(63101, 're_1', 'pending'),
   '{"refund_id": "re_1", "refund_status": "pending", "refund_failure_reason": null, "changed": true}'::jsonb,
@@ -217,7 +217,7 @@ select is(
 select is(pg_temp.apply(63501, 're_63501', 'pending'),
   '{"refund_id": "re_63501", "refund_status": "pending", "refund_failure_reason": null, "amount_owed_cents": 11000, "outcome": "recorded"}'::jsonb,
   'event: a pending refund is recorded with the frozen amount owed');
-select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'paid|SOLD',
+select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'paid|sold',
   'event: a pending refund leaves the shipment open and its listing sold');
 select throws_ok($$select pg_temp.apply(63501, 're_63501', 'succeeded', null, 11000, 'pi_other')$$, 'P0001',
   'REFUND_PAYMENT_INTENT_MISMATCH', 'event: an event for another payment intent raises through the record RPC');
@@ -226,7 +226,7 @@ select throws_ok($$select pg_temp.apply(63502, 're_63501', 'succeeded')$$, 'P000
 select is(pg_temp.apply(63501, 're_63501', 'succeeded'),
   '{"refund_id": "re_63501", "refund_status": "succeeded", "refund_failure_reason": null, "amount_owed_cents": 11000, "outcome": "completed"}'::jsonb,
   'event: a succeeded refund completes the cancellation');
-select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'cancelled|VERIFIED',
+select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'cancelled|verified',
   'event: completion cancels the shipment and puts its listing back on sale');
 select is((select cancellation_loss_cents from public.orders where id = pg_temp.mu(63601)), 120::bigint,
   'event: completion books the frozen loss of the operation on the order');
@@ -240,7 +240,7 @@ select is(pg_temp.sig(63501), (select v from pg_temp.sig_before where n = 63501)
 select is(pg_temp.apply(63501, 're_63501', 'failed', 'expired_or_canceled_card'),
   '{"refund_id": "re_63501", "refund_status": "failed", "refund_failure_reason": "expired_or_canceled_card", "amount_owed_cents": 11000, "outcome": "failed_after_cancellation"}'::jsonb,
   'event: a refund that fails after success is failed_after_cancellation');
-select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'cancelled|VERIFIED',
+select is(split_part(pg_temp.sig(63501), '|', 1) || '|' || split_part(pg_temp.sig(63501), '|', 2), 'cancelled|verified',
   'event: a late failure keeps the shipment cancelled');
 select is(
   (select string_agg(user_id || '|' || source_event_key || '|' || event_payload::text || '|' || type || '|' || title
@@ -273,7 +273,7 @@ select is(pg_temp.apply(63505, 're_63505', 'failed', 'lost_or_stolen_card'),
 select is(
   split_part(pg_temp.sig(63505), '|', 1) || '|' || split_part(pg_temp.sig(63505), '|', 2)
   || '|' || pg_temp.notices(63505, 'shipment.cancelled'),
-  'paid|SOLD|0', 'event: a failure before success cancels nothing and sends no cancellation notice');
+  'paid|sold|0', 'event: a failure before success cancels nothing and sends no cancellation notice');
 select is(
   (select message || '|' || source_event_key from public.notifications
    where event_kind = 'shipment.refund_failed' and event_payload->>'shipment_id' = pg_temp.mu(63505)::text),
@@ -329,7 +329,7 @@ create trigger t3_fail_cancel before update on public.shipments
 select throws_ok($$select pg_temp.apply(63511, 're_63511', 'succeeded')$$, 'P0001',
   'CANCELLATION_COMPLETE_FAILED: INTERNAL_SERVER_ERROR', 'event: a failed completion raises CANCELLATION_COMPLETE_FAILED');
 drop trigger t3_fail_cancel on public.shipments;
-select is(pg_temp.sig(63511), 'paid|SOLD|-|-|-|-|0', 'event: a failed completion records no refund');
+select is(pg_temp.sig(63511), 'paid|sold|-|-|-|-|0', 'event: a failed completion records no refund');
 
 -- 4. fn_cancel_shipment refuses without a succeeded refund -------------------------
 -- 63503 no operation, 63504 claimed only, 63512 started without a refund, 63513 pending,

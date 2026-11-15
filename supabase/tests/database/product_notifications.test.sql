@@ -5,7 +5,7 @@
 -- product.interest: the seller hears at 1, 5, 10 and 25 favorites while the
 -- listing cannot be bought yet (fn_notify_product_interest,
 -- trg_product_interest_on_favorite).
--- fn_product_seller_payment_readiness: whether a live VERIFIED listing's seller
+-- fn_product_seller_payment_readiness: whether a live verified listing's seller
 -- can be paid.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
@@ -24,7 +24,7 @@ begin
   where id = pg_temp.mu(p_n);
 end $$;
 
--- A listing in p_status. money_product creates it SOLD, and SOLD to anything
+-- A listing in p_status. money_product creates it sold, and sold to anything
 -- fires no notice trigger.
 create function pg_temp.listing(p_n integer, p_seller integer, p_status text, p_deleted boolean default false)
 returns void language plpgsql as $$
@@ -41,7 +41,7 @@ create function pg_temp.fav(p_user integer, p_product integer) returns void lang
 $$;
 
 create function pg_temp.verify(p_products integer[]) returns void language sql as $$
-  update public.products set status = 'VERIFIED'
+  update public.products set status = 'verified'
   where id in (select pg_temp.mu(n) from unnest(p_products) as n)
 $$;
 
@@ -82,12 +82,12 @@ select pg_temp.money_user(n) from generate_series(7611, 7640) as n;
 
 -- product.available: the verify trigger
 
-select pg_temp.listing(7701, 7601, 'PENDING_VERIFICATION');
+select pg_temp.listing(7701, 7601, 'pending_verification');
 select pg_temp.fav(7611, 7701), pg_temp.fav(7612, 7701), pg_temp.fav(7601, 7701);
 select pg_temp.verify(array[7701]);
 
 select is(pg_temp.notes('product.available', 7701), 2::bigint,
-  'PENDING_VERIFICATION to VERIFIED notifies each favoriter once');
+  'pending_verification to verified notifies each favoriter once');
 select is((select count(*) from public.notifications where event_kind = 'product.available' and user_id = pg_temp.mu(7601)),
   0::bigint, 'the seller never gets product.available, even with a favorite on the listing');
 select is(pg_temp.note('product.available:' || pg_temp.mu(7701), 7611),
@@ -97,31 +97,31 @@ select is(pg_temp.note('product.available:' || pg_temp.mu(7701), 7611),
     'kind', 'product.available'),
   'the buyer notice has the copy, link, type and payload');
 
-update public.products set status = 'IN_REVIEW' where id = pg_temp.mu(7701);
-select lives_ok($$ update public.products set status = 'VERIFIED' where id = pg_temp.mu(7701) $$,
+update public.products set status = 'in_review' where id = pg_temp.mu(7701);
+select lives_ok($$ update public.products set status = 'verified' where id = pg_temp.mu(7701) $$,
   'verifying the listing again does not fail on the notice key');
 select is(pg_temp.notes('product.available', 7701), 2::bigint,
   'verifying again writes no second notice per buyer');
 
-select pg_temp.listing(7702, 7601, 'IN_REVIEW');
+select pg_temp.listing(7702, 7601, 'in_review');
 select pg_temp.fav(7611, 7702);
 select pg_temp.verify(array[7702]);
-select is(pg_temp.notes('product.available', 7702), 1::bigint, 'IN_REVIEW to VERIFIED notifies');
+select is(pg_temp.notes('product.available', 7702), 1::bigint, 'in_review to verified notifies');
 
-select pg_temp.listing(7703, 7601, 'HIDDEN');
-select pg_temp.listing(7704, 7601, 'RESERVED');
-select pg_temp.listing(7705, 7601, 'REJECTED');
-select pg_temp.listing(7706, 7601, 'IN_DISPUTE');
+select pg_temp.listing(7703, 7601, 'hidden');
+select pg_temp.listing(7704, 7601, 'reserved');
+select pg_temp.listing(7705, 7601, 'rejected');
+select pg_temp.listing(7706, 7601, 'in_dispute');
 select pg_temp.fav(7611, n) from generate_series(7703, 7706) as n;
 select pg_temp.verify(array[7703, 7704, 7705, 7706]);
 select is((select sum(pg_temp.notes('product.available', n)) from generate_series(7703, 7706) as n), 0::numeric,
-  'HIDDEN, RESERVED, REJECTED or IN_DISPUTE to VERIFIED notifies nobody');
+  'hidden, reserved, rejected or in_dispute to verified notifies nobody');
 
-select pg_temp.listing(7707, 7602, 'PENDING_VERIFICATION');
-select pg_temp.listing(7708, 7607, 'PENDING_VERIFICATION');
-select pg_temp.listing(7709, 7604, 'PENDING_VERIFICATION');
-select pg_temp.listing(7710, 7605, 'PENDING_VERIFICATION');
-select pg_temp.listing(7711, 7606, 'PENDING_VERIFICATION');
+select pg_temp.listing(7707, 7602, 'pending_verification');
+select pg_temp.listing(7708, 7607, 'pending_verification');
+select pg_temp.listing(7709, 7604, 'pending_verification');
+select pg_temp.listing(7710, 7605, 'pending_verification');
+select pg_temp.listing(7711, 7606, 'pending_verification');
 select pg_temp.fav(7611, n) from generate_series(7707, 7711) as n;
 select pg_temp.verify(array[7707, 7708, 7709, 7710, 7711]);
 select is(pg_temp.notes('product.available', 7707), 0::bigint, 'a seller without a Stripe account: no notice');
@@ -132,22 +132,22 @@ select is(pg_temp.notes('product.available', 7711), 1::bigint, 'an active seller
 
 -- product.available: the helper filters what it is given
 
-select pg_temp.listing(7712, 7601, 'VERIFIED', true);
-select pg_temp.listing(7713, 7601, 'PENDING_VERIFICATION');
+select pg_temp.listing(7712, 7601, 'verified', true);
+select pg_temp.listing(7713, 7601, 'pending_verification');
 select pg_temp.fav(7611, 7712), pg_temp.fav(7611, 7713);
 select public.fn_notify_product_available(array[pg_temp.mu(7712), pg_temp.mu(7713)]);
 select is(pg_temp.notes('product.available', 7712), 0::bigint, 'a deleted listing notifies nobody');
-select is(pg_temp.notes('product.available', 7713), 0::bigint, 'a listing that is not VERIFIED notifies nobody');
+select is(pg_temp.notes('product.available', 7713), 0::bigint, 'a listing that is not verified notifies nobody');
 
 -- product.available: the Connect trigger
 
-select pg_temp.listing(7714, 7603, 'VERIFIED');
+select pg_temp.listing(7714, 7603, 'verified');
 select pg_temp.fav(7611, 7714);
 update public.profiles_private set stripe_onboarding_status = 'complete' where id = pg_temp.mu(7603);
 select is(pg_temp.notes('product.available', 7714), 1::bigint,
-  'onboarding becoming complete notifies favoriters of the seller''s VERIFIED listings');
+  'onboarding becoming complete notifies favoriters of the seller''s verified listings');
 
-select pg_temp.listing(7717, 7601, 'VERIFIED');
+select pg_temp.listing(7717, 7601, 'verified');
 select pg_temp.fav(7611, 7717);
 update public.profiles_private set stripe_onboarding_status = 'complete' where id = pg_temp.mu(7601);
 select is(pg_temp.notes('product.available', 7717), 0::bigint,
@@ -155,7 +155,7 @@ select is(pg_temp.notes('product.available', 7717), 0::bigint,
 
 -- product.interest
 
-select pg_temp.listing(7721, 7601, 'PENDING_VERIFICATION');
+select pg_temp.listing(7721, 7601, 'pending_verification');
 select pg_temp.fav(7611, 7721);
 select is(pg_temp.note('product.interest:' || pg_temp.mu(7721) || ':1', 7601),
   jsonb_build_object('title', 'Tu producto genera interés',
@@ -163,7 +163,7 @@ select is(pg_temp.note('product.interest:' || pg_temp.mu(7721) || ':1', 7601),
     'type', 'info', 'read', false, 'action_path', '/verify/' || pg_temp.mu(7721),
     'payload', jsonb_build_object('product_id', pg_temp.mu(7721), 'recipient_role', 'seller', 'milestone', 1),
     'kind', 'product.interest'),
-  'the first favorite of a PENDING_VERIFICATION listing sends the seller the milestone 1 notice');
+  'the first favorite of a pending_verification listing sends the seller the milestone 1 notice');
 
 select pg_temp.fav(7601, 7721), pg_temp.fav(7612, 7721), pg_temp.fav(7613, 7721), pg_temp.fav(7614, 7721);
 select is(pg_temp.milestones(7721), '1', 'four buyers plus the seller''s own favorite do not reach milestone 5');
@@ -181,7 +181,7 @@ delete from public.favorites where product_id = pg_temp.mu(7721) and user_id = p
 select pg_temp.fav(7615, 7721);
 select is(pg_temp.milestones(7721), '1,5', 'crossing a milestone again writes no second notice');
 
-select pg_temp.listing(7722, 7601, 'IN_REVIEW');
+select pg_temp.listing(7722, 7601, 'in_review');
 insert into public.favorites (user_id, product_id)
 select pg_temp.mu(n), pg_temp.mu(7722) from generate_series(7611, 7622) as n;
 select is(pg_temp.milestones(7722), '10', 'twelve favorites at once send only the highest milestone crossed');
@@ -194,9 +194,9 @@ select is(pg_temp.note('product.interest:' || pg_temp.mu(7722) || ':10', 7601),
     'type', 'info', 'read', false, 'action_path', '/profile/listings',
     'payload', jsonb_build_object('product_id', pg_temp.mu(7722), 'recipient_role', 'seller', 'milestone', 10),
     'kind', 'product.interest'),
-  'an IN_REVIEW listing links to the seller''s listings');
+  'an in_review listing links to the seller''s listings');
 
-select pg_temp.listing(7723, 7602, 'VERIFIED');
+select pg_temp.listing(7723, 7602, 'verified');
 select pg_temp.fav(7611, 7723);
 select is(pg_temp.note('product.interest:' || pg_temp.mu(7723) || ':1', 7602),
   jsonb_build_object('title', 'Tu producto genera interés',
@@ -204,29 +204,29 @@ select is(pg_temp.note('product.interest:' || pg_temp.mu(7723) || ':1', 7602),
     'type', 'info', 'read', false, 'action_path', '/sell/onboarding',
     'payload', jsonb_build_object('product_id', pg_temp.mu(7723), 'recipient_role', 'seller', 'milestone', 1),
     'kind', 'product.interest'),
-  'a VERIFIED listing of a seller without a Stripe account links to onboarding');
+  'a verified listing of a seller without a Stripe account links to onboarding');
 
-select pg_temp.listing(7724, 7607, 'VERIFIED');
-select pg_temp.listing(7725, 7604, 'VERIFIED');
-select pg_temp.listing(7726, 7605, 'VERIFIED');
-select pg_temp.listing(7727, 7601, 'VERIFIED');
-select pg_temp.listing(7728, 7606, 'VERIFIED');
+select pg_temp.listing(7724, 7607, 'verified');
+select pg_temp.listing(7725, 7604, 'verified');
+select pg_temp.listing(7726, 7605, 'verified');
+select pg_temp.listing(7727, 7601, 'verified');
+select pg_temp.listing(7728, 7606, 'verified');
 select pg_temp.fav(7611, n) from generate_series(7724, 7728) as n;
-select is(pg_temp.milestones(7724), '1', 'VERIFIED with onboarding not complete: the seller is notified');
-select is(pg_temp.milestones(7725), '1', 'VERIFIED with a suspended seller: the seller is notified');
-select is(pg_temp.milestones(7726), '1', 'VERIFIED with a banned seller: the seller is notified');
-select is(pg_temp.milestones(7727), '', 'VERIFIED with a seller who can be paid: no notice');
-select is(pg_temp.milestones(7728), '', 'VERIFIED with a second active seller and Connect complete: no notice');
+select is(pg_temp.milestones(7724), '1', 'verified with onboarding not complete: the seller is notified');
+select is(pg_temp.milestones(7725), '1', 'verified with a suspended seller: the seller is notified');
+select is(pg_temp.milestones(7726), '1', 'verified with a banned seller: the seller is notified');
+select is(pg_temp.milestones(7727), '', 'verified with a seller who can be paid: no notice');
+select is(pg_temp.milestones(7728), '', 'verified with a second active seller and Connect complete: no notice');
 
-select pg_temp.listing(7729, 7602, 'SOLD');
-select pg_temp.listing(7730, 7602, 'REJECTED');
-select pg_temp.listing(7731, 7602, 'HIDDEN');
-select pg_temp.listing(7732, 7602, 'RESERVED');
-select pg_temp.listing(7733, 7602, 'IN_DISPUTE');
-select pg_temp.listing(7734, 7602, 'PENDING_VERIFICATION', true);
+select pg_temp.listing(7729, 7602, 'sold');
+select pg_temp.listing(7730, 7602, 'rejected');
+select pg_temp.listing(7731, 7602, 'hidden');
+select pg_temp.listing(7732, 7602, 'reserved');
+select pg_temp.listing(7733, 7602, 'in_dispute');
+select pg_temp.listing(7734, 7602, 'pending_verification', true);
 select pg_temp.fav(7611, n) from generate_series(7729, 7734) as n;
 select is((select string_agg(pg_temp.milestones(n), '') from generate_series(7729, 7733) as n), '',
-  'SOLD, REJECTED, HIDDEN, RESERVED and IN_DISPUTE listings send no interest notice');
+  'sold, rejected, hidden, reserved and in_dispute listings send no interest notice');
 select is(pg_temp.milestones(7734), '', 'a deleted listing sends no interest notice');
 
 select is((
@@ -241,7 +241,7 @@ select is((
 -- A failing seller notice never blocks the buyer's favorite. The failure is a
 -- trigger on notifications created inside a subtransaction that is rolled
 -- back (with its lock) before the assertions.
-select pg_temp.listing(7735, 7601, 'PENDING_VERIFICATION');
+select pg_temp.listing(7735, 7601, 'pending_verification');
 create temp table interest_failure (error text, favorites bigint, notices bigint);
 do $$
 declare
@@ -270,17 +270,17 @@ select is((select favorites || '/' || notices from interest_failure), '1/0',
 
 -- fn_product_seller_payment_readiness
 
-select pg_temp.listing(7741, 7601, 'VERIFIED');
-select pg_temp.listing(7742, 7602, 'VERIFIED');
-select pg_temp.listing(7743, 7607, 'VERIFIED');
-select pg_temp.listing(7744, 7604, 'VERIFIED');
-select pg_temp.listing(7745, 7605, 'VERIFIED');
-select pg_temp.listing(7746, 7606, 'VERIFIED');
-select pg_temp.listing(7747, 7601, 'PENDING_VERIFICATION');
-select pg_temp.listing(7748, 7601, 'IN_REVIEW');
-select pg_temp.listing(7749, 7601, 'SOLD');
-select pg_temp.listing(7750, 7601, 'RESERVED');
-select pg_temp.listing(7751, 7601, 'VERIFIED', true);
+select pg_temp.listing(7741, 7601, 'verified');
+select pg_temp.listing(7742, 7602, 'verified');
+select pg_temp.listing(7743, 7607, 'verified');
+select pg_temp.listing(7744, 7604, 'verified');
+select pg_temp.listing(7745, 7605, 'verified');
+select pg_temp.listing(7746, 7606, 'verified');
+select pg_temp.listing(7747, 7601, 'pending_verification');
+select pg_temp.listing(7748, 7601, 'in_review');
+select pg_temp.listing(7749, 7601, 'sold');
+select pg_temp.listing(7750, 7601, 'reserved');
+select pg_temp.listing(7751, 7601, 'verified', true);
 
 select is(pg_temp.ready_of(7741), 'true', 'a seller with Connect complete and an active account accepts payments');
 select is(pg_temp.ready_of(7742), 'false', 'a seller without a Stripe account does not');
@@ -290,7 +290,7 @@ select is(pg_temp.ready_of(7745), 'false', 'a banned seller does not');
 select is(pg_temp.ready_of(7746), 'true', 'a second active seller with Connect complete accepts payments');
 select is((select count(*) from public.fn_product_seller_payment_readiness(
     array[pg_temp.mu(7747), pg_temp.mu(7748), pg_temp.mu(7749), pg_temp.mu(7750)])),
-  0::bigint, 'listings that are not VERIFIED get no row');
+  0::bigint, 'listings that are not verified get no row');
 select is(pg_temp.ready_of(7751), 'absent', 'a deleted listing gets no row');
 select is((select count(*) from public.fn_product_seller_payment_readiness(
     array(select gen_random_uuid() from generate_series(1, 49)) || pg_temp.mu(7741))),

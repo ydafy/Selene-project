@@ -4248,14 +4248,14 @@ export type Database = {
         | 'refunded';
       payout_status: 'pending' | 'processing' | 'completed' | 'rejected';
       product_status:
-        | 'PENDING_VERIFICATION'
-        | 'IN_REVIEW'
-        | 'VERIFIED'
-        | 'SOLD'
-        | 'REJECTED'
-        | 'HIDDEN'
-        | 'RESERVED'
-        | 'IN_DISPUTE';
+        | 'pending_verification'
+        | 'in_review'
+        | 'verified'
+        | 'sold'
+        | 'rejected'
+        | 'hidden'
+        | 'reserved'
+        | 'in_dispute';
       shipment_tracking_event_type:
         | 'created'
         | 'information'
@@ -4422,14 +4422,14 @@ export const Constants = {
       ],
       payout_status: ['pending', 'processing', 'completed', 'rejected'],
       product_status: [
-        'PENDING_VERIFICATION',
-        'IN_REVIEW',
-        'VERIFIED',
-        'SOLD',
-        'REJECTED',
-        'HIDDEN',
-        'RESERVED',
-        'IN_DISPUTE',
+        'pending_verification',
+        'in_review',
+        'verified',
+        'sold',
+        'rejected',
+        'hidden',
+        'reserved',
+        'in_dispute',
       ],
       shipment_tracking_event_type: [
         'created',

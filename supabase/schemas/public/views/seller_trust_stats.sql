@@ -1,10 +1,10 @@
 CREATE VIEW "public"."seller_trust_stats" WITH (security_invoker=true) AS  SELECT seller_id,
     count(*) AS total_listings,
-    count(*) FILTER (WHERE (status = 'VERIFIED'::public.product_status)) AS verified_count,
-    count(*) FILTER (WHERE (status = 'IN_REVIEW'::public.product_status)) AS in_review_count,
-    count(*) FILTER (WHERE (status = 'REJECTED'::public.product_status)) AS rejected_count,
-    count(*) FILTER (WHERE (status = 'SOLD'::public.product_status)) AS sold_count,
-    count(*) FILTER (WHERE (status = ANY (ARRAY['VERIFIED'::public.product_status, 'SOLD'::public.product_status, 'REJECTED'::public.product_status]))) AS processed_count
+    count(*) FILTER (WHERE (status = 'verified'::public.product_status)) AS verified_count,
+    count(*) FILTER (WHERE (status = 'in_review'::public.product_status)) AS in_review_count,
+    count(*) FILTER (WHERE (status = 'rejected'::public.product_status)) AS rejected_count,
+    count(*) FILTER (WHERE (status = 'sold'::public.product_status)) AS sold_count,
+    count(*) FILTER (WHERE (status = ANY (ARRAY['verified'::public.product_status, 'sold'::public.product_status, 'rejected'::public.product_status]))) AS processed_count
    FROM public.products
   WHERE ((deleted_at IS NULL) AND public.is_admin())
   GROUP BY seller_id;

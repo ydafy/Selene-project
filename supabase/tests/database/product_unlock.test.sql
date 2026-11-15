@@ -77,14 +77,14 @@ create function pg_temp.as_user(p_n integer) returns void language sql as $$
     format('{"sub": "%s", "role": "authenticated"}', pg_temp.mu(p_n)), true)
 $$;
 
-select pg_temp.listing(5221, 'IN_REVIEW', 5204, interval '1 minute');
-select pg_temp.listing(5222, 'IN_REVIEW', 5205, interval '1 minute');
-select pg_temp.listing(5223, 'IN_REVIEW', 5206, interval '1 minute');
-select pg_temp.listing(5224, 'IN_REVIEW', 5201, interval '1 minute');
-select pg_temp.listing(5225, 'IN_REVIEW', 5203, interval '10 minutes');
-select pg_temp.listing(5226, 'IN_REVIEW', 5203, interval '10 minutes 1 second');
-select pg_temp.listing(5227, 'IN_REVIEW', 5203, interval '1 minute');
-select pg_temp.listing(5228, 'IN_REVIEW', null, null);
+select pg_temp.listing(5221, 'in_review', 5204, interval '1 minute');
+select pg_temp.listing(5222, 'in_review', 5205, interval '1 minute');
+select pg_temp.listing(5223, 'in_review', 5206, interval '1 minute');
+select pg_temp.listing(5224, 'in_review', 5201, interval '1 minute');
+select pg_temp.listing(5225, 'in_review', 5203, interval '10 minutes');
+select pg_temp.listing(5226, 'in_review', 5203, interval '10 minutes 1 second');
+select pg_temp.listing(5227, 'in_review', 5203, interval '1 minute');
+select pg_temp.listing(5228, 'in_review', null, null);
 select pg_temp.remember(array[5221, 5222, 5223, 5225, 5227, 5228]);
 
 -- Refusals ---------------------------------------------------------------------
@@ -120,7 +120,7 @@ select pg_temp.as_user(5201);
 set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5224)), true, 'the admin releases their own fresh lock');
 reset role;
-select is(pg_temp.after_unlock(5224), 'IN_REVIEW|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
+select is(pg_temp.after_unlock(5224), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
   'releasing their own lock clears it, keeps the status and writes one PRODUCT_UNLOCK audit row');
 
 set local role authenticated;
@@ -133,7 +133,7 @@ set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5226)), true,
   'another admin''s lock older than 10 minutes is released');
 reset role;
-select is(pg_temp.after_unlock(5226), 'IN_REVIEW|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
+select is(pg_temp.after_unlock(5226), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
   'releasing an expired lock clears it and audits the admin who released it');
 
 set local role authenticated;
@@ -153,10 +153,10 @@ select is((select count(*) from public.admin_audit_logs where target_id = pg_tem
   'a missing listing gets no audit row');
 
 -- fn_release_listings, expired only: the 10-minute reservation TTL ------------
-select pg_temp.listing(5241, 'RESERVED', null, null, interval '10 minutes');
-select pg_temp.listing(5242, 'RESERVED', null, null, interval '10 minutes 1 second');
-select pg_temp.listing(5243, 'RESERVED', null, null, interval '20 minutes');
-select pg_temp.listing(5244, 'VERIFIED', null, null, interval '20 minutes');
+select pg_temp.listing(5241, 'reserved', null, null, interval '10 minutes');
+select pg_temp.listing(5242, 'reserved', null, null, interval '10 minutes 1 second');
+select pg_temp.listing(5243, 'reserved', null, null, interval '20 minutes');
+select pg_temp.listing(5244, 'verified', null, null, interval '20 minutes');
 select pg_temp.remember(array[5241, 5243]);
 
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
@@ -169,7 +169,7 @@ select is(
 reset role;
 select is(
   (select status::text || '|' || coalesce(reserved_at::text, '-') from public.products where id = pg_temp.mu(5242)),
-  'VERIFIED|-', 'the released reservation is back on sale with reserved_at cleared');
+  'verified|-', 'the released reservation is back on sale with reserved_at cleared');
 select ok(pg_temp.unchanged(5241), 'a reservation exactly 10 minutes old stays reserved');
 select ok(pg_temp.unchanged(5243), 'a stale reservation outside the requested ids stays reserved');
 
@@ -177,7 +177,7 @@ select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 select is(
   (select count(*) from public.fn_release_listings(array[pg_temp.mu(5244)], true, true)),
-  0::bigint, 'a VERIFIED listing with an old reserved_at is never released');
+  0::bigint, 'a verified listing with an old reserved_at is never released');
 reset role;
 
 -- The cleanup's partial index --------------------------------------------------
@@ -186,8 +186,8 @@ select has_index('public', 'products', 'idx_products_reserved_status_reserved_at
 select is(
   (select pg_get_expr(i.indpred, i.indrelid) from pg_index i
    where i.indexrelid = 'public.idx_products_reserved_status_reserved_at'::regclass),
-  '(status = ''RESERVED''::product_status)',
-  'the index covers RESERVED listings only');
+  '(status = ''reserved''::product_status)',
+  'the index covers reserved listings only');
 
 select * from finish();
 rollback;

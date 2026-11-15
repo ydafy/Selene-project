@@ -8,7 +8,7 @@ begin;
 select plan(49);
 
 -- Same economics formula as validate_product_publication_economics.
-create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status text default 'SOLD')
+create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status text default 'sold')
 returns void language sql as $$
   insert into public.products (
     id, name, description, price_cents, category, condition, usage, images, status,
@@ -80,7 +80,7 @@ from (values
 
 -- Every user also has one unsold listing, which a closure would soft-delete.
 select pg_temp.make_product(('d0000000-0000-4000-8000-0000000f00' || u)::uuid,
-  ('d0000000-0000-4000-8000-0000000000' || u)::uuid, 'VERIFIED')
+  ('d0000000-0000-4000-8000-0000000000' || u)::uuid, 'verified')
 from unnest(array['11', '12', '13', '14', '15', '16', '17']) as u;
 
 -- 11: seller with a completed Connect shipment and no payout run.
@@ -93,7 +93,7 @@ values
   ('d0000000-0000-4000-8000-0000000e0013', 'blockers-run-13', 'd0000000-0000-4000-8000-000000000013', 900, 'reconciliation_needed', 'd0000000-0000-4000-8000-000000000013');
 
 -- 14 buyer / 15 seller: a dispute each. The dispute triggers need the service
--- role claim, mark the order as disputed and the listing IN_DISPUTE; the sale
+-- role claim, mark the order as disputed and the listing in_dispute; the sale
 -- is put back to finished so only the dispute blocks.
 select pg_temp.make_sale(4, 'd0000000-0000-4000-8000-000000000014', 'd0000000-0000-4000-8000-000000000018', 'completed', null);
 select pg_temp.make_sale(5, 'd0000000-0000-4000-8000-000000000019', 'd0000000-0000-4000-8000-000000000015', 'completed', null);
@@ -104,7 +104,7 @@ values
   ('d0000000-0000-4000-8000-0000000d0005', 'd0000000-0000-4000-8000-0000000b0005', 'd0000000-0000-4000-8000-000000000019', 'd0000000-0000-4000-8000-000000000015', 'not_working', 'Seller dispute', 'd0000000-0000-4000-8000-0000000c0005');
 update public.disputes set status = 'return_shipped' where id = 'd0000000-0000-4000-8000-0000000d0005';
 update public.orders set status = 'completed' where id in ('d0000000-0000-4000-8000-0000000b0004', 'd0000000-0000-4000-8000-0000000b0005');
-update public.products set status = 'SOLD' where id in ('d0000000-0000-4000-8000-0000000a0004', 'd0000000-0000-4000-8000-0000000a0005');
+update public.products set status = 'sold' where id in ('d0000000-0000-4000-8000-0000000a0004', 'd0000000-0000-4000-8000-0000000a0005');
 
 -- 16: buyer whose shipment cancellation started and whose refund is pending.
 select pg_temp.make_sale(6, 'd0000000-0000-4000-8000-000000000016', 'd0000000-0000-4000-8000-000000000018', 'cancelled', null);
@@ -246,8 +246,8 @@ from (values
   ('d0000000-0000-4000-8000-000000000022'::uuid, 'restricted_ban@test.local', 'blk_restricted_b'),
   ('d0000000-0000-4000-8000-000000000023'::uuid, 'active_order@test.local', 'blk_active_order')
 ) as u(id, email, username);
-select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0021', 'd0000000-0000-4000-8000-000000000021', 'VERIFIED');
-select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0022', 'd0000000-0000-4000-8000-000000000022', 'VERIFIED');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0021', 'd0000000-0000-4000-8000-000000000021', 'verified');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000f0022', 'd0000000-0000-4000-8000-000000000022', 'verified');
 update public.profiles_private set status = 'suspended' where id = 'd0000000-0000-4000-8000-000000000021';
 update public.profiles_private set status = 'banned' where id = 'd0000000-0000-4000-8000-000000000022';
 select pg_temp.make_sale(8, 'd0000000-0000-4000-8000-000000000023', 'd0000000-0000-4000-8000-000000000018', 'paid', null);

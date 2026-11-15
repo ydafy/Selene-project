@@ -43,7 +43,7 @@ returns uuid language sql as $$
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price_cents, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'SOLD'::public.product_status,
+    array['https://example.test/p.png'], 'sold'::public.product_status,
     '{}'::jsonb, pg_temp.mu(p_seller), 10000, '06600', 'gpu_1',
     10000 + s.shipping_buffer_cents
       + ceil(p_price_cents::numeric * s.insurance_rate)::bigint,

@@ -1,7 +1,8 @@
 -- Enum types carry no `_enum` suffix (odd/tasks/integrity-constraints.md S10,
 -- T9). `product_status_enum` is renamed in place to `product_status`: same
--- labels in the same order (lowercase values are T11), and every column that
--- used it keeps its type and default.
+-- labels in the same order, and every column that
+-- used it keeps its type and default. Its values are lowercase (S11, T11):
+-- `ALTER TYPE ... RENAME VALUE` keeps their order and every stored row.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(9);
@@ -10,9 +11,9 @@ select has_type('public', 'product_status', 'public.product_status exists');
 select hasnt_type('public', 'product_status_enum', 'public.product_status_enum is gone');
 
 select enum_has_labels('public', 'product_status',
-  array['PENDING_VERIFICATION', 'IN_REVIEW', 'VERIFIED', 'SOLD', 'REJECTED',
-        'HIDDEN', 'RESERVED', 'IN_DISPUTE'],
-  'product_status keeps its labels in order');
+  array['pending_verification', 'in_review', 'verified', 'sold', 'rejected',
+        'hidden', 'reserved', 'in_dispute'],
+  'product_status has the lowercase labels in order');
 
 select col_type_is('public', 'products', 'status', 'public', 'product_status',
   'products.status is public.product_status');
@@ -29,10 +30,10 @@ select is(
   array['public.products.status', 'public.products.status_before_account_hold']::text[],
   'exactly products.status and products.status_before_account_hold use product_status');
 
-select col_default_is('public', 'products', 'status', 'PENDING_VERIFICATION',
-  'products.status defaults to PENDING_VERIFICATION');
+select col_default_is('public', 'products', 'status', 'pending_verification',
+  'products.status defaults to pending_verification');
 
-select is('SOLD'::public.product_status::text, 'SOLD',
+select is('sold'::public.product_status::text, 'sold',
   'a cast to public.product_status works');
 
 -- With both renames done, no enum type in any schema keeps the suffix.

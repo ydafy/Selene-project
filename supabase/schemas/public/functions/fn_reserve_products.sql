@@ -41,15 +41,15 @@ BEGIN
   ORDER BY id
   FOR UPDATE;
 
-  -- 3. RESERVA ATÓMICA: Solo productos VERIFIED que no sean del comprador
+  -- 3. RESERVA ATÓMICA: Solo productos verified que no sean del comprador
   --    ni de vendedores suspendidos o baneados
   WITH reserved AS (
     UPDATE public.products
-    SET status = 'RESERVED',
+    SET status = 'reserved',
         updated_at = now(),
         reserved_at = now()
     WHERE id = ANY(p_product_ids)
-      AND status = 'VERIFIED'
+      AND status = 'verified'
       AND seller_id <> p_buyer_id
       AND NOT EXISTS (
         SELECT 1 FROM public.profiles_private pp

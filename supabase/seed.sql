@@ -144,7 +144,7 @@ SELECT
   ARRAY['https://placehold.co/800x800/png?text=' || replace(p.name, ' ', '+')],
   p.status::public.product_status, p.specifications, '00000000-0000-4000-8000-000000000002',
   p.shipping_cost_cents, '06600', p.package_preset,
-  CASE WHEN p.status = 'VERIFIED' THEN now() END,
+  CASE WHEN p.status = 'verified' THEN now() END,
   p.shipping_cost_cents
     + s.shipping_buffer_cents
     + ceil(p.price_cents::numeric * s.insurance_rate)::bigint,
@@ -153,25 +153,25 @@ SELECT
 FROM public.system_settings s
 CROSS JOIN (VALUES
   ('00000000-0000-4000-8000-0000000000b1'::uuid, 'NVIDIA RTX 3070', 'Tarjeta usada, sin minería, con caja original.', 750000::bigint,
-   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'VERIFIED'),
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "MSI", "model": "RTX 3070", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'verified'),
   ('00000000-0000-4000-8000-0000000000b2'::uuid, 'AMD Ryzen 7 5800X', 'Procesador funcionando al 100%, sin disipador.', 390000::bigint,
-   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 12000::bigint, 'cpu_2', 'VERIFIED'),
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 7", "model": "5800X", "cores": "8"}'::jsonb, 12000::bigint, 'cpu_2', 'verified'),
   ('00000000-0000-4000-8000-0000000000b3'::uuid, 'Corsair Vengeance 32 GB DDR4', 'Kit 2x16 GB a 3600 MHz.', 160000::bigint,
-   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'VERIFIED'),
+   'RAM', 'used', 'office', '{"brand": "Corsair", "type": "DDR4", "capacity": "32 GB", "speed": "3600 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'verified'),
   ('00000000-0000-4000-8000-0000000000b4'::uuid, 'ASUS TUF B550-PLUS', 'Tarjeta madre AM4 en caja original.', 240000::bigint,
-   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 15000::bigint, 'mobo_1', 'VERIFIED'),
+   'Motherboard', 'used', 'gaming', '{"brand": "ASUS", "socket": "AM4", "form_factor": "ATX", "chipset": "B550"}'::jsonb, 15000::bigint, 'mobo_1', 'verified'),
   ('00000000-0000-4000-8000-0000000000b5'::uuid, 'Gigabyte RTX 3060 Ti', 'Tarjeta usada, pendiente de enviar pruebas.', 520000::bigint,
-   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "Gigabyte", "model": "RTX 3060 Ti", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'PENDING_VERIFICATION'),
+   'GPU', 'used', 'gaming', '{"chipset": "NVIDIA", "brand": "Gigabyte", "model": "RTX 3060 Ti", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'pending_verification'),
   ('00000000-0000-4000-8000-0000000000b6'::uuid, 'Intel Core i7-12700K', 'Procesador en revisión por el equipo de Selene.', 480000::bigint,
-   'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 12000::bigint, 'cpu_2', 'IN_REVIEW'),
+   'CPU', 'used', 'gaming', '{"brand": "Intel", "family": "Core i7", "model": "12700K", "cores": "12"}'::jsonb, 12000::bigint, 'cpu_2', 'in_review'),
   ('00000000-0000-4000-8000-0000000000b7'::uuid, 'Kingston Fury 16 GB DDR4', 'Kit rechazado en la verificación.', 90000::bigint,
-   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'REJECTED'),
+   'RAM', 'used', 'office', '{"brand": "Kingston", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'rejected'),
   ('00000000-0000-4000-8000-0000000000b8'::uuid, 'Sapphire Pulse RX 6600', 'Tarjeta ya vendida.', 320000::bigint,
-   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'SOLD'),
+   'GPU', 'used', 'gaming', '{"chipset": "AMD", "brand": "Sapphire", "model": "RX 6600", "memory": "8 GB"}'::jsonb, 18000::bigint, 'gpu_1', 'sold'),
   ('00000000-0000-4000-8000-0000000000b9'::uuid, 'Crucial Ballistix 16 GB DDR4', 'Kit oculto por el vendedor.', 70000::bigint,
-   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'HIDDEN'),
+   'RAM', 'used', 'office', '{"brand": "Crucial", "type": "DDR4", "capacity": "16 GB", "speed": "3200 MHz"}'::jsonb, 10000::bigint, 'ram_1', 'hidden'),
   ('00000000-0000-4000-8000-0000000000ba'::uuid, 'AMD Ryzen 5 3600', 'Listado eliminado por el vendedor.', 150000::bigint,
-   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 12000::bigint, 'cpu_2', 'VERIFIED')
+   'CPU', 'used', 'gaming', '{"brand": "AMD", "family": "Ryzen 5", "model": "3600", "cores": "6"}'::jsonb, 12000::bigint, 'cpu_2', 'verified')
 ) AS p(id, name, description, price_cents, category, condition, usage, specifications, shipping_cost_cents, package_preset, status)
 WHERE s.id = 1;
 
@@ -208,6 +208,6 @@ UPDATE public.disputes SET status = 'resolved' WHERE id = '00000000-0000-4000-80
 
 SELECT set_config('request.jwt.claims', '', false);
 
--- Soft-deleted listing (ba): VERIFIED but deleted_at set, so products_public hides it.
+-- Soft-deleted listing (ba): verified but deleted_at set, so products_public hides it.
 UPDATE public.products SET deleted_at = now()
 WHERE id = '00000000-0000-4000-8000-0000000000ba';
