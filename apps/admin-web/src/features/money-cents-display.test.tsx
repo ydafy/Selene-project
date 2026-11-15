@@ -67,7 +67,7 @@ if (process.env.MONEY_CENTS_DISPLAY_CHILD !== '1') {
           id: 'product-1',
           name: 'RTX 4070',
           price_cents: CENTS,
-          status: 'VERIFIED',
+          status: 'verified',
           category: 'GPU',
           condition: 'used',
           created_at: '2026-11-13T00:00:00.000Z',
@@ -135,7 +135,7 @@ if (process.env.MONEY_CENTS_DISPLAY_CHILD !== '1') {
         name: 'RTX 4070',
         images: [],
         price_cents: CENTS,
-        status: 'VERIFIED',
+        status: 'verified',
         created_at: '2026-11-13T00:00:00.000Z',
       },
     ] as unknown as Props<typeof InventoryTable>['products'];

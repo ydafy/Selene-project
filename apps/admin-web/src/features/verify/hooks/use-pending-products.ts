@@ -20,7 +20,7 @@ export const usePendingProducts = () => {
         .select(
           'id, name, price_cents, category, condition, images, description, specifications, verification_data, status, created_at, seller_id, locked_by, aspect_ratio, views, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
         )
-        .eq('status', 'IN_REVIEW')
+        .eq('status', 'in_review')
         .order('created_at', { ascending: false });
 
       if (pError) throw pError;
