@@ -154,9 +154,9 @@ select is(
 select results_eq(
   $$select attname::text collate "default" from pg_attribute
     where attrelid = 'public.admin_connect_payout_release_view'::regclass and attnum > 0
-    order by attnum desc limit 3$$,
+    order by attnum desc offset 4 limit 3$$,
   $$values ('days_since_completed'), ('seller_payout_block_reason'), ('payout_run_paid_at')$$,
-  'the view appends payout_run_paid_at, seller_payout_block_reason and days_since_completed last');
+  'the view appends payout_run_paid_at, seller_payout_block_reason and days_since_completed before the overdue columns');
 select ok(
   (select 'security_invoker=true' = any(reloptions) from pg_class where oid = 'public.admin_connect_payout_release_view'::regclass),
   'the view reads with the caller''s privileges');
@@ -201,7 +201,7 @@ select throws_ok($$select pg_temp.q('ready', null)$$, 'P0001', 'INVALID_QUEUE_PA
 select throws_ok($$select pg_temp.q('processing', 0, 'selection')$$, 'P0001', 'QUEUE_SELECTION_NOT_ALLOWED', 'only ready and action-required groups can be selected');
 select throws_ok($$select pg_temp.q('history', 0, 'selection')$$, 'P0001', 'QUEUE_SELECTION_NOT_ALLOWED', 'history groups cannot be selected');
 
-select is(pg_temp.q('ready') -> 'counts', '{"ready": 2, "processing": 1, "action-required": 3, "history": 21}'::jsonb,
+select is(pg_temp.q('ready') -> 'counts', '{"ready": 2, "processing": 1, "action-required": 3, "history": 21, "overdue": 0}'::jsonb,
   'counts are in groups: one per seller without a run, one per run');
 select is(pg_temp.q_rows(pg_temp.q('ready')), array[7132, 7131, 7141],
   'ready groups follow the seller name, and each group lists its shipments by completion time');
@@ -223,7 +223,7 @@ select is(pg_temp.q_rows(pg_temp.q('action-required', 0, 'selection')), array[71
 select is(pg_temp.q('ready', 0, 'page', 'MONEY_70') -> 'counts', pg_temp.q('ready') -> 'counts', 'the seller search ignores case');
 select is(pg_temp.q('ready', 0, 'page', '  money_7002 ') -> 'counts' -> 'ready', '1'::jsonb, 'the seller search ignores surrounding spaces');
 select is(pg_temp.q('ready', 0, 'page', '%') -> 'counts',
-  '{"ready": 0, "processing": 0, "action-required": 0, "history": 0}'::jsonb, 'the seller search is literal, not a pattern');
+  '{"ready": 0, "processing": 0, "action-required": 0, "history": 0, "overdue": 0}'::jsonb, 'the seller search is literal, not a pattern');
 
 -- Grants: only service_role reads the view and runs the queue RPC. The
 -- authenticated read of the view is disputed in #178 and not asserted here.

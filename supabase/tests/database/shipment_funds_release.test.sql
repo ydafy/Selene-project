@@ -344,8 +344,9 @@ select is(
     'stripe_account_id', 'stripe_onboarding_status', 'release_amount_cents', 'is_eligible', 'ineligible_reason',
     'transfer_group', 'stripe_transfer_id', 'payout_run_id', 'payout_run_status', 'payout_run_amount_cents',
     'payout_run_failure_reason', 'payout_run_failed_at', 'retry_of_run_id', 'is_retryable', 'requires_manual_review',
-    'payout_run_paid_at', 'seller_payout_block_reason', 'days_since_completed'],
-  'view: the 25 columns keep their order, with the payout run and seller block columns appended at the tail');
+    'payout_run_paid_at', 'seller_payout_block_reason', 'days_since_completed', 'is_payout_overdue',
+    'latest_hold_note', 'latest_hold_noted_at', 'latest_hold_noted_by'],
+  'view: the 29 columns keep their order, with the payout run, seller block and overdue columns appended at the tail');
 
 select * from finish();
 rollback;
