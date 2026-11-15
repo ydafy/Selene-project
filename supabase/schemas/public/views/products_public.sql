@@ -17,7 +17,7 @@ CREATE VIEW "public"."products_public" WITH (security_barrier=true) AS  SELECT i
     created_at,
     fts
    FROM public.products p
-  WHERE ((deleted_at IS NULL) AND (status = ANY (ARRAY['VERIFIED'::public.product_status_enum, 'SOLD'::public.product_status_enum, 'PENDING_VERIFICATION'::public.product_status_enum, 'IN_REVIEW'::public.product_status_enum])));
+  WHERE ((deleted_at IS NULL) AND (status = ANY (ARRAY['VERIFIED'::public.product_status, 'SOLD'::public.product_status, 'PENDING_VERIFICATION'::public.product_status, 'IN_REVIEW'::public.product_status])));
 
 REVOKE ALL ON TABLE "public"."products_public" FROM "anon";
 

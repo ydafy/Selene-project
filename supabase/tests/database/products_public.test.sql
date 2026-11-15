@@ -25,7 +25,7 @@ returns uuid language sql as $$
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'pp-' || p_n, 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum,
+    array['https://example.test/p.png'], p_status::public.product_status,
     '{}'::jsonb, pg_temp.mu(77001), 10000, '06600', 'gpu_1',
     case when p_deleted then now() end,
     10000::bigint + s.shipping_buffer_cents

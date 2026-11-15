@@ -81,7 +81,7 @@ select pg_temp.money_shipment(9208, 9308, 9101, 9102, 'shipped', interval '72 ho
 select pg_temp.money_shipment(9209, 9309, 9101, 9102, 'shipped');
 select pg_temp.t9_operation(9309, false);
 -- Statuses a dispute cannot open from, one shipment each.
-select pg_temp.money_shipment(9210 + i::integer, 9310 + i::integer, 9101, 9102, st::public.order_status_enum)
+select pg_temp.money_shipment(9210 + i::integer, 9310 + i::integer, 9101, 9102, st::public.order_status)
 from unnest(array['pending', 'paid', 'preparing', 'completed', 'cancelled', 'dispute', 'refunded']) with ordinality as t(st, i);
 
 -- 1. fn_open_shipment_dispute ------------------------------------------------------

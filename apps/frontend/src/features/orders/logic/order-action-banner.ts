@@ -9,7 +9,7 @@ export const resolveOrderBannerKind = ({
   orderStatus,
   shipmentStatus,
 }: {
-  orderStatus: Enums<'order_status_enum'> | null;
+  orderStatus: Enums<'order_status'> | null;
   shipmentStatus: Tables<'shipments'>['status'];
 }): OrderBannerKind => {
   if (shipmentStatus === 'cancelled') return 'cancelledShipment';

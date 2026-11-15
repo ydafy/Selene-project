@@ -1,14 +1,14 @@
 CREATE OR REPLACE FUNCTION internal.fn_derive_order_status (
   p_order_id uuid
 )
-  RETURNS public.order_status_enum
+  RETURNS public.order_status
   LANGUAGE plpgsql
   STABLE
   SECURITY DEFINER
   SET search_path TO ''
   AS $function$
 DECLARE
-  v_statuses public.order_status_enum[];
+  v_statuses public.order_status[];
 BEGIN
   -- Obtenemos de forma fidedigna (bypassando RLS) todos los estados de los paquetes del pedido
   SELECT array_agg(DISTINCT s.status)

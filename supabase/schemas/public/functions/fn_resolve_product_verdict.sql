@@ -15,7 +15,7 @@ DECLARE
   v_lock_time TIMESTAMPTZ;
   v_seller_id UUID;
   v_product_name TEXT;
-  v_status public.product_status_enum;
+  v_status public.product_status;
   v_audit_id UUID;
   v_event_kind TEXT;
   v_notif_title TEXT;
@@ -65,7 +65,7 @@ BEGIN
   -- 6. Actualizar Estado del Producto y liberar el lock
   IF p_verdict = 'REJECT' THEN
     UPDATE public.products
-    SET status = 'REJECTED'::public.product_status_enum,
+    SET status = 'REJECTED'::public.product_status,
         rejection_reason = trim(p_public_note),
         locked_by = NULL,
         locked_at = NULL,
@@ -73,7 +73,7 @@ BEGIN
     WHERE id = p_product_id;
   ELSIF p_verdict = 'APPROVE' THEN
     UPDATE public.products
-    SET status = 'VERIFIED'::public.product_status_enum,
+    SET status = 'VERIFIED'::public.product_status,
         rejection_reason = NULL,
         verified_at = now(),
         locked_by = NULL,

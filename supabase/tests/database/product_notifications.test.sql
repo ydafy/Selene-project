@@ -31,7 +31,7 @@ returns void language plpgsql as $$
 begin
   perform pg_temp.money_product(p_n, p_seller);
   update public.products
-  set status = p_status::public.product_status_enum,
+  set status = p_status::public.product_status,
     deleted_at = case when p_deleted then now() end
   where id = pg_temp.mu(p_n);
 end $$;

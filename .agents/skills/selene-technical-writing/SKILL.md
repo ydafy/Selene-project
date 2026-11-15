@@ -18,7 +18,7 @@ Skip for code comments, user-facing UI strings (they go through i18n and the pro
 
 - `AGENTS.md` and the harness win. This skill changes wording only. It never adds, drops, or reorders requirements, steps, or warnings.
 - Never rewrite quoted text. `## Specs` and `## Log` entries in `odd/tasks` quote the maintainer verbatim, typos and Spanish included. Edit only the prose around a quote.
-- Repository docs are in English. Keep real names: write the symbol, file, command, table, or enum exactly as the code has it (`fn_cancel_shipment`, `bun run api:test`, `order_status_enum`), never a synonym or a description of it.
+- Repository docs are in English. Keep real names: write the symbol, file, command, table, or enum exactly as the code has it (`fn_cancel_shipment`, `bun run api:test`, `order_status`), never a synonym or a description of it.
 - Every count, path, or command in a doc must be true at the commit that lands it. Include the command that regenerates a count.
 - If a rule makes a sentence worse, fix the sentence another way or leave it alone.
 - After writing, run the checklist in `references/unslop.md` over the text you touched.

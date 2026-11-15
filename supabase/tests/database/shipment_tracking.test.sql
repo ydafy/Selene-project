@@ -41,7 +41,7 @@ create function pg_temp.scan(
   p_at timestamptz default '2026-11-01 10:00:00+00', p_dispute uuid default null
 ) returns jsonb language sql as $$
   select public.fn_record_tracking_event(pg_temp.mu(p_ship), p_dispute, p_type::public.shipment_tracking_event_type,
-    p_at, p_raw, 'CDMX', 'test scan', 'dhl', null, pg_temp.mu(12999), p_transition::public.order_status_enum)
+    p_at, p_raw, 'CDMX', 'test scan', 'dhl', null, pg_temp.mu(12999), p_transition::public.order_status)
 $$;
 
 -- The same scan, answering {"error": <message>} instead of raising.

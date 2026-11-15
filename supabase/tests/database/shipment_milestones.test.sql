@@ -35,7 +35,7 @@ select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 create function pg_temp.scan(p_ship integer, p_type text, p_transition text, p_raw text, p_dispute uuid default null)
 returns jsonb language sql as $$
   select public.fn_record_tracking_event(pg_temp.mu(p_ship), p_dispute, p_type::public.shipment_tracking_event_type,
-    now() - interval '1 hour', p_raw, 'CDMX', 'test scan', 'dhl', null, null, p_transition::public.order_status_enum)
+    now() - interval '1 hour', p_raw, 'CDMX', 'test scan', 'dhl', null, null, p_transition::public.order_status)
 $$;
 
 -- Every milestone notice of p_ship, one line each:

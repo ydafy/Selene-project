@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION public.fn_list_shipment_late_carrier_activity()
     seller_id                        uuid,
     tracking_number                  text,
     carrier                          text,
-    shipment_status                  public.order_status_enum,
+    shipment_status                  public.order_status,
     source                           text,
     refund_status                    text,
     late_carrier_activity_at         timestamp with time zone,

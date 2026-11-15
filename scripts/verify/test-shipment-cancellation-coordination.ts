@@ -83,11 +83,11 @@ async function run() {
         CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$
           SELECT current_setting('request.jwt.claim.role', true)
         $$;
-        CREATE TYPE public.order_status_enum AS ENUM ('pending','paid','preparing','shipped','delivered','completed','cancelled','dispute','refunded');
+        CREATE TYPE public.order_status AS ENUM ('pending','paid','preparing','shipped','delivered','completed','cancelled','dispute','refunded');
         CREATE TABLE public.orders (id uuid PRIMARY KEY, buyer_id uuid NOT NULL, stripe_payment_intent_id text);
         CREATE TABLE public.shipments (
           id uuid PRIMARY KEY, order_id uuid NOT NULL REFERENCES public.orders(id), seller_id uuid NOT NULL,
-          status public.order_status_enum NOT NULL, stripe_transfer_id text, stripe_payout_id text,
+          status public.order_status NOT NULL, stripe_transfer_id text, stripe_payout_id text,
           stripe_payment_intent_id text,
           label_generation_state text NOT NULL DEFAULT 'unclaimed',
           claim_token uuid, claim_expires_at timestamptz
@@ -327,7 +327,7 @@ async function run() {
         'dispute',
         'refunded',
       ]) {
-        await a`UPDATE public.shipments SET status = ${status}::public.order_status_enum WHERE id = ${ids.shipment}::uuid`;
+        await a`UPDATE public.shipments SET status = ${status}::public.order_status WHERE id = ${ids.shipment}::uuid`;
         await rejectsUnchanged(() => claim(), 'SHIPMENT_NOT_CANCELABLE');
         await rejectsUnchanged(
           () => claim(a, ids.seller, 'seller'),

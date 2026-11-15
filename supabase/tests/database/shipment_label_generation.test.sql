@@ -273,7 +273,7 @@ end $$;
 -- 11401 unclaimed 12 h left, 11402 retryable 1 µs left, 11403 12 h + 1 µs, 11404 deadline now,
 -- 11405 preparing, 11406 tracking number, 11407 generated, 11408 started cancellation,
 -- 11409 live cancellation claim, 11410 expired unstarted cancellation claim.
-select pg_temp.money_shipment(11500 + n, 11400 + n, 11001, 11002, case when n = 5 then 'preparing' else 'paid' end::public.order_status_enum)
+select pg_temp.money_shipment(11500 + n, 11400 + n, 11001, 11002, case when n = 5 then 'preparing' else 'paid' end::public.order_status)
 from generate_series(1, 10) n;
 update public.shipments set label_generation_state = 'retryable_rejected' where id = pg_temp.mu(11402);
 update public.shipments set tracking_number = 'TRK' where id = pg_temp.mu(11406);

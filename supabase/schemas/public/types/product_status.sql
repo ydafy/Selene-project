@@ -1,4 +1,4 @@
-CREATE TYPE "public"."product_status_enum" AS ENUM (
+CREATE TYPE "public"."product_status" AS ENUM (
   'PENDING_VERIFICATION',
   'IN_REVIEW',
   'VERIFIED',

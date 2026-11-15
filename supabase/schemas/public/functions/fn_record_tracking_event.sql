@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.fn_record_tracking_event (
   p_carrier_name        text,
   p_webhook_delivery_id uuid,
   p_polling_run_id      uuid,
-  p_transition          public.order_status_enum
+  p_transition          public.order_status
 )
   RETURNS jsonb
   LANGUAGE plpgsql
@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.fn_record_tracking_event (
   SET search_path TO 'public', 'pg_temp'
   AS $function$
 DECLARE
-  v_status public.order_status_enum;
+  v_status public.order_status;
   v_event_id UUID;
   v_refund_started BOOLEAN;
 BEGIN
@@ -98,20 +98,20 @@ $function$;
 
 GRANT EXECUTE
   ON FUNCTION "public"."fn_record_tracking_event"(uuid, uuid, public.shipment_tracking_event_type, timestamp
-    WITH time zone, text, text, text, text, uuid, uuid, public.order_status_enum)
+    WITH time zone, text, text, text, text, uuid, uuid, public.order_status)
   TO "service_role";
 
 REVOKE ALL
   ON FUNCTION "public"."fn_record_tracking_event"(uuid, uuid, public.shipment_tracking_event_type, timestamp
-    WITH time zone, text, text, text, text, uuid, uuid, public.order_status_enum)
+    WITH time zone, text, text, text, text, uuid, uuid, public.order_status)
   FROM "postgres";
 
 GRANT EXECUTE
   ON FUNCTION "public"."fn_record_tracking_event"(uuid, uuid, public.shipment_tracking_event_type, timestamp
-    WITH time zone, text, text, text, text, uuid, uuid, public.order_status_enum)
+    WITH time zone, text, text, text, text, uuid, uuid, public.order_status)
   TO "postgres";
 
 REVOKE ALL
   ON FUNCTION "public"."fn_record_tracking_event"(uuid, uuid, public.shipment_tracking_event_type, timestamp
-    WITH time zone, text, text, text, text, uuid, uuid, public.order_status_enum)
+    WITH time zone, text, text, text, text, uuid, uuid, public.order_status)
   FROM PUBLIC, "anon", "authenticated";

@@ -10,7 +10,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             pp.stripe_account_id,
             pp.stripe_onboarding_status,
             p.username AS seller_name,
-            (s.status = 'completed'::public.order_status_enum) AS is_completed,
+            (s.status = 'completed'::public.order_status) AS is_completed,
             (s.completed_at IS NOT NULL) AS has_completed_at,
             (s.stripe_payment_intent_id IS NOT NULL) AS has_connect_payment_intent,
             GREATEST(

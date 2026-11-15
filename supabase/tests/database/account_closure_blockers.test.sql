@@ -17,7 +17,7 @@ returns void language sql as $$
     publication_insurance_rate
   )
   select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    array['https://example.test/p.png'], p_status::public.product_status, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
@@ -28,7 +28,7 @@ $$;
 -- One order with one shipment and one sold item, all in the given final status.
 -- p_pi is the Connect payment intent (NULL for a sale outside Connect).
 create function pg_temp.make_sale(
-  p_n integer, p_buyer uuid, p_seller uuid, p_status public.order_status_enum, p_pi text
+  p_n integer, p_buyer uuid, p_seller uuid, p_status public.order_status, p_pi text
 ) returns void language plpgsql as $$
 declare
   v_order uuid := ('d0000000-0000-4000-8000-0000000b' || lpad(p_n::text, 4, '0'))::uuid;

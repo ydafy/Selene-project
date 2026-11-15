@@ -1198,7 +1198,7 @@ export type Database = {
           payment_processing_reason: string | null;
           service_fee_amount_cents: number;
           shipping_address: NonNullable<Json>;
-          status: Database['public']['Enums']['order_status_enum'];
+          status: Database['public']['Enums']['order_status'];
           stripe_charge_id: string | null;
           stripe_fee_reconciled_at: string | null;
           stripe_payment_intent_id: string | null;
@@ -1226,7 +1226,7 @@ export type Database = {
           payment_processing_reason?: string | null;
           service_fee_amount_cents?: number;
           shipping_address: NonNullable<Json>;
-          status?: Database['public']['Enums']['order_status_enum'];
+          status?: Database['public']['Enums']['order_status'];
           stripe_charge_id?: string | null;
           stripe_fee_reconciled_at?: string | null;
           stripe_payment_intent_id?: string | null;
@@ -1253,7 +1253,7 @@ export type Database = {
           payment_processing_reason?: string | null;
           service_fee_amount_cents?: number;
           shipping_address?: NonNullable<Json>;
-          status?: Database['public']['Enums']['order_status_enum'];
+          status?: Database['public']['Enums']['order_status'];
           stripe_charge_id?: string | null;
           stripe_fee_reconciled_at?: string | null;
           stripe_payment_intent_id?: string | null;
@@ -1366,9 +1366,9 @@ export type Database = {
           shipping_cost_cents: number;
           shipping_payer: string;
           specifications: NonNullable<Json>;
-          status: Database['public']['Enums']['product_status_enum'];
+          status: Database['public']['Enums']['product_status'];
           status_before_account_hold:
-            Database['public']['Enums']['product_status_enum'] | null;
+            Database['public']['Enums']['product_status'] | null;
           updated_at: string;
           usage: string;
           verification_data: Json | null;
@@ -1401,9 +1401,9 @@ export type Database = {
           shipping_cost_cents?: number;
           shipping_payer?: string;
           specifications?: NonNullable<Json>;
-          status?: Database['public']['Enums']['product_status_enum'];
+          status?: Database['public']['Enums']['product_status'];
           status_before_account_hold?:
-            Database['public']['Enums']['product_status_enum'] | null;
+            Database['public']['Enums']['product_status'] | null;
           updated_at?: string;
           usage: string;
           verification_data?: Json | null;
@@ -1435,9 +1435,9 @@ export type Database = {
           shipping_cost_cents?: number;
           shipping_payer?: string;
           specifications?: NonNullable<Json>;
-          status?: Database['public']['Enums']['product_status_enum'];
+          status?: Database['public']['Enums']['product_status'];
           status_before_account_hold?:
-            Database['public']['Enums']['product_status_enum'] | null;
+            Database['public']['Enums']['product_status'] | null;
           updated_at?: string;
           usage?: string;
           verification_data?: Json | null;
@@ -2442,7 +2442,7 @@ export type Database = {
           shipped_at: string | null;
           shipping_cost_cents: number;
           shipping_evidence: Json | null;
-          status: Database['public']['Enums']['order_status_enum'];
+          status: Database['public']['Enums']['order_status'];
           stripe_payment_intent_id: string | null;
           stripe_payout_id: string | null;
           stripe_transfer_id: string | null;
@@ -2483,7 +2483,7 @@ export type Database = {
           shipped_at?: string | null;
           shipping_cost_cents?: number;
           shipping_evidence?: Json | null;
-          status?: Database['public']['Enums']['order_status_enum'];
+          status?: Database['public']['Enums']['order_status'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
@@ -2523,7 +2523,7 @@ export type Database = {
           shipped_at?: string | null;
           shipping_cost_cents?: number;
           shipping_evidence?: Json | null;
-          status?: Database['public']['Enums']['order_status_enum'];
+          status?: Database['public']['Enums']['order_status'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
@@ -2804,7 +2804,7 @@ export type Database = {
           seller_name: string | null;
           seller_payout_block_reason: string | null;
           shipment_id: string;
-          status: Database['public']['Enums']['order_status_enum'];
+          status: Database['public']['Enums']['order_status'];
           stripe_account_id: string | null;
           stripe_onboarding_status:
             Database['public']['Enums']['stripe_onboarding_status'] | null;
@@ -2888,7 +2888,7 @@ export type Database = {
           dispute_id: string;
           dispute_status: Database['public']['Enums']['dispute_status'] | null;
           order_id: string | null;
-          order_status: Database['public']['Enums']['order_status_enum'] | null;
+          order_status: Database['public']['Enums']['order_status'] | null;
           resolution_type: string | null;
           resolved_at: string | null;
           seller_id: string | null;
@@ -2921,7 +2921,7 @@ export type Database = {
           shipping_cost_cents: number;
           shipping_payer: string;
           specifications: NonNullable<Json>;
-          status: Database['public']['Enums']['product_status_enum'];
+          status: Database['public']['Enums']['product_status'];
           updated_at: string;
           usage: string;
           verification_data: Json | null;
@@ -2951,7 +2951,7 @@ export type Database = {
           shipping_cost_cents?: number | null;
           shipping_payer?: string | null;
           specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status_enum'] | null;
+          status?: Database['public']['Enums']['product_status'] | null;
           updated_at?: string | null;
           usage?: string | null;
           verification_data?: Json | null;
@@ -2980,7 +2980,7 @@ export type Database = {
           shipping_cost_cents?: number | null;
           shipping_payer?: string | null;
           specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status_enum'] | null;
+          status?: Database['public']['Enums']['product_status'] | null;
           updated_at?: string | null;
           usage?: string | null;
           verification_data?: Json | null;
@@ -3101,7 +3101,7 @@ export type Database = {
           price_cents: number;
           seller_id: string;
           specifications: NonNullable<Json>;
-          status: Database['public']['Enums']['product_status_enum'];
+          status: Database['public']['Enums']['product_status'];
           usage: string;
           views: number;
         };
@@ -3119,7 +3119,7 @@ export type Database = {
           price_cents?: number | null;
           seller_id?: string | null;
           specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status_enum'] | null;
+          status?: Database['public']['Enums']['product_status'] | null;
           usage?: string | null;
           views?: number | null;
         };
@@ -3136,7 +3136,7 @@ export type Database = {
           price_cents?: number | null;
           seller_id?: string | null;
           specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status_enum'] | null;
+          status?: Database['public']['Enums']['product_status'] | null;
           usage?: string | null;
           views?: number | null;
         };
@@ -3760,7 +3760,7 @@ export type Database = {
           refund_status: string;
           seller_id: string;
           shipment_id: string;
-          shipment_status: Database['public']['Enums']['order_status_enum'];
+          shipment_status: Database['public']['Enums']['order_status'];
           source: string;
           tracking_number: string;
         }[];
@@ -4018,7 +4018,7 @@ export type Database = {
           p_raw_status: string;
           p_shipment_id: string;
           p_status_description: string;
-          p_transition: Database['public']['Enums']['order_status_enum'];
+          p_transition: Database['public']['Enums']['order_status'];
           p_webhook_delivery_id: string;
         };
         Returns: Json;
@@ -4236,7 +4236,7 @@ export type Database = {
         | 'rejected'
         | 'return_shipped'
         | 'return_delivered';
-      order_status_enum:
+      order_status:
         | 'pending'
         | 'paid'
         | 'preparing'
@@ -4247,7 +4247,7 @@ export type Database = {
         | 'dispute'
         | 'refunded';
       payout_status: 'pending' | 'processing' | 'completed' | 'rejected';
-      product_status_enum:
+      product_status:
         | 'PENDING_VERIFICATION'
         | 'IN_REVIEW'
         | 'VERIFIED'
@@ -4409,7 +4409,7 @@ export const Constants = {
         'return_shipped',
         'return_delivered',
       ],
-      order_status_enum: [
+      order_status: [
         'pending',
         'paid',
         'preparing',
@@ -4421,7 +4421,7 @@ export const Constants = {
         'refunded',
       ],
       payout_status: ['pending', 'processing', 'completed', 'rejected'],
-      product_status_enum: [
+      product_status: [
         'PENDING_VERIFICATION',
         'IN_REVIEW',
         'VERIFIED',

@@ -26,7 +26,7 @@ create function pg_temp.listing(p_n integer, p_seller integer, p_price_cents big
 returns uuid language plpgsql as $$
 begin
   perform pg_temp.money_product(p_n, p_seller, p_price_cents);
-  update public.products set status = p_status::public.product_status_enum, reserved_at = now()
+  update public.products set status = p_status::public.product_status, reserved_at = now()
   where id = pg_temp.mu(p_n);
   return pg_temp.mu(p_n);
 end $$;
@@ -313,7 +313,7 @@ select throws_ok(
     values (pg_temp.mu(5004), 1, '{}'::jsonb, 'pending', 'tg_t5_1')$$,
   '23505', null, 'columns: two orders cannot share a transfer group');
 select is(
-  (select count(*) from unnest(enum_range(null::public.order_status_enum)) v where v::text = 'payment_processing'),
+  (select count(*) from unnest(enum_range(null::public.order_status)) v where v::text = 'payment_processing'),
   0::bigint, 'columns: payment_processing is a flag, not an order status');
 
 -- 9. The release view reads each transfer identifier at its own level ------------------------

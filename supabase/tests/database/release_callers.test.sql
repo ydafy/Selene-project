@@ -24,7 +24,7 @@ create function pg_temp.make_product(
     publication_insurance_rate
   )
   select pg_temp.u(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum,
+    array['https://example.test/p.png'], p_status::public.product_status,
     '{}'::jsonb, pg_temp.u(p_seller), 10000, '06600', 'gpu_1',
     now() - p_age,
     10000::bigint + s.shipping_buffer_cents
@@ -58,7 +58,7 @@ $$;
 
 -- One order, one shipment per seller; the items are the given products.
 create function pg_temp.make_shipment(
-  p_order integer, p_shipment integer, p_seller integer, p_status public.order_status_enum, p_products integer[]
+  p_order integer, p_shipment integer, p_seller integer, p_status public.order_status, p_products integer[]
 ) returns void language plpgsql as $$
 begin
   insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status)

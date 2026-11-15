@@ -11,7 +11,7 @@ ALTER TABLE "public"."shipments"
   ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."shipments"
-  ADD COLUMN "status" public.order_status_enum NOT NULL DEFAULT 'paid'::public.order_status_enum;
+  ADD COLUMN "status" public.order_status NOT NULL DEFAULT 'paid'::public.order_status;
 
 ALTER TABLE "public"."shipments"
   ADD COLUMN "origin_address" jsonb;
@@ -137,7 +137,7 @@ ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_origin_address_id_fkey" FOREIGN KEY (origin_address_id) REFERENCES public.addresses(id) ON DELETE RESTRICT;
 
 CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (delivered_at)
-  WHERE ((status = 'delivered'::public.order_status_enum) AND (buyer_confirmed_at IS NULL) AND (delivered_at IS NOT NULL));
+  WHERE ((status = 'delivered'::public.order_status) AND (buyer_confirmed_at IS NULL) AND (delivered_at IS NOT NULL));
 
 CREATE INDEX idx_shipments_order_id ON public.shipments USING btree (order_id);
 

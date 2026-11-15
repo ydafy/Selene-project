@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.fn_admin_soft_delete_product (
   AS $function$
 DECLARE
   v_auth_user_id UUID;
-  v_previous_status public.product_status_enum;
+  v_previous_status public.product_status;
 BEGIN
   v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
@@ -32,7 +32,7 @@ BEGIN
 
   UPDATE public.products
   SET deleted_at = now(),
-      status = 'HIDDEN'::public.product_status_enum,
+      status = 'HIDDEN'::public.product_status,
       updated_at = now()
   WHERE id = p_product_id
     AND deleted_at IS NULL;
