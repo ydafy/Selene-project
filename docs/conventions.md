@@ -85,6 +85,15 @@ A test runs the code it tests. Call the function, call the Edge Function handler
 - Every new table, view, sequence or function states in its schema file exactly what `anon` and `authenticated` get, and nothing by default. The procedure and the two tests that pin the lists are in `supabase/AGENTS.md`, "Declarative schema".
 - A server-only object goes in the `internal` schema or stays in `public` depending on who calls it. The rule is in `supabase/AGENTS.md`, "Declarative schema".
 
+## Database names
+
+These rules apply to new objects. Existing indexes keep their names (`idx_*`, `ix_*` and `*_idx` all exist); rename one only when a migration already rewrites it.
+
+- Indexes: `<table>_<columns>_idx`, or `<table>_<purpose>_idx` when the columns do not say what the index is for (`addresses_one_default_per_user_idx`). This is the name Postgres would generate, so it matches the constraint names below.
+- Constraints keep the names Postgres generates: `<table>_pkey`, `<table>_<column>_fkey`, `<table>_<columns>_key` and `<table>_<column>_check`. A CHECK over several columns gets `<table>_<purpose>_check` (`system_settings_active_limits_check`).
+- Enum types are named after what they hold, without an `_enum` suffix (`order_status`, `user_role`). Their values are lowercase snake_case (`under_review`). `product_status` still has uppercase values until #308 lowercases them.
+- Money columns hold integer cents and end in `_cents` (`shipping_cost_cents`).
+
 ## File naming
 
 - Every file uses kebab-case: `apps/frontend/src/shared/ui/product/product-card.tsx` exports `ProductCard`, `apps/frontend/src/features/auth/hooks/use-auth.ts` exports `useAuth`, `apps/frontend/src/shared/utils/money/format-cents.ts` exports `formatCents`. Identifiers inside the file keep their usual case.
