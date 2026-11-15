@@ -67,8 +67,9 @@ A vulnerability affects auth, permissions, secrets, money integrity, or data exp
 
 1. Tell the maintainer in the session.
 2. Draft a private Security Advisory (`SECURITY.md`).
-3. Fix it in the advisory's temporary private fork, not in a branch with a PR on this repository: CodeRabbit reviews every PR here, and its comments are public.
-4. When the maintainer confirms the fix is deployed, close the advisory yourself. Do not publish it.
+3. Fix it in the advisory's temporary private fork, not in a branch with a PR on this repository: CodeRabbit reviews every PR here, and its comments are public. GitHub runs no status checks and no branch protection in that fork, so run the checks from `AGENTS.md`, "Verifying a change", locally on the fork's branch.
+4. Ask the maintainer to deploy the fix from that branch. Merging first would publish the patch on `main` while production is still vulnerable.
+5. When the maintainer confirms the fix is deployed, merge it into `main` from the advisory ("Merge pull request(s)"), then close the advisory yourself. Do not publish it.
 
 ```bash
 gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed
