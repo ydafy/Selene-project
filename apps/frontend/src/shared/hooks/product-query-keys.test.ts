@@ -20,7 +20,7 @@ describe('productsListKey', () => {
   test('maps unset and default filters to the same key', () => {
     expect(productsListKey()).toEqual(productsListKey({}));
     expect(productsListKey({ verifiedOnly: false })).toEqual(productsListKey());
-    expect(productsListKey({ statuses: ['VERIFIED', 'SOLD'] })).toEqual(
+    expect(productsListKey({ statuses: ['verified', 'sold'] })).toEqual(
       productsListKey(),
     );
   });
@@ -32,7 +32,7 @@ describe('productsListKey', () => {
       productsListKey({ sellerId: 's2' }),
       productsListKey({ limit: 5 }),
       productsListKey({ verifiedOnly: true }),
-      productsListKey({ statuses: ['HIDDEN'] }),
+      productsListKey({ statuses: ['hidden'] }),
     ].map((k) => JSON.stringify(k));
     expect(new Set(keys).size).toBe(keys.length);
   });

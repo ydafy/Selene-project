@@ -53,13 +53,13 @@ export const MyListingCard = ({
   const statusColor = getStatusColor(statusKey);
 
   // Status action states
-  const isPending = product.status === 'PENDING_VERIFICATION';
-  const isRejected = product.status === 'REJECTED';
+  const isPending = product.status === 'pending_verification';
+  const isRejected = product.status === 'rejected';
 
   // If action required (verify or fix), prioritize over detail view
   const needsAction = isPending || isRejected;
 
-  // Smart navigation: IN_DISPUTE → order detail with shipment focus
+  // Smart navigation: in_dispute → order detail with shipment focus
   const handlePress = () => {
     if (isInDispute && orderId) {
       const query = shipmentId ? `?shipment_id=${shipmentId}` : '';
@@ -104,7 +104,7 @@ export const MyListingCard = ({
   // Show actions if NOT history, or if rejected (actionable from history).
   // A listing held by an account suspension has none: the server refuses both.
   const showActions = !isHeld && (!isHistoryItem || isRejected);
-  // Hide trash when IN_DISPUTE
+  // Hide trash when in_dispute
   const showTrash = !isInDispute;
 
   return (
@@ -173,7 +173,7 @@ export const MyListingCard = ({
             </Text>
           </Box>
 
-          {/* IN_DISPUTE BADGE — rendered before action bar */}
+          {/* in_dispute BADGE — rendered before action bar */}
           {isInDispute && (
             <View
               accessibilityLiveRegion="polite"
@@ -198,7 +198,7 @@ export const MyListingCard = ({
                   color={theme.colors.error}
                 />
                 <Text variant="caption-md" color="error" marginLeft="xs">
-                  {t('listings.status.IN_DISPUTE')}
+                  {t('listings.status.in_dispute')}
                 </Text>
               </Box>
             </View>
@@ -246,7 +246,7 @@ export const MyListingCard = ({
                 </Box>
               </TouchableOpacity>
 
-              {/* DELETE BUTTON — hidden when IN_DISPUTE */}
+              {/* DELETE BUTTON — hidden when in_dispute */}
               {showTrash && (
                 <Box
                   width={40}

@@ -9,36 +9,36 @@ import {
 describe('product listing statuses', () => {
   it('active listings are verified or still in verification, never sold', () => {
     expect([...ACTIVE_LISTING_STATUSES]).toEqual([
-      'VERIFIED',
-      'PENDING_VERIFICATION',
-      'IN_REVIEW',
+      'verified',
+      'pending_verification',
+      'in_review',
     ]);
   });
 
-  it('buyer lists add SOLD to the active listings', () => {
+  it('buyer lists add sold to the active listings', () => {
     expect([...BUYER_LISTED_STATUSES]).toEqual([
-      'VERIFIED',
-      'PENDING_VERIFICATION',
-      'IN_REVIEW',
-      'SOLD',
+      'verified',
+      'pending_verification',
+      'in_review',
+      'sold',
     ]);
   });
 
   it('never lists rejected, hidden, reserved or disputed listings', () => {
-    for (const status of ['REJECTED', 'HIDDEN', 'RESERVED', 'IN_DISPUTE']) {
+    for (const status of ['rejected', 'hidden', 'reserved', 'in_dispute']) {
       expect(BUYER_LISTED_STATUSES as readonly string[]).not.toContain(status);
     }
   });
 
-  it('flags only PENDING_VERIFICATION and IN_REVIEW as in verification', () => {
-    expect(isInVerification('PENDING_VERIFICATION')).toBe(true);
-    expect(isInVerification('IN_REVIEW')).toBe(true);
+  it('flags only pending_verification and in_review as in verification', () => {
+    expect(isInVerification('pending_verification')).toBe(true);
+    expect(isInVerification('in_review')).toBe(true);
     for (const status of [
-      'VERIFIED',
-      'SOLD',
-      'REJECTED',
-      'HIDDEN',
-      'RESERVED',
+      'verified',
+      'sold',
+      'rejected',
+      'hidden',
+      'reserved',
     ]) {
       expect(isInVerification(status)).toBe(false);
     }

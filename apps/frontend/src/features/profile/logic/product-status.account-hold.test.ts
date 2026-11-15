@@ -11,16 +11,16 @@ import es from '@/shared/i18n/locales/es/profile.json';
 // prior status in `status_before_account_hold` and comes back when the account is reactivated,
 // so it is not history.
 describe('listings held by an account suspension', () => {
-  it('a HIDDEN listing with a recorded prior status is held, not history', () => {
-    const held = { status: 'HIDDEN', status_before_account_hold: 'VERIFIED' };
+  it('a hidden listing with a recorded prior status is held, not history', () => {
+    const held = { status: 'hidden', status_before_account_hold: 'verified' };
     expect(isAccountHeld(held)).toBe(true);
     expect(isProductHistory(held.status, held.status_before_account_hold)).toBe(
       false,
     );
   });
 
-  it('a HIDDEN listing without a prior status stays history', () => {
-    const hidden = { status: 'HIDDEN', status_before_account_hold: null };
+  it('a hidden listing without a prior status stays history', () => {
+    const hidden = { status: 'hidden', status_before_account_hold: null };
     expect(isAccountHeld(hidden)).toBe(false);
     expect(
       isProductHistory(hidden.status, hidden.status_before_account_hold),
@@ -28,21 +28,36 @@ describe('listings held by an account suspension', () => {
   });
 
   it('keeps the previous classification for every other status', () => {
-    expect(isProductHistory('SOLD')).toBe(true);
-    expect(isProductHistory('REJECTED')).toBe(true);
-    expect(isProductHistory('HIDDEN')).toBe(true);
-    expect(isProductHistory('VERIFIED')).toBe(false);
+    expect(isProductHistory('sold')).toBe(true);
+    expect(isProductHistory('rejected')).toBe(true);
+    expect(isProductHistory('hidden')).toBe(true);
+    expect(isProductHistory('verified')).toBe(false);
     expect(isProductHistory(null)).toBe(false);
     expect(
       isAccountHeld({
-        status: 'VERIFIED',
-        status_before_account_hold: 'VERIFIED',
+        status: 'verified',
+        status_before_account_hold: 'verified',
       }),
     ).toBe(false);
   });
 
   it('uses the warning color for a held listing', () => {
     expect(getStatusColor('ACCOUNT_HOLD')).toBe('warning');
+  });
+
+  it('labels every listing status by its lowercase database value in both languages', () => {
+    for (const status of [
+      'verified',
+      'in_review',
+      'pending_verification',
+      'sold',
+      'rejected',
+      'hidden',
+      'in_dispute',
+    ]) {
+      expect(en.listings.status).toHaveProperty(status);
+      expect(es.listings.status).toHaveProperty(status);
+    }
   });
 
   it('has the held label in both languages', () => {

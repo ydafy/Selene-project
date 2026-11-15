@@ -7,33 +7,33 @@ import {
 } from './product-purchase-gate';
 
 describe('decidePurchaseGate', () => {
-  it('adds a VERIFIED product whose seller is not blocked (ready or unknown)', () => {
-    expect(decidePurchaseGate('VERIFIED', false)).toBe('add');
+  it('adds a verified product whose seller is not blocked (ready or unknown)', () => {
+    expect(decidePurchaseGate('verified', false)).toBe('add');
   });
 
-  it('opens the seller-not-ready dialog for a VERIFIED product with a blocked seller', () => {
-    expect(decidePurchaseGate('VERIFIED', true)).toBe('SELLER_NOT_READY');
+  it('opens the seller-not-ready dialog for a verified product with a blocked seller', () => {
+    expect(decidePurchaseGate('verified', true)).toBe('SELLER_NOT_READY');
   });
 
-  it('opens the education dialog for PENDING_VERIFICATION and IN_REVIEW', () => {
-    expect(decidePurchaseGate('PENDING_VERIFICATION', false)).toBe(
-      'PENDING_VERIFICATION',
+  it('opens the education dialog for pending_verification and in_review', () => {
+    expect(decidePurchaseGate('pending_verification', false)).toBe(
+      'pending_verification',
     );
-    expect(decidePurchaseGate('IN_REVIEW', false)).toBe('IN_REVIEW');
+    expect(decidePurchaseGate('in_review', false)).toBe('in_review');
   });
 
-  it('ignores seller readiness for non-VERIFIED listings', () => {
-    expect(decidePurchaseGate('IN_REVIEW', true)).toBe('IN_REVIEW');
-    expect(decidePurchaseGate('SOLD', true)).toBe('unavailable');
+  it('ignores seller readiness for non-verified listings', () => {
+    expect(decidePurchaseGate('in_review', true)).toBe('in_review');
+    expect(decidePurchaseGate('sold', true)).toBe('unavailable');
   });
 
   it('reports other statuses as unavailable', () => {
     for (const status of [
-      'SOLD',
-      'RESERVED',
-      'REJECTED',
-      'IN_DISPUTE',
-      'HIDDEN',
+      'sold',
+      'reserved',
+      'rejected',
+      'in_dispute',
+      'hidden',
     ]) {
       expect(decidePurchaseGate(status, false)).toBe('unavailable');
     }
@@ -42,13 +42,13 @@ describe('decidePurchaseGate', () => {
 
 describe('purchaseDialogContent', () => {
   it('maps each variant to its title, line and current step', () => {
-    expect(purchaseDialogContent('PENDING_VERIFICATION', false)).toEqual({
+    expect(purchaseDialogContent('pending_verification', false)).toEqual({
       titleKey: 'dialogs.pendingTitle',
       lineKey: 'dialogs.pendingLine',
       favoriteLineKey: 'dialogs.favoritePrompt',
       currentStep: 1,
     });
-    expect(purchaseDialogContent('IN_REVIEW', false)).toEqual({
+    expect(purchaseDialogContent('in_review', false)).toEqual({
       titleKey: 'dialogs.inReviewTitle',
       lineKey: 'dialogs.inReviewLine',
       favoriteLineKey: 'dialogs.favoritePrompt',
@@ -63,7 +63,7 @@ describe('purchaseDialogContent', () => {
   });
 
   it('promises the alert instead of prompting when already a favorite', () => {
-    expect(purchaseDialogContent('IN_REVIEW', true).favoriteLineKey).toBe(
+    expect(purchaseDialogContent('in_review', true).favoriteLineKey).toBe(
       'dialogs.favoriteKnown',
     );
   });

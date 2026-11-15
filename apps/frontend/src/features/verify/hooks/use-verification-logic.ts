@@ -21,7 +21,7 @@ export const useVerificationLogic = (productId?: string) => {
   const [score, setScore] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const submittingRef = useRef(false);
-  const [status, setStatus] = useState<ProductStatus>('PENDING_VERIFICATION');
+  const [status, setStatus] = useState<ProductStatus>('pending_verification');
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
   const reload = useCallback(() => setReloadKey((key) => key + 1), []);
@@ -150,7 +150,7 @@ export const useVerificationLogic = (productId?: string) => {
       const { data: updated, error } = await supabase
         .from('products')
         .update({
-          status: 'IN_REVIEW',
+          status: 'in_review',
           verification_data: verificationData,
           rejection_reason: null, // Limpiamos el rechazo al reenviar
         })

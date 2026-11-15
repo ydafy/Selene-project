@@ -50,7 +50,7 @@ export default function MyListingsScreen() {
     [t],
   );
 
-  const hasRejected = !!listings?.some((item) => item.status === 'REJECTED');
+  const hasRejected = !!listings?.some((item) => item.status === 'rejected');
   const showHistoryBadge = hasRejected && selectedIndex !== 1;
   const badgesConfig = [false, showHistoryBadge];
 
@@ -166,7 +166,7 @@ export default function MyListingsScreen() {
                 onDelete={handleDeletePress}
                 onVerify={handleVerify}
                 isDeleting={deletingProductId === item.id}
-                isInDispute={item.status === 'IN_DISPUTE'}
+                isInDispute={item.status === 'in_dispute'}
               />
             </Box>
           )}

@@ -68,12 +68,12 @@ export const useProductCart = (
 
       // 2. CHECK: el vendedor puede recibir pagos (advisory; fail-open, el servidor decide)
       const sellerBlocked =
-        freshStatus === 'VERIFIED' && (await checkSellerBlocked(product.id));
+        freshStatus === 'verified' && (await checkSellerBlocked(product.id));
 
       // 3. VALIDAR: la pantalla abre el diálogo según el resultado
       const decision = decidePurchaseGate(freshStatus, sellerBlocked);
 
-      if (freshStatus !== 'VERIFIED') {
+      if (freshStatus !== 'verified') {
         // Actualizamos la caché solo si el objeto existe en TanStack Query
         // (one entry per user, see useProduct)
         queryClient.setQueriesData(

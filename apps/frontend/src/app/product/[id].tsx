@@ -83,8 +83,8 @@ export default function ProductDetailScreen() {
     const result = await handleAddToCart();
 
     if (
-      result === 'PENDING_VERIFICATION' ||
-      result === 'IN_REVIEW' ||
+      result === 'pending_verification' ||
+      result === 'in_review' ||
       result === 'SELLER_NOT_READY'
     ) {
       // Si el hook nos dice que aún no se puede comprar, explicamos por qué
@@ -227,7 +227,7 @@ export default function ProductDetailScreen() {
                   />
                 </Box>
 
-                {product.status === 'VERIFIED' && (
+                {product.status === 'verified' && (
                   <AppChip
                     label={t('details.verifiedSeller')}
                     icon="shield-check"

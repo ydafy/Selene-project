@@ -18,7 +18,7 @@ const fetchProducts = async (
 ): Promise<PublicProduct[]> => {
   try {
     let query = supabase
-      .from('products_public') // The view already hides deleted and HIDDEN rows
+      .from('products_public') // The view already hides deleted and hidden rows
       .select('*')
       .in('status', resolveProductStatuses(options)) // Do not rely on the view to pick the screen's statuses
       .order('created_at', { ascending: false });
@@ -28,7 +28,7 @@ const fetchProducts = async (
     }
 
     if (options?.verifiedOnly) {
-      query = query.eq('status', 'VERIFIED');
+      query = query.eq('status', 'verified');
     }
 
     if (options?.limit) {

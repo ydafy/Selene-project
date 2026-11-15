@@ -5,11 +5,11 @@ export interface UseProductsOptions {
   limit?: number;
   sellerId?: string;
   enabled?: boolean;
-  /** Statuses the list shows; defaults to VERIFIED and SOLD. */
+  /** Statuses the list shows; defaults to verified and sold. */
   statuses?: readonly ProductStatus[];
 }
 
-const DEFAULT_STATUSES: readonly ProductStatus[] = ['VERIFIED', 'SOLD'];
+const DEFAULT_STATUSES: readonly ProductStatus[] = ['verified', 'sold'];
 
 export const resolveProductsQueryEnabled = (options?: UseProductsOptions) =>
   options?.enabled ?? true;

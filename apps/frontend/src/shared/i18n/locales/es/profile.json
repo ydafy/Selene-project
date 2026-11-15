@@ -47,13 +47,13 @@
       "history": "Historial"
     },
     "status": {
-      "VERIFIED": "Activo",
-      "IN_REVIEW": "En Revisión",
-      "PENDING_VERIFICATION": "Sin Verificar",
-      "SOLD": "Vendido",
-      "REJECTED": "Rechazado",
-      "HIDDEN": "Oculto",
-      "IN_DISPUTE": "En Disputa",
+      "verified": "Activo",
+      "in_review": "En Revisión",
+      "pending_verification": "Sin Verificar",
+      "sold": "Vendido",
+      "rejected": "Rechazado",
+      "hidden": "Oculto",
+      "in_dispute": "En Disputa",
       "ACCOUNT_HOLD": "En pausa (cuenta suspendida)"
     },
     "actions": {

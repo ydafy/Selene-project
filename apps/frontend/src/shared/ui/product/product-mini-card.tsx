@@ -27,7 +27,7 @@ interface Props {
 export const ProductMiniCard = ({ product, onPress, cardHeight }: Props) => {
   const theme = useTheme<Theme>();
   const sharedStyles = getSharedStyles(theme);
-  const isSold = product.status === 'SOLD';
+  const isSold = product.status === 'sold';
 
   return (
     <TouchableOpacity
@@ -104,7 +104,7 @@ export const ProductMiniCard = ({ product, onPress, cardHeight }: Props) => {
           )}
 
           {/* Sello de Verificación (Solo si no está vendido) */}
-          {product.status === 'VERIFIED' && !isSold && (
+          {product.status === 'verified' && !isSold && (
             <Box
               position="absolute"
               top={8}

@@ -8,17 +8,17 @@ const source = readFileSync(
 );
 
 // Shop lists show listings in verification too (L31); the verified chip
-// narrows them to VERIFIED. RLS is never the presentation filter.
+// narrows them to verified. RLS is never the presentation filter.
 test('search lists pin status to the buyer-listed statuses instead of relying on RLS', () => {
   expect(source).toContain(".in('status', BUYER_LISTED_STATUSES)");
-  expect(source).not.toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
+  expect(source).not.toMatch(/\.in\('status', \['verified', 'sold'\]\)/);
 });
 
-// The view enforces deleted_at and HIDDEN itself and has no deleted_at column.
+// The view enforces deleted_at and hidden itself and has no deleted_at column.
 test('search reads the view and keeps its textSearch and verifiedOnly filters', () => {
   expect(source).toContain(".from('products_public')");
   expect(source).not.toContain('deleted_at');
-  expect(source).not.toContain(".neq('status', 'HIDDEN')");
+  expect(source).not.toContain(".neq('status', 'hidden')");
   expect(source).toContain(".textSearch('fts'");
-  expect(source).toContain(".eq('status', 'VERIFIED')");
+  expect(source).toContain(".eq('status', 'verified')");
 });

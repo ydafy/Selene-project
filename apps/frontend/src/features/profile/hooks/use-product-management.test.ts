@@ -11,16 +11,16 @@ import {
 // ─── Product Status Utilities ─────────────────────────────────────────────
 
 describe('getStatusColor', () => {
-  test('maps IN_DISPUTE to warning color', () => {
-    expect(getStatusColor('IN_DISPUTE')).toBe('warning');
+  test('maps in_dispute to warning color', () => {
+    expect(getStatusColor('in_dispute')).toBe('warning');
   });
 
-  test('maps HIDDEN to textSecondary', () => {
-    expect(getStatusColor('HIDDEN')).toBe('textSecondary');
+  test('maps hidden to textSecondary', () => {
+    expect(getStatusColor('hidden')).toBe('textSecondary');
   });
 
-  test('maps VERIFIED to success', () => {
-    expect(getStatusColor('VERIFIED')).toBe('success');
+  test('maps verified to success', () => {
+    expect(getStatusColor('verified')).toBe('success');
   });
 
   test('returns textSecondary for unknown/null status', () => {
@@ -31,24 +31,24 @@ describe('getStatusColor', () => {
 });
 
 describe('isProductHistory', () => {
-  test('classifies SOLD as history', () => {
-    expect(isProductHistory('SOLD')).toBe(true);
+  test('classifies sold as history', () => {
+    expect(isProductHistory('sold')).toBe(true);
   });
 
-  test('classifies REJECTED as history', () => {
-    expect(isProductHistory('REJECTED')).toBe(true);
+  test('classifies rejected as history', () => {
+    expect(isProductHistory('rejected')).toBe(true);
   });
 
-  test('classifies HIDDEN as history', () => {
-    expect(isProductHistory('HIDDEN')).toBe(true);
+  test('classifies hidden as history', () => {
+    expect(isProductHistory('hidden')).toBe(true);
   });
 
-  test('IN_DISPUTE is NOT history — seller must see it', () => {
-    expect(isProductHistory('IN_DISPUTE')).toBe(false);
+  test('in_dispute is NOT history — seller must see it', () => {
+    expect(isProductHistory('in_dispute')).toBe(false);
   });
 
-  test('VERIFIED is NOT history', () => {
-    expect(isProductHistory('VERIFIED')).toBe(false);
+  test('verified is NOT history', () => {
+    expect(isProductHistory('verified')).toBe(false);
   });
 
   test('null/undefined is NOT history', () => {
@@ -66,26 +66,26 @@ describe('deletion pre-flight guards', () => {
    * These serve as executable documentation of the contract.
    */
 
-  const GUARD_REJECTED_STATUSES = ['SOLD', 'RESERVED', 'IN_DISPUTE'] as const;
+  const GUARD_REJECTED_STATUSES = ['sold', 'reserved', 'in_dispute'] as const;
 
-  test('SOLD products are blocked from deletion', () => {
-    expect(GUARD_REJECTED_STATUSES).toContain('SOLD');
+  test('sold products are blocked from deletion', () => {
+    expect(GUARD_REJECTED_STATUSES).toContain('sold');
   });
 
-  test('RESERVED products are blocked from deletion', () => {
-    expect(GUARD_REJECTED_STATUSES).toContain('RESERVED');
+  test('reserved products are blocked from deletion', () => {
+    expect(GUARD_REJECTED_STATUSES).toContain('reserved');
   });
 
-  test('IN_DISPUTE products are blocked from deletion (trust local status, no network probe)', () => {
-    expect(GUARD_REJECTED_STATUSES).toContain('IN_DISPUTE');
+  test('in_dispute products are blocked from deletion (trust local status, no network probe)', () => {
+    expect(GUARD_REJECTED_STATUSES).toContain('in_dispute');
   });
 
-  test('VERIFIED, PENDING_VERIFICATION, IN_REVIEW, REJECTED are deletable (status check only)', () => {
+  test('verified, pending_verification, in_review, rejected are deletable (status check only)', () => {
     const deletable = [
-      'VERIFIED',
-      'PENDING_VERIFICATION',
-      'IN_REVIEW',
-      'REJECTED',
+      'verified',
+      'pending_verification',
+      'in_review',
+      'rejected',
     ];
     for (const status of deletable) {
       expect(GUARD_REJECTED_STATUSES).not.toContain(status);
@@ -195,19 +195,19 @@ describe('optimistic delete contract', () => {
 
 describe('PostgREST filter contract', () => {
   test('CSV syntax without inner quotes for not-in filter', () => {
-    // REQ-PD-004: .not('status', 'in', '(HIDDEN,REJECTED)')
-    const filterValue = '(HIDDEN,REJECTED)';
+    // REQ-PD-004: .not('status', 'in', '(hidden,rejected)')
+    const filterValue = '(hidden,rejected)';
     expect(filterValue).not.toContain('"');
-    expect(filterValue).toMatch(/^\([A-Z_,]+\)$/);
+    expect(filterValue).toMatch(/^\([a-z_,]+\)$/);
   });
 });
 
-// ─── IN_DISPUTE Type Safety ────────────────────────────────────────────────
+// ─── in_dispute Type Safety ────────────────────────────────────────────────
 
-describe('IN_DISPUTE type contract', () => {
+describe('in_dispute type contract', () => {
   test('is a valid ProductStatus', () => {
-    const status = 'IN_DISPUTE' as const;
-    // Compile-time: if IN_DISPUTE is missing from ProductStatus union, TS errors
+    const status = 'in_dispute' as const;
+    // Compile-time: if in_dispute is missing from ProductStatus union, TS errors
     expect(typeof status).toBe('string');
   });
 });

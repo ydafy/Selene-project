@@ -1,6 +1,6 @@
 /**
  * Order and shipment details serve buyers and sellers. The table embed answers
- * only for the listing owner (or an admin), including RESERVED/IN_DISPUTE
+ * only for the listing owner (or an admin), including reserved/in_dispute
  * rows; the public view answers for everyone else. Embed both and merge them
  * with `mergeItemProducts`.
  */

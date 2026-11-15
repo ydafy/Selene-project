@@ -40,7 +40,7 @@ export const buildPreviewProduct = (
   // DB metadata mocks
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
-  status: 'PENDING_VERIFICATION',
+  status: 'pending_verification',
   seller_id: seller.id,
   views: 0,
   aspect_ratio: 1,

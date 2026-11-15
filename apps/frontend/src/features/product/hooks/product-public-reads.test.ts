@@ -36,14 +36,14 @@ test.each([...BUYER_LIST_READS, ...BUYER_POINT_READS])(
   },
 );
 
-// The view already enforces deleted_at IS NULL and hides HIDDEN rows, and has
+// The view already enforces deleted_at IS NULL and hides hidden rows, and has
 // no deleted_at column, so filtering on it would fail with a 400.
 test.each([...BUYER_LIST_READS, ...BUYER_POINT_READS])(
   '%s does not filter on columns the view lacks',
   (file) => {
     const source = read(file);
     expect(source).not.toContain('deleted_at');
-    expect(source).not.toContain(".neq('status', 'HIDDEN')");
+    expect(source).not.toContain(".neq('status', 'hidden')");
   },
 );
 
@@ -100,7 +100,7 @@ test('sales keep the table embed for the seller own products', () => {
 });
 
 // Order and shipment detail serve buyers and sellers: the table embed answers
-// for the owner (including RESERVED/IN_DISPUTE), the view embed for everyone
+// for the owner (including reserved/in_dispute), the view embed for everyone
 // else, and the result is merged into one `product`.
 test.each([
   'features/orders/hooks/use-orders.ts',

@@ -28,9 +28,9 @@ export class OrderService {
       if (error) throw error;
 
       // Detectamos cuáles IDs del carrito no están en la respuesta (borrados)
-      // o no están en estado VERIFIED.
+      // o no están en estado verified.
       const validIds = new Set(
-        products?.filter((p) => p.status === 'VERIFIED').map((p) => p.id) || [],
+        products?.filter((p) => p.status === 'verified').map((p) => p.id) || [],
       );
       const unavailableIds = productIds.filter((id) => !validIds.has(id));
 

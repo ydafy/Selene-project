@@ -1,5 +1,5 @@
 export type PurchaseDialogVariant =
-  'PENDING_VERIFICATION' | 'IN_REVIEW' | 'SELLER_NOT_READY';
+  'pending_verification' | 'in_review' | 'SELLER_NOT_READY';
 
 export type PurchaseGateDecision =
   'add' | PurchaseDialogVariant | 'unavailable';
@@ -13,10 +13,10 @@ export const decidePurchaseGate = (
   status: string,
   sellerBlocked: boolean,
 ): PurchaseGateDecision => {
-  if (status === 'PENDING_VERIFICATION' || status === 'IN_REVIEW') {
+  if (status === 'pending_verification' || status === 'in_review') {
     return status;
   }
-  if (status !== 'VERIFIED') return 'unavailable';
+  if (status !== 'verified') return 'unavailable';
   return sellerBlocked ? 'SELLER_NOT_READY' : 'add';
 };
 
@@ -32,12 +32,12 @@ const DIALOG_CONTENT: Record<
   PurchaseDialogVariant,
   Omit<PurchaseDialogContent, 'favoriteLineKey'>
 > = {
-  PENDING_VERIFICATION: {
+  pending_verification: {
     titleKey: 'dialogs.pendingTitle',
     lineKey: 'dialogs.pendingLine',
     currentStep: 1,
   },
-  IN_REVIEW: {
+  in_review: {
     titleKey: 'dialogs.inReviewTitle',
     lineKey: 'dialogs.inReviewLine',
     currentStep: 1,

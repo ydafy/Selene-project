@@ -30,7 +30,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
     expect(source).not.toMatch(/from\s+['"]\.\.\/\.\.\/(?!\.\.\/|product\/)/);
   });
 } else {
-  const db = { status: 'VERIFIED', error: null as unknown };
+  const db = { status: 'verified', error: null as unknown };
   const addItem = mock<(product: unknown) => void>(() => {});
   const toasts: unknown[] = [];
 
@@ -91,7 +91,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
   };
 
   test('a verified listing from a ready seller is added to the cart', async () => {
-    reset('VERIFIED');
+    reset('verified');
     const check = mock<(id: string) => Promise<boolean>>(async () => false);
     const { outcome, isAddingToCart } = await press(check);
     expect(outcome).toBe('SUCCESS');
@@ -101,7 +101,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
   });
 
   test('a verified listing from a seller that cannot take payments opens the seller dialog', async () => {
-    reset('VERIFIED');
+    reset('verified');
     const check = mock<(id: string) => Promise<boolean>>(async () => true);
     const { outcome, isAddingToCart } = await press(check);
     expect(outcome).toBe('SELLER_NOT_READY');
@@ -110,7 +110,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
     expect(addItem).not.toHaveBeenCalled();
   });
 
-  test.each(['PENDING_VERIFICATION', 'IN_REVIEW'])(
+  test.each(['pending_verification', 'in_review'])(
     'a %s listing opens its dialog without asking about the seller',
     async (status) => {
       reset(status);
@@ -123,7 +123,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
   );
 
   test('an unavailable listing shows the not available toast', async () => {
-    reset('SOLD');
+    reset('sold');
     const check = mock<(id: string) => Promise<boolean>>(async () => false);
     const { outcome } = await press(check);
     expect(outcome).toBe('UNAVAILABLE');
@@ -142,7 +142,7 @@ if (process.env.SELENE_PRODUCT_CART_CHILD !== '1') {
     const log = console.error;
     console.error = () => {};
     try {
-      reset('VERIFIED', new Error('boom'));
+      reset('verified', new Error('boom'));
       const check = mock<(id: string) => Promise<boolean>>(async () => false);
       const { outcome, isAddingToCart } = await press(check);
       expect(outcome).toBe('ERROR');

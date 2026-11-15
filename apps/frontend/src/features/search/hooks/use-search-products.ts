@@ -35,7 +35,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
 
     queryFn: async ({ pageParam = 0 }) => {
       let queryBuilder = supabase
-        .from('products_public') // The view already hides deleted and HIDDEN rows
+        .from('products_public') // The view already hides deleted and hidden rows
         .select('*', { count: 'exact' })
         .in('status', BUYER_LISTED_STATUSES);
 
@@ -88,7 +88,7 @@ export const useSearchProducts = (filters: SearchFilters) => {
 
       // 6. Filtro de Verificados
       if (filters.verifiedOnly) {
-        queryBuilder = queryBuilder.eq('status', 'VERIFIED');
+        queryBuilder = queryBuilder.eq('status', 'verified');
       }
 
       // 7. Ordenamiento

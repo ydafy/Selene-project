@@ -11,8 +11,8 @@ const source = readFileSync(
 // never rejected, hidden, reserved or disputed ones.
 test('useRecentlyViewed pins status to the buyer-listed statuses instead of relying on RLS', () => {
   expect(source).toContain(".in('status', BUYER_LISTED_STATUSES)");
-  expect(source).not.toMatch(/\.in\('status', \['VERIFIED', 'SOLD'\]\)/);
-  expect(source).not.toContain("'(HIDDEN,REJECTED)'");
+  expect(source).not.toMatch(/\.in\('status', \['verified', 'sold'\]\)/);
+  expect(source).not.toContain("'(hidden,rejected)'");
 });
 
 test('useRecentlyViewed reads the view', () => {
