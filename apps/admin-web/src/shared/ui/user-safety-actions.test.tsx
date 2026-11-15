@@ -1,4 +1,4 @@
-import { expect, it, mock, spyOn } from 'bun:test';
+import { afterEach, expect, it, mock, spyOn } from 'bun:test';
 import * as React from 'react';
 
 // The actions mock the Supabase client, the auth store and the toasts: keep
@@ -40,6 +40,11 @@ if (process.env.USER_SAFETY_ACTIONS_CHILD !== '1') {
     const element = node as Node;
     return [element, ...flatten(element.props.children)];
   };
+
+  // Restore the useState spy even when an assertion fails first.
+  afterEach(() => {
+    mock.restore();
+  });
 
   function harness() {
     const values: unknown[] = [];
@@ -83,7 +88,6 @@ if (process.env.USER_SAFETY_ACTIONS_CHILD !== '1') {
         { p_target_user_id: 'seller-1', p_is_verified: true },
       ],
     ]);
-    mock.restore();
   });
 
   it('changes the account status without sending an admin id', async () => {
@@ -107,6 +111,5 @@ if (process.env.USER_SAFETY_ACTIONS_CHILD !== '1') {
         },
       ],
     ]);
-    mock.restore();
   });
 }
