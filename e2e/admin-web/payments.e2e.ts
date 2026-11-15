@@ -45,6 +45,46 @@ const rows: ConnectPayoutReleaseQueueRow[] = Array.from(
     })),
 ).flat();
 
+// Overdue held payouts (#549): Vendedor 046's account was rejected by Stripe, so
+// only its shipment offers the refund; Vendedor 047's payouts are disabled and it
+// already has a hold note.
+const overdueRow = (
+  seller: number,
+  reason: string,
+  note: string | null,
+): ConnectPayoutReleaseQueueRow => ({
+  ...rows[0],
+  completed_at: '2026-10-01T12:00:00.000Z',
+  days_since_completed: seller === 46 ? 44 : 31,
+  ineligible_reason: 'seller_onboarding_incomplete',
+  is_eligible: false,
+  order_id: `order-${seller}-1`,
+  release_amount_cents: seller === 46 ? 251000 : 98000,
+  seller_id: `seller-${seller}`,
+  seller_name: sellerName(seller),
+  seller_payout_block_reason: reason,
+  is_payout_overdue: true,
+  latest_hold_note: note,
+  latest_hold_noted_at: note ? '2026-11-10T15:00:00.000Z' : null,
+  latest_hold_noted_by: note ? userId : null,
+  shipment_id: `shipment-${seller}-1`,
+  stripe_onboarding_status: seller === 46 ? 'rejected' : 'complete',
+});
+const overdueRows = () => [
+  overdueRow(46, 'onboarding_rejected', null),
+  overdueRow(47, 'payouts_disabled', 'Stripe sigue revisando la cuenta.'),
+];
+
+type StubbedAnswer = { status: number; json: Record<string, unknown> };
+interface OverdueStub {
+  holdNote?: (body: Record<string, unknown>) => StubbedAnswer;
+  refund?: (body: Record<string, unknown>) => StubbedAnswer;
+}
+const OVERDUE_ACTIONS = {
+  '/functions/v1/record-payout-hold-note': 'holdNote',
+  '/functions/v1/refund-overdue-payout': 'refund',
+} as const;
+
 interface QueueRead {
   bucket: string;
   page: number;
@@ -58,10 +98,13 @@ async function openPayments(
   context: BrowserContext,
   baseURL: string,
   failSelection = false,
+  overdue: OverdueStub = {},
 ) {
   const reads: QueueRead[] = [];
   const mutations: string[] = [];
   const unexpected: string[] = [];
+  const actions: Array<{ path: string; body: Record<string, unknown> }> = [];
+  const overdueQueue = overdueRows();
   const cors = {
     'access-control-allow-origin': baseURL,
     'access-control-allow-headers': '*',
@@ -73,6 +116,38 @@ async function openPayments(
   await context.route('**/*', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const action =
+      url.origin === mockOrigin
+        ? OVERDUE_ACTIONS[url.pathname as keyof typeof OVERDUE_ACTIONS]
+        : undefined;
+    const answer = action ? overdue[action] : undefined;
+    if (answer && request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers: cors });
+      return;
+    }
+    if (answer && request.method() === 'POST') {
+      const body = request.postDataJSON() as Record<string, unknown>;
+      actions.push({ path: url.pathname, body });
+      const { status, json } = answer(body);
+      if (action === 'holdNote' && status === 200) {
+        const row = overdueQueue.find(
+          (r) => r.shipment_id === body.shipment_id,
+        );
+        if (row) {
+          row.latest_hold_note = String(json.note);
+          row.latest_hold_noted_at = String(json.noted_at);
+          row.latest_hold_noted_by = String(json.noted_by);
+        }
+      }
+      if (action === 'refund' && status === 200) {
+        overdueQueue.splice(
+          overdueQueue.findIndex((r) => r.shipment_id === body.shipment_id),
+          1,
+        );
+      }
+      await route.fulfill({ status, headers: cors, json });
+      return;
+    }
     if (
       url.pathname.startsWith('/functions/v1/') &&
       url.pathname !== '/functions/v1/get-connect-payout-release-queue'
@@ -132,7 +207,18 @@ async function openPayments(
         row.seller_name!.toLowerCase().includes(search.toLowerCase()),
       );
       const matchingIds = [...new Set(matched.map((row) => row.seller_id))];
-      const groups = body.bucket === 'ready' ? matchingIds.length : 0;
+      const overdueMatched = overdueQueue.filter((row) =>
+        row.seller_name!.toLowerCase().includes(search.toLowerCase()),
+      );
+      const overdueIds = [
+        ...new Set(overdueMatched.map((row) => row.seller_id)),
+      ];
+      const groups =
+        body.bucket === 'ready'
+          ? matchingIds.length
+          : body.bucket === 'overdue'
+            ? overdueIds.length
+            : 0;
       const totalPages = Math.max(1, Math.ceil(groups / 20));
       const currentPage =
         body.scope === 'selection' ? 0 : Math.min(body.page, totalPages - 1);
@@ -162,9 +248,12 @@ async function openPayments(
           rows:
             body.bucket === 'ready'
               ? matched.filter((row) => chosenIds.includes(row.seller_id))
-              : [],
+              : body.bucket === 'overdue'
+                ? overdueMatched
+                : [],
           counts: {
             ready: matchingIds.length,
+            overdue: overdueIds.length,
             processing: 0,
             'action-required': 0,
             history: 0,
@@ -224,7 +313,7 @@ async function openPayments(
       exact: true,
     }),
   ).toBeVisible();
-  return { reads, mutations, unexpected };
+  return { reads, mutations, unexpected, actions };
 }
 
 const sellerCards = (page: Page) =>
@@ -472,7 +561,7 @@ test('labels the current query time and counter units without claiming Stripe fr
     { exact: false },
   );
   await expect(counterScope).toContainText(
-    'vendedores en Por liberar; ejecuciones en las demás pestañas.',
+    'vendedores en Por liberar y Pagos vencidos; ejecuciones en las demás pestañas.',
   );
   await counterScope.scrollIntoViewIfNeeded();
   await page.screenshot({
@@ -542,4 +631,250 @@ test('shows why a seller cannot be paid and how long each payout is held', async
   });
   expect(audit.mutations).toEqual([]);
   expect(audit.unexpected).toEqual([]);
+});
+
+const overdueTab = (page: Page) =>
+  page.getByRole('tab', { name: /Pagos vencidos/ });
+const overdueCard = (page: Page, seller: number) =>
+  page.getByRole('article', {
+    name: new RegExp(`^Pago vencido de @Vendedor 0${seller},`),
+  });
+const refunded = (shipmentId: string) => ({
+  status: 200,
+  json: {
+    status: 'refunded',
+    shipment_id: shipmentId,
+    refund_id: 're_e2e',
+    amount_cents: 10600,
+  },
+});
+
+test('shows overdue held payouts apart, with reason, days, amount and latest note', async ({
+  page,
+  context,
+  baseURL,
+}, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!);
+  await expect(
+    page.getByRole('button', { name: 'Ver detalle de Vendedor 046' }),
+  ).toHaveCount(0);
+  await expect(overdueTab(page)).toContainText('2');
+  await overdueTab(page).click();
+  await expect(
+    page.getByRole('heading', { name: 'Pagos vencidos', exact: true }),
+  ).toBeVisible();
+  const rejected = overdueCard(page, 46);
+  await expect(rejected).toContainText('@Vendedor 046');
+  await expect(rejected).toContainText(
+    'Stripe rechazó el registro del vendedor',
+  );
+  await expect(rejected).toContainText('Retenido hace 44 días');
+  await expect(rejected).toContainText('$2,510');
+  await expect(rejected).toContainText('Sin notas todavía');
+  await expect(
+    rejected.getByRole('button', { name: 'Reembolsar al comprador' }),
+  ).toBeVisible();
+  const disabled = overdueCard(page, 47);
+  await expect(disabled).toContainText('Stripe deshabilitó los pagos');
+  await expect(disabled).toContainText('Stripe sigue revisando la cuenta.');
+  await expect(disabled).toContainText('Retenido hace 31 días');
+  // The refund is offered only when Stripe rejected the account.
+  await expect(
+    disabled.getByRole('button', { name: 'Reembolsar al comprador' }),
+  ).toHaveCount(0);
+  await expect(
+    disabled.getByRole('button', { name: 'Seguir reteniendo' }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('overdue-section.png'),
+    fullPage: true,
+  });
+  expect(
+    audit.reads.some(
+      (read) => read.bucket === 'overdue' && read.scope === 'page',
+    ),
+  ).toBe(true);
+  expect(audit.reads.some((read) => read.scope === 'selection')).toBe(false);
+  expect(audit.actions).toEqual([]);
+  expect(audit.mutations).toEqual([]);
+  expect(audit.unexpected).toEqual([]);
+});
+
+test('keeps holding with a required note and shows it after the refresh', async ({
+  page,
+  context,
+  baseURL,
+}, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!, false, {
+    holdNote: (body) => ({
+      status: 200,
+      json: {
+        id: '9c000000-0000-4000-8000-000000000001',
+        shipment_id: body.shipment_id,
+        note: body.note,
+        noted_at: '2026-11-14T18:00:00.000Z',
+        noted_by: userId,
+      },
+    }),
+  });
+  await overdueTab(page).click();
+  await overdueCard(page, 46)
+    .getByRole('button', { name: 'Seguir reteniendo' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Seguir reteniendo el pago',
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('0/1000');
+  await dialog.getByRole('button', { name: 'Guardar nota' }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Escribe una nota de entre 1 y 1000 caracteres.',
+  );
+  expect(audit.actions).toEqual([]);
+  await dialog
+    .getByLabel('Nota para seguir reteniendo')
+    .fill('  Esperamos la revisión de Stripe.  ');
+  await expect(dialog).toContainText('32/1000');
+  await page.screenshot({
+    path: testInfo.outputPath('hold-note-dialog.png'),
+    fullPage: true,
+  });
+  await dialog.getByRole('button', { name: 'Guardar nota' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(overdueCard(page, 46)).toContainText(
+    'Esperamos la revisión de Stripe.',
+  );
+  expect(audit.actions).toEqual([
+    {
+      path: '/functions/v1/record-payout-hold-note',
+      body: {
+        shipment_id: 'shipment-46-1',
+        note: 'Esperamos la revisión de Stripe.',
+      },
+    },
+  ]);
+  expect(audit.mutations).toEqual([]);
+  expect(audit.unexpected).toEqual([]);
+});
+
+test('explains a refused hold note and keeps the dialog open', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const audit = await openPayments(page, context, baseURL!, false, {
+    holdNote: () => ({ status: 409, json: { error: 'PAYOUT_NOT_OVERDUE' } }),
+  });
+  await overdueTab(page).click();
+  await overdueCard(page, 47)
+    .getByRole('button', { name: 'Seguir reteniendo' })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Seguir reteniendo el pago',
+  });
+  await dialog.getByLabel('Nota para seguir reteniendo').fill('Nota');
+  await dialog.getByRole('button', { name: 'Guardar nota' }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Este pago ya no está vencido',
+  );
+  expect(audit.actions).toHaveLength(1);
+  expect(audit.mutations).toEqual([]);
+});
+
+test('refunds the buyer of a rejected seller once, sending only the shipment id', async ({
+  page,
+  context,
+  baseURL,
+}, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!, false, {
+    refund: (body) => refunded(String(body.shipment_id)),
+  });
+  await overdueTab(page).click();
+  await overdueCard(page, 46)
+    .getByRole('button', { name: 'Reembolsar al comprador' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Reembolsar al comprador' });
+  await expect(dialog).toContainText('lo que pagó por este envío');
+  await expect(dialog).toContainText(
+    'Selene absorbe el envío que ya pagó y la comisión de Stripe.',
+  );
+  await expect(dialog).toContainText('No se puede deshacer.');
+  await expect(dialog).toContainText('El servidor calcula el monto');
+  await page.screenshot({
+    path: testInfo.outputPath('refund-confirmation.png'),
+    fullPage: true,
+  });
+  await dialog.getByRole('button', { name: 'Confirmar reembolso' }).dblclick();
+  await expect(dialog.getByRole('status')).toContainText(
+    'Reembolso hecho: $106 MXN',
+  );
+  await expect(
+    dialog.getByRole('button', { name: 'Confirmar reembolso' }),
+  ).toHaveCount(0);
+  expect(audit.actions).toEqual([
+    {
+      path: '/functions/v1/refund-overdue-payout',
+      body: { shipment_id: 'shipment-46-1' },
+    },
+  ]);
+  await dialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await expect(overdueCard(page, 46)).toHaveCount(0);
+  await expect(overdueTab(page)).toContainText('1');
+  expect(audit.mutations).toEqual([]);
+  expect(audit.unexpected).toEqual([]);
+});
+
+test('shows a 202 refund as pending in Stripe', async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  const audit = await openPayments(page, context, baseURL!, false, {
+    refund: (body) => ({
+      ...refunded(String(body.shipment_id)),
+      status: 202,
+      json: { ...refunded(String(body.shipment_id)).json, status: 'pending' },
+    }),
+  });
+  await overdueTab(page).click();
+  await overdueCard(page, 46)
+    .getByRole('button', { name: 'Reembolsar al comprador' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Reembolsar al comprador' });
+  await dialog.getByRole('button', { name: 'Confirmar reembolso' }).click();
+  await expect(dialog.getByRole('status')).toContainText('pendiente en Stripe');
+  await expect(dialog).not.toContainText('Reembolso hecho');
+  await expect(
+    dialog.getByRole('button', { name: 'Confirmar reembolso' }),
+  ).toHaveCount(0);
+  expect(audit.actions).toHaveLength(1);
+  expect(audit.mutations).toEqual([]);
+});
+
+test('points a failed Stripe refund to the manual repayment and offers no retry', async ({
+  page,
+  context,
+  baseURL,
+}, testInfo) => {
+  const audit = await openPayments(page, context, baseURL!, false, {
+    refund: () => ({ status: 409, json: { error: 'REFUND_FAILED' } }),
+  });
+  await overdueTab(page).click();
+  await overdueCard(page, 46)
+    .getByRole('button', { name: 'Reembolsar al comprador' })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Reembolsar al comprador' });
+  await dialog.getByRole('button', { name: 'Confirmar reembolso' }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'Reembolsos con problemas',
+  );
+  await expect(
+    dialog.getByRole('button', { name: 'Confirmar reembolso' }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath('refund-failed.png'),
+    fullPage: true,
+  });
+  expect(audit.actions).toHaveLength(1);
+  expect(audit.mutations).toEqual([]);
 });
