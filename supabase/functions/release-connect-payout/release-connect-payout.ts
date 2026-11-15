@@ -35,8 +35,10 @@ export interface ReleaseSettlementOrder {
 
 export type ExistingConnectPayoutRun = Pick<
   ConnectPayoutRun,
-  'id' | 'seller_id' | 'amount' | 'stripe_payout_id'
+  'id' | 'seller_id' | 'stripe_payout_id'
 > & {
+  /** connect_payout_runs.amount_cents: the run total in cents. */
+  amount: number;
   shipment_ids: string[];
   status: ConnectPayoutRunStatus;
   /** Phase 2B durable release stage; NULL on pre-fencing legacy runs. */

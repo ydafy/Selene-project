@@ -23,7 +23,7 @@ select pg_temp.money_payout_run(302, 11, 10, array[102], 'failed');
 create function pg_temp.run_row(p_run integer, p_key text, p_seller uuid, p_amount integer,
   p_status text default 'pending_reconciliation', p_retry_of integer default null)
 returns void language sql as $$
-  insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, retry_of_run_id)
+  insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id, retry_of_run_id)
   values (pg_temp.mu(p_run), p_key, p_seller, p_amount, p_status, pg_temp.mu(10), pg_temp.mu(p_retry_of))
 $$;
 
@@ -38,10 +38,10 @@ $$;
 select results_eq(
   $$select attname::text collate "default", format_type(atttypid, atttypmod), attnotnull from pg_attribute
     where attrelid = 'public.connect_payout_runs'::regclass
-      and attname in ('id', 'idempotency_key', 'seller_id', 'amount', 'actor_id', 'stripe_payout_id', 'retry_of_run_id')
+      and attname in ('id', 'idempotency_key', 'seller_id', 'amount_cents', 'actor_id', 'stripe_payout_id', 'retry_of_run_id')
     order by attnum$$,
   $$values ('id', 'uuid', true), ('idempotency_key', 'text', true), ('seller_id', 'uuid', true),
-    ('amount', 'integer', true), ('actor_id', 'uuid', true), ('stripe_payout_id', 'text', false),
+    ('amount_cents', 'bigint', true), ('actor_id', 'uuid', true), ('stripe_payout_id', 'text', false),
     ('retry_of_run_id', 'uuid', false)$$,
   'connect_payout_runs keeps its key, money and actor columns'
 );

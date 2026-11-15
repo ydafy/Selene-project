@@ -25,7 +25,7 @@ update public.connect_payout_run_shipments m set net_payout_cents = v.release_am
 from public.admin_connect_payout_release_view v
 where v.shipment_id = m.shipment_id and m.run_id = pg_temp.mu(901);
 update public.connect_payout_runs r
-set amount = (select sum(net_payout_cents) from public.connect_payout_run_shipments where run_id = r.id)
+set amount_cents = (select sum(net_payout_cents) from public.connect_payout_run_shipments where run_id = r.id)
 where id = pg_temp.mu(901);
 
 select is(

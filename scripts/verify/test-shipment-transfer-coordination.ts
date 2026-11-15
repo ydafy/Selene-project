@@ -239,7 +239,7 @@ async function run() {
         await a`UPDATE public.profiles_private SET stripe_onboarding_status = 'complete'`;
         await a`DELETE FROM public.connect_account_actionability`;
         await a`DELETE FROM public.disputes`;
-        await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount,release_stage) VALUES (${ids.run}::uuid,'release-key',${ids.seller}::uuid,${ids.buyer}::uuid,20000,'release_accepted')`;
+        await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount_cents,release_stage) VALUES (${ids.run}::uuid,'release-key',${ids.seller}::uuid,${ids.buyer}::uuid,20000,'release_accepted')`;
         await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout_cents) VALUES (${ids.run}::uuid,${ids.shipment}::uuid,10000), (${ids.run}::uuid,${ids.sibling}::uuid,10000)`;
       };
       // Same public inputs against migration-defined previous and new cancellation
@@ -481,7 +481,7 @@ async function run() {
       );
       await a`UPDATE public.shipments SET status = 'completed' WHERE id = ${ids.shipment}::uuid`;
       await a`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity'`;
-      await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount,release_stage)
+      await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount_cents,release_stage)
         VALUES (${ids.other}::uuid,'other-key',${ids.seller}::uuid,${ids.buyer}::uuid,10000,'release_accepted')`;
       await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout_cents)
         VALUES (${ids.other}::uuid,${ids.shipment}::uuid,10000)`;
@@ -595,7 +595,7 @@ async function run() {
       }
       await a`UPDATE public.orders SET stripe_transfer_group = NULL`;
       await a`UPDATE public.connect_payout_run_shipments SET net_payout_cents = 9900`;
-      await a`UPDATE public.connect_payout_runs SET amount = 19800`;
+      await a`UPDATE public.connect_payout_runs SET amount_cents = 19800`;
       await rejects(() => begin(), 'MISSING_SETTLEMENT_CONTEXT');
       // Existing legacy payout fence remains valid, without a Transfer step.
       const [legacyFence] =

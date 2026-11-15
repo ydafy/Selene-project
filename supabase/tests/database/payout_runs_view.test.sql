@@ -59,7 +59,7 @@ select pg_temp.money_payout_run(301, 11, 10, array[109]);
 select pg_temp.money_payout_run(302, 11, 10, array[110], 'reconciliation_needed');
 select pg_temp.money_payout_run(303, 11, 10, array[111], 'failed');
 select pg_temp.money_payout_run(304, 11, 10, array[112], 'failed');
-insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, retry_of_run_id)
+insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id, retry_of_run_id)
 values (pg_temp.mu(305), 'test-run-305', pg_temp.mu(11), 0, 'failed', pg_temp.mu(10), pg_temp.mu(304));
 select pg_temp.money_payout_run(306, 11, 10, array[113], 'canceled');
 select pg_temp.money_payout_run(307, 11, 10, array[114], 'paid');
@@ -182,7 +182,7 @@ select pg_temp.money_payout_run(7342, 7003, 10, array[7142, 7143]);
 select pg_temp.money_payout_run(7344, 7003, 10, array[7144], 'failed');
 select pg_temp.money_payout_run(7345, 7003, 10, array[7145], 'canceled');
 select pg_temp.money_payout_run(7346, 7003, 10, array[7146], 'failed');
-insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, retry_of_run_id)
+insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id, retry_of_run_id)
 values (pg_temp.mu(7347), 'test-run-7347', pg_temp.mu(7003), 0, 'failed', pg_temp.mu(10), pg_temp.mu(7346));
 
 create function pg_temp.q(p_bucket text, p_page integer default 0, p_scope text default 'page', p_search text default 'money_70')

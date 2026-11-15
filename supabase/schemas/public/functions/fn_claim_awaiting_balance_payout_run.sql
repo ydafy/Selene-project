@@ -37,7 +37,7 @@ BEGIN
     cpr.id,
     cpr.actor_id,
     cpr.seller_id,
-    cpr.amount,
+    cpr.amount_cents::integer,
     cpr.idempotency_key,
     cpr.release_stage_version
   INTO

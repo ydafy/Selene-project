@@ -64,7 +64,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
     sa.stripe_transfer_id,
     payout_run.id AS payout_run_id,
     payout_run.status AS payout_run_status,
-    payout_run.amount AS payout_run_amount_cents,
+    (payout_run.amount_cents)::integer AS payout_run_amount_cents,
     payout_run.failure_reason AS payout_run_failure_reason,
     payout_run.failed_at AS payout_run_failed_at,
     payout_run.retry_of_run_id,
@@ -84,7 +84,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
    FROM ((shipment_amounts sa
      LEFT JOIN LATERAL ( SELECT pr.id,
             pr.status,
-            pr.amount,
+            pr.amount_cents,
             pr.failure_reason,
             pr.failed_at,
             pr.paid_at,

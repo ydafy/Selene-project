@@ -38,7 +38,7 @@ const releaseRow = (overrides: Record<string, unknown> = {}) => ({
 const runRow = (overrides: Record<string, unknown> = {}) => ({
   id: 'run-1',
   seller_id: 'seller-1',
-  amount: 12_500,
+  amount_cents: 12_500,
   status: 'pending_reconciliation',
   stripe_payout_id: null,
   release_stage: 'release_accepted',
@@ -300,7 +300,7 @@ const fullWiring = [
 ];
 
 const RUN_COLUMNS =
-  'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)';
+  'id, seller_id, amount_cents, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)';
 const ACTIVE_STATUSES = [
   'pending_reconciliation',
   'paid',
@@ -511,7 +511,7 @@ describe('release-connect-payout handler', () => {
             {
               actor_id: 'admin-1',
               seller_id: 'seller-1',
-              amount: 12_500,
+              amount_cents: 12_500,
               idempotency_key: 'release-key',
               retry_of_run_id: null,
               status: 'pending_reconciliation',
@@ -963,7 +963,7 @@ describe('createSupabaseReleasePayoutPorts', () => {
         {
           actor_id: 'admin-1',
           seller_id: 'seller-1',
-          amount: 500,
+          amount_cents: 500,
           idempotency_key: 'connect-payout-retry:run-0',
           retry_of_run_id: 'run-0',
           status: 'pending_reconciliation',

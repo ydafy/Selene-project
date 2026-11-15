@@ -133,7 +133,7 @@ export function createSupabaseReleasePayoutPorts(
       const { data, error } = await supabaseAdmin
         .from('connect_payout_runs')
         .select(
-          'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
+          'id, seller_id, amount_cents, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
         )
         .eq('idempotency_key', idempotencyKey)
         .maybeSingle();
@@ -155,7 +155,7 @@ export function createSupabaseReleasePayoutPorts(
         )
           .map((mapping) => mapping.shipment_id)
           .filter((shipmentId): shipmentId is string => Boolean(shipmentId)),
-        amount: data.amount,
+        amount: data.amount_cents,
         status: data.status as ConnectPayoutRunStatus,
         stripe_payout_id: data.stripe_payout_id,
         release_stage: data.release_stage,
@@ -168,7 +168,7 @@ export function createSupabaseReleasePayoutPorts(
       const { data, error } = await supabaseAdmin
         .from('connect_payout_runs')
         .select(
-          'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
+          'id, seller_id, amount_cents, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
         )
         .eq('id', runId)
         .maybeSingle();
@@ -182,7 +182,7 @@ export function createSupabaseReleasePayoutPorts(
         shipment_ids: (data.connect_payout_run_shipments ?? [])
           .map((mapping) => mapping.shipment_id)
           .filter((shipmentId): shipmentId is string => Boolean(shipmentId)),
-        amount: data.amount,
+        amount: data.amount_cents,
         status: data.status as ConnectPayoutRunStatus,
         stripe_payout_id: data.stripe_payout_id,
         release_stage: data.release_stage,
@@ -195,7 +195,7 @@ export function createSupabaseReleasePayoutPorts(
       const { data, error } = await supabaseAdmin
         .from('connect_payout_runs')
         .select(
-          'id, seller_id, amount, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
+          'id, seller_id, amount_cents, status, stripe_payout_id, release_stage, release_stage_version, payout_claim_token, payout_claim_expires_at, connect_payout_run_shipments(shipment_id)',
         )
         .eq('retry_of_run_id', parentRunId)
         .maybeSingle();
@@ -209,7 +209,7 @@ export function createSupabaseReleasePayoutPorts(
         shipment_ids: (data.connect_payout_run_shipments ?? [])
           .map((mapping) => mapping.shipment_id)
           .filter((shipmentId): shipmentId is string => Boolean(shipmentId)),
-        amount: data.amount,
+        amount: data.amount_cents,
         status: data.status as ConnectPayoutRunStatus,
         stripe_payout_id: data.stripe_payout_id,
         release_stage: data.release_stage,
@@ -271,7 +271,7 @@ export function createSupabaseReleasePayoutPorts(
         .insert({
           actor_id: input.actorId,
           seller_id: input.sellerId,
-          amount: input.amount,
+          amount_cents: input.amount,
           idempotency_key: input.idempotencyKey,
           retry_of_run_id: input.retryOfRunId ?? null,
           status: 'pending_reconciliation',

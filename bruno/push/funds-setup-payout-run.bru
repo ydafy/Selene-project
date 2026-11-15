@@ -25,7 +25,7 @@ body:json {
     "idempotency_key": "{{fdIdemKey}}",
     "seller_id": "{{fdSellerId}}",
     "actor_id": "00000000-0000-4000-8000-000000000001",
-    "amount": 123456,
+    "amount_cents": 123456,
     "status": "pending_reconciliation",
     "release_stage": "release_accepted"
   }
@@ -43,7 +43,7 @@ tests {
     expect(res.getStatus()).to.equal(201);
     const row = res.getBody()[0];
     expect(row.seller_id).to.equal(bru.getVar("fdSellerId"));
-    expect(row.amount).to.equal(123456);
+    expect(row.amount_cents).to.equal(123456);
     expect(row.status).to.equal("pending_reconciliation");
     expect(row.release_stage).to.equal("release_accepted");
     expect(row.release_stage_version).to.be.a("number");

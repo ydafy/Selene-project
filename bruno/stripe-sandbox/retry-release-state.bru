@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=in.({{failedRunId}},{{retryRunId}})&select=id,amount,status,stripe_payout_id,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout_cents,status)&order=created_at
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=in.({{failedRunId}},{{retryRunId}})&select=id,amount_cents,status,stripe_payout_id,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout_cents,status)&order=created_at
   body: none
   auth: none
 }
@@ -63,7 +63,7 @@ tests {
     expect(parent.status).to.equal("failed");
     expect(child).to.deep.equal({
       id: bru.getVar("retryRunId"),
-      amount: 210600,
+      amount_cents: 210600,
       status: "paid",
       stripe_payout_id: bru.getVar("retryPayoutId"),
       retry_of_run_id: bru.getVar("failedRunId"),

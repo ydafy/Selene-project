@@ -68,7 +68,7 @@ async function fixture(tx: Tx) {
       label_generation_state, label_provider_cost_cents, tracking_number, carrier)
     VALUES (${ids.preparing}, ${ids.order}, ${ids.seller}, 'preparing', ${paymentIntent}, 'generated', 8900, 'TRK-B58-1', 'estafeta'),
            (${ids.paid}, ${ids.order}, ${ids.seller}, 'paid', ${paymentIntent}, 'unclaimed', NULL, NULL, NULL)`;
-  await tx`INSERT INTO public.connect_payout_runs (id, idempotency_key, seller_id, actor_id, amount, release_stage)
+  await tx`INSERT INTO public.connect_payout_runs (id, idempotency_key, seller_id, actor_id, amount_cents, release_stage)
     VALUES (${ids.run}::uuid, 'b58-key', ${ids.seller}::uuid, ${ids.buyer}::uuid, 11000, 'release_accepted')`;
   await tx`INSERT INTO public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents)
     VALUES (${ids.run}::uuid, ${ids.preparing}::uuid, 10000)`;
