@@ -2,6 +2,7 @@ import type {
   ConnectPayoutReleaseQueueRow,
   ConnectPayoutReleaseRequest,
 } from '@selene/types';
+import { OVERDUE_REFUND_CLOSED_RUN } from './overdue-payouts';
 
 type ReleaseQueueShipmentIndicator = 'ready_for_release' | 'blocked';
 
@@ -25,6 +26,33 @@ interface ReleaseQueueShipment {
   shipmentId: string;
   status: string | null;
   stripePaymentIntentId: string | null;
+}
+
+/** The newest note an admin wrote to keep an overdue payout on hold. */
+interface PayoutHoldNote {
+  note: string;
+  notedAt: string;
+  /** The admin's user id; the queue carries no name. */
+  notedBy: string;
+}
+
+/**
+ * A completed, never-transferred shipment held 30 days or more because the
+ * seller's account cannot be paid, and not inside a payout run (#549). It is
+ * never selectable for release.
+ */
+export interface OverduePayout {
+  shipmentId: string;
+  orderId: string;
+  sellerId: string;
+  sellerName: string | null;
+  stripeAccountId: string | null;
+  sellerPayoutBlockReason: string | null;
+  daysSinceCompleted: number | null;
+  completedAt: string | null;
+  /** Integer cents the seller would be paid; not the buyer refund amount. */
+  heldAmountCents: number;
+  latestHoldNote: PayoutHoldNote | null;
 }
 
 export interface ReleaseQueueBatch {
@@ -55,6 +83,8 @@ export interface ReleaseQueueRun {
   amountCents: number;
   /** Observed Stripe payment time, exposed only for History; never bank finality. */
   paidAt?: string | null;
+  /** Shipments of this run that are overdue held payouts; absent when none. */
+  overdueShipmentCount?: number;
 }
 
 /**
@@ -83,6 +113,7 @@ export interface ReleaseQueueActionRequiredRun extends ReleaseQueueRun {
  */
 export interface ConnectPayoutReleaseQueue {
   releaseBatches: ReleaseQueueBatch[];
+  overduePayouts: OverduePayout[];
   processingRuns: ReleaseQueueRun[];
   actionRequiredRuns: ReleaseQueueActionRequiredRun[];
   historyRuns: ReleaseQueueRun[];
@@ -200,6 +231,12 @@ function classifyPayoutRunRow(row: ConnectPayoutReleaseQueueRow): {
     amountCents: row.payout_run_amount_cents ?? 0,
   } satisfies ReleaseQueueRun;
 
+  if (
+    run.status === 'canceled' &&
+    row.payout_run_failure_reason === OVERDUE_REFUND_CLOSED_RUN
+  )
+    return { history: { ...run, paidAt: null } };
+
   switch (run.status) {
     case 'paid':
       return { history: { ...run, paidAt: row.payout_run_paid_at ?? null } };
@@ -248,6 +285,40 @@ function classifyPayoutRunRow(row: ConnectPayoutReleaseQueueRow): {
   }
 }
 
+function toOverduePayout(row: ConnectPayoutReleaseQueueRow): OverduePayout[] {
+  if (
+    row.payout_run_id ||
+    row.is_payout_overdue !== true ||
+    !row.seller_id ||
+    !row.shipment_id ||
+    !row.order_id
+  )
+    return [];
+  return [
+    {
+      shipmentId: row.shipment_id,
+      orderId: row.order_id,
+      sellerId: row.seller_id,
+      sellerName: row.seller_name,
+      stripeAccountId: row.stripe_account_id,
+      sellerPayoutBlockReason: row.seller_payout_block_reason,
+      daysSinceCompleted: row.days_since_completed,
+      completedAt: row.completed_at,
+      heldAmountCents: row.release_amount_cents ?? 0,
+      latestHoldNote:
+        row.latest_hold_note &&
+        row.latest_hold_noted_at &&
+        row.latest_hold_noted_by
+          ? {
+              note: row.latest_hold_note,
+              notedAt: row.latest_hold_noted_at,
+              notedBy: row.latest_hold_noted_by,
+            }
+          : null,
+    },
+  ];
+}
+
 export function mapConnectPayoutReleaseQueue(
   rows: ConnectPayoutReleaseQueueRow[],
 ): ConnectPayoutReleaseQueue {
@@ -270,9 +341,15 @@ export function mapConnectPayoutReleaseQueue(
   };
 
   const classificationByRun = new Map<string, ClassifiedRun>();
+  const overdueByRun = new Map<string, number>();
 
   for (const row of rows) {
     if (!row.payout_run_id) continue;
+    if (row.is_payout_overdue === true)
+      overdueByRun.set(
+        row.payout_run_id,
+        (overdueByRun.get(row.payout_run_id) ?? 0) + 1,
+      );
 
     const destination = classifyPayoutRunRow(row);
     const bucket = destination.actionRequired
@@ -293,13 +370,17 @@ export function mapConnectPayoutReleaseQueue(
     }
   }
 
+  const withOverdue = <T extends ReleaseQueueRun>(run: T): T => {
+    const count = overdueByRun.get(run.runId) ?? 0;
+    return count > 0 ? { ...run, overdueShipmentCount: count } : run;
+  };
   for (const { destination } of classificationByRun.values()) {
     if (destination.actionRequired) {
-      actionRequiredRuns.push(destination.actionRequired);
+      actionRequiredRuns.push(withOverdue(destination.actionRequired));
     } else if (destination.processing) {
-      processingRuns.push(destination.processing);
+      processingRuns.push(withOverdue(destination.processing));
     } else if (destination.history) {
-      historyRuns.push(destination.history);
+      historyRuns.push(withOverdue(destination.history));
     }
   }
 
@@ -316,8 +397,11 @@ export function mapConnectPayoutReleaseQueue(
 
   return {
     releaseBatches: groupConnectPayoutReleaseQueue(
-      rows.filter((row) => !row.payout_run_id),
+      rows.filter(
+        (row) => !row.payout_run_id && row.is_payout_overdue !== true,
+      ),
     ),
+    overduePayouts: rows.flatMap(toOverduePayout),
     processingRuns,
     actionRequiredRuns,
     historyRuns,

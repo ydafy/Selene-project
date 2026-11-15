@@ -684,3 +684,93 @@ describe('observed-paid History chronology', () => {
     });
   });
 });
+
+describe('overdue held payouts (#549)', () => {
+  const overdue = (overrides: Partial<QueueRow> = {}) =>
+    row({
+      shipment_id: 'shipment-overdue',
+      order_id: 'order-overdue',
+      is_eligible: false,
+      ineligible_reason: 'seller_onboarding_incomplete',
+      seller_payout_block_reason: 'onboarding_rejected',
+      days_since_completed: 41,
+      release_amount_cents: 251000,
+      is_payout_overdue: true,
+      ...overrides,
+    });
+
+  it('lists a run-less overdue shipment apart from the release batches', () => {
+    const queue = mapConnectPayoutReleaseQueue([
+      row({}),
+      overdue({
+        latest_hold_note: 'Stripe sigue revisando la cuenta.',
+        latest_hold_noted_at: '2026-11-14T05:27:34.123456+00:00',
+        latest_hold_noted_by: '00000000-0000-4000-8000-000000000001',
+      }),
+    ]);
+    expect(queue.releaseBatches).toHaveLength(1);
+    expect(queue.releaseBatches[0].shipments.map((s) => s.shipmentId)).toEqual([
+      'shipment-1',
+    ]);
+    expect(queue.overduePayouts).toEqual([
+      {
+        shipmentId: 'shipment-overdue',
+        orderId: 'order-overdue',
+        sellerId: 'seller-1',
+        sellerName: 'Selene Seller',
+        stripeAccountId: 'acct_123',
+        sellerPayoutBlockReason: 'onboarding_rejected',
+        daysSinceCompleted: 41,
+        completedAt: '2026-06-22T10:00:00.000Z',
+        heldAmountCents: 251000,
+        latestHoldNote: {
+          note: 'Stripe sigue revisando la cuenta.',
+          notedAt: '2026-11-14T05:27:34.123456+00:00',
+          notedBy: '00000000-0000-4000-8000-000000000001',
+        },
+      },
+    ]);
+  });
+
+  it('carries no hold note until an admin writes one', () => {
+    const [payout] = mapConnectPayoutReleaseQueue([overdue()]).overduePayouts;
+    expect(payout.latestHoldNote).toBeNull();
+    expect(mapConnectPayoutReleaseQueue([row({})]).overduePayouts).toEqual([]);
+  });
+
+  it('keeps an overdue shipment inside a run in its run and counts it there', () => {
+    const queue = mapConnectPayoutReleaseQueue([
+      overdue({ payout_run_id: 'run-parked', payout_run_status: 'failed' }),
+      overdue({
+        shipment_id: 'shipment-2',
+        payout_run_id: 'run-parked',
+        payout_run_status: 'failed',
+        is_payout_overdue: false,
+      }),
+      row({ payout_run_id: 'run-other', payout_run_status: 'failed' }),
+    ]);
+    expect(queue.overduePayouts).toEqual([]);
+    const parked = queue.actionRequiredRuns.find(
+      (run) => run.runId === 'run-parked',
+    );
+    const other = queue.actionRequiredRuns.find(
+      (run) => run.runId === 'run-other',
+    );
+    expect(parked?.overdueShipmentCount).toBe(1);
+    expect(other?.overdueShipmentCount ?? 0).toBe(0);
+  });
+
+  it('shows a run the overdue refund closed under history, not action required', () => {
+    const queue = mapConnectPayoutReleaseQueue([
+      row({
+        payout_run_id: 'run-closed',
+        payout_run_status: 'canceled',
+        payout_run_amount_cents: 251000,
+        payout_run_failure_reason: 'overdue_payout_refunded',
+      }),
+    ]);
+    expect(queue.actionRequiredRuns).toEqual([]);
+    expect(queue.historyRuns.map((run) => run.runId)).toEqual(['run-closed']);
+    expect(queue.historyRuns[0].paidAt).toBeNull();
+  });
+});
