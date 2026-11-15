@@ -142,7 +142,7 @@ INSERT INTO public.products (
 SELECT
   p.id, p.name, p.description, p.price_cents, p.category, p.condition, p.usage,
   ARRAY['https://placehold.co/800x800/png?text=' || replace(p.name, ' ', '+')],
-  p.status::public.product_status_enum, p.specifications, '00000000-0000-4000-8000-000000000002',
+  p.status::public.product_status, p.specifications, '00000000-0000-4000-8000-000000000002',
   p.shipping_cost_cents, '06600', p.package_preset,
   CASE WHEN p.status = 'VERIFIED' THEN now() END,
   p.shipping_cost_cents

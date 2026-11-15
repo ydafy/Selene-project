@@ -209,7 +209,7 @@ select is((select relrowsecurity from pg_class where oid = 'public.shipment_comp
   'shipment_completion_events has row level security on');
 select is(pg_get_indexdef('public.idx_shipments_auto_completion_due'::regclass),
   'CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (delivered_at) '
-    || 'WHERE ((status = ''delivered''::order_status_enum) AND (buyer_confirmed_at IS NULL) AND (delivered_at IS NOT NULL))',
+    || 'WHERE ((status = ''delivered''::order_status) AND (buyer_confirmed_at IS NULL) AND (delivered_at IS NOT NULL))',
   'the auto-completion due index covers delivered, unconfirmed shipments with a delivery time');
 select hasnt_function('public', 'fn_confirm_delivery', array['uuid'], 'the legacy order-level fn_confirm_delivery(uuid) is gone');
 

@@ -54,7 +54,7 @@ Manual testing: never ask the maintainer to repeat by hand what these checks alr
 | Which conventions apply to new code?    | `docs/conventions.md`                                                                                  |
 | What does the weekly routine check?     | `docs/maintenance.md`                                                                                  |
 
-Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status_enum'>`). Never invent table, column, enum, or relationship names.
+Use the typed aliases (`Tables<'orders'>`, `Enums<'order_status'>`). Never invent table, column, enum, or relationship names.
 
 ## CodeGraph
 

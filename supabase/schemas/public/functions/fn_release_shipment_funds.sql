@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION public.fn_release_shipment_funds (
   SET search_path TO 'public', 'pg_temp'
   AS $function$
 DECLARE
-  v_status public.order_status_enum;
+  v_status public.order_status;
   v_delivered_at timestamptz;
   v_is_connect boolean;
 BEGIN

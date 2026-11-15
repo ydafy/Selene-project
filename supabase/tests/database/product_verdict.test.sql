@@ -31,7 +31,7 @@ create function pg_temp.listing(
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum,
+    array['https://example.test/p.png'], p_status::public.product_status,
     '{}'::jsonb, pg_temp.mu(5102), 10000, '06600', 'gpu_1', p_rejection_reason,
     case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
     case when p_locked_by is null then null else now() - p_lock_age end,

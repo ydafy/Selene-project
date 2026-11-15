@@ -42,7 +42,7 @@ CREATE POLICY "reviews_insert" ON "public"."reviews"
    FROM (public.shipments s
      JOIN public.orders o ON ((o.id = s.order_id)))
   WHERE
-    ((s.order_id = reviews.order_id) AND (s.seller_id = reviews.seller_id) AND (s.status = 'completed'::public.order_status_enum) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND
+    ((s.order_id = reviews.order_id) AND (s.seller_id = reviews.seller_id) AND (s.status = 'completed'::public.order_status) AND (o.buyer_id = ( SELECT auth.uid() AS uid)) AND
     (s.id = reviews.shipment_id) AND ((reviews.product_id IS NULL) OR (EXISTS ( SELECT 1
            FROM public.order_items oi
           WHERE ((oi.shipment_id = s.id) AND (oi.product_id = reviews.product_id))))))))));

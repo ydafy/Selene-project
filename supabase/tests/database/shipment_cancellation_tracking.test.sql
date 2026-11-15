@@ -38,7 +38,7 @@ end $$;
 -- A carrier scan of p_ship with no dispute; p_raw keeps each scan distinct.
 create function pg_temp.scan(p_ship integer, p_type text, p_transition text, p_raw text) returns jsonb language sql as $$
   select public.fn_record_tracking_event(pg_temp.mu(p_ship), null, p_type::public.shipment_tracking_event_type,
-    now() - interval '1 hour', p_raw, 'CDMX', 'test scan', 'dhl', null, null, p_transition::public.order_status_enum)
+    now() - interval '1 hour', p_raw, 'CDMX', 'test scan', 'dhl', null, null, p_transition::public.order_status)
 $$;
 
 create function pg_temp.status(p_ship integer) returns text language sql as $$
@@ -68,7 +68,7 @@ create function pg_temp.grants(p_sig text) returns text language sql as $$
 $$;
 
 -- 1. Grants and security mode --------------------------------------------------------
-select is(pg_temp.grants('public.fn_record_tracking_event(uuid, uuid, public.shipment_tracking_event_type, timestamptz, text, text, text, text, uuid, uuid, public.order_status_enum)'),
+select is(pg_temp.grants('public.fn_record_tracking_event(uuid, uuid, public.shipment_tracking_event_type, timestamptz, text, text, text, text, uuid, uuid, public.order_status)'),
   'anon:false authenticated:false service_role:true', 'only service_role can execute fn_record_tracking_event');
 select is(pg_temp.grants('public.fn_mark_shipment_delivered(uuid)'),
   'anon:false authenticated:false service_role:true', 'only service_role can execute fn_mark_shipment_delivered');
@@ -165,7 +165,7 @@ select is(
   array[pg_temp.mu(6102), pg_temp.mu(6101)], 'list: operations with late activity, oldest first; one without activity is left out');
 select is(
   (select row(l.*)::text from public.fn_list_shipment_late_carrier_activity() l where l.shipment_id = pg_temp.mu(6102)),
-  row(pg_temp.mu(6102), pg_temp.mu(6202), pg_temp.mu(6001), 'TRK6102', 'dhl', 'shipped'::public.order_status_enum,
+  row(pg_temp.mu(6102), pg_temp.mu(6202), pg_temp.mu(6001), 'TRK6102', 'dhl', 'shipped'::public.order_status,
     'preparing_timeout', null::text, now() - interval '2 hours', 'delivered'::public.shipment_tracking_event_type)::text,
   'list: a row carries the shipment, order, seller, tracking, carrier, status, source, refund status and the activity');
 

@@ -36,7 +36,7 @@ create function pg_temp.listing(
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum,
+    array['https://example.test/p.png'], p_status::public.product_status,
     '{}'::jsonb, pg_temp.mu(5202), 10000, '06600', 'gpu_1',
     case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
     case when p_locked_by is null then null else now() - p_lock_age end,
@@ -186,7 +186,7 @@ select has_index('public', 'products', 'idx_products_reserved_status_reserved_at
 select is(
   (select pg_get_expr(i.indpred, i.indrelid) from pg_index i
    where i.indexrelid = 'public.idx_products_reserved_status_reserved_at'::regclass),
-  '(status = ''RESERVED''::product_status_enum)',
+  '(status = ''RESERVED''::product_status)',
   'the index covers RESERVED listings only');
 
 select * from finish();

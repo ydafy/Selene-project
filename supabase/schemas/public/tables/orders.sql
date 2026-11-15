@@ -18,7 +18,7 @@ ALTER TABLE "public"."orders"
   ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."orders"
-  ADD COLUMN "status" public.order_status_enum NOT NULL DEFAULT 'pending'::public.order_status_enum;
+  ADD COLUMN "status" public.order_status NOT NULL DEFAULT 'pending'::public.order_status;
 
 ALTER TABLE "public"."orders"
   ADD COLUMN "delivered_at" timestamp WITH time zone;
@@ -82,7 +82,7 @@ ALTER TABLE "public"."orders"
   ADD CONSTRAINT "orders_compensation_attempt_count_check" CHECK ((compensation_attempt_count >= 0));
 
 CREATE INDEX idx_orders_delivered_at ON public.orders USING btree (delivered_at)
-  WHERE (status = 'delivered'::public.order_status_enum);
+  WHERE (status = 'delivered'::public.order_status);
 
 CREATE INDEX idx_orders_payment_processing ON public.orders USING btree (payment_processing)
   WHERE (payment_processing = true);

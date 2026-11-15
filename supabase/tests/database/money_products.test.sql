@@ -20,7 +20,7 @@ begin
       publication_insurance_rate
     )
     select pg_temp.mu($1), 'Test GPU', 'Test listing', $3, 'GPU', 'used', 'gaming',
-      array['https://example.test/p.png'], 'VERIFIED'::public.product_status_enum,
+      array['https://example.test/p.png'], 'VERIFIED'::public.product_status,
       '{}'::jsonb, pg_temp.mu($2), $4, '06600', 'gpu_1',
       $4 + s.shipping_buffer_cents + ceil($3::numeric * s.insurance_rate)::bigint + $5,
       s.service_fee_pct,

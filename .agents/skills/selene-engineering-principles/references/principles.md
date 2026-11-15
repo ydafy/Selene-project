@@ -15,7 +15,7 @@ For every state-mutating step ask: what if it runs twice? What if the previous r
 
 - Use state machines or discriminated unions instead of scattered booleans (`is_paid`, `is_cancelled`, `is_refunded` drifting apart).
 - One module owns one body of domain knowledge (shipment lifecycle, dispute handling, payout runs), not load / validate / save stages spread across files.
-- Use generated types: `Tables<'orders'>`, `Enums<'order_status_enum'>` from `packages/types`. Never invent table, column, or enum names.
+- Use generated types: `Tables<'orders'>`, `Enums<'order_status'>` from `packages/types`. Never invent table, column, or enum names.
 - Do not force an abstraction on clear local code.
 
 ## 3. Boundary discipline

@@ -53,7 +53,7 @@ language sql as $$
     publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
   ) values (
     p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], p_status::public.product_status_enum, '{}'::jsonb,
+    array['https://example.test/p.png'], p_status::public.product_status, '{}'::jsonb,
     p_seller, 10000, '06600', 'gpu_1',
     pg_temp.fresh_reserve(), pg_temp.commission_rate(), pg_temp.insurance_rate()
   )

@@ -43,7 +43,7 @@ returns uuid language sql as $$
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'Test GPU', 'Test listing', p_price_cents, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'SOLD'::public.product_status_enum,
+    array['https://example.test/p.png'], 'SOLD'::public.product_status,
     '{}'::jsonb, pg_temp.mu(p_seller), 10000, '06600', 'gpu_1',
     10000 + s.shipping_buffer_cents
       + ceil(p_price_cents::numeric * s.insurance_rate)::bigint,
@@ -60,7 +60,7 @@ $$;
 -- p_payment_intent NULL makes a shipment with no Connect payment.
 create function pg_temp.money_shipment(
   p_order integer, p_shipment integer, p_seller integer, p_buyer integer,
-  p_status public.order_status_enum default 'delivered',
+  p_status public.order_status default 'delivered',
   p_delivered_ago interval default null,
   p_net_payout_cents bigint default 90000,
   p_payment_intent text default ''

@@ -14,7 +14,7 @@ insert into moved values
   ('fn_derive_order_status', 'uuid'),
   ('fn_generate_profile_username', 'text'),
   ('fn_refresh_seller_stats', 'uuid'),
-  ('fn_shipment_label_is_stuck', 'order_status_enum, text, timestamp with time zone');
+  ('fn_shipment_label_is_stuck', 'order_status, text, timestamp with time zone');
 
 select set_eq(
   $$select p.proname::text, oidvectortypes(p.proargtypes)
@@ -56,7 +56,7 @@ reset role;
 
 select is(
   (select status from public.orders where id = pg_temp.mu(10)),
-  'preparing'::public.order_status_enum,
+  'preparing'::public.order_status,
   'a service_role shipment update derives the order status through internal.fn_derive_order_status');
 
 insert into public.reviews (reviewer_id, seller_id, product_id, rating, order_id, shipment_id)

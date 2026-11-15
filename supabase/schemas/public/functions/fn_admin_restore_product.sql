@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.fn_admin_restore_product (
   AS $function$
 DECLARE
   v_auth_user_id UUID;
-  v_previous_status public.product_status_enum;
+  v_previous_status public.product_status;
 BEGIN
   v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
@@ -21,7 +21,7 @@ BEGIN
   END IF;
 
   -- Read previous_status from the last soft-delete audit log
-  SELECT (details->>'previous_status')::public.product_status_enum
+  SELECT (details->>'previous_status')::public.product_status
   INTO v_previous_status
   FROM public.admin_audit_logs
   WHERE target_id = p_product_id::text
@@ -32,7 +32,7 @@ BEGIN
   -- Fallback to PENDING_VERIFICATION if no admin log found (seller self-deleted).
   -- Never auto-approve to VERIFIED — force re-moderation.
   IF v_previous_status IS NULL THEN
-    v_previous_status := 'PENDING_VERIFICATION'::public.product_status_enum;
+    v_previous_status := 'PENDING_VERIFICATION'::public.product_status;
   END IF;
 
   UPDATE public.products

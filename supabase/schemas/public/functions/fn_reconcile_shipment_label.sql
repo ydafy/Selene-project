@@ -18,7 +18,7 @@ CREATE OR REPLACE FUNCTION public.fn_reconcile_shipment_label (
   AS $function$
 DECLARE
   v_note TEXT := btrim(p_note);
-  v_status public.order_status_enum;
+  v_status public.order_status;
   v_state TEXT;
   v_claim_expires_at TIMESTAMPTZ;
 BEGIN
