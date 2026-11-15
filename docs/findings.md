@@ -67,7 +67,8 @@ A vulnerability affects auth, permissions, secrets, money integrity, or data exp
 
 1. Tell the maintainer in the session.
 2. Draft a private Security Advisory (`SECURITY.md`).
-3. When the maintainer confirms the fix is deployed, close the advisory yourself. Do not publish it.
+3. Fix it in the advisory's temporary private fork, not in a branch with a PR on this repository: CodeRabbit reviews every PR here, and its comments are public.
+4. When the maintainer confirms the fix is deployed, close the advisory yourself. Do not publish it.
 
 ```bash
 gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed

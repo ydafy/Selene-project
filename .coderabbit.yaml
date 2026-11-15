@@ -1,0 +1,24 @@
+# CodeRabbit pull request reviews. Reference: https://docs.coderabbit.ai/reference/configuration
+# Settings not listed here keep CodeRabbit's defaults. Review rules come from the
+# guideline files below, so do not copy them into path_instructions.
+language: en-US
+
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    drafts: false
+  # Generated files, lockfiles, and HTML mockups: reviewing them is noise.
+  path_filters:
+    - '!packages/types/src/database.types.ts'
+    - '!bun.lock'
+    - '!supabase/functions/deno.lock'
+    - '!design/**'
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # Added to CodeRabbit's default guideline files (which include the root AGENTS.md).
+    filePatterns:
+      - '**/AGENTS.md'
+      - 'docs/conventions.md'
