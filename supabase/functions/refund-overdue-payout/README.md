@@ -4,9 +4,9 @@
 
 It serves the admin-web with `serveAdminWeb` and runs with `verify_jwt = false`; it authenticates the caller in code. It needs `SUPABASE_URL`, the `default` secret key from `SUPABASE_SECRET_KEYS` and `STRIPE_SECRET_KEY`, and no new secret, cron or webhook. Apply these migrations, in this order, before deploying it:
 
-1. `supabase/migrations/20261114052734_payout_overdue_hold_notes.sql` (the overdue flag in `admin_connect_payout_release_view`)
-2. `supabase/migrations/20261114055122_overdue_payout_refund.sql` (`fn_claim_overdue_payout_refund`, `fn_complete_overdue_payout_refund`, the `admin_overdue_payout` source)
-3. `supabase/migrations/20261114062741_overdue_refund_manual_resolution.sql` (manual repayment of a failed refund)
+1. `supabase/migrations/20261115234100_payout_overdue_hold_notes.sql` (the overdue flag in `admin_connect_payout_release_view`)
+2. `supabase/migrations/20261115234200_overdue_payout_refund.sql` (`fn_claim_overdue_payout_refund`, `fn_complete_overdue_payout_refund`, the `admin_overdue_payout` source)
+3. `supabase/migrations/20261115234300_overdue_refund_manual_resolution.sql` (manual repayment of a failed refund)
 
 ## Request
 
