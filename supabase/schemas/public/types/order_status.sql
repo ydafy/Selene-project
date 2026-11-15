@@ -1,4 +1,4 @@
-CREATE TYPE "public"."order_status_enum" AS ENUM (
+CREATE TYPE "public"."order_status" AS ENUM (
   'pending',
   'paid',
   'preparing',

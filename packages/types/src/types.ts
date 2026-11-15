@@ -50,12 +50,12 @@ export type ConnectPayoutReleaseQueueRow =
 // --- 3. ENUMS (Sincronizados con Postgres) ---
 // Si cambias el Enum en la DB y corres la CLI, estos se actualizan solos
 
-export type OrderStatus = Enums<'order_status_enum'>;
+export type OrderStatus = Enums<'order_status'>;
 export type AccountStatus = Enums<'account_status'>;
 export type PayoutStatus = Enums<'payout_status'>;
 export type StripeOnboardingStatus = Enums<'stripe_onboarding_status'>;
 
-export type ProductStatus = Enums<'product_status_enum'>;
+export type ProductStatus = Enums<'product_status'>;
 
 export type UserRole = 'user' | 'admin' | 'moderator';
 export type ShippingPayer = 'buyer' | 'seller';

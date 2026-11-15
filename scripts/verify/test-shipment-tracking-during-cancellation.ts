@@ -158,7 +158,7 @@ async function track(
   const [{ result }] = await tx`SELECT public.fn_record_tracking_event(
     ${shipmentId}::uuid, NULL::uuid, ${eventType}::public.shipment_tracking_event_type, ${eventAt}::timestamptz,
     ${`raw ${eventType} ${eventAt}`}, 'CDMX', NULL::text, 'Estafeta', NULL::uuid, NULL::uuid,
-    ${transition}::public.order_status_enum) AS result`;
+    ${transition}::public.order_status) AS result`;
   return result;
 }
 
@@ -528,7 +528,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         [
           'fn_record_tracking_event',
           (sp) =>
-            sp`SELECT public.fn_record_tracking_event(${ids.preparing}::uuid, NULL::uuid, 'in_transit'::public.shipment_tracking_event_type, now(), 'raw', NULL::text, NULL::text, NULL::text, NULL::uuid, NULL::uuid, 'shipped'::public.order_status_enum)`,
+            sp`SELECT public.fn_record_tracking_event(${ids.preparing}::uuid, NULL::uuid, 'in_transit'::public.shipment_tracking_event_type, now(), 'raw', NULL::text, NULL::text, NULL::text, NULL::uuid, NULL::uuid, 'shipped'::public.order_status)`,
         ],
       ];
       for (const role of ['anon', 'authenticated']) {

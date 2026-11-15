@@ -1,5 +1,5 @@
 CREATE OR REPLACE FUNCTION internal.fn_shipment_label_is_stuck (
-  p_status           public.order_status_enum,
+  p_status           public.order_status,
   p_state            text,
   p_claim_expires_at timestamp with time zone
 )
@@ -15,12 +15,12 @@ CREATE OR REPLACE FUNCTION internal.fn_shipment_label_is_stuck (
     false)
 $function$;
 
-GRANT EXECUTE ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status_enum, text, timestamp WITH time zone) TO "service_role";
+GRANT EXECUTE ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status, text, timestamp WITH time zone) TO "service_role";
 
-COMMENT ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status_enum, text, timestamp with time zone) IS 'Service-only helper: true for a paid shipment whose label outcome is unproven (orphan_pending, or claimed/generation_sent with an expired claim). Shared by the list, the resolve and the reconcile functions.';
+COMMENT ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status, text, timestamp with time zone) IS 'Service-only helper: true for a paid shipment whose label outcome is unproven (orphan_pending, or claimed/generation_sent with an expired claim). Shared by the list, the resolve and the reconcile functions.';
 
-REVOKE ALL ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status_enum, text, timestamp WITH time zone) FROM "postgres";
+REVOKE ALL ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status, text, timestamp WITH time zone) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status_enum, text, timestamp WITH time zone) TO "postgres";
+GRANT EXECUTE ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status, text, timestamp WITH time zone) TO "postgres";
 
-REVOKE ALL ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status_enum, text, timestamp WITH time zone) FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "internal"."fn_shipment_label_is_stuck"(public.order_status, text, timestamp WITH time zone) FROM PUBLIC, "anon", "authenticated";

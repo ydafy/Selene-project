@@ -7,7 +7,7 @@ select plan(51);
 \ir ../fixtures/money.psql
 
 -- Same economics formula as validate_product_publication_economics.
-create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status public.product_status_enum)
+create function pg_temp.make_product(p_id uuid, p_seller uuid, p_status public.product_status)
 returns void language sql as $$
   insert into public.products (
     id, name, description, price_cents, category, condition, usage, images, status,

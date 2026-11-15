@@ -17,7 +17,7 @@ select pg_temp.money_user(6001);
 
 -- An order of buyer 6001 for PaymentIntent p_pi.
 create function pg_temp.rec_order(
-  p_n integer, p_pi text, p_status public.order_status_enum default 'pending',
+  p_n integer, p_pi text, p_status public.order_status default 'pending',
   p_state text default null, p_next interval default null, p_charge text default null, p_refund text default null
 ) returns uuid language sql as $$
   insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id,

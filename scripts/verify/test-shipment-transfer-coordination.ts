@@ -82,12 +82,12 @@ async function run() {
         CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$
           SELECT current_setting('request.jwt.claim.role', true)
         $$;
-        CREATE TYPE public.order_status_enum AS ENUM ('pending','paid','preparing','shipped','delivered','completed','cancelled','dispute','refunded');
+        CREATE TYPE public.order_status AS ENUM ('pending','paid','preparing','shipped','delivered','completed','cancelled','dispute','refunded');
         CREATE TABLE public.profiles (id uuid PRIMARY KEY, username text);
         CREATE TABLE public.profiles_private (id uuid PRIMARY KEY, stripe_account_id text, stripe_onboarding_status text);
         CREATE TABLE public.orders (id uuid PRIMARY KEY, buyer_id uuid, stripe_payment_intent_id text, stripe_charge_id text, stripe_transfer_group text);
         CREATE TABLE public.shipments (id uuid PRIMARY KEY, order_id uuid REFERENCES public.orders(id), seller_id uuid,
-          status public.order_status_enum, completed_at timestamptz, stripe_payment_intent_id text,
+          status public.order_status, completed_at timestamptz, stripe_payment_intent_id text,
           stripe_transfer_id text, stripe_payout_id text, shipping_cost_cents bigint,
           label_generation_state text DEFAULT 'unclaimed', updated_at timestamptz);
         CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout_cents numeric);
@@ -389,7 +389,7 @@ async function run() {
         'refunded',
       ]) {
         await reset();
-        await a`UPDATE public.shipments SET status = ${status}::public.order_status_enum WHERE id = ${ids.shipment}::uuid`;
+        await a`UPDATE public.shipments SET status = ${status}::public.order_status WHERE id = ${ids.shipment}::uuid`;
         await rejects(() => begin(), 'SHIPMENT_NOT_COMPLETED');
       }
       for (const mutation of [

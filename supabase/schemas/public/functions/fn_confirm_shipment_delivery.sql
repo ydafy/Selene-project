@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.fn_confirm_shipment_delivery (
 DECLARE
   v_order_id uuid;
   v_buyer_id uuid;
-  v_status public.order_status_enum;
+  v_status public.order_status;
   v_delivered_at timestamptz;
   v_buyer_confirmed_at timestamptz;
   v_is_connect BOOLEAN;

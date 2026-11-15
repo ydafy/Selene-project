@@ -24,13 +24,13 @@ BEGIN
   UPDATE public.products AS p
   SET status = CASE
         WHEN COALESCE(pp.status, 'active') = 'active'
-          THEN 'VERIFIED'::public.product_status_enum
-        ELSE 'HIDDEN'::public.product_status_enum
+          THEN 'VERIFIED'::public.product_status
+        ELSE 'HIDDEN'::public.product_status
       END,
       status_before_account_hold = CASE
         WHEN COALESCE(pp.status, 'active') = 'active'
           THEN p.status_before_account_hold
-        ELSE COALESCE(p.status_before_account_hold, 'VERIFIED'::public.product_status_enum)
+        ELSE COALESCE(p.status_before_account_hold, 'VERIFIED'::public.product_status)
       END,
       updated_at = now(),
       reserved_at = NULL

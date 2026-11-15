@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION public.fn_cancel_shipment (
 DECLARE
   v_order_id UUID;
   v_seller_id UUID;
-  v_status public.order_status_enum;
+  v_status public.order_status;
   v_buyer_id UUID;
   v_actual_stripe_fee_cents BIGINT;
   v_cancellation_loss_cents BIGINT;

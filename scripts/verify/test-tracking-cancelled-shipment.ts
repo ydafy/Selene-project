@@ -71,7 +71,7 @@ async function record(
   const [{ result }] = await tx`SELECT public.fn_record_tracking_event(
     ${shipmentId}::uuid, NULL::uuid, ${eventType}::public.shipment_tracking_event_type, ${eventAt}::timestamptz,
     ${rawStatus}, 'CDMX', NULL::text, 'Estafeta', NULL::uuid, NULL::uuid,
-    ${transition}::public.order_status_enum) AS result`;
+    ${transition}::public.order_status) AS result`;
   return result;
 }
 
