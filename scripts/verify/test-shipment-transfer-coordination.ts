@@ -90,7 +90,7 @@ async function run() {
           status public.order_status_enum, completed_at timestamptz, stripe_payment_intent_id text,
           stripe_transfer_id text, stripe_payout_id text, shipping_cost_cents bigint,
           label_generation_state text DEFAULT 'unclaimed', updated_at timestamptz);
-        CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout numeric);
+        CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout_cents numeric);
         CREATE TABLE public.notifications (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
           event_kind text, source_event_key text, event_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
           type text, title text NOT NULL, message text, action_path text);
@@ -106,7 +106,7 @@ async function run() {
         INSERT INTO public.shipments (id,order_id,seller_id,status,completed_at,stripe_payment_intent_id,shipping_cost_cents) VALUES
           ('${ids.shipment}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100),
           ('${ids.sibling}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100);
-        INSERT INTO public.order_items (shipment_id,net_payout) VALUES ('${ids.shipment}', 100), ('${ids.sibling}', 100);
+        INSERT INTO public.order_items (shipment_id,net_payout_cents) VALUES ('${ids.shipment}', 100), ('${ids.sibling}', 100);
       `);
       await a.unsafe(
         source(
@@ -240,7 +240,7 @@ async function run() {
         await a`DELETE FROM public.connect_account_actionability`;
         await a`DELETE FROM public.disputes`;
         await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount,release_stage) VALUES (${ids.run}::uuid,'release-key',${ids.seller}::uuid,${ids.buyer}::uuid,20000,'release_accepted')`;
-        await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout) VALUES (${ids.run}::uuid,${ids.shipment}::uuid,10000), (${ids.run}::uuid,${ids.sibling}::uuid,10000)`;
+        await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout_cents) VALUES (${ids.run}::uuid,${ids.shipment}::uuid,10000), (${ids.run}::uuid,${ids.sibling}::uuid,10000)`;
       };
       // Same public inputs against migration-defined previous and new cancellation
       // bodies. Existing mappings alone are deliberately NOT transfer-start proof.
@@ -395,7 +395,7 @@ async function run() {
       for (const mutation of [
         'UPDATE public.shipments SET completed_at = NULL',
         "UPDATE public.profiles_private SET stripe_onboarding_status = 'pending'",
-        'UPDATE public.connect_payout_run_shipments SET net_payout = 9999',
+        'UPDATE public.connect_payout_run_shipments SET net_payout_cents = 9999',
         `INSERT INTO public.disputes (shipment_id,status) VALUES ('${ids.shipment}','open')`,
         "INSERT INTO public.connect_account_actionability VALUES ('acct_seller',false,'payouts_disabled')",
       ]) {
@@ -483,7 +483,7 @@ async function run() {
       await a`UPDATE public.shipment_cancellation_operations SET claim_expires_at = '-infinity'`;
       await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount,release_stage)
         VALUES (${ids.other}::uuid,'other-key',${ids.seller}::uuid,${ids.buyer}::uuid,10000,'release_accepted')`;
-      await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout)
+      await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout_cents)
         VALUES (${ids.other}::uuid,${ids.shipment}::uuid,10000)`;
       await rejects(
         () => begin(a, ids.shipment, 1, ids.other),
@@ -594,7 +594,7 @@ async function run() {
         );
       }
       await a`UPDATE public.orders SET stripe_transfer_group = NULL`;
-      await a`UPDATE public.connect_payout_run_shipments SET net_payout = 9900`;
+      await a`UPDATE public.connect_payout_run_shipments SET net_payout_cents = 9900`;
       await a`UPDATE public.connect_payout_runs SET amount = 19800`;
       await rejects(() => begin(), 'MISSING_SETTLEMENT_CONTEXT');
       // Existing legacy payout fence remains valid, without a Transfer step.

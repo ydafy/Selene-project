@@ -86,7 +86,7 @@ const defaultQuery: NonNullable<Script['query']> = ({ table, select }) => {
           id: 'mapping-1',
           run_id: 'run-1',
           shipment_id: 'shipment-1',
-          net_payout: 12_500,
+          net_payout_cents: 12_500,
           status: 'pending_reconciliation',
         },
       ],
@@ -748,7 +748,7 @@ describe('resume-pending-payouts reconciliation of fenced runs', () => {
   };
   const mappingQuery = {
     from: 'connect_payout_run_shipments',
-    select: 'id, run_id, shipment_id, net_payout, status',
+    select: 'id, run_id, shipment_id, net_payout_cents, status',
     options: { count: 'exact' },
     filters: [['eq', 'run_id', 'run-1']],
     maybeSingle: false,

@@ -532,7 +532,7 @@ describe('release-connect-payout handler', () => {
               {
                 run_id: 'run-1',
                 shipment_id: 'shipment-1',
-                net_payout: 12_500,
+                net_payout_cents: 12_500,
                 status: 'pending_reconciliation',
               },
             ],

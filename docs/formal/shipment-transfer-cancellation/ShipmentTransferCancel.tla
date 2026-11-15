@@ -18,7 +18,7 @@ CONSTANTS
     MaxGen,      \* bound on claim_token rotations per shipment
     G_BeginOp,        \* begin: SHIPMENT_CANCELLATION_OPERATION_ACTIVE
     G_BeginFence,     \* begin: SHIPMENT_TRANSFER_RECONCILIATION_REQUIRED
-    G_BeginAmount,    \* begin: mapping net_payout = release_amount_cents, send the view amount
+    G_BeginAmount,    \* begin: mapping net_payout_cents = release_amount_cents, send the view amount
     G_WriteAhead,     \* begin writes transfer_started_at before Stripe is called
     G_ClaimFence,     \* claim: SHIPMENT_TRANSFER_OPERATION_ACTIVE
     G_StartFence,     \* start: SHIPMENT_TRANSFER_OPERATION_ACTIVE
@@ -39,7 +39,7 @@ VARIABLES
     fence,        \* runs whose mapping has transfer_started_at set, per shipment
     sentAmt,      \* amount of the Stripe transfer created for (shipment, run key), 0 = none
     runState,     \* connect_payout_runs.status: none | pending | failed
-    mapNet,       \* connect_payout_run_shipments.net_payout
+    mapNet,       \* connect_payout_run_shipments.net_payout_cents
     mapStatus,    \* connect_payout_run_shipments.status: none | pending | failed
     wpc,          \* release worker progress per (run, shipment): idle | begun | sent | done
     beginAmt,     \* amount returned by fn_begin_shipment_transfer

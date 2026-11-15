@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=in.({{failedRunId}},{{retryRunId}})&select=id,amount,status,stripe_payout_id,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout,status)&order=created_at
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=in.({{failedRunId}},{{retryRunId}})&select=id,amount,status,stripe_payout_id,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout_cents,status)&order=created_at
   body: none
   auth: none
 }
@@ -68,7 +68,7 @@ tests {
       stripe_payout_id: bru.getVar("retryPayoutId"),
       retry_of_run_id: bru.getVar("failedRunId"),
       connect_payout_run_shipments: [
-        { shipment_id: bru.getVar("retryShipmentId"), net_payout: 210600, status: "paid" },
+        { shipment_id: bru.getVar("retryShipmentId"), net_payout_cents: 210600, status: "paid" },
       ],
     });
   });

@@ -2,13 +2,13 @@ CREATE TABLE "public"."connect_payout_run_shipments" (
   "id"                  uuid                     NOT NULL DEFAULT gen_random_uuid(),
   "run_id"              uuid                     NOT NULL,
   "shipment_id"         uuid                     NOT NULL,
-  "net_payout"          integer                  NOT NULL,
+  "net_payout_cents"    bigint                   NOT NULL,
   "status"              text                     NOT NULL DEFAULT 'pending_reconciliation'::text,
   "created_at"          timestamp with time zone NOT NULL DEFAULT now(),
   "updated_at"          timestamp with time zone NOT NULL DEFAULT now(),
   "transfer_started_at" timestamp with time zone,
   "transfer_token"      uuid,
-  CONSTRAINT "connect_payout_run_shipments_net_payout_check" CHECK ((net_payout >= 0)),
+  CONSTRAINT "connect_payout_run_shipments_net_payout_cents_check" CHECK ((net_payout_cents >= 0)),
   CONSTRAINT "connect_payout_run_shipments_pkey" PRIMARY KEY (id),
   CONSTRAINT "connect_payout_run_shipments_run_id_shipment_id_key" UNIQUE (run_id, shipment_id),
   CONSTRAINT "connect_payout_run_shipments_status_check"
@@ -38,7 +38,7 @@ CREATE TRIGGER connect_payout_run_shipments_set_updated_at
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."connect_payout_run_shipments" TO "service_role";
 
-COMMENT ON COLUMN "public"."connect_payout_run_shipments"."net_payout" IS 'Shipment payout amount in cents captured at release-run creation time.';
+COMMENT ON COLUMN "public"."connect_payout_run_shipments"."net_payout_cents" IS 'Shipment payout amount in cents captured at release-run creation time.';
 
 COMMENT ON COLUMN "public"."connect_payout_run_shipments"."transfer_started_at" IS 'Write-ahead possible Stripe Transfer effect. Never cleared by TTL, resume, payout failure or cancellation. An uncertain response requires investigation, never another create.';
 

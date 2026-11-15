@@ -136,7 +136,7 @@ function createWorkerDeps(
           id: 'mapping-1',
           run_id: runId,
           shipment_id: 'shipment-1',
-          net_payout: 12_500,
+          net_payout_cents: 12_500,
           status: 'pending_reconciliation',
         },
       ],
@@ -253,7 +253,7 @@ describe('reconciliation RPC mapping reconstruction', () => {
     id: 'mapping-1',
     run_id: 'run-awaiting-1',
     shipment_id: 'shipment-1',
-    net_payout: 12_500,
+    net_payout_cents: 12_500,
     status: 'pending_reconciliation',
     ...overrides,
   });
@@ -278,7 +278,7 @@ describe('reconciliation RPC mapping reconstruction', () => {
     ['incomplete', [mapping()], 2],
     ['duplicate', [mapping(), mapping()], 2],
     ['foreign run', [mapping({ run_id: 'foreign' })], 1],
-    ['amount mismatch', [mapping({ net_payout: 1 })], 1],
+    ['amount mismatch', [mapping({ net_payout_cents: 1 })], 1],
     ['terminal mapping', [mapping({ status: 'paid' })], 1],
   ] as const) {
     test(`refuses ${name} mappings before provider listing or state mutation`, async () => {

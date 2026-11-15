@@ -45,7 +45,7 @@ export type ReconciliationClaim = Omit<
 };
 export type ReconciliationMapping = Pick<
   ConnectPayoutRunShipment,
-  'id' | 'run_id' | 'shipment_id' | 'net_payout' | 'status'
+  'id' | 'run_id' | 'shipment_id' | 'net_payout_cents' | 'status'
 >;
 
 export class ResumePayoutsError extends Error {
@@ -384,13 +384,13 @@ async function reconstructReconciliationRun(
       !['pending_reconciliation', 'reconciliation_needed'].includes(
         mapping.status,
       ) ||
-      !Number.isSafeInteger(mapping.net_payout) ||
-      mapping.net_payout <= 0
+      !Number.isSafeInteger(mapping.net_payout_cents) ||
+      mapping.net_payout_cents <= 0
     )
       throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
     ids.add(mapping.shipment_id);
     mappingIds.add(mapping.id);
-    amount += mapping.net_payout;
+    amount += mapping.net_payout_cents;
   }
   if (amount !== claim.amount_cents)
     throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
@@ -405,7 +405,7 @@ async function reconstructReconciliationRun(
       (claim.stripe_account_id !== null &&
         row.stripe_account_id !== claim.stripe_account_id) ||
       mappings.find((mapping) => mapping.shipment_id === row.shipment_id)
-        ?.net_payout !== row.release_amount_cents
+        ?.net_payout_cents !== row.release_amount_cents
     )
       throw new ResumePayoutsError(500, 'RUN_SHAPE_INVALID');
     seen.add(row.shipment_id);

@@ -258,8 +258,8 @@ create function pg_temp.complete(p_run integer, p_shipment integer, p_transfer t
 $$;
 
 -- The amount the seller sees is the mapping amount in cents, shown in pesos.
-select is((select net_payout from public.connect_payout_run_shipments where run_id = pg_temp.mu(2431)),
-  1234567, 'notice: fixture, the mapping holds 1234567 cents');
+select is((select net_payout_cents from public.connect_payout_run_shipments where run_id = pg_temp.mu(2431)),
+  1234567::bigint, 'notice: fixture, the mapping holds 1234567 cents');
 set local role service_role;
 select ok(pg_temp.complete(2431, 2131, 'tr_test_2131'), 'notice: the transfer completes');
 reset role;

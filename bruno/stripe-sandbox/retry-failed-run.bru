@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{failedRunId}}&select=id,amount,status,release_stage,stripe_payout_id,failure_reason,failed_at,connect_payout_run_shipments(shipment_id,net_payout,status)
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{failedRunId}}&select=id,amount,status,release_stage,stripe_payout_id,failure_reason,failed_at,connect_payout_run_shipments(shipment_id,net_payout_cents,status)
   body: none
   auth: none
 }
@@ -70,7 +70,7 @@ tests {
     );
     expect(Number.isNaN(Date.parse(run.failed_at))).to.equal(false);
     expect(run.connect_payout_run_shipments).to.deep.equal([
-      { shipment_id: bru.getVar("retryShipmentId"), net_payout: 210600, status: "failed" },
+      { shipment_id: bru.getVar("retryShipmentId"), net_payout_cents: 210600, status: "failed" },
     ]);
   });
 

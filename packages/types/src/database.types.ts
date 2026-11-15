@@ -391,7 +391,7 @@ export type Database = {
         Row: {
           created_at: string;
           id: string;
-          net_payout: number;
+          net_payout_cents: number;
           run_id: string;
           shipment_id: string;
           status: string;
@@ -403,7 +403,7 @@ export type Database = {
         Insert: {
           created_at?: string;
           id?: string;
-          net_payout: number;
+          net_payout_cents: number;
           run_id: string;
           shipment_id: string;
           status?: string;
@@ -414,7 +414,7 @@ export type Database = {
         Update: {
           created_at?: string;
           id?: string;
-          net_payout?: number;
+          net_payout_cents?: number;
           run_id?: string;
           shipment_id?: string;
           status?: string;
