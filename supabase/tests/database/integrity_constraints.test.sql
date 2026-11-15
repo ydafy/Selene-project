@@ -2,7 +2,7 @@
 -- each rule is a constraint, and a write that breaks it fails.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(78);
+select plan(80);
 \ir ../fixtures/money.psql
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -44,6 +44,17 @@ select throws_ok(
   $$update public.profiles_private set updated_at = null
     where id = '00000000-0000-0000-0000-000000308001'$$,
   '23502', null, 'a NULL profiles_private.updated_at is rejected');
+
+select set_config('request.jwt.claims',
+  '{"sub": "00000000-0000-0000-0000-000000308001", "role": "authenticated"}', true);
+set local role authenticated;
+select throws_ok(
+  $$update public.profiles_private set role = 'admin' where id = auth.uid()$$,
+  '42501', null, 'an ordinary user cannot make themselves an admin');
+reset role;
+select is(
+  (select role::text from public.profiles_private where id = '00000000-0000-0000-0000-000000308001'),
+  'user', 'the user role is unchanged after the attempt');
 
 update public.profiles_private set role = 'admin' where id = '00000000-0000-0000-0000-000000308001';
 select set_config('request.jwt.claims',

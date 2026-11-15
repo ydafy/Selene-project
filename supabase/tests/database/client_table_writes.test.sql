@@ -3,7 +3,7 @@
 -- seller only for a completed shipment of that seller in the buyer's order.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(35);
+select plan(37);
 
 -- Same economics formula as validate_product_publication_economics.
 create function pg_temp.make_product(p_id uuid, p_seller uuid)
@@ -157,6 +157,14 @@ select is(
     (select price_at_purchase_cents from public.order_items where product_id = 'e1000000-0000-4000-8000-0000000a0001'))::text),
   'orders, order items and disputes are unchanged after the client attempts');
 
+-- Order 4: a completed shipment of seller_open with no review yet, for the
+-- seller-only review (no product), which ReviewModal can still send.
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
+values ('e1000000-0000-4000-8000-0000000b0004', 'e1000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb);
+insert into public.shipments (id, order_id, seller_id, status, completed_at, stripe_payment_intent_id)
+values ('e1000000-0000-4000-8000-0000000c0004', 'e1000000-0000-4000-8000-0000000b0004',
+  'e1000000-0000-4000-8000-000000000003', 'completed', now(), 'pi_test_ctw_4');
+
 -- Reviews: only for a completed shipment of that seller in the buyer's order.
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
 set local role authenticated;
@@ -193,6 +201,11 @@ select lives_ok(
       'e1000000-0000-4000-8000-000000000001', 5, 'Great', 'e1000000-0000-4000-8000-0000000c0001',
       'e1000000-0000-4000-8000-0000000a0001')$$,
   'the buyer reviews the product of a completed shipment');
+select lives_ok(
+  $$insert into public.reviews (order_id, seller_id, reviewer_id, rating, comment, shipment_id)
+    values ('e1000000-0000-4000-8000-0000000b0004', 'e1000000-0000-4000-8000-000000000003',
+      'e1000000-0000-4000-8000-000000000001', 4, 'Good seller', 'e1000000-0000-4000-8000-0000000c0004')$$,
+  'the buyer reviews the seller of a completed shipment without naming a product');
 select throws_ok(
   $$insert into public.reviews (order_id, seller_id, reviewer_id, rating, comment)
     values ('e1000000-0000-4000-8000-0000000b0001', 'e1000000-0000-4000-8000-000000000002',
@@ -232,6 +245,10 @@ select is(
   (select string_agg(row(seller_id, shipment_id, product_id, rating)::text, ', ' order by rating desc) from public.reviews where order_id = 'e1000000-0000-4000-8000-0000000b0001'),
   row('e1000000-0000-4000-8000-000000000002'::uuid, 'e1000000-0000-4000-8000-0000000c0001'::uuid, 'e1000000-0000-4000-8000-0000000a0001'::uuid, 5)::text,
   'the stored review is the completed shipment review');
+select is(
+  (select string_agg(row(seller_id, shipment_id, product_id is null, rating)::text, ', ') from public.reviews where order_id = 'e1000000-0000-4000-8000-0000000b0004'),
+  row('e1000000-0000-4000-8000-000000000003'::uuid, 'e1000000-0000-4000-8000-0000000c0004'::uuid, true, 4)::text,
+  'the seller-only review is stored with product_id NULL');
 
 -- Client roles hold only read privileges and read policies on these tables.
 select is(
