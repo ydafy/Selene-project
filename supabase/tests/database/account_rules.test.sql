@@ -121,7 +121,7 @@ select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select is(
   public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001',
+    'd0000000-0000-4000-8000-000000000002',
     'suspended', 'test'),
   true, 'smoke: an admin suspends the seller');
 reset role;
@@ -195,7 +195,7 @@ select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c1'), 'RESERVED:-',
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001', 'active', 'lifted');
+  'd0000000-0000-4000-8000-000000000002', 'active', 'lifted');
 reset role;
 select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'VERIFIED:-',
   'the lift returns a held VERIFIED listing to VERIFIED');
@@ -218,16 +218,16 @@ reset role;
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'review');
+  'd0000000-0000-4000-8000-000000000003', 'suspended', 'review');
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'banned', 'fraud');
+  'd0000000-0000-4000-8000-000000000003', 'banned', 'fraud');
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'active', 'undo')$$,
+    'd0000000-0000-4000-8000-000000000003', 'active', 'undo')$$,
   'P0001', 'BANNED_IS_FINAL', 'a ban cannot be lifted to active');
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'undo')$$,
+    'd0000000-0000-4000-8000-000000000003', 'suspended', 'undo')$$,
   'P0001', 'BANNED_IS_FINAL', 'a ban cannot be reduced to a suspension');
 reset role;
 select is(
@@ -268,8 +268,8 @@ select throws_ok(
   '42501', null, 'a client cannot pre-set the account hold on their own listing');
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'x')$$,
-  'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'a client cannot call the status RPC, even naming an admin as actor');
+    'd0000000-0000-4000-8000-000000000004', 'suspended', 'x')$$,
+  'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'a client cannot call the status RPC');
 
 -- Role claims in the JWT do not make an admin; the role lives in profiles_private.
 select set_config('request.jwt.claims', json_build_object(
@@ -279,7 +279,7 @@ select set_config('request.jwt.claims', json_build_object(
 select is(public.is_admin(), false, 'admin claims in the JWT do not make the client an admin');
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000007', 'suspended', 'x')$$,
+    'd0000000-0000-4000-8000-000000000004', 'suspended', 'x')$$,
   'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'admin claims in the JWT do not unlock the status RPC');
 reset role;
 
@@ -287,7 +287,7 @@ select set_config('request.jwt.claims', '{"role": "anon"}', true);
 set local role anon;
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'x')$$,
+    'd0000000-0000-4000-8000-000000000004', 'suspended', 'x')$$,
   '42501', null, 'anon cannot execute the status RPC');
 reset role;
 
@@ -353,15 +353,15 @@ select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000001', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'self')$$,
+    'd0000000-0000-4000-8000-000000000001', 'suspended', 'self')$$,
   'P0001', 'CANNOT_CHANGE_OWN_STATUS', 'an admin cannot change their own status');
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000005', 'd0000000-0000-4000-8000-000000000001', null, 'null status')$$,
+    'd0000000-0000-4000-8000-000000000005', null, 'null status')$$,
   'P0001', 'INVALID_ACCOUNT_STATUS', 'a NULL status is refused');
 select is(
   public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-0000000000ff', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'nobody'),
+    'd0000000-0000-4000-8000-0000000000ff', 'suspended', 'nobody'),
   false, 'an unknown user returns false');
 reset role;
 select is(
@@ -381,22 +381,22 @@ select pg_temp.as_user('d0000000-0000-4000-8000-000000000010');
 set local role authenticated;
 select throws_ok(
   $$select public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000010', 'suspended', 'x')$$,
+    'd0000000-0000-4000-8000-000000000009', 'suspended', 'x')$$,
   'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'a suspended admin cannot change a status');
 reset role;
 
--- Suspend 09 naming another user as actor; the JWT admin is recorded instead.
+-- Suspend 09 as the JWT admin, who is recorded as the actor.
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000005', 'suspended', 'hold');
+  'd0000000-0000-4000-8000-000000000009', 'suspended', 'hold');
 reset role;
 -- During the suspension an admin moves aa out of HIDDEN; its hold goes stale.
 update public.products set status = 'REJECTED' where id = 'd0000000-0000-4000-8000-0000000000aa';
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000009', 'd0000000-0000-4000-8000-000000000005', 'active', 'lift');
+  'd0000000-0000-4000-8000-000000000009', 'active', 'lift');
 reset role;
 select is(
   pg_temp.listing('d0000000-0000-4000-8000-0000000000aa') || ',' || pg_temp.listing('d0000000-0000-4000-8000-0000000000ab'),
@@ -412,7 +412,7 @@ select is(
   (select status::text || ':' || status_reason || ':' || status_updated_by from public.profiles_private
    where id = 'd0000000-0000-4000-8000-000000000009'),
   'active:lift:d0000000-0000-4000-8000-000000000001',
-  'the account records the reason and the JWT admin, not the admin id passed in');
+  'the account records the reason and the JWT admin');
 
 select * from finish();
 rollback;

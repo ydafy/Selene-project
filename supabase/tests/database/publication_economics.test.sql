@@ -58,7 +58,7 @@ select set_config('request.jwt.claims',
   '{"sub": "d0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'test');
+  'd0000000-0000-4000-8000-000000000003', 'suspended', 'test');
 reset role;
 
 -- Every snapshot above is now stale.
@@ -110,7 +110,7 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(
   public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000003', 'd0000000-0000-4000-8000-000000000001', 'active', 'lifted'),
+    'd0000000-0000-4000-8000-000000000003', 'active', 'lifted'),
   true, 'an admin lifts the suspension of a seller with a stale listing');
 reset role;
 select is(

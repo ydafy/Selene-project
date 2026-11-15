@@ -1,6 +1,5 @@
 CREATE OR REPLACE FUNCTION public.fn_admin_update_user_status (
   p_target_user_id uuid,
-  p_admin_id       uuid,
   p_new_status     public.account_status,
   p_reason         text
 )
@@ -14,7 +13,7 @@ DECLARE
     v_auth_user_id UUID;
     v_previous_status public.account_status;
 BEGIN
-    -- A. SECURITY: actor comes from the authenticated JWT; the client-supplied admin id is ignored
+    -- A. SECURITY: the actor is the authenticated JWT subject
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
     IF v_auth_user_id IS NULL THEN
@@ -101,12 +100,12 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, uuid, public.account_status, text) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, public.account_status, text) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, uuid, public.account_status, text) TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, public.account_status, text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_admin_update_user_status"(uuid, uuid, public.account_status, text) FROM "postgres";
+REVOKE ALL ON FUNCTION "public"."fn_admin_update_user_status"(uuid, public.account_status, text) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, uuid, public.account_status, text) TO "postgres";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_update_user_status"(uuid, public.account_status, text) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_admin_update_user_status"(uuid, uuid, public.account_status, text) FROM PUBLIC, "anon";
+REVOKE ALL ON FUNCTION "public"."fn_admin_update_user_status"(uuid, public.account_status, text) FROM PUBLIC, "anon";

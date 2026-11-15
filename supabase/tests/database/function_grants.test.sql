@@ -41,8 +41,8 @@ insert into expected_grants values
   ('authenticated', 'internal.fn_check_order_access(uuid, uuid)'), -- orders and order_items RLS
   ('authenticated', 'public.fn_admin_restore_product(uuid)'),
   ('authenticated', 'public.fn_admin_soft_delete_product(uuid, text)'),
-  ('authenticated', 'public.fn_admin_toggle_verified_seller(uuid, uuid, boolean)'),
-  ('authenticated', 'public.fn_admin_update_user_status(uuid, uuid, account_status, text)'),
+  ('authenticated', 'public.fn_admin_toggle_verified_seller(uuid, boolean)'),
+  ('authenticated', 'public.fn_admin_update_user_status(uuid, account_status, text)'),
   ('authenticated', 'public.fn_current_account_is_active()'), -- RLS policies
   ('authenticated', 'public.fn_get_location_by_zip(text)'),
   ('authenticated', 'public.fn_get_shipment_cancellation_summary(uuid)'),

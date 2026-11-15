@@ -72,7 +72,7 @@ select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'e0000000-0000-4000-8000-000000000004', 'e0000000-0000-4000-8000-000000000001', 'suspended', 'test');
+  'e0000000-0000-4000-8000-000000000004', 'suspended', 'test');
 reset role;
 select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000c2', 'e0000000-0000-4000-8000-000000000004', 'VERIFIED');
 

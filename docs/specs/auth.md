@@ -41,9 +41,9 @@ Notes on the table:
 
 ### How a state changes
 
-Only `fn_admin_update_user_status(p_target_user_id, p_admin_id, p_new_status, p_reason)` changes `profiles_private.status`.
+Only `fn_admin_update_user_status(p_target_user_id, p_new_status, p_reason)` changes `profiles_private.status`.
 
-- The actor is the JWT subject. The function ignores `p_admin_id`. The actor must pass `is_admin()`, so a suspended or banned admin has no authority (`UNAUTHORIZED_ADMIN_ONLY`).
+- The actor is the JWT subject; the function takes no admin id argument. The actor must pass `is_admin()`, so a suspended or banned admin has no authority (`UNAUTHORIZED_ADMIN_ONLY`).
 - An admin cannot change their own status (`CANNOT_CHANGE_OWN_STATUS`). A `NULL` status is refused (`INVALID_ACCOUNT_STATUS`).
 - `banned` is final. Any change away from it fails with `BANNED_IS_FINAL`. Only a same-status call refreshes the reason.
 - Every change writes a `USER_STATUS_UPDATE` row in `admin_audit_logs`.
