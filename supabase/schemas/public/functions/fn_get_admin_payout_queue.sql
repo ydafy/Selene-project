@@ -40,6 +40,9 @@ BEGIN
       CASE WHEN q.payout_run_id IS NULL AND q.is_payout_overdue THEN 4
         WHEN q.payout_run_id IS NULL THEN 0
         WHEN q.payout_run_status = 'paid' THEN 1
+        -- A run closed because the overdue payout refund refunded every
+        -- shipment it held needs no attention (#549).
+        WHEN q.payout_run_status = 'canceled' AND q.payout_run_failure_reason = 'overdue_payout_refunded' THEN 1
         WHEN q.payout_run_status = 'pending_reconciliation' THEN 2
         ELSE 3 END AS bucket_rank
     FROM public.admin_connect_payout_release_view q
