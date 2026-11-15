@@ -1,0 +1,43 @@
+meta {
+  name: refund-overdue-setup-orders
+  type: http
+  seq: 182
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const order = (id) => ({
+    id,
+    buyer_id: "00000000-0000-4000-8000-000000000005",
+    total_amount_cents: 10000,
+    shipping_address: { street: "Av. Reforma 1", city: "Ciudad de México", zip: "06500" },
+    status: "completed",
+  });
+  req.setBody([order(bru.getVar("roRecentOrder")), order(bru.getVar("roOldOrder"))]);
+}
+
+body:json {
+  []
+}
+
+tests {
+  test("two fixture orders exist", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Fresh ids per run, bought by the fixture buyer.
+}

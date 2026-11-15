@@ -1,0 +1,52 @@
+meta {
+  name: refund-overdue-setup-shipments
+  type: http
+  seq: 183
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const shipment = (id, orderId, completedAt) => ({
+    id,
+    order_id: orderId,
+    seller_id: bru.getVar("roSellerId"),
+    status: "completed",
+    delivered_at: completedAt,
+    completed_at: completedAt,
+    stripe_payment_intent_id: "pi_bruno_refund_overdue",
+  });
+  req.setBody([
+    shipment(bru.getVar("roRecentShipment"), bru.getVar("roRecentOrder"), bru.getVar("roRecentCompletedAt")),
+    shipment(bru.getVar("roOldShipment"), bru.getVar("roOldOrder"), bru.getVar("roOldCompletedAt")),
+  ]);
+}
+
+body:json {
+  []
+}
+
+tests {
+  test("one shipment completed 5 days ago and one 40 days ago, never transferred", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody().map((s) => [s.status, s.stripe_transfer_id])).to.deep.equal([
+      ["completed", null],
+      ["completed", null],
+    ]);
+  });
+}
+
+docs {
+  Local stack only. The payment intent id is fake; refund-overdue-cleanup-shipments closes both at
+  the end of the run.
+}
