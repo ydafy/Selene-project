@@ -16,7 +16,8 @@
  *  - exactly one PaymentIntent amount == allocation.buyerTotalCents
  *  - no `transfer_data.destination` (no automatic seller routing at PI time)
  *  - no `application_fee_amount` (manual release creates Transfers later)
- *  - no `payment_method_types` (automatic/dynamic payment methods per Stripe)
+ *  - cards only: `allowed_payment_method_types: ['card']`, never
+ *    `automatic_payment_methods` (see `buildSinglePaymentIntentParams`)
  *  - `transfer_group` in both PI metadata and the single-secret response
  *  - allocation JSON embedded in PI metadata, chunked to fit Stripe's 500-char
  *    metadata value limit
@@ -422,17 +423,26 @@ export interface SinglePaymentIntentParams {
    * can persist it on the order row.
    */
   transfer_group: string;
-  automatic_payment_methods: { enabled: true };
+  allowed_payment_method_types: ['card'];
   metadata: Record<string, string>;
 }
 
 /**
  * Build the params for the single platform-account PaymentIntent. Deliberately
- * omits `transfer_data.destination`, `application_fee_amount`, and
- * `payment_method_types`: seller funds are NOT routed at PI time, manual admin
- * release later creates per-shipment Transfers under `transfer_group`. Payment
- * methods are dynamic/automatic per the Stripe integration guidance (non-
- * Terminal flows must not hardcode `payment_method_types`).
+ * omits `transfer_data.destination` and `application_fee_amount`: seller funds
+ * are NOT routed at PI time, manual admin release later creates per-shipment
+ * Transfers under `transfer_group`.
+ *
+ * Checkout accepts only cards, fixed in code with
+ * `allowed_payment_method_types: ['card']` instead of `automatic_payment_methods`
+ * (the two are mutually exclusive), so a Stripe Dashboard toggle cannot offer
+ * a method the refund paths cannot handle (#567). Apple Pay and Google Pay pay
+ * with a card and stay available; Link is dropped on purpose. OXXO cannot be
+ * refunded through Stripe, and bank transfer (SPEI) refunds are asynchronous
+ * and can wait on the buyer: enabling another method must first teach every
+ * refund path (cancellation, disputes, overdue held payouts) to handle it.
+ * API 2026-09-30.endive and later reject the old `payment_method_types`
+ * parameter on create.
  */
 export function buildSinglePaymentIntentParams(
   input: SinglePaymentIntentParamsInput,
@@ -514,7 +524,7 @@ export function buildSinglePaymentIntentParams(
     currency: 'mxn',
     customer: customerId,
     transfer_group: transferGroup,
-    automatic_payment_methods: { enabled: true },
+    allowed_payment_method_types: ['card'],
     metadata,
   };
 }

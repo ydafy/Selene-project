@@ -285,15 +285,21 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
     // Top-level transfer_group mirrors metadata so Stripe groups later Transfers
     // to this buyer charge — separate from the metadata copy the webhook persists.
     expect(params.transfer_group).toBe(ctx.transferGroup);
-    // Payment methods are dynamic/automatic per Stripe skill; no hardcoded
-    // payment_method_types on this non-Terminal flow.
-    expect(params.payment_method_types).toBeUndefined();
-    expect(
-      (params as { automatic_payment_methods?: { enabled: boolean } })
-        .automatic_payment_methods,
-    ).toEqual({
-      enabled: true,
-    });
+  });
+
+  it('accepts only cards, fixed in code instead of the Dashboard configuration (#567)', () => {
+    const allocation = buildAllocation([
+      { shipmentId: 'ship_a', subtotalCents: 100_000, shippingCents: 20_000 },
+    ]);
+
+    const params = buildSinglePaymentIntentParams({
+      allocation,
+      ...baseCtx(),
+    }) as unknown as Record<string, unknown>;
+
+    expect(params.allowed_payment_method_types).toEqual(['card']);
+    expect(params).not.toHaveProperty('automatic_payment_methods');
+    expect(params).not.toHaveProperty('payment_method_types');
   });
 
   it('embeds transfer_group, flow, order ids, buyer/address ids and allocation totals in metadata', () => {
@@ -862,7 +868,7 @@ describe('single-payment-builder > createSinglePaymentIntent', () => {
       currency: 'mxn',
       customer: 'cus_retry',
       transfer_group: 'selene_order_retry',
-      automatic_payment_methods: { enabled: true },
+      allowed_payment_method_types: ['card'],
       metadata: { order_id: 'order_retry', flow: SINGLE_MODAL_FLOW },
     };
 
