@@ -179,8 +179,9 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5126), 'APPROVE', 'Note')
   'APPROVE on a VERIFIED listing returns true');
 reset role;
 select is(pg_temp.lock_of(5126), '-|-', 'APPROVE on a VERIFIED listing releases the lock');
-select is(pg_temp.core(5126), (select v from pg_temp.before_core where n = 5126),
-  'APPROVE on a VERIFIED listing keeps its status, verified_at and updated_at');
+-- Releasing the lock is a write, so the updated_at trigger stamps now().
+select is(pg_temp.core(5126), (select regexp_replace(v, '[^|]*$', now()::text) from pg_temp.before_core where n = 5126),
+  'APPROVE on a VERIFIED listing keeps its status and verified_at; the lock release stamps updated_at');
 select is(pg_temp.audits(5126), 0::bigint, 'APPROVE on a VERIFIED listing writes no audit row');
 select is(pg_temp.notices(5126), 0::bigint, 'APPROVE on a VERIFIED listing sends no notice');
 
@@ -189,8 +190,8 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5127), 'REJECT', 'New rea
   'REJECT on a REJECTED listing returns true');
 reset role;
 select is(pg_temp.lock_of(5127), '-|-', 'REJECT on a REJECTED listing releases the lock');
-select is(pg_temp.core(5127), (select v from pg_temp.before_core where n = 5127),
-  'REJECT on a REJECTED listing keeps its rejection reason and updated_at');
+select is(pg_temp.core(5127), (select regexp_replace(v, '[^|]*$', now()::text) from pg_temp.before_core where n = 5127),
+  'REJECT on a REJECTED listing keeps its rejection reason; the lock release stamps updated_at');
 select is(pg_temp.audits(5127) + pg_temp.notices(5127), 0::bigint,
   'REJECT on a REJECTED listing writes no audit row and sends no notice');
 

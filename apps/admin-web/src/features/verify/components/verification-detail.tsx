@@ -64,11 +64,11 @@ export const VerificationDetail = ({
   const rank = getRank(product.seller_stats.sold, product.seller_stats.ratio);
 
   const saveInternalNote = async () => {
-    if (!internalNote.trim()) return;
+    if (!internalNote.trim() || !user) return;
 
     const { error } = await supabase.from('admin_user_notes').insert({
       user_id: product.seller_id,
-      admin_id: user?.id,
+      admin_id: user.id,
       content: internalNote,
     });
 

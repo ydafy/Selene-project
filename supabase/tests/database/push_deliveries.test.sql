@@ -17,8 +17,8 @@ create function pg_temp.tok(p_n integer, p_user integer) returns uuid language s
 $$;
 -- A typed notification mu(p_n) for mu(p_user); the trigger fans it out.
 create function pg_temp.typed(p_n integer, p_user integer, p_kind text, p_payload jsonb) returns uuid language sql as $$
-  insert into public.notifications (id, user_id, title, message, action_path, event_kind, source_event_key, event_payload)
-  values (pg_temp.mu(p_n), pg_temp.mu(p_user), 'Title ' || p_n, 'Message ' || p_n, '/p/' || p_n,
+  insert into public.notifications (id, user_id, type, title, message, action_path, event_kind, source_event_key, event_payload)
+  values (pg_temp.mu(p_n), pg_temp.mu(p_user), 'info', 'Title ' || p_n, 'Message ' || p_n, '/p/' || p_n,
     p_kind, 't13-' || p_n, p_payload)
   returning id
 $$;

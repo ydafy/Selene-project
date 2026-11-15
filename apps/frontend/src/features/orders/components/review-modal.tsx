@@ -32,13 +32,12 @@ interface Props {
    * Shipment being reviewed. Threads the shipment-safe identity tuple
    * `(reviewer_id, shipment_id, product_id)` through `useReviewAction` so the
    * resulting review can earn the verified-purchase badge. The database
-   * rejects a review without its shipment.
+   * keeps one review per shipment.
    */
-  shipmentId?: string;
+  shipmentId: string;
   /**
    * Product within the shipment being reviewed. Pairs with `shipmentId` to
    * prove verified-purchase linkage; it must be an item of that shipment.
-   * One review per product within a shipment.
    */
   productId?: string;
   /**

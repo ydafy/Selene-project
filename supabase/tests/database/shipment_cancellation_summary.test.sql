@@ -140,8 +140,8 @@ select is((select indexdef from pg_indexes where schemaname = 'public' and index
 
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 -- 9106 already has the buyer notice, as a retried cancellation would.
-insert into public.notifications (user_id, event_kind, source_event_key, title)
-values (pg_temp.mu(9001), 'shipment.cancelled', 'shipment.cancelled:' || pg_temp.mu(9106), 'Pedido cancelado');
+insert into public.notifications (user_id, event_kind, source_event_key, type, title)
+values (pg_temp.mu(9001), 'shipment.cancelled', 'shipment.cancelled:' || pg_temp.mu(9106), 'warning', 'Pedido cancelado');
 
 create function pg_temp.cancel(p_ship integer) returns text language sql as $$
   select c.success::text || ':' || coalesce(c.error_message, '-')
@@ -170,7 +170,7 @@ select is(
 select is(pg_temp.cancel(9105) || ' ' || pg_temp.notices(9105),
   'true:ALREADY_CANCELLED buyer:info:buyer:/profile/orders/O?shipment_id=S seller:warning:seller:/profile/orders/O?shipment_id=S',
   'cancel: a second call is ALREADY_CANCELLED and writes no notice');
-select is(pg_temp.cancel(9106) || ' ' || pg_temp.notices(9106), 'true:- buyer:-:-:- seller:warning:seller:/profile/orders/O?shipment_id=S',
+select is(pg_temp.cancel(9106) || ' ' || pg_temp.notices(9106), 'true:- buyer:warning:-:- seller:warning:seller:/profile/orders/O?shipment_id=S',
   'cancel: an existing notice for the same event and user is kept and not duplicated; the seller still gets one');
 
 select * from finish();

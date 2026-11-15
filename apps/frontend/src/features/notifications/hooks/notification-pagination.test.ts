@@ -97,7 +97,7 @@ const row = (
   read: false,
   title: id,
   message: null,
-  type: null,
+  type: 'info',
   action_path: null,
   event_kind: null,
   source_event_key: null,

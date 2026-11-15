@@ -11,7 +11,7 @@ CREATE TABLE "public"."push_tokens" (
   CONSTRAINT "push_tokens_platform_check" CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text]))),
   CONSTRAINT "push_tokens_token_key" UNIQUE (token),
   CONSTRAINT "push_tokens_token_shape_chk" CHECK (((char_length(token) <= 255) AND (token ~ '^Expo(nent)?PushToken\[[^\]\s]+\]$'::text))),
-  CONSTRAINT "push_tokens_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+  CONSTRAINT "push_tokens_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
 ALTER TABLE "public"."push_tokens"
@@ -21,6 +21,11 @@ CREATE INDEX push_tokens_active_user_idx ON public.push_tokens USING btree (user
   WHERE (disabled_at IS NULL);
 
 CREATE INDEX push_tokens_user_id_idx ON public.push_tokens USING btree (user_id);
+
+CREATE TRIGGER push_tokens_set_updated_at
+  BEFORE UPDATE ON public.push_tokens
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."push_tokens" TO "service_role";
 

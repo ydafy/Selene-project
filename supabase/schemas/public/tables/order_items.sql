@@ -1,6 +1,6 @@
 CREATE TABLE "public"."order_items" (
   "id"                  uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "created_at"          timestamp with time zone DEFAULT now(),
+  "created_at"          timestamp with time zone NOT NULL DEFAULT now(),
   "order_id"            uuid                     NOT NULL,
   "product_id"          uuid                     NOT NULL,
   "seller_id"           uuid                     NOT NULL,
@@ -8,16 +8,17 @@ CREATE TABLE "public"."order_items" (
   "commission_amount_cents" bigint                   NOT NULL DEFAULT 0,
   "shipping_amount_cents"   bigint                   NOT NULL DEFAULT 0,
   "net_payout_cents"        bigint                   NOT NULL DEFAULT 0,
-  "shipping_payer"      text                     DEFAULT 'seller'::text,
-  "shipment_id"         uuid,
+  "shipping_payer"      text                     NOT NULL DEFAULT 'seller'::text,
+  "shipment_id"         uuid                     NOT NULL,
+  CONSTRAINT "order_items_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text]))),
   CONSTRAINT "order_items_commission_amount_cents_check" CHECK ((commission_amount_cents >= 0)),
   CONSTRAINT "order_items_net_payout_cents_check" CHECK ((net_payout_cents >= 0)),
   CONSTRAINT "order_items_price_at_purchase_cents_check" CHECK ((price_at_purchase_cents >= 0)),
   CONSTRAINT "order_items_shipping_amount_cents_check" CHECK ((shipping_amount_cents >= 0)),
   CONSTRAINT "order_items_pkey" PRIMARY KEY (id),
-  CONSTRAINT "order_items_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES auth.users(id),
-  CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE CASCADE,
-  CONSTRAINT "order_items_product_id_fkey" FOREIGN KEY (product_id) REFERENCES public.products(id),
+  CONSTRAINT "order_items_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE RESTRICT,
+  CONSTRAINT "order_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES public.orders(id) ON DELETE RESTRICT,
+  CONSTRAINT "order_items_product_id_fkey" FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE RESTRICT,
   CONSTRAINT "order_items_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE RESTRICT
 );
 

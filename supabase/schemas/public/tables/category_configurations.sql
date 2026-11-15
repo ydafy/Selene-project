@@ -2,12 +2,17 @@ CREATE TABLE "public"."category_configurations" (
   "category_name" text                     NOT NULL,
   "sell_fields"   jsonb                    NOT NULL,
   "filter_fields" jsonb                    NOT NULL,
-  "updated_at"    timestamp with time zone DEFAULT now(),
+  "updated_at"    timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT "category_configurations_pkey" PRIMARY KEY (category_name)
 );
 
 ALTER TABLE "public"."category_configurations"
   ENABLE ROW LEVEL SECURITY;
+
+CREATE TRIGGER category_configurations_set_updated_at
+  BEFORE UPDATE ON public.category_configurations
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 CREATE POLICY "category_config_select" ON "public"."category_configurations"
   FOR SELECT

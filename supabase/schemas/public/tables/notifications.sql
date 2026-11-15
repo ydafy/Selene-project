@@ -2,10 +2,10 @@ CREATE TABLE "public"."notifications" (
   "id"               uuid                     NOT NULL DEFAULT gen_random_uuid(),
   "created_at"       timestamp with time zone NOT NULL DEFAULT now(),
   "user_id"          uuid                     NOT NULL,
-  "type"             text,
+  "type"             text                     NOT NULL,
   "title"            text                     NOT NULL,
   "message"          text,
-  "read"             boolean                  DEFAULT false,
+  "read"             boolean                  NOT NULL DEFAULT false,
   "action_path"      text,
   "deleted_at"       timestamp with time zone,
   "event_kind"       text,
@@ -29,7 +29,7 @@ CREATE TABLE "public"."notifications" (
   CONSTRAINT "notifications_pkey" PRIMARY KEY (id),
   CONSTRAINT "notifications_source_event_key_nonempty_chk" CHECK (((source_event_key IS NULL) OR (length(btrim(source_event_key)) > 0))),
   CONSTRAINT "notifications_type_check" CHECK ((type = ANY (ARRAY['info'::text, 'success'::text, 'error'::text, 'warning'::text]))),
-  CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+  CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE
 );
 
 ALTER TABLE "public"."notifications"

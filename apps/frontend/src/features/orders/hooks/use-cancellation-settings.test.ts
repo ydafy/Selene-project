@@ -15,6 +15,8 @@ describe('resolveCancellationSettings', () => {
     });
   });
 
+  // Both hours are NOT NULL in the database (#308); only the row can be
+  // missing while the query loads or fails.
   it('invents no deadline while system settings are missing or loading', () => {
     const missing = {
       orderExpirationHours: null,
@@ -23,20 +25,5 @@ describe('resolveCancellationSettings', () => {
 
     expect(resolveCancellationSettings(null)).toEqual(missing);
     expect(resolveCancellationSettings(undefined)).toEqual(missing);
-    expect(
-      resolveCancellationSettings({
-        order_expiration_hours: null,
-        preparing_expiration_hours: null,
-      }),
-    ).toEqual(missing);
-  });
-
-  it('keeps a configured value when only the other one is missing', () => {
-    expect(
-      resolveCancellationSettings({
-        order_expiration_hours: 36,
-        preparing_expiration_hours: null,
-      }),
-    ).toEqual({ orderExpirationHours: 36, preparingExpirationHours: null });
   });
 });

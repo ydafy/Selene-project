@@ -132,9 +132,9 @@ select is(pg_temp.try_base('select 1'), 'applied 2', 'fixture: the baseline call
 select is(pg_temp.try('select 1',
   $$select pg_temp.resume(6201, 'other', 'pending_reconciliation', 'release_accepted', 1, array[6101, 6102])$$),
   'refused', 'refuses a mode other than retry or pending');
-select is(pg_temp.try('update public.connect_payout_runs set release_stage_version = 0 where id = pg_temp.mu(6201)',
+select is(pg_temp.try('select 1',
   $$select pg_temp.resume(6201, 'pending', 'pending_reconciliation', 'release_accepted', 0, array[6101, 6102])$$),
-  'refused', 'refuses an expected version below 1, even when it matches');
+  'refused', 'refuses an expected version below 1 (a stored version below 1 is rejected by its CHECK)');
 select is(pg_temp.try('select 1',
   $$select pg_temp.resume(6201, 'pending', 'pending_reconciliation', 'release_accepted', 1, array[6101, null])$$),
   'refused', 'refuses a shipment list with a NULL id');

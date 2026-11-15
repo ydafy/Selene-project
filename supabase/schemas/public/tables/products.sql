@@ -39,7 +39,7 @@ ALTER TABLE "public"."products"
   ADD COLUMN "shipping_cost_cents" bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "shipping_payer" text DEFAULT 'buyer'::text;
+  ADD COLUMN "shipping_payer" text NOT NULL DEFAULT 'buyer'::text;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "origin_zip" text;
@@ -48,7 +48,7 @@ ALTER TABLE "public"."products"
   ADD COLUMN "package_preset" text;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT now();
+  ADD COLUMN "updated_at" timestamp WITH time zone NOT NULL DEFAULT now();
 
 ALTER TABLE "public"."products"
   ADD COLUMN "reserved_at" timestamp WITH time zone;
@@ -94,7 +94,19 @@ ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_cost_cents_check" CHECK ((shipping_cost_cents >= 0));
 
 ALTER TABLE "public"."products"
-  ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id);
+  ADD CONSTRAINT "products_views_check" CHECK ((views >= 0));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_aspect_ratio_check" CHECK ((aspect_ratio > (0)::double precision));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_origin_zip_check" CHECK ((origin_zip ~ '^[0-9]{5}$'::text));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
+
+ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id) ON DELETE RESTRICT;
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
@@ -132,6 +144,11 @@ CREATE TRIGGER validate_product_publication_economics
   BEFORE INSERT OR UPDATE ON public.products
   FOR EACH ROW
   EXECUTE FUNCTION public.validate_product_publication_economics();
+
+CREATE TRIGGER products_set_updated_at
+  BEFORE UPDATE ON public.products
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 CREATE POLICY "products_delete_block" ON "public"."products"
   FOR DELETE

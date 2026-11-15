@@ -25,13 +25,14 @@ describe('buildReviewInsertPayload', () => {
     });
   });
 
-  test('writes explicit null linkage for legacy reviews without shipment/product identity', () => {
+  test('passes the shipment through for a seller review without a product', () => {
     const payload = buildReviewInsertPayload({
       orderId: 'order-2',
       rating: 4,
       comment: '',
       sellerId: 'seller-2',
       reviewerId: 'buyer-2',
+      shipmentId: 'shipment-2',
     });
 
     expect(payload).toEqual({
@@ -40,7 +41,7 @@ describe('buildReviewInsertPayload', () => {
       reviewer_id: 'buyer-2',
       rating: 4,
       comment: '',
-      shipment_id: null,
+      shipment_id: 'shipment-2',
       product_id: null,
     });
   });

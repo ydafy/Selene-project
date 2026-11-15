@@ -12,18 +12,22 @@ CREATE TABLE "public"."addresses" (
   "country"       text                     NOT NULL DEFAULT 'MX'::text,
   "latitude"      double precision,
   "longitude"     double precision,
-  "is_default"    boolean                  DEFAULT false,
+  "is_default"    boolean                  NOT NULL DEFAULT false,
   "instructions"  text,
   "label"         text                     NOT NULL,
   "district"      text,
   "deleted_at"    timestamp with time zone,
   "street_number" text,
+  CONSTRAINT "addresses_country_check" CHECK ((country = 'MX'::text)),
   CONSTRAINT "addresses_pkey" PRIMARY KEY (id),
-  CONSTRAINT "addresses_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+  CONSTRAINT "addresses_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
+  CONSTRAINT "addresses_zip_code_check" CHECK (((zip_code ~ '^[0-9]{5}$'::text) OR ((deleted_at IS NOT NULL) AND (zip_code = ''::text))))
 );
 
 ALTER TABLE "public"."addresses"
   ENABLE ROW LEVEL SECURITY;
+
+CREATE UNIQUE INDEX addresses_one_default_per_user_idx ON public.addresses USING btree (user_id) WHERE (is_default AND (deleted_at IS NULL));
 
 CREATE INDEX idx_addresses_user_id ON public.addresses USING btree (user_id);
 

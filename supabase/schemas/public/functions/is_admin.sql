@@ -7,7 +7,7 @@ CREATE OR REPLACE FUNCTION public.is_admin()
   AS $function$
 
 DECLARE
-    v_role TEXT;
+    v_role public.user_role;
     v_status public.account_status;
 BEGIN
     SELECT role, status

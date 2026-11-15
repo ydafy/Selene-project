@@ -47,7 +47,7 @@ update public.order_items set net_payout_cents = 470000 where shipment_id in (pg
 update public.order_items set net_payout_cents = 10000 where shipment_id = pg_temp.mu(104);
 select pg_temp.complete(101, 28700);
 select pg_temp.complete(102, 0);
-select pg_temp.complete(103, null);
+select pg_temp.complete(103, 0);
 select pg_temp.complete(104, 12000);
 -- 105 stays delivered.
 select pg_temp.complete(106, 1000);
@@ -68,8 +68,8 @@ update public.connect_payout_runs set paid_at = '2026-11-01 12:00+00' where id =
 select pg_temp.money_payout_run(308, 11, 10, array[115], 'reconciliation_needed');
 update public.connect_payout_run_shipments set status = 'failed' where run_id = pg_temp.mu(308);
 -- 118 and 119: separate-charges orders (transfer group), with no label cost
--- recorded and with one.
-select pg_temp.complete(118, null);
+-- recorded (the default 0) and with one.
+select pg_temp.complete(118, 0);
 select pg_temp.complete(119, 1000);
 update public.orders set stripe_transfer_group = 'tg_test_' || right(id::text, 3) where id in (pg_temp.mu(218), pg_temp.mu(219));
 

@@ -47,10 +47,10 @@ ALTER TABLE "public"."shipments"
   ADD COLUMN "return_label_url" text;
 
 ALTER TABLE "public"."shipments"
-  ADD COLUMN "created_at" timestamp WITH time zone DEFAULT now();
+  ADD COLUMN "created_at" timestamp WITH time zone NOT NULL DEFAULT now();
 
 ALTER TABLE "public"."shipments"
-  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT now();
+  ADD COLUMN "updated_at" timestamp WITH time zone NOT NULL DEFAULT now();
 
 ALTER TABLE "public"."shipments"
   ADD COLUMN "stripe_payment_intent_id" text;
@@ -62,7 +62,7 @@ ALTER TABLE "public"."shipments"
   ADD COLUMN "shipping_evidence" jsonb;
 
 ALTER TABLE "public"."shipments"
-  ADD COLUMN "shipping_cost" integer DEFAULT 0;
+  ADD COLUMN "shipping_cost" integer NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."shipments"
   ADD COLUMN "stripe_transfer_id" text;
@@ -128,10 +128,13 @@ ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_provider_cost_cents_check" CHECK (((label_provider_cost_cents IS NULL) OR (label_provider_cost_cents >= 0)));
 
 ALTER TABLE "public"."shipments"
+  ADD CONSTRAINT "shipments_shipping_cost_check" CHECK ((shipping_cost >= 0));
+
+ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_quote_cost_cents_check" CHECK (((label_quote_cost_cents IS NULL) OR (label_quote_cost_cents >= 0)));
 
 ALTER TABLE "public"."shipments"
-  ADD CONSTRAINT "shipments_origin_address_id_fkey" FOREIGN KEY (origin_address_id) REFERENCES public.addresses(id);
+  ADD CONSTRAINT "shipments_origin_address_id_fkey" FOREIGN KEY (origin_address_id) REFERENCES public.addresses(id) ON DELETE RESTRICT;
 
 CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (delivered_at)
   WHERE ((status = 'delivered'::public.order_status_enum) AND (buyer_confirmed_at IS NULL) AND (delivered_at IS NOT NULL));

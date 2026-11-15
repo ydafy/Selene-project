@@ -1,15 +1,16 @@
 CREATE TABLE "public"."orders" (
   "id"                       uuid                     NOT NULL DEFAULT gen_random_uuid(),
-  "created_at"               timestamp with time zone DEFAULT now(),
+  "created_at"               timestamp with time zone NOT NULL DEFAULT now(),
   "buyer_id"                 uuid                     NOT NULL,
   "total_amount_cents"       bigint                   NOT NULL,
   "stripe_payment_intent_id" text,
   "shipping_address"         jsonb                    NOT NULL,
   "service_fee_amount_cents" bigint                   NOT NULL DEFAULT 0,
-  "currency"                 text                     DEFAULT 'MXN'::text,
+  "currency"                 text                     NOT NULL DEFAULT 'MXN'::text,
+  CONSTRAINT "orders_currency_check" CHECK ((currency = 'MXN'::text)),
   CONSTRAINT "orders_service_fee_amount_cents_check" CHECK ((service_fee_amount_cents >= 0)),
   CONSTRAINT "orders_total_amount_cents_check" CHECK ((total_amount_cents >= 0)),
-  CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES auth.users(id),
+  CONSTRAINT "orders_buyer_id_fkey" FOREIGN KEY (buyer_id) REFERENCES public.profiles(id) ON DELETE RESTRICT,
   CONSTRAINT "orders_pkey" PRIMARY KEY (id)
 );
 
@@ -23,7 +24,7 @@ ALTER TABLE "public"."orders"
   ADD COLUMN "delivered_at" timestamp WITH time zone;
 
 ALTER TABLE "public"."orders"
-  ADD COLUMN "updated_at" timestamp WITH time zone DEFAULT timezone('utc'::text, now());
+  ADD COLUMN "updated_at" timestamp WITH time zone NOT NULL DEFAULT timezone('utc'::text, now());
 
 ALTER TABLE "public"."orders"
   ADD COLUMN "completed_at" timestamp WITH time zone;
@@ -71,6 +72,15 @@ ALTER TABLE "public"."orders"
   ADD CONSTRAINT "orders_compensation_state_check"
     CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text, 'reconciliation_needed'::text]))));
 
+ALTER TABLE "public"."orders"
+  ADD CONSTRAINT "orders_actual_stripe_fee_cents_check" CHECK ((actual_stripe_fee_cents >= 0));
+
+ALTER TABLE "public"."orders"
+  ADD CONSTRAINT "orders_cancellation_loss_cents_check" CHECK ((cancellation_loss_cents >= 0));
+
+ALTER TABLE "public"."orders"
+  ADD CONSTRAINT "orders_compensation_attempt_count_check" CHECK ((compensation_attempt_count >= 0));
+
 CREATE INDEX idx_orders_delivered_at ON public.orders USING btree (delivered_at)
   WHERE (status = 'delivered'::public.order_status_enum);
 
@@ -93,10 +103,10 @@ CREATE INDEX orders_checkout_recovery_claim_idx ON public.orders USING btree (ne
 CREATE UNIQUE INDEX orders_stripe_payment_intent_id_recovery_uidx ON public.orders USING btree (stripe_payment_intent_id)
   WHERE (stripe_payment_intent_id IS NOT NULL);
 
-CREATE TRIGGER tr_orders_updated_at
+CREATE TRIGGER orders_set_updated_at
   BEFORE UPDATE ON public.orders
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_updated_at_column();
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 CREATE POLICY "orders_select_v4" ON "public"."orders"
   FOR SELECT

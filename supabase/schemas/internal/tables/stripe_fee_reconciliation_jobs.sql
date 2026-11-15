@@ -29,6 +29,11 @@ CREATE INDEX stripe_fee_reconciliation_jobs_processing_lease_idx ON internal.str
 CREATE INDEX stripe_fee_reconciliation_jobs_retry_idx ON internal.stripe_fee_reconciliation_jobs USING btree (next_retry_at, created_at)
   WHERE (status = ANY (ARRAY['pending'::text, 'failed'::text]));
 
+CREATE TRIGGER stripe_fee_reconciliation_jobs_set_updated_at
+  BEFORE UPDATE ON internal.stripe_fee_reconciliation_jobs
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
+
 COMMENT ON COLUMN "internal"."stripe_fee_reconciliation_jobs"."attempt_count" IS 'Bounded count of reconciliation attempts, including the active processing attempt.';
 
 COMMENT ON COLUMN "internal"."stripe_fee_reconciliation_jobs"."claim_expires_at" IS 'Database-clock active lease expiry; NULL after success, retry, or failure.';

@@ -52,6 +52,7 @@ select is(
      and conname like '%\_cents\_check'),
   'order_items_commission_amount_cents_check,order_items_net_payout_cents_check,'
     || 'order_items_price_at_purchase_cents_check,order_items_shipping_amount_cents_check,'
+    || 'orders_actual_stripe_fee_cents_check,orders_cancellation_loss_cents_check,'
     || 'orders_service_fee_amount_cents_check,orders_total_amount_cents_check',
   'each cents column has its named non-negative check');
 

@@ -19,7 +19,7 @@ export type Database = {
           full_name: string;
           id: string;
           instructions: string | null;
-          is_default: boolean | null;
+          is_default: boolean;
           label: string;
           latitude: number | null;
           longitude: number | null;
@@ -41,7 +41,7 @@ export type Database = {
           full_name: string;
           id?: string;
           instructions?: string | null;
-          is_default?: boolean | null;
+          is_default?: boolean;
           label: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -62,7 +62,7 @@ export type Database = {
           full_name?: string;
           id?: string;
           instructions?: string | null;
-          is_default?: boolean | null;
+          is_default?: boolean;
           label?: string;
           latitude?: number | null;
           longitude?: number | null;
@@ -74,13 +74,49 @@ export type Database = {
           user_id?: string;
           zip_code?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'addresses_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       admin_audit_logs: {
         Row: {
           action_type: string;
-          admin_id: string | null;
-          created_at: string | null;
+          admin_id: string;
+          created_at: string;
           details: Json | null;
           id: string;
           target_id: string | null;
@@ -88,16 +124,16 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           action_type: string;
-          admin_id?: string | null;
-          created_at?: string | null;
+          admin_id: string;
+          created_at?: string;
           details?: Json | null;
           id?: string;
           target_id?: string | null;
         };
         Update: {
           action_type?: string;
-          admin_id?: string | null;
-          created_at?: string | null;
+          admin_id?: string;
+          created_at?: string;
           details?: Json | null;
           id?: string;
           target_id?: string | null;
@@ -142,26 +178,26 @@ export type Database = {
       };
       admin_user_notes: {
         Row: {
-          admin_id: string | null;
+          admin_id: string;
           content: string;
-          created_at: string | null;
+          created_at: string;
           id: string;
-          user_id: string | null;
+          user_id: string;
         };
         ComputedFields: never;
         Insert: {
-          admin_id?: string | null;
+          admin_id: string;
           content: string;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
-          user_id?: string | null;
+          user_id: string;
         };
         Update: {
-          admin_id?: string | null;
+          admin_id?: string;
           content?: string;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
-          user_id?: string | null;
+          user_id?: string;
         };
         Relationships: [
           {
@@ -334,20 +370,20 @@ export type Database = {
           category_name: string;
           filter_fields: NonNullable<Json>;
           sell_fields: NonNullable<Json>;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
           category_name: string;
           filter_fields: NonNullable<Json>;
           sell_fields: NonNullable<Json>;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           category_name?: string;
           filter_fields?: NonNullable<Json>;
           sell_fields?: NonNullable<Json>;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -942,10 +978,10 @@ export type Database = {
           event_payload: NonNullable<Json>;
           id: string;
           message: string | null;
-          read: boolean | null;
+          read: boolean;
           source_event_key: string | null;
           title: string;
-          type: string | null;
+          type: string;
           user_id: string;
         };
         ComputedFields: never;
@@ -957,10 +993,10 @@ export type Database = {
           event_payload?: NonNullable<Json>;
           id?: string;
           message?: string | null;
-          read?: boolean | null;
+          read?: boolean;
           source_event_key?: string | null;
           title: string;
-          type?: string | null;
+          type: string;
           user_id: string;
         };
         Update: {
@@ -971,54 +1007,90 @@ export type Database = {
           event_payload?: NonNullable<Json>;
           id?: string;
           message?: string | null;
-          read?: boolean | null;
+          read?: boolean;
           source_event_key?: string | null;
           title?: string;
-          type?: string | null;
+          type?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'notifications_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       order_items: {
         Row: {
           commission_amount_cents: number;
-          created_at: string | null;
+          created_at: string;
           id: string;
           net_payout_cents: number;
           order_id: string;
           price_at_purchase_cents: number;
           product_id: string;
           seller_id: string;
-          shipment_id: string | null;
+          shipment_id: string;
           shipping_amount_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
         };
         ComputedFields: never;
         Insert: {
           commission_amount_cents?: number;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
           net_payout_cents?: number;
           order_id: string;
           price_at_purchase_cents: number;
           product_id: string;
           seller_id: string;
-          shipment_id?: string | null;
+          shipment_id: string;
           shipping_amount_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
         };
         Update: {
           commission_amount_cents?: number;
-          created_at?: string | null;
+          created_at?: string;
           id?: string;
           net_payout_cents?: number;
           order_id?: string;
           price_at_purchase_cents?: number;
           product_id?: string;
           seller_id?: string;
-          shipment_id?: string | null;
+          shipment_id?: string;
           shipping_amount_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
         };
         Relationships: [
           {
@@ -1057,6 +1129,41 @@ export type Database = {
             referencedColumns: ['id'];
           },
           {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'order_items_seller_id_fkey';
+            columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
             foreignKeyName: 'order_items_shipment_id_fkey';
             columns: ['shipment_id'];
             isOneToOne: false;
@@ -1082,8 +1189,8 @@ export type Database = {
           compensation_lease_expires_at: string | null;
           compensation_state: string | null;
           completed_at: string | null;
-          created_at: string | null;
-          currency: string | null;
+          created_at: string;
+          currency: string;
           delivered_at: string | null;
           id: string;
           next_compensation_retry_at: string | null;
@@ -1098,7 +1205,7 @@ export type Database = {
           stripe_refund_id: string | null;
           stripe_transfer_group: string | null;
           total_amount_cents: number;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1110,8 +1217,8 @@ export type Database = {
           compensation_lease_expires_at?: string | null;
           compensation_state?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          currency?: string | null;
+          created_at?: string;
+          currency?: string;
           delivered_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
@@ -1126,7 +1233,7 @@ export type Database = {
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
           total_amount_cents: number;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           actual_stripe_fee_cents?: number | null;
@@ -1137,8 +1244,8 @@ export type Database = {
           compensation_lease_expires_at?: string | null;
           compensation_state?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
-          currency?: string | null;
+          created_at?: string;
+          currency?: string;
           delivered_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
@@ -1153,9 +1260,45 @@ export type Database = {
           stripe_refund_id?: string | null;
           stripe_transfer_group?: string | null;
           total_amount_cents?: number;
-          updated_at?: string | null;
+          updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_buyer_id_fkey';
+            columns: ['buyer_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       payment_methods: {
         Row: {
@@ -1221,12 +1364,12 @@ export type Database = {
           reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at: string | null;
+          updated_at: string;
           usage: string;
           verification_data: Json | null;
           verified_at: string | null;
@@ -1256,12 +1399,12 @@ export type Database = {
           reserved_at?: string | null;
           seller_id: string;
           shipping_cost_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at?: string | null;
+          updated_at?: string;
           usage: string;
           verification_data?: Json | null;
           verified_at?: string | null;
@@ -1290,12 +1433,12 @@ export type Database = {
           reserved_at?: string | null;
           seller_id?: string;
           shipping_cost_cents?: number;
-          shipping_payer?: string | null;
+          shipping_payer?: string;
           specifications?: NonNullable<Json>;
           status?: Database['public']['Enums']['product_status_enum'];
           status_before_account_hold?:
             Database['public']['Enums']['product_status_enum'] | null;
-          updated_at?: string | null;
+          updated_at?: string;
           usage?: string;
           verification_data?: Json | null;
           verified_at?: string | null;
@@ -1381,10 +1524,10 @@ export type Database = {
           created_at: string;
           deleted_at: string | null;
           id: string;
-          is_verified_seller: boolean | null;
+          is_verified_seller: boolean;
           total_reviews: number;
           total_sales: number;
-          updated_at: string | null;
+          updated_at: string;
           username: string | null;
         };
         ComputedFields: never;
@@ -1394,10 +1537,10 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           id: string;
-          is_verified_seller?: boolean | null;
+          is_verified_seller?: boolean;
           total_reviews?: number;
           total_sales?: number;
-          updated_at?: string | null;
+          updated_at?: string;
           username?: string | null;
         };
         Update: {
@@ -1406,10 +1549,10 @@ export type Database = {
           created_at?: string;
           deleted_at?: string | null;
           id?: string;
-          is_verified_seller?: boolean | null;
+          is_verified_seller?: boolean;
           total_reviews?: number;
           total_sales?: number;
-          updated_at?: string | null;
+          updated_at?: string;
           username?: string | null;
         };
         Relationships: [];
@@ -1420,17 +1563,16 @@ export type Database = {
           id: string;
           last_sign_in_at: string | null;
           phone_number: string | null;
-          role: string | null;
-          status: Database['public']['Enums']['account_status'] | null;
+          role: Database['public']['Enums']['user_role'];
+          status: Database['public']['Enums']['account_status'];
           status_reason: string | null;
           status_updated_at: string | null;
           status_updated_by: string | null;
           stripe_account_id: string | null;
           stripe_customer_id: string | null;
           stripe_onboarding_refreshed_at: string | null;
-          stripe_onboarding_status:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at: string | null;
+          stripe_onboarding_status: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1438,34 +1580,32 @@ export type Database = {
           id: string;
           last_sign_in_at?: string | null;
           phone_number?: string | null;
-          role?: string | null;
-          status?: Database['public']['Enums']['account_status'] | null;
+          role?: Database['public']['Enums']['user_role'];
+          status?: Database['public']['Enums']['account_status'];
           status_reason?: string | null;
           status_updated_at?: string | null;
           status_updated_by?: string | null;
           stripe_account_id?: string | null;
           stripe_customer_id?: string | null;
           stripe_onboarding_refreshed_at?: string | null;
-          stripe_onboarding_status?:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at?: string | null;
+          stripe_onboarding_status?: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at?: string;
         };
         Update: {
           email?: string | null;
           id?: string;
           last_sign_in_at?: string | null;
           phone_number?: string | null;
-          role?: string | null;
-          status?: Database['public']['Enums']['account_status'] | null;
+          role?: Database['public']['Enums']['user_role'];
+          status?: Database['public']['Enums']['account_status'];
           status_reason?: string | null;
           status_updated_at?: string | null;
           status_updated_by?: string | null;
           stripe_account_id?: string | null;
           stripe_customer_id?: string | null;
           stripe_onboarding_refreshed_at?: string | null;
-          stripe_onboarding_status?:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
-          updated_at?: string | null;
+          stripe_onboarding_status?: Database['public']['Enums']['stripe_onboarding_status'];
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -1546,6 +1686,41 @@ export type Database = {
             referencedRelation: 'push_tokens';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_deliveries_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
         ];
       };
       push_event_policy: {
@@ -1599,7 +1774,43 @@ export type Database = {
           updated_at?: string;
           user_id?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       reports: {
         Row: {
@@ -1678,7 +1889,7 @@ export type Database = {
           rating: number;
           reviewer_id: string;
           seller_id: string;
-          shipment_id: string | null;
+          shipment_id: string;
         };
         ComputedFields: never;
         Insert: {
@@ -1690,7 +1901,7 @@ export type Database = {
           rating: number;
           reviewer_id: string;
           seller_id: string;
-          shipment_id?: string | null;
+          shipment_id: string;
         };
         Update: {
           comment?: string | null;
@@ -1701,7 +1912,7 @@ export type Database = {
           rating?: number;
           reviewer_id?: string;
           seller_id?: string;
-          shipment_id?: string | null;
+          shipment_id?: string;
         };
         Relationships: [
           {
@@ -2204,7 +2415,7 @@ export type Database = {
           claim_expires_at: string | null;
           claim_token: string | null;
           completed_at: string | null;
-          created_at: string | null;
+          created_at: string;
           delivered_at: string | null;
           envia_shipment_id: string | null;
           id: string;
@@ -2229,14 +2440,14 @@ export type Database = {
           seller_id: string;
           service: string | null;
           shipped_at: string | null;
-          shipping_cost: number | null;
+          shipping_cost: number;
           shipping_evidence: Json | null;
           status: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id: string | null;
           stripe_payout_id: string | null;
           stripe_transfer_id: string | null;
           tracking_number: string | null;
-          updated_at: string | null;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
@@ -2245,7 +2456,7 @@ export type Database = {
           claim_expires_at?: string | null;
           claim_token?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
+          created_at?: string;
           delivered_at?: string | null;
           envia_shipment_id?: string | null;
           id?: string;
@@ -2270,14 +2481,14 @@ export type Database = {
           seller_id: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
           tracking_number?: string | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Update: {
           buyer_confirmed_at?: string | null;
@@ -2285,7 +2496,7 @@ export type Database = {
           claim_expires_at?: string | null;
           claim_token?: string | null;
           completed_at?: string | null;
-          created_at?: string | null;
+          created_at?: string;
           delivered_at?: string | null;
           envia_shipment_id?: string | null;
           id?: string;
@@ -2310,14 +2521,14 @@ export type Database = {
           seller_id?: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number | null;
+          shipping_cost?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;
           stripe_payout_id?: string | null;
           stripe_transfer_id?: string | null;
           tracking_number?: string | null;
-          updated_at?: string | null;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -2412,123 +2623,123 @@ export type Database = {
       system_settings: {
         Row: {
           checkout_recovery_enabled: boolean;
-          currency: string | null;
+          currency: string;
           envia_carrier: string | null;
           envia_print_format: string | null;
           envia_print_size: string | null;
           envia_service: string | null;
           id: number;
           insurance_rate: number;
-          is_maintenance: boolean | null;
+          is_maintenance: boolean;
           isr_withholding_pct: number;
           iva_withholding_pct: number;
           listing_quote_reference_destination: Json | null;
-          min_payout_amount_cents: number | null;
-          min_version_android: string | null;
-          min_version_ios: string | null;
-          novice_active_limit: number | null;
-          novice_completed_threshold: number | null;
-          order_expiration_hours: number | null;
-          package_presets: Json | null;
-          payout_fee_fixed_cents: number | null;
-          preparing_expiration_hours: number | null;
-          return_label_fee_cents: number | null;
-          service_fee_fixed_cents: number | null;
+          min_payout_amount_cents: number;
+          min_version_android: string;
+          min_version_ios: string;
+          novice_active_limit: number;
+          novice_completed_threshold: number;
+          order_expiration_hours: number;
+          package_presets: NonNullable<Json>;
+          payout_fee_fixed_cents: number;
+          preparing_expiration_hours: number;
+          return_label_fee_cents: number;
+          service_fee_fixed_cents: number;
           service_fee_pct: number;
-          shipping_buffer_cents: number | null;
-          trusted_active_limit: number | null;
-          updated_at: string | null;
+          shipping_buffer_cents: number;
+          trusted_active_limit: number;
+          updated_at: string;
         };
         ComputedFields: never;
         Insert: {
           checkout_recovery_enabled?: boolean;
-          currency?: string | null;
+          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
           envia_service?: string | null;
           id: number;
           insurance_rate?: number;
-          is_maintenance?: boolean | null;
+          is_maintenance?: boolean;
           isr_withholding_pct?: number;
           iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number | null;
-          min_version_android?: string | null;
-          min_version_ios?: string | null;
-          novice_active_limit?: number | null;
-          novice_completed_threshold?: number | null;
-          order_expiration_hours?: number | null;
-          package_presets?: Json | null;
-          payout_fee_fixed_cents?: number | null;
-          preparing_expiration_hours?: number | null;
-          return_label_fee_cents?: number | null;
-          service_fee_fixed_cents?: number | null;
+          min_payout_amount_cents?: number;
+          min_version_android?: string;
+          min_version_ios?: string;
+          novice_active_limit?: number;
+          novice_completed_threshold?: number;
+          order_expiration_hours?: number;
+          package_presets?: NonNullable<Json>;
+          payout_fee_fixed_cents?: number;
+          preparing_expiration_hours?: number;
+          return_label_fee_cents?: number;
+          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
-          shipping_buffer_cents?: number | null;
-          trusted_active_limit?: number | null;
-          updated_at?: string | null;
+          shipping_buffer_cents?: number;
+          trusted_active_limit?: number;
+          updated_at?: string;
         };
         Update: {
           checkout_recovery_enabled?: boolean;
-          currency?: string | null;
+          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
           envia_service?: string | null;
           id?: number;
           insurance_rate?: number;
-          is_maintenance?: boolean | null;
+          is_maintenance?: boolean;
           isr_withholding_pct?: number;
           iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number | null;
-          min_version_android?: string | null;
-          min_version_ios?: string | null;
-          novice_active_limit?: number | null;
-          novice_completed_threshold?: number | null;
-          order_expiration_hours?: number | null;
-          package_presets?: Json | null;
-          payout_fee_fixed_cents?: number | null;
-          preparing_expiration_hours?: number | null;
-          return_label_fee_cents?: number | null;
-          service_fee_fixed_cents?: number | null;
+          min_payout_amount_cents?: number;
+          min_version_android?: string;
+          min_version_ios?: string;
+          novice_active_limit?: number;
+          novice_completed_threshold?: number;
+          order_expiration_hours?: number;
+          package_presets?: NonNullable<Json>;
+          payout_fee_fixed_cents?: number;
+          preparing_expiration_hours?: number;
+          return_label_fee_cents?: number;
+          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
-          shipping_buffer_cents?: number | null;
-          trusted_active_limit?: number | null;
-          updated_at?: string | null;
+          shipping_buffer_cents?: number;
+          trusted_active_limit?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
       webhook_dlq: {
         Row: {
-          created_at: string | null;
+          created_at: string;
           error_message: string;
-          event_type: string | null;
+          event_type: string;
           id: string;
           payload: NonNullable<Json>;
-          resolved: boolean | null;
+          resolved: boolean;
           resolved_at: string | null;
           resolved_by: string | null;
         };
         ComputedFields: never;
         Insert: {
-          created_at?: string | null;
+          created_at?: string;
           error_message: string;
-          event_type?: string | null;
+          event_type?: string;
           id?: string;
           payload: NonNullable<Json>;
-          resolved?: boolean | null;
+          resolved?: boolean;
           resolved_at?: string | null;
           resolved_by?: string | null;
         };
         Update: {
-          created_at?: string | null;
+          created_at?: string;
           error_message?: string;
-          event_type?: string | null;
+          event_type?: string;
           id?: string;
           payload?: NonNullable<Json>;
-          resolved?: boolean | null;
+          resolved?: boolean;
           resolved_at?: string | null;
           resolved_by?: string | null;
         };
@@ -2708,10 +2919,10 @@ export type Database = {
           reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
-          shipping_payer: string | null;
+          shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status_enum'];
-          updated_at: string | null;
+          updated_at: string;
           usage: string;
           verification_data: Json | null;
           verified_at: string | null;
@@ -2856,8 +3067,7 @@ export type Database = {
           email: string | null;
           id: string;
           stripe_account_id: string | null;
-          stripe_onboarding_status:
-            Database['public']['Enums']['stripe_onboarding_status'] | null;
+          stripe_onboarding_status: Database['public']['Enums']['stripe_onboarding_status'];
           username: string | null;
         };
         ComputedFields: never;
@@ -2869,8 +3079,8 @@ export type Database = {
           created_at: string;
           email: string | null;
           id: string;
-          is_verified_seller: boolean | null;
-          role: string | null;
+          is_verified_seller: boolean;
+          role: Database['public']['Enums']['user_role'] | null;
           status: Database['public']['Enums']['account_status'] | null;
           username: string | null;
         };
@@ -4059,6 +4269,7 @@ export type Database = {
         | 'exception'
         | 'returned';
       stripe_onboarding_status: 'pending' | 'complete' | 'rejected';
+      user_role: 'user' | 'admin';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -4234,6 +4445,7 @@ export const Constants = {
         'returned',
       ],
       stripe_onboarding_status: ['pending', 'complete', 'rejected'],
+      user_role: ['user', 'admin'],
     },
   },
 } as const;

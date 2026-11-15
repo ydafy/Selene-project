@@ -2,10 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/auth/auth-provider';
 import { Address } from '@selene/types';
-
-type PendingAddress = Omit<Address, 'id' | 'user_id'> & {
-  street_number: string;
-};
+import { insertAddress, PendingAddress } from './use-addresses.helpers';
 
 export const useAddresses = () => {
   const { session } = useAuthContext();
@@ -39,19 +36,12 @@ export const useAddresses = () => {
     mutationFn: async (newAddress: PendingAddress) => {
       if (!userId) throw new Error('No user authenticated');
 
-      const isFirst = addresses.length === 0;
-      const { data, error: dbError } = await supabase
-        .from('addresses')
-        .insert({
-          ...newAddress,
-          user_id: userId,
-          is_default: isFirst ? true : newAddress.is_default,
-        } as never)
-        .select()
-        .single();
-
-      if (dbError) throw dbError;
-      return data;
+      return insertAddress(
+        supabase,
+        userId,
+        newAddress,
+        addresses.length === 0,
+      );
     },
     onSuccess: async () => {
       console.log('[useAddresses] Invalidadndo caché de direcciones...');

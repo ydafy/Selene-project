@@ -17,13 +17,14 @@ CREATE TABLE "public"."push_deliveries" (
   "receipt_status"     text,
   "receipt_error"      text,
   "receipt_checked_at" timestamp with time zone,
+  CONSTRAINT "push_deliveries_attempts_check" CHECK ((attempts >= 0)),
   CONSTRAINT "push_deliveries_channel_check" CHECK ((channel = ANY (ARRAY['orders'::text, 'activity'::text]))),
   CONSTRAINT "push_deliveries_notification_id_fkey" FOREIGN KEY (notification_id) REFERENCES public.notifications(id) ON DELETE CASCADE,
   CONSTRAINT "push_deliveries_notification_id_push_token_id_key" UNIQUE (notification_id, push_token_id),
   CONSTRAINT "push_deliveries_pkey" PRIMARY KEY (id),
   CONSTRAINT "push_deliveries_receipt_status_check" CHECK ((receipt_status = ANY (ARRAY['ok'::text, 'error'::text, 'missing'::text]))),
   CONSTRAINT "push_deliveries_status_check" CHECK ((status = ANY (ARRAY['pending'::text, 'sending'::text, 'sent'::text, 'failed'::text, 'skipped'::text]))),
-  CONSTRAINT "push_deliveries_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+  CONSTRAINT "push_deliveries_user_id_fkey" FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE,
   CONSTRAINT "push_deliveries_push_token_id_fkey" FOREIGN KEY (push_token_id) REFERENCES public.push_tokens(id) ON DELETE CASCADE
 );
 
@@ -42,6 +43,11 @@ CREATE INDEX push_deliveries_receipt_due_idx ON public.push_deliveries USING btr
   WHERE ((status = 'sent'::text) AND (receipt_status IS NULL));
 
 CREATE INDEX push_deliveries_user_id_idx ON public.push_deliveries USING btree (user_id);
+
+CREATE TRIGGER push_deliveries_set_updated_at
+  BEFORE UPDATE ON public.push_deliveries
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."push_deliveries" TO "service_role";
 

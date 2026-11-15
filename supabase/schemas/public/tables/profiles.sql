@@ -3,12 +3,15 @@ CREATE TABLE "public"."profiles" (
   "created_at"         timestamp with time zone NOT NULL DEFAULT now(),
   "username"           text,
   "avatar_url"         text,
-  "is_verified_seller" boolean                  DEFAULT false,
+  "is_verified_seller" boolean                  NOT NULL DEFAULT false,
   "average_rating"     numeric(3,1)             NOT NULL DEFAULT 0.0,
   "total_reviews"      integer                  NOT NULL DEFAULT 0,
   "total_sales"        integer                  NOT NULL DEFAULT 0,
-  "updated_at"         timestamp with time zone DEFAULT now(),
+  "updated_at"         timestamp with time zone NOT NULL DEFAULT now(),
   "deleted_at"         timestamp with time zone,
+  CONSTRAINT "profiles_average_rating_check" CHECK (((average_rating >= (0)::numeric) AND (average_rating <= (5)::numeric))),
+  CONSTRAINT "profiles_total_reviews_check" CHECK ((total_reviews >= 0)),
+  CONSTRAINT "profiles_total_sales_check" CHECK ((total_sales >= 0)),
   CONSTRAINT "fk_auth_users" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE,
   CONSTRAINT "profiles_pkey" PRIMARY KEY (id),
   CONSTRAINT "profiles_username_key" UNIQUE (username),
@@ -22,6 +25,11 @@ CREATE TRIGGER tr_profiles_reserve_deleted_username
   BEFORE INSERT OR UPDATE OF username ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.fn_reserve_deleted_username();
+
+CREATE TRIGGER profiles_set_updated_at
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 CREATE POLICY "profiles_public_read" ON "public"."profiles"
   FOR SELECT

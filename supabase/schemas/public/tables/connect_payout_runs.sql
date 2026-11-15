@@ -22,6 +22,8 @@ CREATE TABLE "public"."connect_payout_runs" (
   "last_error"                 text,
   "action_required_reason"     text,
   CONSTRAINT "connect_payout_runs_amount_check" CHECK ((amount >= 0)),
+  CONSTRAINT "connect_payout_runs_attempt_count_check" CHECK ((attempt_count >= 0)),
+  CONSTRAINT "connect_payout_runs_release_stage_version_check" CHECK ((release_stage_version >= 1)),
   CONSTRAINT "connect_payout_runs_idempotency_key_key" UNIQUE (idempotency_key),
   CONSTRAINT "connect_payout_runs_pkey" PRIMARY KEY (id),
   CONSTRAINT "connect_payout_runs_release_stage_check"
@@ -50,6 +52,11 @@ CREATE INDEX idx_connect_payout_runs_seller_id ON public.connect_payout_runs USI
 
 CREATE INDEX idx_connect_payout_runs_stripe_payout_id ON public.connect_payout_runs USING btree (stripe_payout_id)
   WHERE (stripe_payout_id IS NOT NULL);
+
+CREATE TRIGGER connect_payout_runs_set_updated_at
+  BEFORE UPDATE ON public.connect_payout_runs
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_set_updated_at();
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."connect_payout_runs" TO "service_role";
 

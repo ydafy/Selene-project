@@ -38,7 +38,7 @@ describe('connect onboarding admin helpers', () => {
           username: 'missing_id',
           email: null,
           stripe_account_id: null,
-          stripe_onboarding_status: null,
+          stripe_onboarding_status: 'pending' as const,
           charges_enabled: null,
           created_at: missing,
         },

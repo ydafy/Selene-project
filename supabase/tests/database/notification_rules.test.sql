@@ -12,40 +12,40 @@ select pg_temp.money_user(1312);
 
 -- 1. Event metadata CHECKs --------------------------------------------------
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_payload) values (pg_temp.mu(1311), 'T', '[]'::jsonb)$$,
+  $$insert into public.notifications (user_id, type, title, event_payload) values (pg_temp.mu(1311), 'info', 'T', '[]'::jsonb)$$,
   '23514', null, 'event_payload must be a JSON object, not an array');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_payload) values (pg_temp.mu(1311), 'T', '"x"'::jsonb)$$,
+  $$insert into public.notifications (user_id, type, title, event_payload) values (pg_temp.mu(1311), 'info', 'T', '"x"'::jsonb)$$,
   '23514', null, 'event_payload must be a JSON object, not a scalar');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_kind) values (pg_temp.mu(1311), 'T', 'dispute.opened')$$,
+  $$insert into public.notifications (user_id, type, title, event_kind) values (pg_temp.mu(1311), 'info', 'T', 'dispute.opened')$$,
   '23514', null, 'event_kind without source_event_key is refused');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, source_event_key) values (pg_temp.mu(1311), 'T', 't13-rules-key')$$,
+  $$insert into public.notifications (user_id, type, title, source_event_key) values (pg_temp.mu(1311), 'info', 'T', 't13-rules-key')$$,
   '23514', null, 'source_event_key without event_kind is refused');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'T', 'dispute.opened', '   ')$$,
+  $$insert into public.notifications (user_id, type, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'info', 'T', 'dispute.opened', '   ')$$,
   '23514', null, 'a blank source_event_key is refused');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'T', 'order.unknown', 't13-rules-unknown')$$,
+  $$insert into public.notifications (user_id, type, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'info', 'T', 'order.unknown', 't13-rules-unknown')$$,
   '23514', null, 'an event_kind outside the catalogue is refused');
 select lives_ok(
-  $$insert into public.notifications (user_id, title) values (pg_temp.mu(1311), 'Untyped')$$,
+  $$insert into public.notifications (user_id, type, title) values (pg_temp.mu(1311), 'info', 'Untyped')$$,
   'an untyped row (no kind, no key, default payload) is accepted');
 select is((select event_payload from public.notifications where user_id = pg_temp.mu(1311) and title = 'Untyped'),
   '{}'::jsonb, 'event_payload defaults to an empty object');
 
 -- 2. Dedupe per recipient ---------------------------------------------------
-insert into public.notifications (id, user_id, title, event_kind, source_event_key)
-values (pg_temp.mu(1321), pg_temp.mu(1311), 'Typed A', 'dispute.opened', 't13-rules-dup');
+insert into public.notifications (id, user_id, type, title, event_kind, source_event_key)
+values (pg_temp.mu(1321), pg_temp.mu(1311), 'info', 'Typed A', 'dispute.opened', 't13-rules-dup');
 select throws_ok(
-  $$insert into public.notifications (user_id, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'Again', 'dispute.verdict', 't13-rules-dup')$$,
+  $$insert into public.notifications (user_id, type, title, event_kind, source_event_key) values (pg_temp.mu(1311), 'info', 'Again', 'dispute.verdict', 't13-rules-dup')$$,
   '23505', null, 'the same source_event_key for the same recipient is refused');
 select lives_ok(
-  $$insert into public.notifications (id, user_id, title, event_kind, source_event_key) values (pg_temp.mu(1322), pg_temp.mu(1312), 'Typed B', 'dispute.opened', 't13-rules-dup')$$,
+  $$insert into public.notifications (id, user_id, type, title, event_kind, source_event_key) values (pg_temp.mu(1322), pg_temp.mu(1312), 'info', 'Typed B', 'dispute.opened', 't13-rules-dup')$$,
   'the same source_event_key for another recipient is accepted');
 select lives_ok(
-  $$insert into public.notifications (user_id, title) values (pg_temp.mu(1311), 'Untyped'), (pg_temp.mu(1311), 'Untyped')$$,
+  $$insert into public.notifications (user_id, type, title) values (pg_temp.mu(1311), 'info', 'Untyped'), (pg_temp.mu(1311), 'info', 'Untyped')$$,
   'rows without a source_event_key are never deduped');
 
 -- 3. Owner policies ---------------------------------------------------------

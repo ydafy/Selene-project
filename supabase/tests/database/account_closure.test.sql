@@ -184,8 +184,8 @@ insert into public.payment_methods (user_id, stripe_payment_method_id, brand, la
   (pg_temp.mu(42), 'pm_t4_42', 'visa', '4243', 12, 2030);
 insert into public.blocked_users (blocker_id, blocked_id) values
   (pg_temp.mu(41), pg_temp.mu(42)), (pg_temp.mu(42), pg_temp.mu(41)), (pg_temp.mu(42), pg_temp.mu(44));
-insert into public.notifications (user_id, title) values
-  (pg_temp.mu(41), 'for the closing user'), (pg_temp.mu(42), 'for the counterparty');
+insert into public.notifications (user_id, type, title) values
+  (pg_temp.mu(41), 'info', 'for the closing user'), (pg_temp.mu(42), 'info', 'for the counterparty');
 insert into public.push_tokens (user_id, token, platform) values
   (pg_temp.mu(41), 'ExponentPushToken[t4-41]', 'ios'), (pg_temp.mu(42), 'ExponentPushToken[t4-42]', 'android');
 insert into auth.identities (provider_id, user_id, identity_data, provider)

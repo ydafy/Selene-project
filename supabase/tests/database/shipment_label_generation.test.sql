@@ -319,12 +319,12 @@ select is((select count(*) from public.notifications where source_event_key like
   'deadline: one notice per shipment');
 select is((select string_agg(recipient_role || ':' || channel, ',') from public.push_event_policy where event_kind = 'shipment.label_deadline'),
   'seller:orders', 'deadline: the reminder is pushed to the seller on the orders channel');
-update public.system_settings set order_expiration_hours = 0 where id = 1;
-select throws_ok($$select public.fn_notify_label_deadline_reminders()$$, 'P0001', 'AUTO_CANCEL_SETTINGS_INVALID',
-  'deadline: a zero expiration is AUTO_CANCEL_SETTINGS_INVALID');
-update public.system_settings set order_expiration_hours = null where id = 1;
-select throws_ok($$select public.fn_notify_label_deadline_reminders()$$, 'P0001', 'AUTO_CANCEL_SETTINGS_INVALID',
-  'deadline: a missing expiration is AUTO_CANCEL_SETTINGS_INVALID');
+-- A zero or missing expiration can no longer be stored (#308), so the
+-- reminder never reads one.
+select throws_ok($$update public.system_settings set order_expiration_hours = 0 where id = 1$$, '23514', null,
+  'deadline: a zero expiration cannot be stored');
+select throws_ok($$update public.system_settings set order_expiration_hours = null where id = 1$$, '23502', null,
+  'deadline: a missing expiration cannot be stored');
 
 select * from finish();
 rollback;

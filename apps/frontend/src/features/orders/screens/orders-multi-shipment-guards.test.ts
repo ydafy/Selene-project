@@ -175,11 +175,12 @@ describe('ReviewModal shipment-aware seller target guard', () => {
     expect(modal).not.toContain('order.items[0]?.seller_id');
   });
 
-  it('accepts optional shipmentId and productId and forwards verified-purchase linkage to the mutation', () => {
+  it('requires shipmentId, accepts an optional productId and forwards verified-purchase linkage to the mutation', () => {
     // V1 of the follow-up: ReviewModal must thread the shipment-safe identity
     // tuple (reviewer_id, shipment_id, product_id) through useReviewAction so
     // verified-purchase badges never fall back to order-first attribution.
-    expect(modal).toContain('shipmentId?: string;');
+    // reviews.shipment_id is NOT NULL (one review per shipment, #308).
+    expect(modal).toContain('shipmentId: string;');
     expect(modal).toContain('productId?: string;');
     expect(modal).toContain('shipmentId: shipmentId,');
     expect(modal).toContain('productId: productId,');

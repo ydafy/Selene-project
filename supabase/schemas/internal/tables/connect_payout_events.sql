@@ -16,7 +16,7 @@ CREATE TABLE "internal"."connect_payout_events" (
     CHECK ((observed_payout_status = ANY (ARRAY['pending'::text, 'in_transit'::text, 'paid'::text, 'failed'::text, 'canceled'::text]))),
   CONSTRAINT "connect_payout_events_pkey" PRIMARY KEY (id),
   CONSTRAINT "connect_payout_events_stripe_event_id_key" UNIQUE (stripe_event_id),
-  CONSTRAINT "connect_payout_events_connect_payout_run_id_fkey" FOREIGN KEY (connect_payout_run_id) REFERENCES public.connect_payout_runs(id) ON DELETE SET NULL
+  CONSTRAINT "connect_payout_events_connect_payout_run_id_fkey" FOREIGN KEY (connect_payout_run_id) REFERENCES public.connect_payout_runs(id) ON DELETE RESTRICT
 );
 
 ALTER TABLE "internal"."connect_payout_events"
