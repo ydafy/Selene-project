@@ -6,7 +6,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             s.completed_at,
             s.stripe_payment_intent_id,
             s.stripe_payout_id,
-            s.shipping_cost,
+            s.shipping_cost_cents,
             pp.stripe_account_id,
             pp.stripe_onboarding_status,
             p.username AS seller_name,
@@ -16,9 +16,9 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             GREATEST(
                 CASE
                     WHEN (o.stripe_transfer_group IS NOT NULL) THEN (COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer
-                    ELSE ((COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer - COALESCE(s.shipping_cost, 0))
+                    ELSE ((COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer - (COALESCE(s.shipping_cost_cents, (0)::bigint))::integer)
                 END, 0) AS release_amount_cents,
-            ((s.shipping_cost IS NOT NULL) AND (s.shipping_cost > 0)) AS has_shipping_cost_cents,
+            ((s.shipping_cost_cents IS NOT NULL) AND (s.shipping_cost_cents > 0)) AS has_shipping_cost_cents,
             (EXISTS ( SELECT 1
                    FROM public.disputes d
                   WHERE ((d.shipment_id = s.id) AND (d.status = ANY (ARRAY['open'::public.dispute_status, 'under_review'::public.dispute_status, 'waiting_return'::public.dispute_status, 'return_shipped'::public.dispute_status, 'return_delivered'::public.dispute_status]))))) AS has_active_dispute,
@@ -32,7 +32,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
              LEFT JOIN public.order_items oi ON ((oi.shipment_id = s.id)))
              LEFT JOIN public.profiles_private pp ON ((pp.id = s.seller_id)))
              LEFT JOIN public.profiles p ON ((p.id = s.seller_id)))
-          GROUP BY s.id, s.seller_id, s.order_id, s.status, s.completed_at, s.stripe_payment_intent_id, s.stripe_payout_id, s.shipping_cost, pp.stripe_account_id, pp.stripe_onboarding_status, p.username, o.stripe_transfer_group, s.stripe_transfer_id
+          GROUP BY s.id, s.seller_id, s.order_id, s.status, s.completed_at, s.stripe_payment_intent_id, s.stripe_payout_id, s.shipping_cost_cents, pp.stripe_account_id, pp.stripe_onboarding_status, p.username, o.stripe_transfer_group, s.stripe_transfer_id
         )
  SELECT sa.shipment_id,
     sa.seller_id,

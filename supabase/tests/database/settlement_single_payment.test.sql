@@ -135,7 +135,7 @@ select is(
   true, 'settle: the order belongs to the buyer and snapshots the whole address row');
 select is(
   (select string_agg(right(s.id::text, 4) || ':' || right(s.seller_id::text, 4) || ':' || s.status::text || ':'
-     || s.stripe_payment_intent_id || ':' || s.shipping_cost::text, ',' order by s.id)
+     || s.stripe_payment_intent_id || ':' || s.shipping_cost_cents::text, ',' order by s.id)
    from public.shipments s where s.order_id = pg_temp.mu(5401)),
   '5301:5002:paid:pi_t5_1:15000,5302:5003:paid:pi_t5_1:20000',
   'settle: one paid shipment per row with the row id, seller, PaymentIntent and shipping cost in cents');

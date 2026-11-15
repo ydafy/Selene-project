@@ -142,7 +142,7 @@ The system MUST store per-shipment allocation fields that correlate the shipment
 
 - GIVEN shipments are created from a single-charge order
 - WHEN allocation is computed
-- THEN each shipment stores `shipping_cost` (cents) and links to order_items with `commission_amount_cents`, `shipping_amount_cents`, `shipping_payer`, and `net_payout_cents`
+- THEN each shipment stores `shipping_cost_cents` and links to order_items with `commission_amount_cents`, `shipping_amount_cents`, `shipping_payer`, and `net_payout_cents`
 - AND the shipment transitions to `paid` only after allocation persistence succeeds
 
 ### Requirement: Manual Cancellation is Shipment-Scoped

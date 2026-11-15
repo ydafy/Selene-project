@@ -62,7 +62,7 @@ ALTER TABLE "public"."shipments"
   ADD COLUMN "shipping_evidence" jsonb;
 
 ALTER TABLE "public"."shipments"
-  ADD COLUMN "shipping_cost" integer NOT NULL DEFAULT 0;
+  ADD COLUMN "shipping_cost_cents" bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."shipments"
   ADD COLUMN "stripe_transfer_id" text;
@@ -128,7 +128,7 @@ ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_provider_cost_cents_check" CHECK (((label_provider_cost_cents IS NULL) OR (label_provider_cost_cents >= 0)));
 
 ALTER TABLE "public"."shipments"
-  ADD CONSTRAINT "shipments_shipping_cost_check" CHECK ((shipping_cost >= 0));
+  ADD CONSTRAINT "shipments_shipping_cost_cents_check" CHECK ((shipping_cost_cents >= 0));
 
 ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_quote_cost_cents_check" CHECK (((label_quote_cost_cents IS NULL) OR (label_quote_cost_cents >= 0)));

@@ -88,7 +88,7 @@ async function run() {
         CREATE TABLE public.orders (id uuid PRIMARY KEY, buyer_id uuid, stripe_payment_intent_id text, stripe_charge_id text, stripe_transfer_group text);
         CREATE TABLE public.shipments (id uuid PRIMARY KEY, order_id uuid REFERENCES public.orders(id), seller_id uuid,
           status public.order_status_enum, completed_at timestamptz, stripe_payment_intent_id text,
-          stripe_transfer_id text, stripe_payout_id text, shipping_cost integer,
+          stripe_transfer_id text, stripe_payout_id text, shipping_cost_cents bigint,
           label_generation_state text DEFAULT 'unclaimed', updated_at timestamptz);
         CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout numeric);
         CREATE TABLE public.notifications (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
@@ -103,7 +103,7 @@ async function run() {
         INSERT INTO public.profiles VALUES ('${ids.buyer}', 'buyer'), ('${ids.seller}', 'seller');
         INSERT INTO public.profiles_private VALUES ('${ids.seller}', 'acct_seller', 'complete');
         INSERT INTO public.orders VALUES ('${ids.order}', '${ids.buyer}', 'pi_order', 'ch_order', 'group_order');
-        INSERT INTO public.shipments (id,order_id,seller_id,status,completed_at,stripe_payment_intent_id,shipping_cost) VALUES
+        INSERT INTO public.shipments (id,order_id,seller_id,status,completed_at,stripe_payment_intent_id,shipping_cost_cents) VALUES
           ('${ids.shipment}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100),
           ('${ids.sibling}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100);
         INSERT INTO public.order_items (shipment_id,net_payout) VALUES ('${ids.shipment}', 100), ('${ids.sibling}', 100);

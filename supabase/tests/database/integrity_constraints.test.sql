@@ -102,18 +102,18 @@ select throws_ok(
 
 -- shipments
 select is_empty(
-  $$select c from unnest(array['created_at', 'updated_at', 'shipping_cost']) as c
+  $$select c from unnest(array['created_at', 'updated_at', 'shipping_cost_cents']) as c
     left join pg_attribute a on a.attrelid = 'public.shipments'::regclass and a.attname = c
     where a.attnotnull is not true$$,
-  'shipments timestamps and shipping_cost are NOT NULL');
+  'shipments timestamps and shipping_cost_cents are NOT NULL');
 
 select throws_ok(
-  $$update public.shipments set shipping_cost = null where id = pg_temp.mu(308111)$$,
-  '23502', null, 'a NULL shipments.shipping_cost is rejected');
+  $$update public.shipments set shipping_cost_cents = null where id = pg_temp.mu(308111)$$,
+  '23502', null, 'a NULL shipments.shipping_cost_cents is rejected');
 
 select throws_ok(
-  $$update public.shipments set shipping_cost = -1 where id = pg_temp.mu(308111)$$,
-  '23514', null, 'a negative shipments.shipping_cost is rejected');
+  $$update public.shipments set shipping_cost_cents = -1 where id = pg_temp.mu(308111)$$,
+  '23514', null, 'a negative shipments.shipping_cost_cents is rejected');
 
 -- order_items
 select is_empty(
