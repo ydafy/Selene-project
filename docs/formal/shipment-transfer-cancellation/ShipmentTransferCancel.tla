@@ -394,8 +394,9 @@ RecordRefundFailed(s) ==
 
 \* completed -> refunded, and the payout runs that held the shipment: each
 \* mapping that never started a transfer is canceled; its run is canceled when
-\* nothing else is open, otherwise parked with reason overdue_payout_refunded
-\* (which no account update resumes).
+\* nothing else is open. A run that still holds other open shipments keeps its
+\* state: a parked run gets reason overdue_payout_refunded (which no account
+\* update resumes), a pending (resumed) run is left untouched (T2b, L12).
 Closing(r, s) == mapStatus[r][s] = "pending" /\ r \notin fence[s]
 OthersOpen(r, s) == \E s2 \in Shipments \ {s} : mapStatus[r][s2] = "pending"
 
@@ -406,11 +407,13 @@ RefundShipment(s) ==
                        ELSE mapStatus[r]]
     /\ runState' = [r \in Runs |->
                       IF Closing(r, s) /\ runState[r] \in {"pending", "parked"}
-                      THEN (IF OthersOpen(r, s) THEN "parked" ELSE "canceled")
+                      THEN (IF OthersOpen(r, s) THEN runState[r] ELSE "canceled")
                       ELSE runState[r]]
     /\ runReason' = [r \in Runs |->
                        IF Closing(r, s) /\ runState[r] \in {"pending", "parked"}
-                       THEN (IF OthersOpen(r, s) THEN "overdue" ELSE "none")
+                       THEN (IF OthersOpen(r, s)
+                             THEN (IF runState[r] = "parked" THEN "overdue" ELSE runReason[r])
+                             ELSE "none")
                        ELSE runReason[r]]
 
 \* fn_complete_overdue_payout_refund (also called by
@@ -425,7 +428,7 @@ CompleteOverdue(s) ==
                    op, opGen, opExpired, actorTok, refundAtStripe, refundStatus>>
     /\ UNCHANGED <<opSrc, refundOk, repaid>>
 
-\* T2b (pending, L11): after a FAILED overdue refund an admin records a manual
+\* T2b (L11): after a FAILED overdue refund an admin records a manual
 \* repayment, as fn_resolve_shipment_cancellation_refund does for a failed
 \* cancellation refund, and the shipment moves completed -> refunded. Modeled
 \* with the same run and mapping closing as CompleteOverdue.
