@@ -323,8 +323,8 @@ update public.shipments set completed_at = now() - interval '1 day'
 where id in (select pg_temp.mu(n) from generate_series(2141, 2145) n);
 update public.orders set stripe_transfer_group = 'group_' || id where id in (pg_temp.mu(2241), pg_temp.mu(2242));
 update public.shipments set label_provider_cost_cents = 50000 where id = pg_temp.mu(2141);
-update public.shipments set shipping_cost = 28700 where id in (pg_temp.mu(2142), pg_temp.mu(2143));
-update public.shipments set shipping_cost = 500000 where id = pg_temp.mu(2145);
+update public.shipments set shipping_cost_cents = 28700 where id in (pg_temp.mu(2142), pg_temp.mu(2143));
+update public.shipments set shipping_cost_cents = 500000 where id = pg_temp.mu(2145);
 
 create function pg_temp.view_row(p_n integer) returns text language sql as $$
   select v.release_amount_cents::text || ':' || v.is_eligible::text || ':' || coalesce(v.ineligible_reason, '-')

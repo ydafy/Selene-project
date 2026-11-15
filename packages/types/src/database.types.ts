@@ -2440,7 +2440,7 @@ export type Database = {
           seller_id: string;
           service: string | null;
           shipped_at: string | null;
-          shipping_cost: number;
+          shipping_cost_cents: number;
           shipping_evidence: Json | null;
           status: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id: string | null;
@@ -2481,7 +2481,7 @@ export type Database = {
           seller_id: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number;
+          shipping_cost_cents?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;
@@ -2521,7 +2521,7 @@ export type Database = {
           seller_id?: string;
           service?: string | null;
           shipped_at?: string | null;
-          shipping_cost?: number;
+          shipping_cost_cents?: number;
           shipping_evidence?: Json | null;
           status?: Database['public']['Enums']['order_status_enum'];
           stripe_payment_intent_id?: string | null;

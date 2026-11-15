@@ -13,7 +13,7 @@ select plan(43);
 -- A completed shipment: completed p_ago ago with 1000 cents of label.
 create function pg_temp.complete(p_shipment integer, p_ago interval default '1 hour')
 returns void language sql as $$
-  update public.shipments set status = 'completed', completed_at = now() - p_ago, shipping_cost = 1000
+  update public.shipments set status = 'completed', completed_at = now() - p_ago, shipping_cost_cents = 1000
   where id = pg_temp.mu(p_shipment)
 $$;
 create function pg_temp.connect_seller(p_seller integer, p_status public.stripe_onboarding_status default 'complete')

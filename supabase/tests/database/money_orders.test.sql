@@ -94,7 +94,7 @@ select is(
                  from jsonb_array_elements((select r from mo_rows)) x
                  where (x ->> 'shipment_id')::uuid = s.id) a on true
    where s.order_id = pg_temp.mu(41)
-     and i.c = a.c and i.sh = a.sh and i.n = a.n and i.sh = s.shipping_cost and i.p = a.g),
+     and i.c = a.c and i.sh = a.sh and i.n = a.n and i.sh = s.shipping_cost_cents and i.p = a.g),
   3::bigint, 'settle: per shipment, the item cents sum exactly to the allocated commission, shipping and net payout');
 select is(
   (select sum(commission_amount_cents)::bigint from public.order_items where order_id = pg_temp.mu(41)),
@@ -118,7 +118,7 @@ select throws_ok($$update public.order_items set net_payout_cents = -1 where pro
 -- admin_connect_payout_release_view ----------------------------------------------
 -- With a transfer group (single-modal checkout), release_amount_cents is the plain
 -- sum of net_payout_cents; without one (legacy order), the shipment's cents
--- shipping_cost is subtracted. Both floor at 0.
+-- shipping_cost_cents is subtracted. Both floor at 0.
 select is(
   (select string_agg(right(shipment_id::text, 2) || ':' || release_amount_cents, ',' order by shipment_id)
    from public.admin_connect_payout_release_view where order_id = pg_temp.mu(41)),
@@ -127,14 +127,14 @@ select is(
 select pg_temp.money_product(14, 2, 100000);
 insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
 values (pg_temp.mu(42), pg_temp.mu(1), 100000, '{}'::jsonb, 'completed', 'pi_mo_legacy');
-insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id, shipping_cost)
+insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id, shipping_cost_cents)
 values (pg_temp.mu(24), pg_temp.mu(42), pg_temp.mu(2), 'completed', 'pi_mo_legacy', 15000);
 insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
 values (pg_temp.mu(42), pg_temp.mu(14), pg_temp.mu(2), 100000, 90001, pg_temp.mu(24));
 select is(
   (select release_amount_cents from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(24)),
-  75001, 'release view: a legacy shipment releases sum(net_payout_cents) - shipping_cost');
-update public.shipments set shipping_cost = 95000 where id = pg_temp.mu(24);
+  75001, 'release view: a legacy shipment releases sum(net_payout_cents) - shipping_cost_cents');
+update public.shipments set shipping_cost_cents = 95000 where id = pg_temp.mu(24);
 select is(
   (select release_amount_cents from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(24)),
   0, 'release view: a legacy shipment whose shipping cost exceeds the payout releases 0');

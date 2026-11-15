@@ -18,7 +18,7 @@ values ('acct_test_11', false, 'payouts_disabled', now());
 select pg_temp.money_shipment(211, 111, 11, 9);
 update public.orders set stripe_charge_id = 'ch_test_211', stripe_transfer_group = 'tg_test_211'
 where id = pg_temp.mu(211);
-update public.shipments set status = 'completed', completed_at = now() - interval '8 days', shipping_cost = 1000
+update public.shipments set status = 'completed', completed_at = now() - interval '8 days', shipping_cost_cents = 1000
 where id = pg_temp.mu(111);
 select pg_temp.money_payout_run(901, 11, 10, array[111], 'pending_reconciliation', 'release_accepted');
 update public.connect_payout_run_shipments m set net_payout = v.release_amount_cents

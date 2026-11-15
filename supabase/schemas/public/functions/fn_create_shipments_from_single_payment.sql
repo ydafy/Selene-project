@@ -204,7 +204,7 @@ BEGIN
         seller_id,
         status,
         stripe_payment_intent_id,
-        shipping_cost
+        shipping_cost_cents
       ) VALUES (
         v_shipment_id,
         v_existing_order_id,
