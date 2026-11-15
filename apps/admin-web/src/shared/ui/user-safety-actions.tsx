@@ -39,7 +39,6 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
     const nextValue = !user.is_verified_seller;
     const { error } = await supabase.rpc('fn_admin_toggle_verified_seller', {
       p_target_user_id: user.id,
-      p_admin_id: admin?.id || '',
       p_is_verified: nextValue,
     });
     if (error) toast.error(error.message);
@@ -62,7 +61,6 @@ export const UserSafetyActions = ({ user, onUpdate }: Props) => {
     setLoading(true);
     const { error } = await supabase.rpc('fn_admin_update_user_status', {
       p_target_user_id: user.id,
-      p_admin_id: admin?.id || '',
       p_new_status: modalConfig.status,
       p_reason: reason,
     });

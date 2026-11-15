@@ -1,6 +1,5 @@
 CREATE OR REPLACE FUNCTION public.fn_admin_toggle_verified_seller (
   p_target_user_id uuid,
-  p_admin_id       uuid,
   p_is_verified    boolean
 )
   RETURNS boolean
@@ -51,12 +50,12 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, uuid, boolean) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, boolean) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, uuid, boolean) TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, boolean) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, uuid, boolean) FROM "postgres";
+REVOKE ALL ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, boolean) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, uuid, boolean) TO "postgres";
+GRANT EXECUTE ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, boolean) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, uuid, boolean) FROM PUBLIC, "anon";
+REVOKE ALL ON FUNCTION "public"."fn_admin_toggle_verified_seller"(uuid, boolean) FROM PUBLIC, "anon";

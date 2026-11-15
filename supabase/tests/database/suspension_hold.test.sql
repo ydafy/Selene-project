@@ -49,7 +49,7 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(
   public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001',
+    'd0000000-0000-4000-8000-000000000002',
     'suspended', 'test'),
   true, 'an admin suspends the seller');
 reset role;
@@ -136,7 +136,7 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(
   public.fn_admin_update_user_status(
-    'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001',
+    'd0000000-0000-4000-8000-000000000002',
     'active', 'lifted'),
   true, 'an admin lifts the suspension');
 reset role;
@@ -158,9 +158,9 @@ select set_config('request.jwt.claims',
   '{"sub": "d0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
 set local role authenticated;
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001', 'suspended', 'again');
+  'd0000000-0000-4000-8000-000000000002', 'suspended', 'again');
 select public.fn_admin_update_user_status(
-  'd0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-000000000001', 'active', 'again lifted');
+  'd0000000-0000-4000-8000-000000000002', 'active', 'again lifted');
 reset role;
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000d1'),

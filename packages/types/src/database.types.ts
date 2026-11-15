@@ -3271,16 +3271,11 @@ export type Database = {
         Returns: boolean;
       };
       fn_admin_toggle_verified_seller: {
-        Args: {
-          p_admin_id: string;
-          p_is_verified: boolean;
-          p_target_user_id: string;
-        };
+        Args: { p_is_verified: boolean; p_target_user_id: string };
         Returns: boolean;
       };
       fn_admin_update_user_status: {
         Args: {
-          p_admin_id: string;
           p_new_status: Database['public']['Enums']['account_status'];
           p_reason: string;
           p_target_user_id: string;
