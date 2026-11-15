@@ -52,12 +52,14 @@ BEGIN
 
     -- The Stripe fee loss is the share of the order's actual fee (Stripe
     -- balance transaction) the Edge Function froze at the start, added as
-    -- fn_cancel_shipment adds a cancellation's. The label was used, so Selene
-    -- also loses what the carrier charged for it.
+    -- fn_cancel_shipment adds a cancellation's. It is recorded even when the
+    -- order's actual fee was not saved (the Edge Function only logs that
+    -- failure), and capped by that fee only when it is known (T10, L21). The
+    -- label was used, so Selene also loses what the carrier charged for it.
     SELECT buyer_id, actual_stripe_fee_cents, cancellation_loss_cents
       INTO v_buyer_id, v_actual_stripe_fee_cents, v_order_loss_cents
       FROM public.orders WHERE id = v_shipment.order_id FOR UPDATE;
-    IF v_operation.cancellation_loss_cents IS NOT NULL AND v_actual_stripe_fee_cents IS NOT NULL THEN
+    IF v_operation.cancellation_loss_cents IS NOT NULL THEN
       UPDATE public.orders
         SET cancellation_loss_cents = LEAST(v_actual_stripe_fee_cents,
               COALESCE(v_order_loss_cents, 0) + v_operation.cancellation_loss_cents),
