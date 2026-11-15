@@ -34,7 +34,7 @@ A cron-invoked function runs with `verify_jwt = false` in `supabase/config.toml`
 
 ## Deploy and drift check
 
-Deploy Edge Functions only from `main`, never from a worktree or an unmerged branch: the deployed code must match the repository. The maintainer deploys (root `AGENTS.md`, "Never").
+Deploy Edge Functions only from `main`, never from a worktree or an unmerged branch: the deployed code must match the repository. The maintainer deploys (root `AGENTS.md`, "Never"). The one exception is a vulnerability fix, deployed from the advisory's private fork just before it merges (`docs/findings.md`, "Report a vulnerability").
 
 Check the remote against the repository through the Supabase MCP (read-only):
 
