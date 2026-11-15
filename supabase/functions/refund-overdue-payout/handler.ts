@@ -86,6 +86,8 @@ export type RefundOverduePayoutDeps = {
   listRefunds: (paymentIntentId: string) => Promise<unknown>;
   retrieveRefund: (refundId: string) => Promise<unknown>;
   escalate: (shipmentId: string, reason: EscalationReason) => RpcResult;
+  /** `fn_lease_overdue_refund_replay`: serializes the escalated replay past Stripe's idempotency window. */
+  leaseReplay: (shipmentId: string) => RpcResult;
   /** `fn_complete_overdue_payout_refund`. */
   complete: (shipmentId: string) => RpcResult;
   /** CRITICAL log plus a Sentry message; never throws. */
@@ -187,31 +189,35 @@ export function createRefundOverduePayoutHandler(
 
       let order: OverdueOrder | null = null;
       let paymentIntentId = '';
-      if (!resuming) {
+      /**
+       * Every check a new refund needs; a refusal throws a 409 ApiError. Loads the order and
+       * the payment intent id that prepare uses.
+       */
+      const checkNewRefund = async (): Promise<OverdueOrder> => {
         // Cheap database checks first, so a refusal never reaches Stripe. The claim RPC
         // re-checks all of them, and more, while it holds the shipment lock.
         if (shipment.status !== 'completed') {
-          return fail(409, 'SHIPMENT_NOT_COMPLETED');
+          throw new ApiError(409, 'SHIPMENT_NOT_COMPLETED');
         }
         if (shipment.is_payout_overdue !== true) {
-          return fail(409, 'PAYOUT_NOT_OVERDUE');
+          throw new ApiError(409, 'PAYOUT_NOT_OVERDUE');
         }
         const accountId = shipment.stripe_account_id;
         if (shipment.stripe_onboarding_status !== 'rejected' || !accountId) {
-          return fail(409, 'SELLER_ACCOUNT_NOT_REJECTED');
+          throw new ApiError(409, 'SELLER_ACCOUNT_NOT_REJECTED');
         }
         const account = await stripeCall('retrieve_account', () =>
           deps.retrieveAccount(accountId),
         );
         if (!isStripeRejectedAccount(account)) {
-          return fail(409, 'SELLER_ACCOUNT_NOT_REJECTED');
+          throw new ApiError(409, 'SELLER_ACCOUNT_NOT_REJECTED');
         }
 
-        order = await deps.loadOrder(shipment.order_id);
-        if (!order) throw new Error('ORDER_NOT_FOUND');
+        const loaded = await deps.loadOrder(shipment.order_id);
+        if (!loaded) throw new Error('ORDER_NOT_FOUND');
         paymentIntentId =
           shipment.stripe_payment_intent_id ??
-          order.stripe_payment_intent_id ??
+          loaded.stripe_payment_intent_id ??
           '';
         if (!paymentIntentId) throw new Error('PAYMENT_INTENT_NOT_FOUND');
         const charge = readCardCharge(
@@ -220,10 +226,12 @@ export function createRefundOverduePayoutHandler(
           ),
         );
         if (charge === 'not_card') {
-          return fail(409, 'PAYMENT_METHOD_NOT_REFUNDABLE');
+          throw new ApiError(409, 'PAYMENT_METHOD_NOT_REFUNDABLE');
         }
         if (!charge) throw new Error('CHARGE_UNUSABLE');
-      }
+        return loaded;
+      };
+      if (!resuming) order = await checkNewRefund();
 
       const loadCharge = async (): Promise<OverdueCharge> => {
         // Read again after the claim: another shipment of the order may have been refunded.
@@ -270,8 +278,9 @@ export function createRefundOverduePayoutHandler(
             mapClaimError,
           ),
         prepare: async () => {
-          // Only a new claim prepares, and only after the checks above loaded the order.
-          if (!order) throw new Error('ORDER_NOT_LOADED');
+          // Only a new claim prepares. When the recovery read saw a started refund the checks
+          // above were skipped, so a claim that is new after all runs them here (T5b).
+          if (!order) order = await checkNewRefund();
           const currentOrder = order;
           const charge = await loadCharge();
           let actualStripeFeeCents = currentOrder.actual_stripe_fee_cents;
@@ -349,6 +358,12 @@ export function createRefundOverduePayoutHandler(
             'fn_escalate_shipment_cancellation',
             deps.escalate(id, reason),
             () => new ApiError(500, 'REFUND_ESCALATION_FAILED'),
+          ),
+        leaseReplay: (id) =>
+          rpc(
+            'fn_lease_overdue_refund_replay',
+            deps.leaseReplay(id),
+            () => new ApiError(500, 'REFUND_REPLAY_LEASE_FAILED'),
           ),
         reportCritical: deps.reportCritical,
         now: deps.now,

@@ -134,7 +134,12 @@ function harness(
       state.escalations.push(reason);
       return { escalated: true };
     },
+    leaseReplay: async () => {
+      state.calls.push('lease');
+      return { status: 'leased', lease_expires_at: STARTED };
+    },
     reportCritical: (message) => {
+      state.calls.push(`critical:${message}`);
       state.criticals.push(message);
     },
     now: () => now,
@@ -285,7 +290,7 @@ describe('overdue payout refund through the cancellation coordinator', () => {
     ]);
   });
 
-  test('an escalated operation with no refund at Stripe is retried with the frozen request and key', async () => {
+  test('an escalated operation with no refund at Stripe takes the replay lease, lists again, alerts, then replays the frozen request and key', async () => {
     const subject = harness(
       {
         claim: recoveryClaim,
@@ -298,9 +303,151 @@ describe('overdue payout refund through the cancellation coordinator', () => {
       status: 'cancelled',
       value: { shipment_status: 'refunded' },
     });
+    expect(subject.state.calls).toEqual([
+      'list',
+      'lease',
+      'list',
+      'critical:OVERDUE_REFUND_REPLAY_PAST_WINDOW',
+      'refund',
+      'record',
+      'complete',
+    ]);
     expect(subject.state.requests).toEqual([{ request: frozen, key: KEY }]);
     expect(subject.state.escalations).toEqual([]);
+  });
+
+  const escalatedOperation = async () =>
+    operation({ recovery_escalated_at: '2026-11-02T00:00:00.000Z' });
+  const pastWindow = T0 + 3 * REFUND_REPLAY_WINDOW_MS;
+
+  test('two interleaved admin retries past the window create exactly one refund', async () => {
+    // One Stripe account and one operation row shared by both retries.
+    const stripeRefunds: Record<string, unknown>[] = [];
+    let leaseHeld = false;
+    let arrivals = 0;
+    let releaseBarrier = () => {};
+    const barrier = new Promise<void>((resolve) => {
+      releaseBarrier = resolve;
+    });
+    const retry = () => {
+      let listed = 0;
+      return harness(
+        {
+          claim: recoveryClaim,
+          loadRecovery: escalatedOperation,
+          // Both retries list before either reaches the lease or Stripe.
+          listRefunds: async () => {
+            listed += 1;
+            if (listed === 1) {
+              arrivals += 1;
+              if (arrivals === 2) releaseBarrier();
+              await barrier;
+            }
+            return [...stripeRefunds];
+          },
+          leaseReplay: async () => {
+            if (leaseHeld) return { status: 'busy' };
+            leaseHeld = true;
+            return { status: 'leased', lease_expires_at: STARTED };
+          },
+          refund: async () => {
+            const created = stripeRefund({ id: `re_${stripeRefunds.length}` });
+            stripeRefunds.push(created);
+            return created;
+          },
+        },
+        pastWindow,
+      );
+    };
+    const results = await Promise.all([retry().run(), retry().run()]);
+    expect(stripeRefunds).toHaveLength(1);
+    expect(results.map((result) => result.status).sort()).toEqual([
+      'busy',
+      'cancelled',
+    ]);
+  });
+
+  test('a refund created between the first list and the lease is found after the lease and settled, never replayed', async () => {
+    let listed = 0;
+    const subject = harness(
+      {
+        claim: recoveryClaim,
+        loadRecovery: escalatedOperation,
+        listRefunds: async () => {
+          listed += 1;
+          return listed === 1 ? [] : [stripeRefund()];
+        },
+      },
+      pastWindow,
+    );
+    expect(await subject.run()).toEqual({
+      status: 'cancelled',
+      value: { shipment_status: 'refunded' },
+    });
+    expect(subject.state.requests).toEqual([]);
+    expect(subject.state.records.map((r) => r.refundId)).toEqual([
+      're_overdue',
+    ]);
     expect(subject.state.criticals).toEqual([]);
+  });
+
+  test('a lease held by another retry answers busy and never calls Stripe to refund', async () => {
+    const subject = harness(
+      {
+        claim: recoveryClaim,
+        loadRecovery: escalatedOperation,
+        leaseReplay: async () => ({ status: 'busy' }),
+      },
+      pastWindow,
+    );
+    expect(await subject.run()).toEqual({ status: 'busy' });
+    expect(subject.state.requests).toEqual([]);
+    expect(subject.state.records).toEqual([]);
+    expect(subject.state.criticals).toEqual([]);
+  });
+
+  test('two refunds of the shipment found after the lease escalate as ambiguous and never refund', async () => {
+    let listed = 0;
+    const subject = harness(
+      {
+        claim: recoveryClaim,
+        loadRecovery: escalatedOperation,
+        listRefunds: async () => {
+          listed += 1;
+          return listed === 1
+            ? []
+            : [stripeRefund(), stripeRefund({ id: 're_two' })];
+        },
+      },
+      pastWindow,
+    );
+    expect(await subject.run()).toEqual({ status: 'recovery_required' });
+    expect(subject.state.requests).toEqual([]);
+    expect(subject.state.escalations).toEqual(['refund_ambiguous']);
+  });
+
+  test('an unusable lease answer or a missing lease port fails closed without a refund', async () => {
+    for (const leaseReplay of [
+      async () => ({ status: 'granted' }),
+      async () => null,
+      undefined,
+    ]) {
+      const subject = harness(
+        { claim: recoveryClaim, loadRecovery: escalatedOperation, leaseReplay },
+        pastWindow,
+      );
+      await expect(subject.run()).rejects.toThrow(
+        'CANCELLATION_REPLAY_LEASE_INVALID',
+      );
+      expect(subject.state.requests).toEqual([]);
+    }
+  });
+
+  test('inside the replay window the frozen request is replayed with its key and no lease', async () => {
+    const subject = harness({ claim: recoveryClaim });
+    expect((await subject.run()).status).toBe('cancelled');
+    expect(subject.state.calls).not.toContain('lease');
+    expect(subject.state.requests).toEqual([{ request: frozen, key: KEY }]);
   });
 
   test('an escalated operation with two refunds of the shipment stays in recovery and never refunds', async () => {

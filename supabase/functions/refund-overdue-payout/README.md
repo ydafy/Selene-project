@@ -37,7 +37,9 @@ A `pending` refund answers 202; the `refund.updated` webhook (`stripe-webhooks`,
 
 ## Recovery
 
-The claim returns `recovery_required` for a started refund, whatever the shipment's eligibility now is. The run never creates a second refund: it reuses the recorded refund (and completes it once Stripe reports `succeeded`), finds the refund at Stripe by `metadata.shipment_id`, or, within 23 hours of the start, replays the frozen request with the same idempotency key, which Stripe answers with the original refund. Past 23 hours with no refund of the shipment at Stripe, the operation is escalated once (Sentry `CANCELLATION_REFUND_NOT_FOUND`, and it appears in the refund problems list) and the call answers 409 `REFUND_RECOVERY_REQUIRED`. Retrying after the escalation searches Stripe again and, when it still finds no refund of the shipment, replays the frozen request: an escalated overdue refund with no refund at Stripe is resolved by retrying this function, never by a manual repayment (L14). Two refunds of the same shipment at Stripe stay in recovery for a human.
+The claim returns `recovery_required` for a started refund, whatever the shipment's eligibility now is. The run never creates a second refund: it reuses the recorded refund (and completes it once Stripe reports `succeeded`), finds the refund at Stripe by `metadata.shipment_id`, or, within 23 hours of the start, replays the frozen request with the same idempotency key, which Stripe answers with the original refund. Past 23 hours with no refund of the shipment at Stripe, the operation is escalated once (Sentry `CANCELLATION_REFUND_NOT_FOUND`, and it appears in the refund problems list) and the call answers 409 `REFUND_RECOVERY_REQUIRED`. Retrying after the escalation searches Stripe again (every page of the PaymentIntent's refunds) and, when it still finds no refund of the shipment, replays the frozen request: an escalated overdue refund with no refund at Stripe is resolved by retrying this function, never by a manual repayment (L14). Past Stripe's idempotency window the key no longer prevents a second refund, so that replay first takes a 10-minute lease on the operation (`fn_lease_overdue_refund_replay`; a concurrent retry answers 409 `REFUND_IN_PROGRESS`), lists the refunds again while holding it, and sends Sentry `OVERDUE_REFUND_REPLAY_PAST_WINDOW` before calling Stripe (T5b). Two refunds of the same shipment at Stripe stay in recovery for a human.
+
+If Stripe later fails a refund that had succeeded, the shipment stays `refunded` (no second loss or notice beyond the refund-failed one); the admin repays the buyer by hand and records the reference with `resolve-shipment-refund`, which only records the resolution.
 
 A Stripe error before the start (the charge read) leaves only the claim, which expires after 15 minutes; until then a retry answers 409 `REFUND_IN_PROGRESS`. A Stripe error on the refund itself leaves the started operation, and the next call recovers it.
 
@@ -56,30 +58,30 @@ A Stripe error before the start (the charge read) leaves only the claim, which e
 
 Errors are `{ "error": "<code>" }`:
 
-| Status | Code                                     | When                                                                                    |
-| ------ | ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| 405    | `METHOD_NOT_ALLOWED`                     | Not `POST`.                                                                             |
-| 401    | `AUTH_REQUIRED`                          | No bearer token, or the token is not a user session.                                    |
-| 403    | `ADMIN_ONLY`                             | Not an active admin, also when the claim's re-check raises `ADMIN_REQUIRED`.            |
-| 422    | `INVALID_SHIPMENT_ID`                    | `shipment_id` missing or not a uuid, or the body is not a JSON object.                  |
-| 404    | `SHIPMENT_NOT_FOUND`                     | No shipment with that id.                                                               |
-| 409    | `SHIPMENT_NOT_COMPLETED`                 | The shipment is not `completed`.                                                        |
-| 409    | `SHIPMENT_ALREADY_REFUNDED`              | It was already refunded.                                                                |
-| 409    | `PAYOUT_NOT_OVERDUE`                     | Not overdue: held fewer than 30 days, paid, or the seller is not blocked.               |
-| 409    | `SELLER_ACCOUNT_NOT_REJECTED`            | The stored status is not `rejected`, or Stripe's `disabled_reason` is not `rejected.*`. |
-| 409    | `PAYMENT_METHOD_NOT_REFUNDABLE`          | The charge is not a card.                                                               |
-| 409    | `SHIPMENT_FUNDS_ALREADY_RELEASED`        | The shipment has a Stripe transfer or payout.                                           |
-| 409    | `SHIPMENT_TRANSFER_OPERATION_ACTIVE`     | A payout run ever started its transfer.                                                 |
-| 409    | `PAYOUT_RUN_NOT_PARKED`                  | A payout run holding the shipment is not parked.                                        |
-| 409    | `SHIPMENT_CANCELLATION_OPERATION_ACTIVE` | Another operation (a cancellation) holds the shipment.                                  |
-| 409    | `REFUND_AMOUNT_EXCEEDS_CAP`              | The charge cannot refund the shipment's amount any more.                                |
-| 409    | `REFUND_IN_PROGRESS`                     | Another call holds the claim, or the claim expired before the start.                    |
-| 409    | `REFUND_RECOVERY_REQUIRED`               | A started refund needs a human (see "Recovery").                                        |
-| 409    | `REFUND_UNCONFIRMED`                     | Stripe's answer could not be tied to this shipment.                                     |
-| 409    | `REFUND_FAILED`                          | Stripe reports the refund `failed` or `canceled`; repay by hand (L11).                  |
-| 502    | `STRIPE_REQUEST_FAILED`                  | A Stripe call failed.                                                                   |
-| 500    | `REFUND_COMPLETION_FAILED`               | Stripe refunded but the completion failed; Sentry alert, a retry completes it.          |
-| 500    | `INTERNAL_ERROR` and other `REFUND_*`    | Any other server fault. Sentry receives every 5xx.                                      |
+| Status | Code                                     | When                                                                                     |
+| ------ | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 405    | `METHOD_NOT_ALLOWED`                     | Not `POST`.                                                                              |
+| 401    | `AUTH_REQUIRED`                          | No bearer token, or the token is not a user session.                                     |
+| 403    | `ADMIN_ONLY`                             | Not an active admin, also when the claim's re-check raises `ADMIN_REQUIRED`.             |
+| 422    | `INVALID_SHIPMENT_ID`                    | `shipment_id` missing or not a uuid, or the body is not a JSON object.                   |
+| 404    | `SHIPMENT_NOT_FOUND`                     | No shipment with that id.                                                                |
+| 409    | `SHIPMENT_NOT_COMPLETED`                 | The shipment is not `completed`.                                                         |
+| 409    | `SHIPMENT_ALREADY_REFUNDED`              | It was already refunded.                                                                 |
+| 409    | `PAYOUT_NOT_OVERDUE`                     | Not overdue: held fewer than 30 days, paid, or the seller is not blocked.                |
+| 409    | `SELLER_ACCOUNT_NOT_REJECTED`            | The stored status is not `rejected`, or Stripe's `disabled_reason` is not `rejected.*`.  |
+| 409    | `PAYMENT_METHOD_NOT_REFUNDABLE`          | The charge is not a card.                                                                |
+| 409    | `SHIPMENT_FUNDS_ALREADY_RELEASED`        | The shipment has a Stripe transfer or payout.                                            |
+| 409    | `SHIPMENT_TRANSFER_OPERATION_ACTIVE`     | A payout run ever started its transfer.                                                  |
+| 409    | `PAYOUT_RUN_NOT_PARKED`                  | A payout run holding the shipment is not parked.                                         |
+| 409    | `SHIPMENT_CANCELLATION_OPERATION_ACTIVE` | Another operation (a cancellation) holds the shipment.                                   |
+| 409    | `REFUND_AMOUNT_EXCEEDS_CAP`              | The charge cannot refund the shipment's amount any more.                                 |
+| 409    | `REFUND_IN_PROGRESS`                     | Another call holds the claim or the replay lease, or the claim expired before the start. |
+| 409    | `REFUND_RECOVERY_REQUIRED`               | A started refund needs a human (see "Recovery").                                         |
+| 409    | `REFUND_UNCONFIRMED`                     | Stripe's answer could not be tied to this shipment.                                      |
+| 409    | `REFUND_FAILED`                          | Stripe reports the refund `failed` or `canceled`; repay by hand (L11).                   |
+| 502    | `STRIPE_REQUEST_FAILED`                  | A Stripe call failed.                                                                    |
+| 500    | `REFUND_COMPLETION_FAILED`               | Stripe refunded but the completion failed; Sentry alert, a retry completes it.           |
+| 500    | `INTERNAL_ERROR` and other `REFUND_*`    | Any other server fault. Sentry receives every 5xx.                                       |
 
 Raw database and Stripe text goes only to the log; logs carry ids and codes, never names, emails or addresses.
 

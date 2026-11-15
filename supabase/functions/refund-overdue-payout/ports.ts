@@ -38,10 +38,17 @@ export function createStripeRefundOverduePayoutPorts(
       }),
     createRefund: (request, options) =>
       getStripe().refunds.create(request, options),
-    listRefunds: (paymentIntentId) =>
-      getStripe()
-        .refunds.list({ payment_intent: paymentIntentId, limit: 100 })
-        .autoPagingToArray({ limit: 1000 }),
+    // Every page, never a capped prefix: recovery decides "no refund exists" from this list.
+    listRefunds: async (paymentIntentId) => {
+      const refunds: Stripe.Refund[] = [];
+      for await (const refund of getStripe().refunds.list({
+        payment_intent: paymentIntentId,
+        limit: 100,
+      })) {
+        refunds.push(refund);
+      }
+      return refunds;
+    },
     retrieveRefund: (refundId) => getStripe().refunds.retrieve(refundId),
   };
 }
@@ -174,6 +181,12 @@ export function createSupabaseRefundOverduePayoutPorts(
         getAdmin().rpc('fn_escalate_shipment_cancellation', {
           p_shipment_id: shipmentId,
           p_reason: reason,
+        }),
+      ),
+    leaseReplay: (shipmentId) =>
+      rpcResult(
+        getAdmin().rpc('fn_lease_overdue_refund_replay', {
+          p_shipment_id: shipmentId,
         }),
       ),
     complete: (shipmentId) =>

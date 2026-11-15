@@ -96,6 +96,12 @@ export interface ShipmentCancellationPorts<T> {
   retrieveRefund: (refundId: string) => Promise<unknown>;
   /** Service RPC `fn_escalate_shipment_cancellation`: exactly `{ escalated: true }` the first time. */
   escalate: (shipmentId: string, reason: EscalationReason) => Promise<unknown>;
+  /**
+   * Service RPC `fn_lease_overdue_refund_replay`: `{ status: 'leased' }` or `{ status: 'busy' }`.
+   * Required by the overdue payout refund, whose escalated replay runs past Stripe's
+   * idempotency window; a missing port fails closed there. Cancellations never call it.
+   */
+  leaseReplay?: (shipmentId: string) => Promise<unknown>;
   /** Awaited; its own failure never changes the outcome. */
   reportCritical: (message: string, data: Record<string, unknown>) => unknown;
   now?: () => number;
@@ -322,6 +328,39 @@ async function settleRefund<T>(
   return { status: 'cancelled', value: await ports.complete(winner, frozen) };
 }
 
+/** The Stripe refunds of this shipment, by metadata, from a list of the PaymentIntent's refunds. */
+async function listShipmentRefunds<T>(
+  ports: ShipmentCancellationPorts<T>,
+  paymentIntentId: string,
+): Promise<unknown[]> {
+  const listed = await ports.listRefunds(paymentIntentId);
+  if (!Array.isArray(listed)) {
+    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
+  }
+  return listed.filter(
+    (entry) =>
+      record(entry) &&
+      record(entry.metadata) &&
+      entry.metadata.shipment_id === ports.context.shipmentId,
+  );
+}
+
+async function escalateAmbiguous<T>(
+  ports: ShipmentCancellationPorts<T>,
+  matches: unknown[],
+): Promise<{ status: 'recovery_required' }> {
+  await escalateOnce(
+    ports,
+    'refund_ambiguous',
+    'CANCELLATION_REFUND_AMBIGUOUS',
+    {
+      shipmentId: ports.context.shipmentId,
+      refundIds: matches.map((entry) => (entry as { id?: unknown }).id),
+    },
+  );
+  return { status: 'recovery_required' };
+}
+
 /**
  * Converges a started operation without new money movement: reuses the
  * recorded refund, finds it at Stripe by shipment metadata, or replays the
@@ -329,10 +368,13 @@ async function settleRefund<T>(
  * An escalated overdue payout refund with nothing recorded is the exception: it
  * stays resolvable by its admin retrying (L14), so it searches Stripe again and,
  * when exactly no refund of the shipment exists, replays the frozen request.
+ * Past Stripe's idempotency window the key no longer deduplicates, so that replay
+ * first takes the operation's replay lease (one retry at a time), lists again while
+ * holding it, and alerts before calling Stripe (T5b).
  */
 async function recoverCancellation<T>(
   ports: ShipmentCancellationPorts<T>,
-): Promise<Settled<T> | { status: 'recovery_required' }> {
+): Promise<Settled<T> | { status: 'recovery_required' | 'busy' }> {
   const { context } = ports;
   const key = `cancel_shipment_${context.shipmentId}`;
   const operation = await ports.loadRecovery(context.shipmentId);
@@ -408,28 +450,11 @@ async function recoverCancellation<T>(
   if (escalated && !overdue(winner.source)) {
     return { status: 'recovery_required' };
   }
-  const listed = await ports.listRefunds(frozen.refundRequest.payment_intent);
-  if (!Array.isArray(listed)) {
-    throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
-  }
-  const matches = listed.filter(
-    (entry) =>
-      record(entry) &&
-      record(entry.metadata) &&
-      entry.metadata.shipment_id === context.shipmentId,
+  const matches = await listShipmentRefunds(
+    ports,
+    frozen.refundRequest.payment_intent,
   );
-  if (matches.length > 1) {
-    await escalateOnce(
-      ports,
-      'refund_ambiguous',
-      'CANCELLATION_REFUND_AMBIGUOUS',
-      {
-        shipmentId: context.shipmentId,
-        refundIds: matches.map((entry) => (entry as { id?: unknown }).id),
-      },
-    );
-    return { status: 'recovery_required' };
-  }
+  if (matches.length > 1) return escalateAmbiguous(ports, matches);
   if (matches.length === 1) {
     return settleRefund(
       ports,
@@ -453,6 +478,37 @@ async function recoverCancellation<T>(
       },
     );
     return { status: 'recovery_required' };
+  }
+  if (escalated) {
+    // Only the overdue payout refund gets here (see above).
+    if (!ports.leaseReplay) {
+      throw new ApiError(500, 'CANCELLATION_REPLAY_LEASE_INVALID');
+    }
+    const lease = await ports.leaseReplay(context.shipmentId);
+    if (record(lease) && lease.status === 'busy') return { status: 'busy' };
+    if (!record(lease) || lease.status !== 'leased') {
+      throw new ApiError(500, 'CANCELLATION_REPLAY_LEASE_INVALID');
+    }
+    // A retry that held the lease before this one may have created the refund.
+    const leased = await listShipmentRefunds(
+      ports,
+      frozen.refundRequest.payment_intent,
+    );
+    if (leased.length > 1) return escalateAmbiguous(ports, leased);
+    if (leased.length === 1) {
+      return settleRefund(
+        ports,
+        recoveredRefund(leased[0], context.shipmentId),
+        winner,
+        frozen,
+      );
+    }
+    // Stripe no longer deduplicates this key: leave a signal before moving money.
+    await critical(ports, 'OVERDUE_REFUND_REPLAY_PAST_WINDOW', {
+      shipmentId: context.shipmentId,
+      externalStartedAt: operation.external_started_at,
+      amountCents: frozen.refundRequest.amount,
+    });
   }
   // Same key and body: Stripe returns the original refund instead of a new one.
   const replayed = recoveredRefund(
