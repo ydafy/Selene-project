@@ -18,7 +18,7 @@ headers {
 
 body:json {
   {
-    "status": "RESERVED",
+    "status": "reserved",
     "reserved_at": "2026-01-01T00:00:00Z",
     "status_before_account_hold": null
   }
@@ -27,10 +27,10 @@ body:json {
 tests {
   test("the listing is reserved with an expired reservation while its seller is suspended", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ status: "RESERVED" }]);
+    expect(res.getBody()).to.deep.equal([{ status: "reserved" }]);
   });
 }
 
 docs {
-  Puts the listing back in RESERVED with a long expired reservation, as it is when a seller is suspended during a checkout. Service role only.
+  Puts the listing back in reserved with a long expired reservation, as it is when a seller is suspended during a checkout. Service role only.
 }

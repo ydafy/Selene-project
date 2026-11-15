@@ -47,9 +47,9 @@ Only `fn_admin_update_user_status(p_target_user_id, p_new_status, p_reason)` cha
 - An admin cannot change their own status (`CANNOT_CHANGE_OWN_STATUS`). A `NULL` status is refused (`INVALID_ACCOUNT_STATUS`).
 - `banned` is final. Any change away from it fails with `BANNED_IS_FINAL`. Only a same-status call refreshes the reason.
 - Every change writes a `USER_STATUS_UPDATE` row in `admin_audit_logs`.
-- Suspending or banning hides the seller's `VERIFIED`, `PENDING_VERIFICATION`, and `IN_REVIEW` listings and stores each prior status in `products.status_before_account_hold`.
-- Lifting a suspension restores only the listings that carry that hold, each to its prior status, then clears the hold. Any other `HIDDEN` listing stays hidden.
-- While the seller is suspended or banned, `fn_release_listings` holds a listing that would return to sale (an expired reservation, a refund, a cancelled shipment) as `HIDDEN` with the hold set. Lifting the suspension then restores it.
+- Suspending or banning hides the seller's `verified`, `pending_verification`, and `in_review` listings and stores each prior status in `products.status_before_account_hold`.
+- Lifting a suspension restores only the listings that carry that hold, each to its prior status, then clears the hold. Any other `hidden` listing stays hidden.
+- While the seller is suspended or banned, `fn_release_listings` holds a listing that would return to sale (an expired reservation, a refund, a cancelled shipment) as `hidden` with the hold set. Lifting the suspension then restores it.
 
 The admin UI is `apps/admin-web/src/shared/ui/user-safety-actions.tsx` with `apps/admin-web/src/shared/lib/account-status-actions.ts`.
 
@@ -89,7 +89,7 @@ Blockers, in the order `fn_close_account` checks them:
 | `blocked_reason`     | Meaning                                                                                    |
 | -------------------- | ------------------------------------------------------------------------------------------ |
 | `account_restricted` | The account is suspended or banned. Its evidence stays.                                    |
-| `active_shipments`   | A seller shipment or order item is unfinished, or a listing is `RESERVED` or `IN_DISPUTE`. |
+| `active_shipments`   | A seller shipment or order item is unfinished, or a listing is `reserved` or `in_dispute`. |
 | `active_orders`      | A buyer order is unfinished.                                                               |
 | `open_disputes`      | A dispute is open for the user as buyer or seller.                                         |
 | `pending_payouts`    | A completed shipment is not paid out yet, or a payout run needs reconciliation.            |

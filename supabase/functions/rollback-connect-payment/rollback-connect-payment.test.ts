@@ -211,10 +211,10 @@ describe('single-modal allocation metadata rollback extraction', () => {
     });
   });
 
-  it('issue regression: single-modal rollback releases all RESERVED product ids (full lifecycle)', () => {
+  it('issue regression: single-modal rollback releases all reserved product ids (full lifecycle)', () => {
     // Reproduces Blocker 1: before the fix, the rollback only read
     // product_ids and returned [] for single-modal intents, leaving products
-    // RESERVED. After the fix, the allocation blob yields every product id.
+    // reserved. After the fix, the allocation blob yields every product id.
     const meta = buildAllocationMetadata([
       { productIds: ['prod-a', 'prod-b'] },
       { productIds: ['prod-c'] },

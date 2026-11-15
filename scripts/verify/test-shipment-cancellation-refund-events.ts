@@ -96,7 +96,7 @@ async function fixture(tx: Tx) {
   await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
     VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 750000, 700000, ${ids.shipment}),
            (${ids.order}, ${ids.siblingProduct}, ${ids.seller}, 390000, 350000, ${ids.sibling})`;
-  await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
+  await tx`UPDATE public.products SET status = 'sold' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
   await asService(tx);
 }
 
@@ -199,7 +199,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       const state = await snapshot(tx, ids.shipment);
       assert.equal(state.shipment, 'paid');
       assert.equal(state.operation.refund_id, null);
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal(await notificationCount(tx), 0);
     },
   ],
@@ -215,7 +215,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         amount_owed_cents: 11000,
       });
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
 
       assert.deepEqual(await apply(tx, ids.shipment, 're_1', 'succeeded'), {
         outcome: 'completed',
@@ -225,7 +225,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         amount_owed_cents: 11000,
       });
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
-      assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+      assert.equal(await productStatus(tx, ids.product), 'verified');
       const cancelled = await notifications(tx, 'shipment.cancelled');
       assert.deepEqual(
         cancelled
@@ -301,7 +301,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         amount_owed_cents: 11000,
       });
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
-      assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+      assert.equal(await productStatus(tx, ids.product), 'verified');
 
       const rows = await notifications(tx, 'shipment.refund_failed');
       assert.equal(rows.length, 1);
@@ -357,7 +357,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(failed.refund_failure_reason, 'lost_or_stolen_card');
       assert.equal(failed.amount_owed_cents, 11000);
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, 0);
       assert.equal(
         (await notifications(tx, 'shipment.refund_failed')).length,
@@ -379,7 +379,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'failed_before_cancellation',
       );
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal(
         (await notifications(tx, 'shipment.refund_failed')).length,
         1,
@@ -436,7 +436,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'INVALID_REFUND_ID',
       );
       assert.deepEqual(await snapshot(tx, ids.shipment), before);
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal(await notificationCount(tx), 0);
     },
   ],
@@ -451,7 +451,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'completed',
       );
       assert.deepEqual(await snapshot(tx, ids.sibling), siblingBefore);
-      assert.equal(await productStatus(tx, ids.siblingProduct), 'SOLD');
+      assert.equal(await productStatus(tx, ids.siblingProduct), 'sold');
       assert.equal(
         (
           await apply(tx, ids.shipment, 're_1', 'failed', {
@@ -539,7 +539,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(failed.refund_failure_reason, 'expired_or_canceled_card');
       assert.equal(failed.amount_owed_cents, 11000);
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, 0);
       assert.equal(
         (await notifications(tx, 'shipment.refund_failed')).length,
@@ -563,7 +563,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(late.outcome, 'unchanged');
       assert.equal(late.refund_status, 'failed');
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal(
         (await notifications(tx, 'shipment.refund_failed')).length,
         1,
@@ -604,7 +604,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         WHERE event_kind = 'shipment.refund_failed' AND user_id <> ${ids.buyer}`;
       assert.equal(others.n, 0);
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
-      assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+      assert.equal(await productStatus(tx, ids.product), 'verified');
     },
   ],
   [
@@ -639,7 +639,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       );
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
       assert.equal((await snapshot(tx, ids.sibling)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.siblingProduct), 'SOLD');
+      assert.equal(await productStatus(tx, ids.siblingProduct), 'sold');
       assert.equal(
         (await notifications(tx, 'shipment.refund_failed', ids.shipment))
           .length,

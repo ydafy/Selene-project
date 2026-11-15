@@ -56,7 +56,7 @@ export function parseProductIdsMetadata(
  * Unlike the strict webhook reassembler (which throws on any inconsistency to
  * keep corrupt metadata OUT of DB writes), this rollback helper is TOLERANT:
  * it returns whatever product ids it can extract so the rollback can release
- * as many RESERVED products as possible. On any inconsistency it returns
+ * as many reserved products as possible. On any inconsistency it returns
  * `{ productIds: [], malformed: true }` without throwing — the caller logs a
  * warning and continues (legacy `product_ids` may still yield ids).
  *

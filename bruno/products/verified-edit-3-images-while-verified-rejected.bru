@@ -21,7 +21,7 @@ body:json {
 }
 
 tests {
-  test("changing the images while keeping the listing VERIFIED is refused", function () {
+  test("changing the images while keeping the listing verified is refused", function () {
     expect(res.getStatus()).to.equal(403);
     expect(res.getBody().code).to.equal("42501");
     expect(JSON.stringify(res.getBody())).to.contain("VERIFIED_EDIT_REQUIRES_REVIEW");

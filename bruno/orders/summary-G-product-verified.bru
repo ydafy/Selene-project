@@ -16,9 +16,9 @@ headers {
 }
 
 tests {
-  test("the listing is VERIFIED again", function () {
+  test("the listing is verified again", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b4", status: "VERIFIED" }]);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b4", status: "verified" }]);
   });
 }
 

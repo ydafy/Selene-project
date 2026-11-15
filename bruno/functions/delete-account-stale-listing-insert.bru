@@ -21,9 +21,9 @@ script:pre-request {
 }
 
 tests {
-  test("the throwaway seller gets a VERIFIED listing with a valid snapshot", function () {
+  test("the throwaway seller gets a verified listing with a valid snapshot", function () {
     expect(res.getStatus()).to.equal(201);
-    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].status).to.equal("verified");
     bru.setVar("staleListingId", res.getBody()[0].id);
   });
 }

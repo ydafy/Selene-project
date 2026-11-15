@@ -15,12 +15,12 @@ headers {
 }
 
 tests {
-  test("the view shows the SOLD listing and omits the HIDDEN and soft-deleted ones", function () {
+  test("the view shows the sold listing and omits the hidden and soft-deleted ones", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b8", status: "SOLD" }]);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b8", status: "sold" }]);
   });
 }
 
 docs {
-  Seeds: b8 SOLD, b9 HIDDEN, ba VERIFIED with deleted_at set.
+  Seeds: b8 sold, b9 hidden, ba verified with deleted_at set.
 }

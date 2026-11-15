@@ -18,10 +18,10 @@ headers {
 tests {
   test("lifting the suspension restores the held listing", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ status: "VERIFIED", status_before_account_hold: null, reserved_at: null }]);
+    expect(res.getBody()).to.deep.equal([{ status: "verified", status_before_account_hold: null, reserved_at: null }]);
   });
 }
 
 docs {
-  The listing is VERIFIED again with no hold; the seeded seller is active.
+  The listing is verified again with no hold; the seeded seller is active.
 }

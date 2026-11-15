@@ -15,9 +15,9 @@ headers {
 }
 
 tests {
-  test("the refused checkout left the listing IN_REVIEW", function () {
+  test("the refused checkout left the listing in_review", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }]);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b6", status: "in_review" }]);
   });
 }
 
