@@ -87,7 +87,7 @@ from unnest(array['11', '12', '13', '14', '15', '16', '17']) as u;
 select pg_temp.make_sale(1, 'd0000000-0000-4000-8000-000000000019', 'd0000000-0000-4000-8000-000000000011', 'completed', 'pi_test_unpaid');
 
 -- 12 / 13: sellers with a payout run still being reconciled.
-insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id)
+insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id)
 values
   ('d0000000-0000-4000-8000-0000000e0012', 'blockers-run-12', 'd0000000-0000-4000-8000-000000000012', 900, 'pending_reconciliation', 'd0000000-0000-4000-8000-000000000012'),
   ('d0000000-0000-4000-8000-0000000e0013', 'blockers-run-13', 'd0000000-0000-4000-8000-000000000013', 900, 'reconciliation_needed', 'd0000000-0000-4000-8000-000000000013');
@@ -184,7 +184,7 @@ select is(pg_temp.snapshot('d0000000-0000-4000-8000-000000000017'), 'true|blk_co
 
 -- Allowed control: settle each blocker and the same users close ------------------
 -- 11: the payout run is paid and mapped to the shipment.
-insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, paid_at)
+insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id, paid_at)
 values ('d0000000-0000-4000-8000-0000000e0011', 'blockers-run-11', 'd0000000-0000-4000-8000-000000000011', 900, 'paid', 'd0000000-0000-4000-8000-000000000011', now());
 insert into public.connect_payout_run_shipments (run_id, shipment_id, net_payout_cents, status)
 values ('d0000000-0000-4000-8000-0000000e0011', 'd0000000-0000-4000-8000-0000000c0001', 900, 'paid');

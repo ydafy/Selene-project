@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{releaseRunId}}&select=id,seller_id,amount,status,release_stage,stripe_payout_id,paid_at,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout_cents,status)
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{releaseRunId}}&select=id,seller_id,amount_cents,status,release_stage,stripe_payout_id,paid_at,retry_of_run_id,connect_payout_run_shipments(shipment_id,net_payout_cents,status)
   body: none
   auth: none
 }
@@ -77,7 +77,7 @@ tests {
     const run = res.getBody()[0];
     expect(run.status).to.equal("paid");
     expect(run.release_stage).to.equal("paid_observed");
-    expect(run.amount).to.equal(210600);
+    expect(run.amount_cents).to.equal(210600);
     expect(run.stripe_payout_id).to.equal(bru.getVar("releasePayoutId"));
     expect(run.retry_of_run_id).to.equal(null);
     expect(run.connect_payout_run_shipments).to.deep.equal([

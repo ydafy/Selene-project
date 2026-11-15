@@ -457,7 +457,7 @@ export type Database = {
         Row: {
           action_required_reason: string | null;
           actor_id: string;
-          amount: number;
+          amount_cents: number;
           attempt_count: number;
           created_at: string;
           failed_at: string | null;
@@ -482,7 +482,7 @@ export type Database = {
         Insert: {
           action_required_reason?: string | null;
           actor_id: string;
-          amount: number;
+          amount_cents: number;
           attempt_count?: number;
           created_at?: string;
           failed_at?: string | null;
@@ -506,7 +506,7 @@ export type Database = {
         Update: {
           action_required_reason?: string | null;
           actor_id?: string;
-          amount?: number;
+          amount_cents?: number;
           attempt_count?: number;
           created_at?: string;
           failed_at?: string | null;

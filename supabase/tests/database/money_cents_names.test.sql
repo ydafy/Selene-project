@@ -3,7 +3,7 @@
 -- its NOT NULL, default and `>= 0` check, and the old name is gone.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(18);
+select plan(29);
 \ir ../fixtures/money.psql
 
 -- Seller 7701, buyer 7702, admin 7703; order 7710 with shipment and listing 7711.
@@ -79,6 +79,41 @@ select is(
   (select net_payout_cents from public.connect_payout_run_shipments
     where run_id = pg_temp.mu(7720)),
   90000::bigint, 'the rejected writes leave net_payout_cents unchanged');
+
+-- T7c: connect_payout_runs.amount_cents -------------------------------------------
+select hasnt_column('public', 'connect_payout_runs', 'amount',
+  'connect_payout_runs has no amount column');
+select col_type_is('public', 'connect_payout_runs', 'amount_cents', 'bigint',
+  'connect_payout_runs.amount_cents is bigint');
+select col_not_null('public', 'connect_payout_runs', 'amount_cents',
+  'connect_payout_runs.amount_cents is NOT NULL');
+select col_hasnt_default('public', 'connect_payout_runs', 'amount_cents',
+  'connect_payout_runs.amount_cents has no default');
+select is(
+  (select pg_get_constraintdef(oid) from pg_constraint
+    where conrelid = 'public.connect_payout_runs'::regclass
+      and conname = 'connect_payout_runs_amount_cents_check'),
+  'CHECK ((amount_cents >= 0))',
+  'connect_payout_runs_amount_cents_check requires amount_cents >= 0');
+
+-- Run 7720 holds the sum of its mapped net payouts, 90000.
+select throws_ok(
+  $$update public.connect_payout_runs set amount_cents = -1 where id = pg_temp.mu(7720)$$,
+  '23514', null, 'a negative connect_payout_runs.amount_cents is rejected');
+select throws_ok(
+  $$update public.connect_payout_runs set amount_cents = null where id = pg_temp.mu(7720)$$,
+  '23502', null, 'a NULL connect_payout_runs.amount_cents is rejected');
+select is(
+  (select amount_cents from public.connect_payout_runs where id = pg_temp.mu(7720)),
+  90000::bigint, 'the rejected writes leave amount_cents unchanged');
+
+-- The outputs that read amount_cents keep their integer contract.
+select col_type_is('public', 'admin_connect_payout_release_view', 'payout_run_amount_cents', 'integer',
+  'the release view keeps payout_run_amount_cents integer');
+select ok(pg_get_function_result('public.fn_claim_awaiting_balance_payout_run(integer)'::regprocedure) ~ 'amount_cents integer',
+  'fn_claim_awaiting_balance_payout_run keeps returning amount_cents integer');
+select ok(pg_get_function_result('public.fn_claim_payout_create_reconciliation(integer)'::regprocedure) ~ 'amount_cents integer',
+  'fn_claim_payout_create_reconciliation keeps returning amount_cents integer');
 
 select * from finish();
 rollback;

@@ -168,7 +168,7 @@ select is(pg_temp.try_base('update public.connect_payout_runs set paid_at = now(
 -- tracks the retry that the actionability fence leaves without a path.
 select is(pg_temp.try_base($$update public.connect_payout_runs set action_required_reason = 'account_not_actionable' where id = pg_temp.mu(6201)$$),
   'refused', 'refuses a run with an action_required reason');
-select is(pg_temp.try_base($$insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount, status, actor_id, retry_of_run_id)
+select is(pg_temp.try_base($$insert into public.connect_payout_runs (id, idempotency_key, seller_id, amount_cents, status, actor_id, retry_of_run_id)
     values (pg_temp.mu(6290), 'test-run-6290', pg_temp.mu(6002), 0, 'failed', pg_temp.mu(6001), pg_temp.mu(6201))$$),
   'refused', 'refuses a run that already has a retry child');
 select is(pg_temp.try_base($$select pg_temp.money_payout_run(6292, 6002, 6001, array[]::integer[], 'failed', 'payout_failed');
@@ -202,14 +202,14 @@ select is(pg_temp.try('select 1',
 select is(pg_temp.try('select 1',
   $$select pg_temp.resume(6201, 'pending', 'pending_reconciliation', 'release_accepted', 1, array[6101, 6103])$$),
   'refused', 'refuses a list naming a shipment the run does not map');
-select is(pg_temp.try_base('update public.connect_payout_runs set amount = amount + 1 where id = pg_temp.mu(6201)'),
+select is(pg_temp.try_base('update public.connect_payout_runs set amount_cents = amount_cents + 1 where id = pg_temp.mu(6201)'),
   'refused', 'refuses a run whose amount is not the sum of its mapped net_payout_cents');
 select is(pg_temp.try_base($$update public.connect_payout_run_shipments set status = 'reconciliation_needed'
     where run_id = pg_temp.mu(6201) and shipment_id = pg_temp.mu(6102)$$),
   'refused', 'refuses a mapping whose status differs from the run');
 select is(pg_temp.try_base($$update public.connect_payout_run_shipments set net_payout_cents = 0
     where run_id = pg_temp.mu(6201) and shipment_id = pg_temp.mu(6102);
-    update public.connect_payout_runs set amount = 90000 where id = pg_temp.mu(6201)$$),
+    update public.connect_payout_runs set amount_cents = 90000 where id = pg_temp.mu(6201)$$),
   'refused', 'refuses a mapping with a zero net_payout_cents');
 select is(pg_temp.try_base('update public.shipments set seller_id = pg_temp.mu(6004) where id = pg_temp.mu(6102)'),
   'refused', 'refuses a shipment of another seller');
@@ -245,7 +245,7 @@ select is(pg_temp.try_child($$update public.connect_payout_runs set payout_claim
   'refused', 'refuses a parent with a claim lease');
 select is(pg_temp.try_child('update public.connect_payout_runs set seller_id = pg_temp.mu(6004) where id = pg_temp.mu(6211)'),
   'refused', 'refuses a parent of another seller');
-select is(pg_temp.try_child('update public.connect_payout_runs set amount = amount + 1 where id = pg_temp.mu(6211)'),
+select is(pg_temp.try_child('update public.connect_payout_runs set amount_cents = amount_cents + 1 where id = pg_temp.mu(6211)'),
   'refused', 'refuses a parent with another amount');
 select is(pg_temp.try_child($$update public.connect_payout_run_shipments set status = 'canceled' where run_id = pg_temp.mu(6211)$$),
   'refused', 'refuses a parent mapping that is not failed');

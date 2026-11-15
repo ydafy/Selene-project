@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{failedRunId}}&select=id,amount,status,release_stage,stripe_payout_id,failure_reason,failed_at,connect_payout_run_shipments(shipment_id,net_payout_cents,status)
+  url: {{baseUrl}}/rest/v1/connect_payout_runs?id=eq.{{failedRunId}}&select=id,amount_cents,status,release_stage,stripe_payout_id,failure_reason,failed_at,connect_payout_run_shipments(shipment_id,net_payout_cents,status)
   body: none
   auth: none
 }
@@ -60,7 +60,7 @@ tests {
     expect(res.getStatus()).to.equal(200);
     const run = res.getBody()[0];
     expect(run.status).to.equal("failed");
-    expect(run.amount).to.equal(210600);
+    expect(run.amount_cents).to.equal(210600);
     expect(run.stripe_payout_id).to.equal(bru.getVar("failedPayoutId"));
     expect(run.release_stage).to.equal("payout_failed");
     const evidence = JSON.parse(bru.getVar("failedStripeEvidence"));

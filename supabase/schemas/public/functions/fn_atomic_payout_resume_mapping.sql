@@ -73,7 +73,7 @@ BEGIN
   -- Child identity and complete mapping set must agree with immutable failed
   -- parent history. No parent row or parent mapping is ever updated here.
   IF p_parent_run_id IS NOT NULL THEN
-    IF v_parent.seller_id <> v_run.seller_id OR v_parent.amount <> v_run.amount
+    IF v_parent.seller_id <> v_run.seller_id OR v_parent.amount_cents <> v_run.amount_cents
       OR v_run.id = v_parent.id
       OR EXISTS (SELECT 1 FROM public.connect_payout_runs WHERE retry_of_run_id = v_parent.id AND id <> v_run.id)
     THEN RETURN NULL; END IF;
@@ -97,7 +97,7 @@ BEGIN
     INTO v_count, v_unique, v_amount
     FROM public.connect_payout_run_shipments WHERE run_id = v_run.id;
   IF v_count <> cardinality(p_shipment_ids) OR v_unique <> v_count
-    OR v_amount IS DISTINCT FROM v_run.amount::BIGINT
+    OR v_amount IS DISTINCT FROM v_run.amount_cents
     OR EXISTS (SELECT 1 FROM public.connect_payout_run_shipments m
       JOIN public.shipments s ON s.id = m.shipment_id
       WHERE m.run_id = v_run.id AND (

@@ -64,7 +64,7 @@ BEGIN
     cpr.id,
     cpr.actor_id,
     cpr.seller_id,
-    cpr.amount,
+    cpr.amount_cents::integer,
     cpr.idempotency_key,
     pp.stripe_account_id,
     cpr.payout_create_attempted_at,

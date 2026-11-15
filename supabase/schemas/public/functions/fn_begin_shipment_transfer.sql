@@ -69,7 +69,7 @@ BEGIN
     OR v_row.stripe_payment_intent_id IS NULL
     OR v_row.release_amount_cents IS NULL OR v_row.release_amount_cents <= 0
     OR v_mapping.net_payout_cents IS DISTINCT FROM v_row.release_amount_cents
-    OR v_run.amount::bigint IS DISTINCT FROM
+    OR v_run.amount_cents IS DISTINCT FROM
       (SELECT sum(net_payout_cents) FROM public.connect_payout_run_shipments WHERE run_id = p_run_id)
     OR (v_row.is_eligible IS DISTINCT FROM true AND v_row.ineligible_reason IS DISTINCT FROM 'already_released')
     OR EXISTS (SELECT 1 FROM public.connect_payout_run_shipments

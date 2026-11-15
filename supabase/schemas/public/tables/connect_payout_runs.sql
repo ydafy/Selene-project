@@ -2,7 +2,7 @@ CREATE TABLE "public"."connect_payout_runs" (
   "id"                         uuid                     NOT NULL DEFAULT gen_random_uuid(),
   "idempotency_key"            text                     NOT NULL,
   "seller_id"                  uuid                     NOT NULL,
-  "amount"                     integer                  NOT NULL,
+  "amount_cents"               bigint                   NOT NULL,
   "status"                     text                     NOT NULL DEFAULT 'pending_reconciliation'::text,
   "actor_id"                   uuid                     NOT NULL,
   "stripe_payout_id"           text,
@@ -21,7 +21,7 @@ CREATE TABLE "public"."connect_payout_runs" (
   "attempt_count"              integer                  NOT NULL DEFAULT 0,
   "last_error"                 text,
   "action_required_reason"     text,
-  CONSTRAINT "connect_payout_runs_amount_check" CHECK ((amount >= 0)),
+  CONSTRAINT "connect_payout_runs_amount_cents_check" CHECK ((amount_cents >= 0)),
   CONSTRAINT "connect_payout_runs_attempt_count_check" CHECK ((attempt_count >= 0)),
   CONSTRAINT "connect_payout_runs_release_stage_version_check" CHECK ((release_stage_version >= 1)),
   CONSTRAINT "connect_payout_runs_idempotency_key_key" UNIQUE (idempotency_key),
@@ -62,7 +62,7 @@ GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."action_required_reason" IS 'Why a run sits in the action_required stage. Only the account_not_actionable reason may be auto-resumed by a later actionable account update; every other action_required state requires an admin decision.';
 
-COMMENT ON COLUMN "public"."connect_payout_runs"."amount" IS 'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout_cents; legacy orders retain the shipment shipping_cost_cents deduction.';
+COMMENT ON COLUMN "public"."connect_payout_runs"."amount_cents" IS 'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout_cents; legacy orders retain the shipment shipping_cost_cents deduction.';
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."attempt_count" IS 'Number of executor attempts recorded for this run (deferrals increment it).';
 
