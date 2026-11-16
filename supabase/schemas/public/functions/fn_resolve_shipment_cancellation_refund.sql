@@ -73,7 +73,10 @@ BEGIN
     -- reported its refund failed or canceled, so the money is back in Selene's
     -- balance; an escalated operation without a refund may still pay out (L11).
     IF v_unrecorded_escalated THEN RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE'; END IF;
-    IF v_shipment_status IS DISTINCT FROM 'completed' THEN
+    -- A refunded shipment here had its refund succeed, then Stripe failed it
+    -- (fn_record_shipment_cancellation_refund accepts succeeded -> failed): the
+    -- admin records the repayment and nothing else changes (T5b).
+    IF v_shipment_status IS DISTINCT FROM 'completed' AND v_shipment_status IS DISTINCT FROM 'refunded' THEN
       RAISE EXCEPTION 'SHIPMENT_STATUS_UNEXPECTED: %', v_shipment_status;
     END IF;
   ELSIF v_shipment_status NOT IN ('paid', 'preparing', 'cancelled') THEN
@@ -99,8 +102,11 @@ BEGIN
 
   IF v_operation.source = 'admin_overdue_payout' THEN
     -- The completion of a succeeded overdue refund: refunded, loss, run
-    -- mappings and buyer notice, once.
-    PERFORM public.fn_complete_overdue_payout_refund(p_shipment_id);
+    -- mappings and buyer notice, once. A shipment already refunded keeps its
+    -- completion: no second loss or notice.
+    IF v_shipment_status = 'completed' THEN
+      PERFORM public.fn_complete_overdue_payout_refund(p_shipment_id);
+    END IF;
   ELSIF v_shipment_status IN ('paid', 'preparing') THEN
     -- Complete with the stored winner, reason and frozen loss, never the admin's.
     SELECT c.success, c.error_message INTO v_cancel_success, v_cancel_error
@@ -122,7 +128,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) IS 'Service-only (SECURITY DEFINER): an admin marks a failed or canceled shipment refund, or an escalated operation without a refund, as resolved with a reference (audited) and, when the shipment is still open, completes the cancellation. A failed or canceled overdue payout refund (#549) of a completed shipment is resolved the same way and refunds the shipment through fn_complete_overdue_payout_refund. The caller must have verified the admin; the amount owed is the frozen request amount.';
+COMMENT ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) IS 'Service-only (SECURITY DEFINER): an admin marks a failed or canceled shipment refund, or an escalated operation without a refund, as resolved with a reference (audited) and, when the shipment is still open, completes the cancellation. A failed or canceled overdue payout refund (#549) of a completed shipment is resolved the same way and refunds the shipment through fn_complete_overdue_payout_refund; one that Stripe failed after the shipment was refunded only records the resolution. The caller must have verified the admin; the amount owed is the frozen request amount.';
 
 REVOKE ALL ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) FROM "postgres";
 

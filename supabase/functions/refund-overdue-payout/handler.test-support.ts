@@ -202,6 +202,10 @@ export function harness(overrides: Partial<RefundOverduePayoutDeps> = {}) {
       rec.calls.push('escalate');
       return ok({ escalated: true });
     },
+    leaseReplay: async () => {
+      rec.calls.push('lease');
+      return ok({ status: 'leased', lease_expires_at: STARTED });
+    },
     complete: async () => {
       rec.calls.push('complete');
       return ok({
@@ -249,5 +253,5 @@ export const stripeCalls = (rec: Recorder) =>
   rec.calls.filter((c) => c.startsWith('stripe:'));
 export const writes = (rec: Recorder) =>
   rec.calls.filter((c) =>
-    ['claim', 'start', 'record', 'complete', 'escalate'].includes(c),
+    ['claim', 'start', 'record', 'complete', 'escalate', 'lease'].includes(c),
   );
