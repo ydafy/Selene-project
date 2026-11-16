@@ -70,6 +70,7 @@ const EXPECTED: Record<string, Mechanism> = {
   'list-shipment-refund-problems': 'user-token',
   'manage-payment-methods': 'user-token',
   'reconcile-connect-payments': 'user-token',
+  'purge-old-evidence': 'cron-secret',
   'reconcile-stripe-fees': 'cron-secret',
   'record-payout-hold-note': 'user-token',
   'refund-overdue-payout': 'user-token',
