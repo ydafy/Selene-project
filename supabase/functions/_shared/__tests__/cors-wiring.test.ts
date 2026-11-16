@@ -51,6 +51,8 @@ const NAMED_BY_ADMIN_WEB = FUNCTIONS.filter((name) =>
 const PENDING_ADMIN_WEB_CALLERS: Record<string, string> = {
   'record-payout-hold-note':
     'odd/tasks/held-payout-overdue-refund.md T6: hold-with-note dialog in the overdue payouts section',
+  'refund-overdue-payout':
+    'odd/tasks/held-payout-overdue-refund.md T6: refund confirmation for a rejected seller in the overdue payouts section',
 };
 
 const ADMIN_WEB_FUNCTIONS = [

@@ -7,6 +7,8 @@ import type {
   ConnectPayoutReleaseRequest,
   RecordPayoutHoldNoteRequest,
   RecordPayoutHoldNoteResponse,
+  RefundOverduePayoutRequest,
+  RefundOverduePayoutResponse,
   CreateDisputeRequest,
   EdgeFunctionRegistry,
   ReleaseConnectPayoutResponse,
@@ -191,6 +193,43 @@ describe('connect payout shared contracts', () => {
     expect(registryPayload).toEqual(payload);
     expect(registryResponse).toEqual(stored);
     expect(failed.error).toBe('PAYOUT_NOT_OVERDUE');
+  });
+
+  test('refund-overdue-payout takes only a shipment and returns the refund the server computed', () => {
+    const payload = {
+      shipment_id: '7b310000-0000-4000-8000-000000000011',
+    } satisfies RefundOverduePayoutRequest;
+    const refunded = {
+      status: 'refunded',
+      shipment_id: payload.shipment_id,
+      refund_id: 're_123',
+      amount_cents: 10600,
+    } satisfies RefundOverduePayoutResponse;
+    const pending = {
+      status: 'pending',
+      shipment_id: payload.shipment_id,
+      refund_id: 're_123',
+      amount_cents: 10600,
+    } satisfies RefundOverduePayoutResponse;
+    const refused = {
+      error: 'SELLER_ACCOUNT_NOT_REJECTED',
+    } satisfies RefundOverduePayoutResponse;
+    const withAmount: RefundOverduePayoutRequest = {
+      shipment_id: payload.shipment_id,
+      // @ts-expect-error the client never sends an amount
+      amount_cents: 1,
+    };
+
+    const registryPayload: EdgeFunctionRegistry['refund-overdue-payout']['payload'] =
+      payload;
+    const registryResponse: EdgeFunctionRegistry['refund-overdue-payout']['response'] =
+      pending;
+
+    expect(registryPayload).toEqual(payload);
+    expect(registryResponse).toEqual(pending);
+    expect(refunded.status).toBe('refunded');
+    expect(refused.error).toBe('SELLER_ACCOUNT_NOT_REJECTED');
+    expect(withAmount.shipment_id).toBe(payload.shipment_id);
   });
 
   test('create-dispute contract requires shipment context for multi-seller safety', () => {
