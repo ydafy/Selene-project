@@ -34,6 +34,14 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'CARRIER_CANCELLATION_NOT_CONFIRMED';
   END IF;
+  -- The overdue payout refund (#549) exists only for a seller Stripe rejected;
+  -- the account may have changed since the claim.
+  IF v_operation.source = 'admin_overdue_payout' AND NOT EXISTS (
+    SELECT 1 FROM public.shipments s JOIN public.profiles_private pp ON pp.id = s.seller_id
+    WHERE s.id = p_shipment_id AND pp.stripe_onboarding_status = 'rejected'
+  ) THEN
+    RAISE EXCEPTION 'SELLER_ACCOUNT_NOT_REJECTED';
+  END IF;
   SELECT COALESCE(s.stripe_payment_intent_id, o.stripe_payment_intent_id)
     INTO v_payment_intent_id
     FROM public.shipments s JOIN public.orders o ON o.id = s.order_id
@@ -61,7 +69,8 @@ BEGIN
      OR v_metadata->>'shipment_id' IS DISTINCT FROM p_shipment_id::text
      OR v_metadata->>'order_id' IS DISTINCT FROM v_operation.order_id::text
      OR v_metadata->>'caller_role' IS DISTINCT FROM
-       (CASE WHEN v_operation.source IN ('buyer', 'seller') THEN v_operation.source ELSE 'system' END)
+       (CASE WHEN v_operation.source IN ('buyer', 'seller') THEN v_operation.source
+             WHEN v_operation.source = 'admin_overdue_payout' THEN 'admin' ELSE 'system' END)
      OR jsonb_typeof(v_metadata->'reason') IS DISTINCT FROM 'string'
      OR v_metadata->>'reason' IS DISTINCT FROM v_operation.reason
      OR jsonb_typeof(v_metadata->'seguro_share_cents') IS DISTINCT FROM 'number' THEN

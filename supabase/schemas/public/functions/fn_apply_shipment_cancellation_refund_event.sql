@@ -23,6 +23,20 @@ DECLARE
 BEGIN
   IF auth.role() IS DISTINCT FROM 'service_role' THEN RAISE EXCEPTION 'UNAUTHORIZED'; END IF;
 
+  -- An overdue payout refund (#549) completes through payout runs: lock its
+  -- runs and mappings before the shipment, the order fn_complete_overdue_payout_refund
+  -- and fn_begin_shipment_transfer use. The source of a started operation never changes.
+  IF EXISTS (SELECT 1 FROM public.shipment_cancellation_operations
+    WHERE shipment_id = p_shipment_id AND source = 'admin_overdue_payout') THEN
+    PERFORM 1 FROM public.connect_payout_runs r
+      WHERE r.id IN (SELECT m.run_id FROM public.connect_payout_run_shipments m
+        WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed'))
+      ORDER BY r.id FOR UPDATE;
+    PERFORM 1 FROM public.connect_payout_run_shipments m
+      WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed')
+      ORDER BY m.id FOR UPDATE;
+  END IF;
+
   -- Same lock order as claim/start, record and fn_cancel_shipment: shipment first.
   SELECT status::text, order_id INTO v_shipment_status, v_order_id
     FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
@@ -71,7 +85,13 @@ BEGIN
     WHERE shipment_id = p_shipment_id;
   v_outcome := CASE WHEN (v_recorded->>'changed')::BOOLEAN THEN 'recorded' ELSE 'unchanged' END;
 
-  IF v_operation.refund_status = 'succeeded' AND v_shipment_status IN ('paid', 'preparing') THEN
+  IF v_operation.refund_status = 'succeeded' AND v_operation.source = 'admin_overdue_payout' THEN
+    -- The one refund of a completed shipment; a refunded one is already done.
+    IF v_shipment_status = 'completed' THEN
+      PERFORM public.fn_complete_overdue_payout_refund(p_shipment_id);
+      v_outcome := 'completed';
+    END IF;
+  ELSIF v_operation.refund_status = 'succeeded' AND v_shipment_status IN ('paid', 'preparing') THEN
     -- Complete with the stored winner, reason and frozen loss, never the event's.
     SELECT c.success, c.error_message INTO v_cancel_success, v_cancel_error
       FROM public.fn_cancel_shipment(
@@ -125,7 +145,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_apply_shipment_cancellation_refund_event"(uuid, text, text, bigint, text, text) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_apply_shipment_cancellation_refund_event"(uuid, text, text, bigint, text, text) IS 'Service-only (SECURITY DEFINER): applies a Stripe refund event to a started shipment cancellation, completes the cancellation on succeeded and notifies the buyer on failure. The amount owed is the frozen request amount, never the event.';
+COMMENT ON FUNCTION "public"."fn_apply_shipment_cancellation_refund_event"(uuid, text, text, bigint, text, text) IS 'Service-only (SECURITY DEFINER): applies a Stripe refund event to a started shipment cancellation, completes the cancellation on succeeded (an overdue payout refund through fn_complete_overdue_payout_refund) and notifies the buyer on failure. The amount owed is the frozen request amount, never the event.';
 
 REVOKE ALL ON FUNCTION "public"."fn_apply_shipment_cancellation_refund_event"(uuid, text, text, bigint, text, text) FROM "postgres";
 
