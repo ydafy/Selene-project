@@ -29,7 +29,7 @@ A cron-invoked function runs with `verify_jwt = false` in `supabase/config.toml`
 ## Sentry
 
 - Wrap every handler: `Deno.serve(withSentry('<folder-name>', handler))` from `_shared/sentry.ts`. It reports thrown errors and 5xx responses only, never bodies, headers, URLs, or user data. Do not call the Sentry SDK directly.
-- `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs; it is the only Sentry Cron Monitor the plan allows. A cron job is declared in `supabase/schemas/_cluster/misc.sql` and needs a schedule `cron-watchdog/health.ts` supports; `scripts/guards/cron-jobs.ts` checks it.
+- `cron-watchdog` checks every pg_cron job through `fn_cron_health()` and reports failed or overdue jobs and jobs whose latest HTTP call failed (`http-failed`); it is the only Sentry Cron Monitor the plan allows. A cron job is declared in `supabase/schemas/_cluster/misc.sql` and needs a schedule `cron-watchdog/health.ts` supports; `scripts/guards/cron-jobs.ts` checks it.
 - `SENTRY_DSN` is a Supabase secret; locally it lives in `supabase/functions/.env` with `SENTRY_ENVIRONMENT=local`. Without a DSN the helper does nothing.
 
 ## Deploy and drift check

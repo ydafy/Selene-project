@@ -17,6 +17,9 @@ type Row = {
   active: boolean;
   last_start: Date | null;
   last_status: string | null;
+  last_http_status: number | null;
+  last_http_failed_at: Date | null;
+  last_http_error: string | null;
 };
 
 function databaseUrl(): string {
@@ -133,6 +136,9 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         active: true,
         last_start: null,
         last_status: null,
+        last_http_status: null,
+        last_http_failed_at: null,
+        last_http_error: null,
       });
     },
   ],
