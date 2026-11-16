@@ -1,0 +1,130 @@
+meta {
+  name: overdue-refund-order-card
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_create_shipments_from_single_payment
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !/^(sk|rk)_test_/.test(bru.getProcessEnv("STRIPE_SECRET_KEY") || "")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const stripe = async (method, path, params) => {
+      const form = Object.entries(params || {}).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v)).join("&");
+      let res;
+      try {
+        res = await bru.sendRequest({
+          method,
+          url: "https://api.stripe.com/v1/" + path,
+          headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Content-Type": "application/x-www-form-urlencoded" },
+          data: form,
+        });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe " + method + " " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    const base = Date.now();
+    const uuid = (n) => "00000000-0000-4000-8a36-" + (base * 64 + n).toString(16).padStart(12, "0");
+    const key = bru.getEnvVar("secretKey");
+    let listing;
+    try {
+      listing = await bru.sendRequest({
+        method: "POST",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/products",
+        headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
+        data: { ...JSON.parse(bru.getVar("sandboxListingTemplate")), seller_id: bru.getVar("overdueSellerId"), status: "reserved" },
+      });
+    } catch (error) {
+      listing = error.response || { status: 0, data: String(error) };
+    }
+    if (listing.status !== 201) {
+      throw new Error("the overdue seller's listing could not be created: " + listing.status + " " + JSON.stringify(listing.data));
+    }
+    const orderId = uuid(1);
+    const shipmentId = uuid(2);
+    const intent = await stripe("POST", "payment_intents", {
+      amount: "251000",
+      currency: "mxn",
+      payment_method: "pm_card_bypassPending",
+      confirm: "true",
+      "automatic_payment_methods[enabled]": "true",
+      "automatic_payment_methods[allow_redirects]": "never",
+      transfer_group: "selene_order_" + orderId,
+      "metadata[purpose]": "bruno-sandbox-overdue-refund",
+    });
+    if (intent.status !== "succeeded") throw new Error("the sandbox charge did not succeed: " + intent.status);
+    // The balance transaction of an automatic_async capture appears shortly after confirm.
+    let charge = null;
+    for (let attempt = 0; attempt < 15 && !(charge && charge.balance_transaction); attempt += 1) {
+      if (attempt > 0) await bru.sleep(1000);
+      charge = await stripe("GET", "charges/" + intent.latest_charge);
+    }
+    if (!charge.balance_transaction) throw new Error("the sandbox charge has no balance transaction after 15 attempts: " + charge.id);
+    bru.setVar("overdueCardOrderId", orderId);
+    bru.setVar("overdueCardShipmentId", shipmentId);
+    bru.setVar("overdueCardIntentId", intent.id);
+    req.setBody({
+      p_stripe_payment_intent_id: intent.id,
+      p_stripe_charge_id: intent.latest_charge,
+      p_amount_received: 251000,
+      p_transfer_group: "selene_order_" + orderId,
+      p_allocation: {
+        buyer_id: bru.getVar("sandboxBuyerId"),
+        address_id: bru.getVar("sandboxAddressId"),
+        order_id: orderId,
+        rows: [
+          {
+            seller_id: bru.getVar("overdueSellerId"),
+            shipment_id: shipmentId,
+            product_ids: [listing.data[0].id],
+            gross_cents: 240000,
+            commission_cents: 14400,
+            shipping_cents: 15000,
+            seguro_cents: 11000,
+            net_cents: 210600,
+          },
+        ],
+      },
+    });
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a real card charge becomes a paid order of the rejected seller", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({
+      success: true,
+      order_id: bru.getVar("overdueCardOrderId"),
+      status: "created",
+    });
+  });
+}
+
+docs {
+  A MXN 2510.00 card charge (pm_card_bypassPending, so the platform balance can pay the refund at
+  once) turned into an order with one shipment of the rejected seller, as the
+  payment_intent.succeeded webhook does (amounts as in release-order-from-real-charge).
+}

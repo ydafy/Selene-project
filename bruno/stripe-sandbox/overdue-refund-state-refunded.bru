@@ -1,0 +1,110 @@
+meta {
+  name: overdue-refund-state-refunded
+  type: http
+  seq: 30
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=eq.{{overdueCardShipmentId}}&select=status,stripe_transfer_id,orders(status,actual_stripe_fee_cents,cancellation_loss_cents)
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !bru.getProcessEnv("STRIPE_SECRET_KEY")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const key = bru.getEnvVar("secretKey");
+    const rest = async (path) =>
+      (await bru.sendRequest({
+        method: "GET",
+        url: bru.getEnvVar("baseUrl") + "/rest/v1/" + path,
+        headers: { apikey: key, Authorization: "Bearer " + key },
+      })).data;
+    const shipmentId = bru.getVar("overdueCardShipmentId");
+    bru.setVar("overdueCardNotices", JSON.stringify(
+      await rest("notifications?user_id=eq." + bru.getVar("sandboxBuyerId") + "&source_event_key=like.shipment.refund*" + shipmentId + "*&select=event_kind,title,message"),
+    ));
+    bru.setVar("overdueCardAudits", JSON.stringify(
+      await rest("admin_audit_logs?target_id=eq." + shipmentId + "&action_type=eq.OVERDUE_PAYOUT_REFUND_CLAIMED&select=admin_id"),
+    ));
+    let refunds;
+    try {
+      refunds = await bru.sendRequest({
+        method: "GET",
+        url: "https://api.stripe.com/v1/refunds?payment_intent=" + bru.getVar("overdueCardIntentId"),
+        headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY") },
+      });
+    } catch (error) {
+      refunds = error.response;
+    }
+    if (!refunds || refunds.status !== 200 || refunds.data.livemode === true) throw new Error("Stripe refunds unreadable");
+    bru.setVar("overdueCardStripeRefunds", JSON.stringify(refunds.data.data.map((r) => ({
+      id: r.id,
+      amount: r.amount,
+      status: r.status,
+      caller_role: r.metadata.caller_role,
+      shipment_id: r.metadata.shipment_id,
+      reason: r.metadata.reason,
+      seguro_share_cents: r.metadata.seguro_share_cents,
+    }))));
+  }
+}
+
+tests {
+  test("the shipment is refunded, never transferred, and the order follows", function () {
+    expect(res.getStatus()).to.equal(200);
+    const shipment = res.getBody()[0];
+    expect(shipment.status).to.equal("refunded");
+    expect(shipment.stripe_transfer_id).to.equal(null);
+    expect(shipment.orders.status).to.equal("refunded");
+  });
+
+  test("Selene records the actual Stripe fee of the charge as its loss", function () {
+    const order = res.getBody()[0].orders;
+    expect(order.actual_stripe_fee_cents).to.be.above(0);
+    expect(order.cancellation_loss_cents).to.equal(order.actual_stripe_fee_cents);
+  });
+
+  test("Stripe has exactly one refund of the shipment, tagged as the admin's", function () {
+    expect(JSON.parse(bru.getVar("overdueCardStripeRefunds"))).to.deep.equal([
+      {
+        id: bru.getVar("overdueCardRefundId"),
+        amount: 251000,
+        status: "succeeded",
+        caller_role: "admin",
+        shipment_id: bru.getVar("overdueCardShipmentId"),
+        reason: "overdue_payout_seller_rejected",
+        seguro_share_cents: "11000",
+      },
+    ]);
+  });
+
+  test("the buyer gets one refund notice and the claim is audited", function () {
+    expect(JSON.parse(bru.getVar("overdueCardNotices"))).to.deep.equal([
+      {
+        event_kind: "shipment.refunded",
+        title: "Te devolvimos tu dinero",
+        message: "Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.",
+      },
+    ]);
+    expect(JSON.parse(bru.getVar("overdueCardAudits"))).to.deep.equal([
+      { admin_id: "00000000-0000-4000-8000-000000000001" },
+    ]);
+  });
+}
+
+docs {
+  Reads back the side effects of overdue-refund-payout-refunded: the shipment and order status,
+  the fee loss (the one shipment carries the whole fee, read from the charge's balance
+  transaction because the order had none), the refund in the sandbox and the buyer notice.
+}

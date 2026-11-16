@@ -1,0 +1,33 @@
+meta {
+  name: refund-overdue-payout-unknown-shipment
+  type: http
+  seq: 187
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refund-overdue-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "shipment_id": "00000000-0000-4000-8000-0000ffffffff"
+  }
+}
+
+tests {
+  test("an unknown shipment is SHIPMENT_NOT_FOUND", function () {
+    expect(res.getStatus()).to.equal(404);
+    expect(res.getBody()).to.deep.equal({ error: "SHIPMENT_NOT_FOUND" });
+  });
+}
+
+docs {
+  Run after functions/login-admin.
+}

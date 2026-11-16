@@ -1,0 +1,50 @@
+meta {
+  name: refund-overdue-payout-nothing-stored
+  type: http
+  seq: 191
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/shipments?id=in.({{roRecentShipment}},{{roOldShipment}})&select=id,status,stripe_transfer_id&order=completed_at.asc
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+script:pre-request {
+  const key = bru.getEnvVar("secretKey");
+  const audit = await bru.sendRequest({
+    method: "GET",
+    url:
+      bru.getEnvVar("baseUrl") +
+      "/rest/v1/admin_audit_logs?action_type=eq.OVERDUE_PAYOUT_REFUND_CLAIMED&target_id=in.(" +
+      bru.getVar("roRecentShipment") + "," + bru.getVar("roOldShipment") + ")&select=id",
+    headers: { apikey: key, Authorization: "Bearer " + key },
+  });
+  bru.setVar("roClaimAudits", JSON.stringify(audit.data));
+}
+
+tests {
+  test("the refusals left both shipments completed and untouched", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().map((s) => [s.status, s.stripe_transfer_id])).to.deep.equal([
+      ["completed", null],
+      ["completed", null],
+    ]);
+  });
+
+  test("no refund was claimed: the claim audits in the same transaction as its operation", function () {
+    expect(JSON.parse(bru.getVar("roClaimAudits"))).to.deep.equal([]);
+  });
+}
+
+docs {
+  Local stack only. Reads back that the refused requests above claimed nothing: both shipments are
+  still completed and there is no OVERDUE_PAYOUT_REFUND_CLAIMED audit row, which
+  fn_claim_overdue_payout_refund writes with the shipment_cancellation_operations row (that table
+  has no grant for the Data API).
+}

@@ -1,0 +1,64 @@
+meta {
+  name: refund-overdue-setup-seller
+  type: http
+  seq: 181
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{roSellerId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const key = bru.getEnvVar("secretKey");
+  const base = Date.now();
+  let user;
+  try {
+    user = await bru.sendRequest({
+      method: "POST",
+      url: bru.getEnvVar("baseUrl") + "/auth/v1/admin/users",
+      headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      data: { email: "bruno-refund-overdue-seller-" + base + "@selene.local", password: "password123", email_confirm: true },
+    });
+  } catch (error) {
+    user = error.response || { status: 0, data: String(error) };
+  }
+  if (user.status !== 200) throw new Error("the throwaway seller could not be created: " + user.status);
+  const id = (n) => "00000000-0000-4000-8000-" + (base * 64 + n).toString(16).padStart(12, "0");
+  bru.setVar("roSellerId", user.data.id);
+  bru.setVar("roRecentOrder", id(50));
+  bru.setVar("roRecentShipment", id(51));
+  bru.setVar("roOldOrder", id(52));
+  bru.setVar("roOldShipment", id(53));
+  bru.setVar("roRecentCompletedAt", new Date(base - 5 * 24 * 3600 * 1000).toISOString());
+  bru.setVar("roOldCompletedAt", new Date(base - 40 * 24 * 3600 * 1000).toISOString());
+}
+
+body:json {
+  {
+    "stripe_account_id": "acct_local_bruno_refund_overdue",
+    "stripe_onboarding_status": "rejected"
+  }
+}
+
+tests {
+  test("a throwaway seller with a rejected Connect account exists", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal("rejected");
+  });
+}
+
+docs {
+  Local stack only. Starts the refund-overdue-payout refusals (#549, T5). A throwaway seller keeps
+  the seeded accounts untouched; the account id is a placeholder and no request here reaches
+  Stripe: every refusal below happens before the live account check. The Stripe sandbox folder
+  drives the refund itself.
+}

@@ -1,0 +1,34 @@
+meta {
+  name: refund-overdue-cleanup-shipments
+  type: http
+  seq: 192
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/shipments?id=in.({{roRecentShipment}},{{roOldShipment}})
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "status": "cancelled"
+  }
+}
+
+tests {
+  test("both fixture shipments are closed and leave the payout queue", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(2);
+  });
+}
+
+docs {
+  Local stack only. Closes this run's shipments so they leave the overdue bucket.
+}

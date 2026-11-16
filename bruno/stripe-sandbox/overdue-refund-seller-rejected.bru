@@ -1,0 +1,101 @@
+meta {
+  name: overdue-refund-seller-rejected
+  type: http
+  seq: 25
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{overdueSellerId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  if (
+    bru.getProcessEnv("BRUNO_STRIPE_SANDBOX") !== "1" ||
+    !bru.getProcessEnv("BRUNO_STRIPE_TEST_ACCOUNT_ID") ||
+    !/^(sk|rk)_test_/.test(bru.getProcessEnv("STRIPE_SECRET_KEY") || "")
+  ) {
+    bru.runner.skipRequest();
+  } else {
+    const stripe = async (method, path, params) => {
+      const form = Object.entries(params || {}).map(([k, v]) => encodeURIComponent(k) + "=" + encodeURIComponent(v)).join("&");
+      let res;
+      try {
+        res = await bru.sendRequest({
+          method,
+          url: "https://api.stripe.com/v1/" + path,
+          headers: { Authorization: "Bearer " + bru.getProcessEnv("STRIPE_SECRET_KEY"), "Content-Type": "application/x-www-form-urlencoded" },
+          data: form,
+        });
+      } catch (error) {
+        res = error.response;
+        if (!res) throw new Error("Stripe " + path + " unreachable");
+      }
+      if (res.status !== 200 || res.data.livemode === true) {
+        throw new Error("Stripe " + method + " " + path + ": " + res.status + " " + ((res.data.error || {}).code || ""));
+      }
+      return res.data;
+    };
+    // A connected account the platform controls (it pays fees and losses), so the platform can
+    // reject it; Stripe then reports requirements.disabled_reason rejected.platform_other.
+    const account = await stripe("POST", "accounts", {
+      country: "MX",
+      "controller[losses][payments]": "application",
+      "controller[fees][payer]": "application",
+      "controller[stripe_dashboard][type]": "none",
+      "controller[requirement_collection]": "application",
+      "capabilities[transfers][requested]": "true",
+      "metadata[purpose]": "bruno-sandbox-overdue-refund",
+    });
+    const rejected = await stripe("POST", "accounts/" + account.id + "/reject", { reason: "other" });
+    bru.setVar("overdueAccountId", account.id);
+    bru.setVar("overdueDisabledReason", rejected.requirements.disabled_reason);
+
+    const key = bru.getEnvVar("secretKey");
+    let user;
+    try {
+      user = await bru.sendRequest({
+        method: "POST",
+        url: bru.getEnvVar("baseUrl") + "/auth/v1/admin/users",
+        headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json" },
+        data: { email: "bruno-sandbox-overdue-seller-" + Date.now() + "@selene.local", password: "password123", email_confirm: true },
+      });
+    } catch (error) {
+      user = error.response || { status: 0, data: String(error) };
+    }
+    if (user.status !== 200) throw new Error("the overdue seller could not be created: " + user.status);
+    bru.setVar("overdueSellerId", user.data.id);
+    req.setBody({ stripe_account_id: account.id, stripe_onboarding_status: "rejected" });
+  }
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("Stripe reports the new connected account rejected", function () {
+    expect(bru.getVar("overdueDisabledReason")).to.match(/^rejected\./);
+  });
+
+  test("the throwaway seller points at the rejected account", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    expect(res.getBody()[0].stripe_account_id).to.equal(bru.getVar("overdueAccountId"));
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal("rejected");
+  });
+}
+
+docs {
+  Starts the overdue payout refund flow (#549, T5). Each run creates a sandbox connected account
+  the platform controls and rejects it (POST /v1/accounts/:id/reject, reason other), so Stripe
+  reports requirements.disabled_reason rejected.platform_other: the persistent test account is
+  never rejected. The seller's stored status is set as the account.updated webhook would set it.
+}
