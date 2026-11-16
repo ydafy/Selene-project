@@ -9,7 +9,7 @@
 -- so the list sees only this file's orders (ids starting with e5000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(24);
+select plan(32);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -37,10 +37,18 @@ update public.orders set evidence_purged_at = now() where evidence_purged_at is 
 --   b8 no shipments: never a candidate.
 --   b9 cancelled shipment updated 125 days ago (no completed_at), completed
 --      shipment completed 300 days ago but updated 2 days ago: closed 125 days ago.
+--   b10-b13 a shipment completed 200 days ago, held: b10 by a second shipment in
+--      status dispute, b11 by a waiting_return dispute, b12 by a return_delivered
+--      dispute, b13 by an open dispute with no shipment_id.
+--   b14 completed exactly 120 days ago: not past the retention yet.
 insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
 select ('e5000000-0000-4000-8000-0000000b000' || n)::uuid,
   'e5000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb
 from generate_series(1, 9) as n;
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
+select ('e5000000-0000-4000-8000-0000000b00' || n)::uuid,
+  'e5000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb
+from generate_series(10, 14) as n;
 
 insert into public.shipments (id, order_id, seller_id, status, completed_at, updated_at, stripe_payment_intent_id)
 values
@@ -65,7 +73,19 @@ values
   ('e5000000-0000-4000-8000-0000000c0009', 'e5000000-0000-4000-8000-0000000b0009', 'e5000000-0000-4000-8000-000000000002',
     'cancelled', null, now() - interval '125 days', 'pi_test_evp_9'),
   ('e5000000-0000-4000-8000-0000000c0019', 'e5000000-0000-4000-8000-0000000b0009', 'e5000000-0000-4000-8000-000000000002',
-    'completed', now() - interval '300 days', now() - interval '2 days', 'pi_test_evp_19');
+    'completed', now() - interval '300 days', now() - interval '2 days', 'pi_test_evp_19'),
+  ('e5000000-0000-4000-8000-0000000c0100', 'e5000000-0000-4000-8000-0000000b0010', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '200 days', now() - interval '200 days', 'pi_test_evp_100'),
+  ('e5000000-0000-4000-8000-0000000c0101', 'e5000000-0000-4000-8000-0000000b0010', 'e5000000-0000-4000-8000-000000000002',
+    'dispute', null, now() - interval '200 days', 'pi_test_evp_101'),
+  ('e5000000-0000-4000-8000-0000000c0110', 'e5000000-0000-4000-8000-0000000b0011', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '200 days', now() - interval '200 days', 'pi_test_evp_110'),
+  ('e5000000-0000-4000-8000-0000000c0120', 'e5000000-0000-4000-8000-0000000b0012', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '200 days', now() - interval '200 days', 'pi_test_evp_120'),
+  ('e5000000-0000-4000-8000-0000000c0130', 'e5000000-0000-4000-8000-0000000b0013', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '200 days', now() - interval '200 days', 'pi_test_evp_130'),
+  ('e5000000-0000-4000-8000-0000000c0140', 'e5000000-0000-4000-8000-0000000b0014', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '120 days', now() - interval '120 days', 'pi_test_evp_140');
 
 -- The dispute insert triggers need the service role claim and a shipment_id; the
 -- order-level disputes (shipment_id NULL) drop it afterwards.
@@ -83,19 +103,36 @@ values
 update public.disputes set status = null, shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0005';
 update public.disputes set status = 'resolved' where id = 'e5000000-0000-4000-8000-0000000d0006';
 update public.disputes set status = 'rejected', shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0016';
+insert into public.disputes (id, order_id, buyer_id, seller_id, reason, description, shipment_id)
+values
+  ('e5000000-0000-4000-8000-0000000d0110', 'e5000000-0000-4000-8000-0000000b0011', 'e5000000-0000-4000-8000-000000000001',
+    'e5000000-0000-4000-8000-000000000002', 'damaged', 'Waiting return', 'e5000000-0000-4000-8000-0000000c0110'),
+  ('e5000000-0000-4000-8000-0000000d0120', 'e5000000-0000-4000-8000-0000000b0012', 'e5000000-0000-4000-8000-000000000001',
+    'e5000000-0000-4000-8000-000000000002', 'damaged', 'Return delivered', 'e5000000-0000-4000-8000-0000000c0120'),
+  ('e5000000-0000-4000-8000-0000000d0130', 'e5000000-0000-4000-8000-0000000b0013', 'e5000000-0000-4000-8000-000000000001',
+    'e5000000-0000-4000-8000-000000000002', 'damaged', 'Open order-level dispute', 'e5000000-0000-4000-8000-0000000c0130');
+update public.disputes set status = 'waiting_return' where id = 'e5000000-0000-4000-8000-0000000d0110';
+update public.disputes set status = 'return_delivered' where id = 'e5000000-0000-4000-8000-0000000d0120';
+update public.disputes set status = 'open', shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0130';
 
 update public.orders set evidence_purged_at = now() - interval '1 day'
 where id = 'e5000000-0000-4000-8000-0000000b0007';
 
 -- Evidence of b1 in all three folders, plus objects of b2 and of a path that only
--- shares b1's id as a prefix of its second folder.
+-- shares b1's id as a prefix of its second folder, and objects that name b1 but
+-- are not its evidence: another folder, a folder that ends in "disputes", the bare
+-- folder name with no trailing slash, and the verification bucket.
 insert into storage.objects (bucket_id, name)
 values
   ('evidence', 'disputes/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000001/defect.jpg'),
   ('evidence', 'returns/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000001/return.jpg'),
   ('evidence', 'shipments/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000002/box.jpg'),
   ('evidence', 'disputes/e5000000-0000-4000-8000-0000000b0002/e5000000-0000-4000-8000-000000000001/defect.jpg'),
-  ('evidence', 'disputes/e5000000-0000-4000-8000-0000000b0001x/e5000000-0000-4000-8000-000000000001/other.jpg');
+  ('evidence', 'disputes/e5000000-0000-4000-8000-0000000b0001x/e5000000-0000-4000-8000-000000000001/other.jpg'),
+  ('evidence', 'other/e5000000-0000-4000-8000-0000000b0001/x.jpg'),
+  ('evidence', 'xdisputes/e5000000-0000-4000-8000-0000000b0001/x.jpg'),
+  ('evidence', 'disputes/e5000000-0000-4000-8000-0000000b0001'),
+  ('verification', 'disputes/e5000000-0000-4000-8000-0000000b0001/u/x.jpg');
 
 -- Grants: service_role only.
 select ok(has_function_privilege('service_role', 'public.fn_list_evidence_purge_candidates(integer)', 'EXECUTE'),
@@ -141,6 +178,23 @@ select results_eq(
   $$select order_id from public.fn_list_evidence_purge_candidates(2)$$,
   $$values ('e5000000-0000-4000-8000-0000000b0006'::uuid), ('e5000000-0000-4000-8000-0000000b0009'::uuid)$$,
   'p_limit caps the batch and keeps the oldest closed orders');
+select results_eq(
+  $$select object_names from public.fn_list_evidence_purge_candidates(100)
+    where order_id = 'e5000000-0000-4000-8000-0000000b0001'$$,
+  $$values (array[
+      'disputes/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000001/defect.jpg',
+      'returns/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000001/return.jpg',
+      'shipments/e5000000-0000-4000-8000-0000000b0001/e5000000-0000-4000-8000-000000000002/box.jpg'])$$,
+  'object_names leaves out objects in other folders, the bare folder name and other buckets');
+select is_empty(
+  $$select order_id from public.fn_list_evidence_purge_candidates(100)
+    where order_id in ('e5000000-0000-4000-8000-0000000b0010', 'e5000000-0000-4000-8000-0000000b0011',
+                       'e5000000-0000-4000-8000-0000000b0012', 'e5000000-0000-4000-8000-0000000b0013')$$,
+  'orders held by a disputed shipment or a waiting_return, return_delivered or open order-level dispute are not listed');
+select is_empty(
+  $$select order_id from public.fn_list_evidence_purge_candidates(100)
+    where order_id = 'e5000000-0000-4000-8000-0000000b0014'$$,
+  'an order closed exactly 120 days ago is not listed');
 select throws_ok($$select * from public.fn_list_evidence_purge_candidates(0)$$,
   'P0001', 'INVALID_ARGUMENT', 'a limit below 1 is rejected');
 select throws_ok($$select * from public.fn_list_evidence_purge_candidates(101)$$,
@@ -159,6 +213,14 @@ select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0008')
   'an order without shipments is not marked');
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0007'), false,
   'an order already purged is not marked again');
+select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0010'), false,
+  'an order with a shipment in dispute is not marked');
+select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0011'), false,
+  'an order with a waiting_return dispute is not marked');
+select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0012'), false,
+  'an order with a return_delivered dispute is not marked');
+select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0013'), false,
+  'an order with an open order-level dispute is not marked');
 
 -- Marking: refused while evidence remains.
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0001'), false,
@@ -199,8 +261,17 @@ select is(
   'only the marked orders (and the one purged before) carry evidence_purged_at');
 select is(
   (select count(*) from storage.objects where bucket_id = 'evidence' and name like '%/e5000000-0000-4000-8000-0000000b000%'),
-  2::bigint,
-  'the objects of other orders are untouched');
+  5::bigint,
+  'the objects of other orders and b1''s non-evidence objects in the evidence bucket are untouched');
+select is(
+  (select array_agg(bucket_id || ':' || name order by bucket_id, name) from storage.objects
+   where name like '%e5000000-0000-4000-8000-0000000b0001'
+      or name like '%e5000000-0000-4000-8000-0000000b0001/%'),
+  array['evidence:disputes/e5000000-0000-4000-8000-0000000b0001',
+        'evidence:other/e5000000-0000-4000-8000-0000000b0001/x.jpg',
+        'evidence:xdisputes/e5000000-0000-4000-8000-0000000b0001/x.jpg',
+        'verification:disputes/e5000000-0000-4000-8000-0000000b0001/u/x.jpg'],
+  'b1 is marked while its objects outside the three evidence folders remain');
 
 set local role service_role;
 select results_eq(
