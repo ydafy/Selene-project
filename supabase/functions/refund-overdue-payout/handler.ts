@@ -159,7 +159,8 @@ export function createRefundOverduePayoutHandler(
       if (typeof requested !== 'string' || !UUID.test(requested)) {
         return fail(422, 'INVALID_SHIPMENT_ID');
       }
-      shipmentId = requested;
+      // Stored ids are lowercase and the refund plan compares them as strings.
+      shipmentId = requested.toLowerCase();
 
       const stripeCall = async <T>(
         action: string,
