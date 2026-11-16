@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -49,23 +49,30 @@ test('transfer coordination is exactly one CLI migration; no extra workflow tabl
     `${root}supabase/migrations/archive/${migrations[0]}`,
     'utf8',
   );
-  // Later migrations redefine fn_complete_shipment_transfer (seller notice, then its
-  // shipment link in expo-push-notifications T13); the harness applies the newest one.
+  // Later changes redefine fn_complete_shipment_transfer (seller notice, its shipment
+  // link, cents columns); the harness loads the current body from the declarative schema.
   const lf = (text: string) => text.replace(/\r\n/g, '\n');
-  const completeDefinition = (text: string) => {
-    const start = text.indexOf(
-      'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
-    );
-    const end = text.indexOf('\n$$;', start) + 4;
-    return { start, body: text.slice(start, end) };
+  const completeDefinition = (text: string, header: string, end: string) => {
+    const start = text.indexOf(header);
+    return {
+      start,
+      body: text.slice(start, text.indexOf(end, start) + end.length),
+    };
   };
-  const archived = completeDefinition(lf(sql));
-  const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
-    (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
+  const archived = completeDefinition(
+    lf(sql),
+    'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer(',
+    '\n$$;',
   );
-  expect(redefinitions).toHaveLength(1);
   const redefined = completeDefinition(
-    lf(readFileSync(`${root}supabase/migrations/${redefinitions[0]}`, 'utf8')),
+    lf(
+      readFileSync(
+        `${root}supabase/schemas/public/functions/fn_complete_shipment_transfer.sql`,
+        'utf8',
+      ),
+    ),
+    'CREATE OR REPLACE FUNCTION public.fn_complete_shipment_transfer (',
+    '\n$function$;',
   );
   expect(archived.start).toBeGreaterThan(-1);
   expect(redefined.start).toBeGreaterThan(-1);
@@ -78,4 +85,33 @@ test('transfer coordination is exactly one CLI migration; no extra workflow tabl
     'CREATE OR REPLACE FUNCTION public.fn_start_shipment_cancellation',
   ]);
   expect(sql).toContain('FROM PUBLIC, anon, authenticated, service_role');
+});
+
+test('harness runs the current schema; archived bodies only for the pre-transfer differential', () => {
+  const harness = readFileSync(`${root}${script}`, 'utf8');
+  const schemaPaths = [...harness.matchAll(/schema\('([^']+)'\)/g)].map(
+    (match) => match[1],
+  );
+  for (const name of [
+    'fn_begin_shipment_transfer',
+    'fn_complete_shipment_transfer',
+    'fn_claim_shipment_cancellation',
+    'fn_start_shipment_cancellation',
+    'fn_start_shipment_cancellation_refund',
+    'fn_atomic_payout_resume_mapping',
+    'fn_begin_manual_payout_create_fence',
+    'fn_get_connect_account_actionability',
+  ])
+    expect(schemaPaths).toContain(`public/functions/${name}.sql`);
+  expect(schemaPaths).toContain(
+    'public/views/admin_connect_payout_release_view.sql',
+  );
+  for (const path of schemaPaths)
+    expect(existsSync(`${root}supabase/schemas/${path}`)).toBe(true);
+  // Only the B1.1 claim/start bodies that preceded the transfer fences stay archived.
+  expect(
+    [...harness.matchAll(/supabase\/migrations\/[^'`]+/g)].map((m) => m[0]),
+  ).toEqual([
+    'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql',
+  ]);
 });
