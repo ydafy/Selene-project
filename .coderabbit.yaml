@@ -8,6 +8,13 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # Stacked PRs target the branch below them, not main; review every base branch.
+    base_branches:
+      - '.*'
+  # CodeRabbit is a required check on main: a review that errors must block the merge
+  # instead of ending neutral. Rate-limited reviews still pass; rerun with
+  # `@coderabbitai review`.
+  fail_commit_status: true
   # Generated files, lockfiles, and HTML mockups: reviewing them is noise.
   path_filters:
     - '!packages/types/src/database.types.ts'
