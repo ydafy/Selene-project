@@ -22,7 +22,7 @@ Three PRs (L7): A1 (C1, C2, C3a), A2 (C3b, C4: cron HTTP failures reach Sentry),
 - [x] T5 (S5) purge: C5a SQL (column `orders.evidence_purged_at`, candidate and mark RPCs, pgTAP, types); C5b `purge-old-evidence` Edge Function (tests, Bruno, config). Worker. PR B. Commits `bf662ab3`, `e4324cc5`, `93fd14f0`.
 - [x] T6 (S6, S7) purge cron job, guard, docs, #541 comment. Inline. PR B, C6. Commit `626bb96c`.
 - [x] T7 (S5) closed-at takes the later of `completed_at` and `updated_at` per shipment (L12, CodeRabbit Major on #631). Worker. PR B. Commits `2e19db98`, `b12d9a5c`, `14e57388`; independent verify PASS.
-- [ ] T8 (S5) the `evidence` INSERT policy refuses uploads to an order with `evidence_purged_at` set (L13, CodeRabbit Major on #631). Worker, own commit (RLS). PR B.
+- [x] T8 (S5) the `evidence` INSERT policy refuses uploads to an order with `evidence_purged_at` set (L13, CodeRabbit Major on #631). Worker, own commit (RLS). PR B. Commits `cc35332d` (INSERT and UPDATE policies, migration 20261116060334), `4ea2f807`; independent verify PASS.
 
 ## Log
 
