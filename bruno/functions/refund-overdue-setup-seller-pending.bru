@@ -1,0 +1,35 @@
+meta {
+  name: refund-overdue-setup-seller-pending
+  type: http
+  seq: 189
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.{{roSellerId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "stripe_onboarding_status": "pending"
+  }
+}
+
+tests {
+  test("the throwaway seller's onboarding is pending, not rejected", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal("pending");
+  });
+}
+
+docs {
+  Local stack only. A pending account still blocks the payout, so the 40-day shipment stays
+  overdue, but Stripe has not rejected the seller.
+}

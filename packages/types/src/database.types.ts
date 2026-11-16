@@ -3839,6 +3839,10 @@ export type Database = {
         Args: { p_shipment_id: string };
         Returns: Json;
       };
+      fn_lease_overdue_refund_replay: {
+        Args: { p_shipment_id: string };
+        Returns: Json;
+      };
       fn_list_capped_account_closures: {
         Args: { p_limit: number; p_max_attempts: number };
         Returns: {

@@ -1,0 +1,36 @@
+meta {
+  name: refund-overdue-payout-buyer
+  type: http
+  seq: 185
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refund-overdue-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("roOldShipment") });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a signed-in buyer cannot refund an overdue payout", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody()).to.deep.equal({ error: "ADMIN_ONLY" });
+  });
+}
+
+docs {
+  Run after auth/login-buyer (needs buyerToken). refund-overdue-payout-nothing-stored proves
+  nothing was written.
+}

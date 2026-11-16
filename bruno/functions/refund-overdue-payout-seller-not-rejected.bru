@@ -1,0 +1,36 @@
+meta {
+  name: refund-overdue-payout-seller-not-rejected
+  type: http
+  seq: 190
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/refund-overdue-payout
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("roOldShipment") });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("an overdue shipment of a seller who is not rejected cannot be refunded", function () {
+    expect(res.getStatus()).to.equal(409);
+    expect(res.getBody()).to.deep.equal({ error: "SELLER_ACCOUNT_NOT_REJECTED" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. The shipment is overdue (pending onboarding blocks the
+  payout), but only a rejected seller allows the refund (S3); refused before calling Stripe.
+}
