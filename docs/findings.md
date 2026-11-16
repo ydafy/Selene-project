@@ -67,7 +67,9 @@ A vulnerability affects auth, permissions, secrets, money integrity, or data exp
 
 1. Tell the maintainer in the session.
 2. Draft a private Security Advisory (`SECURITY.md`).
-3. When the maintainer confirms the fix is deployed, close the advisory yourself. Do not publish it.
+3. Fix it in a pull request against `main` in the advisory's temporary private fork, not in a PR on this repository: CodeRabbit reviews every PR here, and its comments are public. GitHub runs no status checks and no branch protection in that fork, so run locally on the fork's branch every check that `.github/workflows/ci.yml` runs, plus the checks from `AGENTS.md`, "Verifying a change".
+4. Bring the fork's branch up to date with the current `main` and rerun the checks, so the deploy does not roll back newer production code. Then deploy from that branch before merging, in the main checkout with the fork's branch checked out: migrations through `supabase/AGENTS.md`, "When a change touches Supabase", steps 3 and 4, and Edge Functions by the maintainer. This is the only exception to deploying from `main`. Merging first would publish the patch while production is still vulnerable, and longer if the deploy fails.
+5. Right after the maintainer confirms the deploy, merge that pull request into `main` from the advisory ("Merge pull request(s)") so `main` matches production again, then close the advisory yourself. Do not publish it.
 
 ```bash
 gh api -X PATCH repos/ydafy/Selene-project/security-advisories/<GHSA-id> -f state=closed
