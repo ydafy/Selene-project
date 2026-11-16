@@ -40,12 +40,12 @@ CREATE TABLE "public"."shipment_cancellation_operations" (
   CONSTRAINT "shipment_cancellation_operations_carrier_balance_consistent"
     CHECK
     ((((carrier_cancellation_outcome IS DISTINCT FROM 'accepted'::text) AND (carrier_balance_returned IS NULL) AND (carrier_balance_returned_at IS NULL) AND ((label_cost_loss_cents
-    IS NULL) OR (NOT (review_resolution IS DISTINCT FROM 'refund_approved'::text)))) OR
+    IS NULL) OR (NOT (review_resolution IS DISTINCT FROM 'refund_approved'::text)) OR (source = 'admin_overdue_payout'::text))) OR
     ((NOT (carrier_cancellation_outcome IS DISTINCT FROM 'accepted'::text)) AND (carrier_balance_returned IS NOT NULL)))),
   CONSTRAINT "shipment_cancellation_operations_carrier_balance_date" CHECK (((carrier_balance_returned_at IS NULL) OR (carrier_balance_returned IS TRUE))),
   CONSTRAINT "shipment_cancellation_operations_carrier_balance_no_loss" CHECK (((carrier_balance_returned IS NOT TRUE) OR (label_cost_loss_cents = 0))),
   CONSTRAINT "shipment_cancellation_operations_carrier_outcome_recorded" CHECK (((carrier_cancellation_outcome IS NULL) = (carrier_cancellation_recorded_at IS NULL))),
-  CONSTRAINT "shipment_cancellation_operations_check" CHECK ((((source = ANY (ARRAY['buyer'::text, 'seller'::text])) AND (actor_id IS
+  CONSTRAINT "shipment_cancellation_operations_check" CHECK ((((source = ANY (ARRAY['buyer'::text, 'seller'::text, 'admin_overdue_payout'::text])) AND (actor_id IS
     NOT NULL)) OR ((source = ANY (ARRAY['paid_timeout'::text, 'preparing_timeout'::text])) AND (actor_id IS NULL)))),
   CONSTRAINT "shipment_cancellation_operations_escalation_recorded" CHECK (((recovery_escalated_at IS NULL) = (recovery_escalation_reason IS NULL))),
   CONSTRAINT "shipment_cancellation_operations_label_cost_loss_cents_check" CHECK ((label_cost_loss_cents >= 0)),
@@ -80,7 +80,7 @@ CREATE TABLE "public"."shipment_cancellation_operations" (
     CHECK
     ((((review_resolution IS NULL) = (review_resolved_at IS NULL)) AND ((review_resolution IS NULL) = (review_resolved_by IS NULL)) AND ((review_resolution IS NULL) =
     (review_resolution_note IS NULL)))),
-  CONSTRAINT "shipment_cancellation_operations_source_check" CHECK ((source = ANY (ARRAY['buyer'::text, 'seller'::text, 'paid_timeout'::text, 'preparing_timeout'::text]))),
+  CONSTRAINT "shipment_cancellation_operations_source_check" CHECK ((source = ANY (ARRAY['buyer'::text, 'seller'::text, 'paid_timeout'::text, 'preparing_timeout'::text, 'admin_overdue_payout'::text]))),
   CONSTRAINT "shipment_cancellation_operations_shipment_id_fkey" FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE RESTRICT
 );
 
@@ -135,7 +135,7 @@ COMMENT ON COLUMN "public"."shipment_cancellation_operations"."carrier_cancellat
 
 COMMENT ON COLUMN "public"."shipment_cancellation_operations"."external_started_at" IS 'Write-ahead fence set before a possible external call. Not proof of Stripe success. Once set, no claim or repeated start authorizes another call, regardless of lease expiry.';
 
-COMMENT ON COLUMN "public"."shipment_cancellation_operations"."label_cost_loss_cents" IS 'Label cost Selene lost on this cancellation, in cents, computed by SQL: 0 when the balance was returned, shipments.label_provider_cost_cents when it was not. NULL means unknown or label not cancelled, not zero. Separate from cancellation_loss_cents (Stripe fee loss) and from the buyer refund.';
+COMMENT ON COLUMN "public"."shipment_cancellation_operations"."label_cost_loss_cents" IS 'Label cost Selene lost on this cancellation, in cents, computed by SQL: 0 when the balance was returned, shipments.label_provider_cost_cents when it was not. An admin_overdue_payout refund of a delivered shipment records shipments.label_provider_cost_cents when it completes (#549). NULL means unknown or label not cancelled, not zero. Separate from cancellation_loss_cents (Stripe fee loss) and from the buyer refund.';
 
 COMMENT ON COLUMN "public"."shipment_cancellation_operations"."late_carrier_activity_acknowledged_at" IS 'When an admin acknowledged the carrier activity recorded after the refund started. Set once by fn_acknowledge_shipment_late_carrier_activity; NULL together with the by and note columns.';
 

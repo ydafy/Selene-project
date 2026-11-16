@@ -3550,6 +3550,10 @@ export type Database = {
           kind: string;
         }[];
       };
+      fn_claim_overdue_payout_refund: {
+        Args: { p_admin_id: string; p_shipment_id: string };
+        Returns: Json;
+      };
       fn_claim_payout_create_reconciliation: {
         Args: { p_grace_seconds?: number };
         Returns: {
@@ -3631,6 +3635,10 @@ export type Database = {
           p_stripe_account_id: string;
         };
         Returns: boolean;
+      };
+      fn_complete_overdue_payout_refund: {
+        Args: { p_shipment_id: string };
+        Returns: Json;
       };
       fn_complete_payout_create_fence: {
         Args: {
