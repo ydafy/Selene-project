@@ -36,8 +36,11 @@ BEGIN
 
   IF v_shipment.status IS DISTINCT FROM 'refunded' THEN
     -- The Stripe refund must be recorded as succeeded before the database
-    -- records the shipment as refunded (S3).
-    IF v_operation.refund_status IS DISTINCT FROM 'succeeded' THEN
+    -- records the shipment as refunded (S3), unless it failed and an admin
+    -- recorded repaying the buyer by hand (fn_resolve_shipment_cancellation_refund, L11).
+    IF v_operation.refund_status IS DISTINCT FROM 'succeeded'
+       AND NOT COALESCE(v_operation.refund_resolved_at IS NOT NULL
+         AND v_operation.refund_status IN ('failed', 'canceled'), FALSE) THEN
       RAISE EXCEPTION 'REFUND_NOT_SUCCEEDED';
     END IF;
     IF v_shipment.status IS DISTINCT FROM 'completed' THEN
@@ -67,8 +70,10 @@ BEGIN
       RETURNING * INTO v_operation;
 
     -- A mapping that never started a transfer is closed. A run left with no
-    -- open mapping is closed too; one that still holds other shipments waits
-    -- for an admin, and its reason is no longer the one an account update resumes.
+    -- open mapping is closed too. A parked run that still holds other shipments
+    -- waits for an admin, and its reason is no longer the one an account update
+    -- resumes; one that already resumed may be transferring them and is left
+    -- as it is (L12).
     FOR v_mapping IN
       UPDATE public.connect_payout_run_shipments m
         SET status = 'canceled', updated_at = now()
@@ -92,12 +97,13 @@ BEGIN
               action_required_reason = 'overdue_payout_refunded',
               last_error = 'overdue_payout_refunded: ' || p_shipment_id::text,
               release_stage_version = release_stage_version + 1, updated_at = now()
-          WHERE id = v_mapping.run_id AND stripe_payout_id IS NULL
+          WHERE id = v_mapping.run_id AND stripe_payout_id IS NULL AND release_stage = 'action_required'
             AND status IN ('pending_reconciliation', 'reconciliation_needed');
       END IF;
     END LOOP;
 
-    -- The buyer notice of a refund, as the dispute refund sends it.
+    -- The buyer notice of a refund, as the dispute refund sends it, or of the
+    -- manual repayment that replaced a failed one.
     INSERT INTO public.notifications (
       user_id, event_kind, source_event_key, event_payload, type, title, message, action_path
     )
@@ -109,7 +115,10 @@ BEGIN
         'recipient_role', 'buyer'),
       'success',
       'Te devolvimos tu dinero',
-      'Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.',
+      CASE WHEN v_operation.refund_status = 'succeeded'
+        THEN 'Reembolsamos tu compra a tu método de pago. Puede tardar de 5 a 10 días hábiles en verse en tu estado de cuenta.'
+        ELSE 'El reembolso a tu método de pago no se completó, así que te devolvimos el dinero de tu compra por otro medio.'
+      END,
       '/profile/orders/' || v_shipment.order_id::text || '?shipment_id=' || p_shipment_id::text
     )
     ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
@@ -128,7 +137,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_complete_overdue_payout_refund"(uuid) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_complete_overdue_payout_refund"(uuid) IS 'Service-only (SECURITY DEFINER; EXECUTE revoked from PUBLIC, anon and authenticated because it moves a shipment to refunded and writes payout runs clients cannot touch): completes an overdue payout refund (#549) whose Stripe refund is recorded as succeeded, otherwise raises REFUND_NOT_SUCCEEDED and changes nothing. Moves the shipment from completed to refunded, adds the frozen Stripe fee loss to the order, records the label cost as lost, closes the payout run mappings that never transferred (and their run when nothing else is open), and notifies the buyer. Idempotent: a later call returns the same result.';
+COMMENT ON FUNCTION "public"."fn_complete_overdue_payout_refund"(uuid) IS 'Service-only (SECURITY DEFINER; EXECUTE revoked from PUBLIC, anon and authenticated because it moves a shipment to refunded and writes payout runs clients cannot touch): completes an overdue payout refund (#549) whose Stripe refund is recorded as succeeded, or failed and resolved by an admin who repaid the buyer by hand, otherwise raises REFUND_NOT_SUCCEEDED and changes nothing. Moves the shipment from completed to refunded, adds the frozen Stripe fee loss to the order, records the label cost as lost, closes the payout run mappings that never transferred (and their run when nothing else is open; a parked run that holds other shipments waits for an admin, a resumed one is left as it is), and notifies the buyer. Idempotent: a later call returns the same result.';
 
 REVOKE ALL ON FUNCTION "public"."fn_complete_overdue_payout_refund"(uuid) FROM "postgres";
 
