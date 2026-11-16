@@ -3713,6 +3713,9 @@ export type Database = {
         Returns: {
           active: boolean;
           jobname: string;
+          last_http_error: string;
+          last_http_failed_at: string;
+          last_http_status: number;
           last_start: string;
           last_status: string;
           schedule: string;
