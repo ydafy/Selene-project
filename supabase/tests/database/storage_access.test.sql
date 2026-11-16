@@ -14,7 +14,7 @@
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(65);
+select plan(67);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -442,6 +442,21 @@ select matches(
     'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/x.jpg'),
   'orders_pkey[^\n]*\n\s+Index Cond: \(id = .*idx_shipments_order_id[^\n]*\n\s+Index Cond: \(order_id = ',
   'the evidence overwrite policy finds the order through its primary key and the shipments order_id index');
+-- Both branches read the purge mark (L13) through orders_pkey, not a scan.
+select is(
+  (select count(*) from regexp_matches(
+    pg_temp.policy_plan('evidence_insert_order_participant', 'evidence',
+      'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/x.jpg'),
+    'orders_pkey[^\n]*\n\s+Index Cond: \(id = ', 'g')),
+  2::bigint,
+  'the evidence upload policy reads the purge mark through the orders primary key in both branches');
+select is(
+  (select count(*) from regexp_matches(
+    pg_temp.policy_plan('evidence_update_order_participant', 'evidence',
+      'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/x.jpg'),
+    'orders_pkey[^\n]*\n\s+Index Cond: \(id = ', 'g')),
+  2::bigint,
+  'the evidence overwrite policy reads the purge mark through the orders primary key in both branches');
 -- The planner folds a folder known at plan time to a constant; one that is not a
 -- uuid still plans without an error (22P02).
 select lives_ok(
