@@ -280,6 +280,11 @@ describe('create-connect-account handler', () => {
       { SELENE_CONNECT_BUSINESS_URL: 'not a url' },
       'sb_secret_x',
     ],
+    [
+      'a non-empty SELENE_CONNECT_BUSINESS_URL',
+      { SELENE_CONNECT_BUSINESS_URL: '  ' },
+      'sb_secret_x',
+    ],
   ] as const) {
     it(`answers 500 MISSING_SERVER_CONFIG without ${missing}, before any client`, async () => {
       const { handler, created, database, stripe } = harness({
@@ -375,6 +380,18 @@ describe('create-connect-account handler', () => {
       ['v2.core.accounts.create', v2AccountFor('seller@example.test')],
       manualPayoutsFor('acct_created'),
       onboardingLinkFor('acct_created'),
+    ]);
+  });
+
+  it('sends Stripe the business URL without surrounding whitespace', async () => {
+    const { handler, stripe } = harness({
+      env: { SELENE_CONNECT_BUSINESS_URL: ` ${BUSINESS_URL}\n` },
+    });
+
+    expect((await handler(request())).status).toBe(200);
+    expect(stripe.calls[0]).toEqual([
+      'v2.core.accounts.create',
+      v2AccountFor('seller@example.test'),
     ]);
   });
 

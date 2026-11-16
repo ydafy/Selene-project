@@ -44,7 +44,9 @@ tests {
 docs {
   Creates (or reuses) the seeded buyer's Stripe v2 recipient account (a user who has no account yet; the seeded seller has a fake acct_local_ id) in the sandbox and mints
   an Account Link. Open the logged URL to see which questions the hosted form asks (#550).
-  Needs STRIPE_SECRET_KEY and an HTTPS onboarding bridge or return/refresh URL in
-  supabase/functions/.env; no webhook, so stripe:listen is not needed. Run after
+  Needs STRIPE_SECRET_KEY, SELENE_CONNECT_BUSINESS_URL (a real-looking HTTPS URL; Stripe rejects
+  example.com and selene.example) and an HTTPS onboarding bridge or return/refresh URL in
+  supabase/functions/.env. After `supabase db reset` the buyer has no account again, so the next
+  run creates a new sandbox account; no webhook, so stripe:listen is not needed. Run after
   auth/login-buyer.
 }

@@ -78,10 +78,11 @@ const APP_NAME = 'selene';
 const PRODUCT_DESCRIPTION =
   'Sells used PC hardware to buyers in Mexico through the Selene marketplace.';
 
-/** The configured HTTPS Selene URL, or null when it is missing or not HTTPS. */
+/** The configured HTTPS Selene URL, trimmed, or null when it is missing or not HTTPS. */
 function parseBusinessUrl(value: string | undefined): string | null {
-  if (!value || !URL.canParse(value)) return null;
-  return new URL(value).protocol === 'https:' ? value : null;
+  const url = value?.trim();
+  if (!url || !URL.canParse(url)) return null;
+  return new URL(url).protocol === 'https:' ? url : null;
 }
 
 // Selene creates each payout itself when an admin releases a completed
