@@ -314,6 +314,21 @@ it('uses taller twenty-row attention pages without list scrolling or lateral che
     'Detalle de dispersión',
   );
 });
+it('labels a run closed by an overdue refund as a refund, never as a payment', () => {
+  const h = harness({
+    mode: 'history',
+    runs: [{ ...run, status: 'canceled', paidAt: null }],
+  });
+  expect(renderToStaticMarkup(h.render())).toContain('Cerrada por reembolso');
+  h.openDetail();
+  const html = renderToStaticMarkup(h.render());
+  expect(html).toContain('Cerrada por reembolso');
+  expect(html).toContain('el envío se reembolsó al comprador');
+  expect(html).not.toContain('Pago observado');
+  expect(html).not.toContain('Stripe informó el pago');
+  expect(html).not.toContain('Reintentar');
+});
+
 it('opens and closes existing read-only history details only through its card modal', () => {
   const h = harness({ mode: 'history', runs: [{ ...run, status: 'paid' }] });
   expect(renderToStaticMarkup(h.render())).not.toContain(
@@ -794,4 +809,19 @@ it('shows unavailable payment dates without using failure or retry dates and lea
     expect(label(h.render())).not.toContain('Fecha de pago observada');
     expect(h.calls).toEqual([]);
   }
+});
+
+it('marks a run that holds an overdue held payout, in the list and in its detail', () => {
+  const plain = harness();
+  expect(renderToStaticMarkup(plain.render())).not.toContain('vencido');
+  const marked = harness({
+    runs: [{ ...run, overdueShipmentCount: 2 }],
+  });
+  expect(renderToStaticMarkup(marked.render())).toContain('2 envíos vencidos');
+  marked.openDetail();
+  const html = renderToStaticMarkup(marked.render());
+  expect(html.match(/2 envíos vencidos/g)?.length).toBe(2);
+  expect(html).toContain('30 días o más');
+  const single = harness({ runs: [{ ...run, overdueShipmentCount: 1 }] });
+  expect(renderToStaticMarkup(single.render())).toContain('1 envío vencido');
 });

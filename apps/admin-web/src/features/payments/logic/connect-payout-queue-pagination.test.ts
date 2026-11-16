@@ -37,7 +37,13 @@ const request = { bucket: 'ready', page: 0, scope: 'page' } as const;
 const response = () => ({
   success: true,
   rows: Array.from({ length: 20 }, (_, i) => row(i)),
-  counts: { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+  counts: {
+    ready: 21,
+    overdue: 0,
+    processing: 0,
+    'action-required': 0,
+    history: 0,
+  },
   bucket: 'ready',
   scope: 'page',
   page: 0,
@@ -97,6 +103,16 @@ describe('payout queue wire validation', () => {
     ['wrong total pages', { totalPages: 1 }],
     ['wrong count', { totalGroups: 22 }],
     ['fractional count', { counts: { ...response().counts, history: 0.5 } }],
+    [
+      'four counts without overdue',
+      {
+        counts: { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+      },
+    ],
+    [
+      'negative overdue count',
+      { counts: { ...response().counts, overdue: -1 } },
+    ],
     ['truncated', { rows: [row(0)] }],
     ['unrequested selection', { selectionComplete: true }],
     ['failed', { success: false, error: 'FAILED' }],
@@ -162,7 +178,13 @@ describe('payout queue wire validation', () => {
       totalPages: 1,
       selectedGroupCount: 1,
       selectionComplete: true,
-      counts: { ready: 0, processing: 0, 'action-required': 1, history: 0 },
+      counts: {
+        ready: 0,
+        overdue: 0,
+        processing: 0,
+        'action-required': 1,
+        history: 0,
+      },
     };
     const selection = {
       bucket: 'action-required',
@@ -172,5 +194,120 @@ describe('payout queue wire validation', () => {
     expect(validatePayoutQueueResponse(input, selection).rows).toHaveLength(2);
     rows[1].is_retryable = false;
     expect(() => validatePayoutQueueResponse(input, selection)).toThrow();
+  });
+  test('rejects an overdue row inside a ready page', () => {
+    const input = response();
+    input.rows[0] = { ...row(0), is_payout_overdue: true };
+    expect(() => validatePayoutQueueResponse(input, request)).toThrow();
+  });
+});
+
+describe('overdue held payouts (#549)', () => {
+  const overdueRow = (id: number): ConnectPayoutReleaseQueueRow => ({
+    ...row(id),
+    is_eligible: false,
+    ineligible_reason: 'seller_onboarding_incomplete',
+    seller_payout_block_reason: 'onboarding_rejected',
+    days_since_completed: 40,
+    is_payout_overdue: true,
+  });
+  const overdue = { bucket: 'overdue', page: 0, scope: 'page' } as const;
+  const overdueResponse = () => ({
+    ...response(),
+    bucket: 'overdue',
+    rows: [overdueRow(1), { ...overdueRow(1), shipment_id: 'shipment-1b' }],
+    counts: { ...response().counts, overdue: 1 },
+    totalGroups: 1,
+    totalPages: 1,
+  });
+
+  test('accepts an overdue page and keeps a seller with two overdue shipments as one group', () => {
+    const result = validatePayoutQueueResponse(overdueResponse(), overdue);
+    expect(result.bucket).toBe('overdue');
+    expect(result.rows).toHaveLength(2);
+    expect(result.counts.overdue).toBe(1);
+  });
+
+  test('refuses selecting the overdue bucket: nothing in it can be released', () => {
+    expect(() =>
+      validatePayoutQueueResponse(
+        {
+          ...overdueResponse(),
+          scope: 'selection',
+          selectionComplete: true,
+          selectedGroupCount: 1,
+        },
+        { ...overdue, scope: 'selection' },
+      ),
+    ).toThrow();
+  });
+
+  test('rejects a ready row inside an overdue page', () => {
+    const input = overdueResponse();
+    input.rows[1] = { ...row(1), shipment_id: 'shipment-1b' };
+    expect(() => validatePayoutQueueResponse(input, overdue)).toThrow();
+  });
+
+  test('counts the ready and the overdue group of one seller separately', () => {
+    const input = {
+      ...response(),
+      rows: [row(1)],
+      counts: { ...response().counts, ready: 1, overdue: 1 },
+      totalGroups: 1,
+      totalPages: 1,
+    };
+    expect(validatePayoutQueueResponse(input, request).rows).toHaveLength(1);
+  });
+
+  test('keeps an overdue shipment inside a parked run in its action-required group', () => {
+    const input = {
+      ...response(),
+      bucket: 'action-required',
+      rows: [
+        {
+          ...overdueRow(1),
+          payout_run_id: 'run-parked',
+          payout_run_status: 'failed',
+        },
+      ],
+      counts: { ...response().counts, ready: 0, 'action-required': 1 },
+      totalGroups: 1,
+      totalPages: 1,
+    };
+    expect(
+      validatePayoutQueueResponse(input, {
+        bucket: 'action-required',
+        page: 0,
+        scope: 'page',
+      }).rows,
+    ).toHaveLength(1);
+  });
+
+  test('places a run closed by the overdue refund in history', () => {
+    const closed = {
+      ...row(1),
+      payout_run_id: 'run-closed',
+      payout_run_status: 'canceled',
+      payout_run_failure_reason: 'overdue_payout_refunded',
+    };
+    const input = {
+      ...response(),
+      bucket: 'history',
+      rows: [closed],
+      counts: { ...response().counts, ready: 0, history: 1 },
+      totalGroups: 1,
+      totalPages: 1,
+    };
+    const history = { bucket: 'history', page: 0, scope: 'page' } as const;
+    expect(validatePayoutQueueResponse(input, history).rows).toHaveLength(1);
+    expect(() =>
+      validatePayoutQueueResponse(
+        {
+          ...input,
+          rows: [{ ...closed, payout_run_failure_reason: 'other' }],
+        },
+        history,
+      ),
+    ).toThrow();
   });
 });
