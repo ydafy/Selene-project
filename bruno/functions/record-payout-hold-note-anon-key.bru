@@ -1,0 +1,35 @@
+meta {
+  name: record-payout-hold-note-anon-key
+  type: http
+  seq: 170
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{publishableKey}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: "Bruno: anon key" });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the publishable key is not a user session", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  The publishable key resolves to no user, so the function answers 401 before the admin check.
+}

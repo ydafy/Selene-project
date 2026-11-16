@@ -332,7 +332,13 @@ if (process.env.A65_HOOK_CHILD !== '1') {
       totalPages: 2,
       selectedGroupCount: scope === 'selection' ? 21 : 0,
       selectionComplete: scope === 'selection',
-      counts: { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+      counts: {
+        ready: 21,
+        overdue: 0,
+        processing: 0,
+        'action-required': 0,
+        history: 0,
+      },
       rows: Array.from({ length: size }, (_, i) => ({
         ...queueRow,
         seller_id: `seller-${i}`,

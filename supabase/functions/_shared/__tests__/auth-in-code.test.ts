@@ -71,6 +71,7 @@ const EXPECTED: Record<string, Mechanism> = {
   'manage-payment-methods': 'user-token',
   'reconcile-connect-payments': 'user-token',
   'reconcile-stripe-fees': 'cron-secret',
+  'record-payout-hold-note': 'user-token',
   'refresh-connect-account-status': 'user-token',
   'release-connect-payout': 'user-token',
   'resolve-dispute': 'user-token',

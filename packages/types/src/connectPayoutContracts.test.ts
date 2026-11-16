@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import type {
+  ConnectPayoutQueueBucket,
+  ConnectPayoutQueueCounts,
+  ConnectPayoutReleaseQueueResponse,
   ConnectPayoutReleaseQueueRow,
   ConnectPayoutReleaseRequest,
+  RecordPayoutHoldNoteRequest,
+  RecordPayoutHoldNoteResponse,
   CreateDisputeRequest,
   EdgeFunctionRegistry,
   ReleaseConnectPayoutResponse,
@@ -105,6 +110,87 @@ describe('connect payout shared contracts', () => {
     expect(row.ineligible_reason).toBeNull();
     expect(row.stripe_transfer_id).toBeNull();
     expect(row.transfer_group).toBe('selene_order_order-1');
+  });
+
+  test('queue counts carry the overdue bucket next to the other four', () => {
+    const counts = {
+      ready: 2,
+      overdue: 1,
+      processing: 0,
+      'action-required': 0,
+      history: 3,
+    } satisfies ConnectPayoutQueueCounts;
+    const bucket: ConnectPayoutQueueBucket = 'overdue';
+    const response = {
+      success: true,
+      rows: [],
+      counts,
+      bucket,
+      scope: 'page',
+      page: 0,
+      pageSize: 20,
+      totalGroups: 1,
+      totalPages: 1,
+      selectedGroupCount: 0,
+      selectionComplete: false,
+    } satisfies EdgeFunctionRegistry['get-connect-payout-release-queue']['response'] &
+      ConnectPayoutReleaseQueueResponse;
+    const request = {
+      bucket: 'overdue',
+      page: 0,
+    } satisfies EdgeFunctionRegistry['get-connect-payout-release-queue']['payload'];
+
+    expect(Object.keys(response.counts).sort()).toEqual([
+      'action-required',
+      'history',
+      'overdue',
+      'processing',
+      'ready',
+    ]);
+    expect(request.bucket).toBe('overdue');
+  });
+
+  test('queue rows carry the overdue flag and the latest hold note', () => {
+    const fields = {
+      is_payout_overdue: true,
+      latest_hold_note: 'Stripe sigue revisando la cuenta',
+      latest_hold_noted_at: '2026-11-14T05:27:34.123456+00:00',
+      latest_hold_noted_by: '00000000-0000-4000-8000-000000000001',
+    } satisfies Pick<
+      ConnectPayoutReleaseQueueRow,
+      | 'is_payout_overdue'
+      | 'latest_hold_note'
+      | 'latest_hold_noted_at'
+      | 'latest_hold_noted_by'
+    >;
+
+    expect(fields.is_payout_overdue).toBe(true);
+  });
+
+  test('record-payout-hold-note takes a shipment and a note and returns the stored note', () => {
+    const payload = {
+      shipment_id: '7b310000-0000-4000-8000-000000000011',
+      note: 'Stripe sigue revisando la cuenta',
+    } satisfies RecordPayoutHoldNoteRequest;
+    const stored = {
+      id: '9c000000-0000-4000-8000-000000000001',
+      shipment_id: payload.shipment_id,
+      note: payload.note,
+      noted_at: '2026-11-14T05:27:34.123456+00:00',
+      noted_by: '00000000-0000-4000-8000-000000000001',
+    } satisfies RecordPayoutHoldNoteResponse;
+    const failed = {
+      error: 'PAYOUT_NOT_OVERDUE',
+    } satisfies RecordPayoutHoldNoteResponse;
+
+    const registryPayload: EdgeFunctionRegistry['record-payout-hold-note']['payload'] =
+      payload;
+    const registryResponse: EdgeFunctionRegistry['record-payout-hold-note']['response'] =
+      stored;
+
+    expect(registryPayload).toEqual(payload);
+    expect(registryResponse).toEqual(stored);
+    expect(failed.error).toBe('PAYOUT_NOT_OVERDUE');
   });
 
   test('create-dispute contract requires shipment context for multi-seller safety', () => {

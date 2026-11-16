@@ -1,0 +1,38 @@
+meta {
+  name: get-connect-payout-release-queue-overdue-noted
+  type: http
+  seq: 166
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "bucket": "overdue"
+  }
+}
+
+tests {
+  test("the queue shows the latest hold note and the shipment stays overdue", function () {
+    expect(res.getStatus()).to.equal(200);
+    const row = res.getBody().rows.find((r) => r.shipment_id === bru.getVar("poShipment"));
+    expect(row).to.not.equal(undefined);
+    expect(row.is_payout_overdue).to.equal(true);
+    expect(row.latest_hold_note).to.equal(bru.getVar("poNote"));
+    expect(row.latest_hold_noted_by).to.equal("00000000-0000-4000-8000-000000000001");
+    expect(Number.isNaN(Date.parse(row.latest_hold_noted_at))).to.equal(false);
+  });
+}
+
+docs {
+  Run after record-payout-hold-note-admin. Holding with a note changes nothing but the note (S2).
+}

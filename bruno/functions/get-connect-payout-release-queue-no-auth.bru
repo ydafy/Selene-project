@@ -1,0 +1,32 @@
+meta {
+  name: get-connect-payout-release-queue-no-auth
+  type: http
+  seq: 177
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  {
+    "bucket": "overdue"
+  }
+}
+
+tests {
+  test("a request without a session cannot read the overdue bucket", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "AUTH_REQUIRED" });
+  });
+}
+
+docs {
+  verify_jwt = false: the function's own check refuses the request before any queue read.
+}
