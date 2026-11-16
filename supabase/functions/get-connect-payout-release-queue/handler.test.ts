@@ -50,12 +50,24 @@ const queueRow = (seller_id = 'seller-1') =>
       'seller_payout_block_reason',
       'days_since_completed',
     ]
-      .map((key) => [key, null])
-      .concat([['seller_id', seller_id]]),
+      .map((key): [string, unknown] => [key, null])
+      .concat([
+        ['seller_id', seller_id],
+        ['is_payout_overdue', false],
+        ['latest_hold_note', null],
+        ['latest_hold_noted_at', null],
+        ['latest_hold_noted_by', null],
+      ]),
   );
 const result = (scope = 'page') => ({
   rows: Array.from({ length: 20 }, (_, i) => queueRow(`s${i}`)),
-  counts: { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+  counts: {
+    ready: 21,
+    overdue: 0,
+    processing: 0,
+    'action-required': 0,
+    history: 0,
+  },
   bucket: 'ready',
   scope,
   page: 0,
@@ -253,3 +265,177 @@ for (const [label, fields] of [
     });
     expect(calls.length).toBe(3);
   });
+
+const overdueResult = (rows = 2) => ({
+  ...result(),
+  rows: Array.from({ length: rows }, (_, i) => ({
+    ...queueRow(`seller-${i}`),
+    is_payout_overdue: true,
+    seller_payout_block_reason: 'onboarding_rejected',
+    days_since_completed: 30 + i,
+  })),
+  counts: {
+    ready: 21,
+    overdue: rows,
+    processing: 0,
+    'action-required': 0,
+    history: 0,
+  },
+  bucket: 'overdue',
+  totalGroups: rows,
+  totalPages: 1,
+});
+test('reads the overdue bucket and passes its rows through unchanged', async () => {
+  const data = overdueResult();
+  data.rows[0] = {
+    ...data.rows[0],
+    latest_hold_note: 'Esperando que Stripe revise la cuenta',
+    latest_hold_noted_at: '2026-11-14T05:27:34.123456+00:00',
+    latest_hold_noted_by: '00000000-0000-4000-8000-000000000001',
+  };
+  const { request, calls } = setup({ data });
+  const response = await request({ bucket: 'overdue', page: 0 });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ success: true, ...data });
+  expect(calls).toEqual([
+    'auth',
+    'profile',
+    ['rpc', { p_search: '', p_bucket: 'overdue', p_page: 0, p_scope: 'page' }],
+  ]);
+});
+test('an empty overdue bucket is a valid page', async () => {
+  const data = { ...overdueResult(0), totalPages: 1 };
+  const { request } = setup({ data });
+  const response = await request({ bucket: 'overdue' });
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ success: true, ...data });
+});
+test('the overdue bucket cannot be selected: nothing in it is releasable', async () => {
+  const { request, calls } = setup({ data: overdueResult() });
+  const response = await request({ bucket: 'overdue', scope: 'selection' });
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({
+    success: false,
+    error: 'QUEUE_SELECTION_NOT_ALLOWED',
+  });
+  expect(calls).toEqual(['auth', 'profile']);
+});
+const withCounts = (counts: Record<string, unknown>) => ({
+  ...result(),
+  counts,
+});
+for (const [label, counts] of [
+  [
+    'four keys without overdue',
+    { ready: 21, processing: 0, 'action-required': 0, history: 0 },
+  ],
+  [
+    'a sixth unknown key',
+    {
+      ready: 21,
+      overdue: 0,
+      processing: 0,
+      'action-required': 0,
+      history: 0,
+      extra: 0,
+    },
+  ],
+  [
+    'a negative overdue count',
+    {
+      ready: 21,
+      overdue: -1,
+      processing: 0,
+      'action-required': 0,
+      history: 0,
+    },
+  ],
+  [
+    'a string overdue count',
+    {
+      ready: 21,
+      overdue: '0',
+      processing: 0,
+      'action-required': 0,
+      history: 0,
+    },
+  ],
+] as const)
+  test(`counts must carry exactly the five buckets: ${label}`, async () => {
+    const { request, calls } = setup({ data: withCounts(counts) });
+    const response = await request({ bucket: 'ready' });
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: 'INVALID_QUEUE_RESPONSE',
+    });
+    expect(calls.length).toBe(3);
+  });
+test('the overdue total must match its count', async () => {
+  const { request } = setup({
+    data: { ...overdueResult(2), totalGroups: 3 },
+  });
+  const response = await request({ bucket: 'overdue' });
+  expect(response.status).toBe(502);
+  expect(await response.json()).toEqual({
+    success: false,
+    error: 'INVALID_QUEUE_RESPONSE',
+  });
+});
+for (const [label, fields] of [
+  ['missing is_payout_overdue', { is_payout_overdue: undefined }],
+  ['null is_payout_overdue', { is_payout_overdue: null }],
+  ['string is_payout_overdue', { is_payout_overdue: 'true' }],
+  ['missing latest_hold_note', { latest_hold_note: undefined }],
+  ['numeric latest_hold_note', { latest_hold_note: 7 }],
+  ['missing latest_hold_noted_at', { latest_hold_noted_at: undefined }],
+  ['unparsable latest_hold_noted_at', { latest_hold_noted_at: 'yesterday' }],
+  ['numeric latest_hold_noted_at', { latest_hold_noted_at: 1731561600000 }],
+  ['missing latest_hold_noted_by', { latest_hold_noted_by: undefined }],
+  ['non-uuid latest_hold_noted_by', { latest_hold_noted_by: 'admin' }],
+] as const)
+  test(`malformed overdue or hold note field fails closed: ${label}`, async () => {
+    const data = blockedRows(fields);
+    const { request, calls } = setup({
+      data: JSON.parse(JSON.stringify(data)),
+    });
+    const response = await request({ bucket: 'ready' });
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({
+      success: false,
+      error: 'INVALID_QUEUE_RESPONSE',
+    });
+    expect(calls.length).toBe(3);
+  });
+test('an overdue shipment inside a parked run stays in its run group and keeps its flag', async () => {
+  const runRow = {
+    ...queueRow('seller-run'),
+    payout_run_id: 'run-1',
+    payout_run_status: 'canceled',
+    is_payout_overdue: true,
+    seller_payout_block_reason: 'onboarding_rejected',
+    days_since_completed: 45,
+  };
+  const data = {
+    ...result(),
+    rows: [runRow, { ...runRow, shipment_id: 'shipment-2' }],
+    counts: {
+      ready: 0,
+      overdue: 0,
+      processing: 0,
+      'action-required': 1,
+      history: 0,
+    },
+    bucket: 'action-required',
+    totalGroups: 1,
+    totalPages: 1,
+  };
+  const { request } = setup({ data });
+  const response = await request({ bucket: 'action-required' });
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body).toEqual({ success: true, ...data });
+  expect(
+    body.rows.map((row: Record<string, unknown>) => row.is_payout_overdue),
+  ).toEqual([true, true]);
+});

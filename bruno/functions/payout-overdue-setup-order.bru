@@ -1,0 +1,51 @@
+meta {
+  name: payout-overdue-setup-order
+  type: http
+  seq: 162
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/orders
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const base = Date.now();
+  bru.setVar("poOrder", "00000000-0000-4000-8000-" + (base * 64 + 40).toString(16).padStart(12, "0"));
+  bru.setVar("poShipment", "00000000-0000-4000-8000-" + (base * 64 + 41).toString(16).padStart(12, "0"));
+  bru.setVar("poCompletedAt", new Date(base - 40 * 24 * 3600 * 1000).toISOString());
+  bru.setVar("poNote", "Bruno: Stripe sigue revisando la cuenta " + base);
+}
+
+body:json {
+  {
+    "id": "{{poOrder}}",
+    "buyer_id": "00000000-0000-4000-8000-000000000005",
+    "total_amount_cents": 10000,
+    "shipping_address": {
+      "street": "Av. Reforma 1",
+      "city": "Ciudad de México",
+      "zip": "06500"
+    },
+    "status": "completed"
+  }
+}
+
+tests {
+  test("the fixture order exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].id).to.equal(bru.getVar("poOrder"));
+  });
+}
+
+docs {
+  Local stack only. Fresh ids per run, owned by the fixture accounts so buyer@ and seller@ keep no
+  orders.
+}

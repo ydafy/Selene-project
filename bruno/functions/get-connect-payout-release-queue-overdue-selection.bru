@@ -1,0 +1,34 @@
+meta {
+  name: get-connect-payout-release-queue-overdue-selection
+  type: http
+  seq: 178
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/get-connect-payout-release-queue
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "bucket": "overdue",
+    "scope": "selection"
+  }
+}
+
+tests {
+  test("the overdue bucket cannot be selected for release", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody()).to.deep.equal({ success: false, error: "QUEUE_SELECTION_NOT_ALLOWED" });
+  });
+}
+
+docs {
+  Run after functions/login-admin. Nothing in the overdue bucket can be released.
+}

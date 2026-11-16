@@ -1,0 +1,43 @@
+meta {
+  name: payout-overdue-setup-shipment
+  type: http
+  seq: 163
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/shipments
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "id": "{{poShipment}}",
+    "order_id": "{{poOrder}}",
+    "seller_id": "00000000-0000-4000-8000-000000000004",
+    "status": "completed",
+    "delivered_at": "{{poCompletedAt}}",
+    "completed_at": "{{poCompletedAt}}",
+    "stripe_payment_intent_id": "pi_bruno_payout_overdue"
+  }
+}
+
+tests {
+  test("a Connect shipment completed 40 days ago and never transferred exists", function () {
+    expect(res.getStatus()).to.equal(201);
+    const shipment = res.getBody()[0];
+    expect(shipment.status).to.equal("completed");
+    expect(shipment.stripe_transfer_id).to.equal(null);
+  });
+}
+
+docs {
+  Local stack only. With the rejected seller account this shipment is overdue (S1). The payment
+  intent id is fake. payout-overdue-cleanup-shipment cancels it at the end of the run.
+}

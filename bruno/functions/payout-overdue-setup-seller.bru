@@ -1,0 +1,36 @@
+meta {
+  name: payout-overdue-setup-seller
+  type: http
+  seq: 161
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000004
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  {
+    "stripe_account_id": "acct_local_bruno_overdue",
+    "stripe_onboarding_status": "rejected"
+  }
+}
+
+tests {
+  test("the fixture seller's Connect account is rejected", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal("rejected");
+  });
+}
+
+docs {
+  Local stack only. A rejected account is the seller block that holds the payout; the account id is
+  a placeholder, never sent to Stripe (the queue reads the gate only for a complete account).
+}

@@ -1,0 +1,39 @@
+meta {
+  name: payout-overdue-cleanup-seller
+  type: http
+  seq: 180
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000004
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  req.setBody(JSON.parse(bru.getVar("poSellerBefore")));
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("the fixture seller's Connect fields are restored", function () {
+    expect(res.getStatus()).to.equal(200);
+    const before = JSON.parse(bru.getVar("poSellerBefore"));
+    expect(res.getBody()[0].stripe_account_id).to.equal(before.stripe_account_id);
+    expect(res.getBody()[0].stripe_onboarding_status).to.equal(before.stripe_onboarding_status);
+  });
+}
+
+docs {
+  Local stack only. Undoes payout-overdue-setup-seller with the values payout-overdue-read-seller
+  saved.
+}

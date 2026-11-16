@@ -8,10 +8,13 @@
 -- cancellation; fn_complete_overdue_payout_refund (directly, or through
 -- fn_apply_shipment_cancellation_refund_event) moves the shipment to refunded
 -- only after the refund succeeded, records the loss and closes the payout run
--- mapping that never transferred.
+-- mapping that never transferred. When the Stripe refund fails, an admin repays
+-- the buyer by hand through fn_resolve_shipment_cancellation_refund, which
+-- refunds the shipment through the same completion (T2b, L11); a completion
+-- leaves a run that resumed and still holds other shipments untouched (L12).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(88);
+select plan(131);
 \ir ../fixtures/money.psql
 
 create function pg_temp.complete(p_shipment integer, p_ago interval, p_label_cost bigint default 15000)
@@ -105,6 +108,29 @@ create function pg_temp.stored() returns text language sql as $$
     (select string_agg(coalesce(o.cancellation_loss_cents::text, '-'), ',' order by o.id) from public.orders o
      where o.id in (select pg_temp.mu(n) from generate_series(9201, 9217) as n))
 $$;
+create function pg_temp.resolve(p_admin integer, p_shipment integer, p_reference text default 'SPEI 7781')
+returns jsonb language sql as $$
+  select public.fn_resolve_shipment_cancellation_refund(pg_temp.mu(p_shipment), pg_temp.mu(p_admin), p_reference)
+$$;
+-- Everything a refused manual resolution must leave as it was (shipments 9101
+-- and 9114 to 9125): shipment, operation, mappings, runs, notices, audit rows and losses.
+create function pg_temp.resolution_state() returns text language sql as $$
+  select (select string_agg(s.id::text || ':' || s.status || ':' || coalesce(s.stripe_transfer_id, '-') || ':'
+      || coalesce(o.refund_status, '-') || ':' || coalesce(o.refund_resolved_at::text, '-') || ':'
+      || coalesce(o.refund_resolution_reference, '-') || ':' || coalesce(o.label_cost_loss_cents::text, '-'),
+      ',' order by s.id)
+    from public.shipments s left join public.shipment_cancellation_operations o on o.shipment_id = s.id
+    where s.id in (select pg_temp.mu(n) from generate_series(9101, 9125) as n)) || '|' ||
+    (select string_agg(m.id::text || ':' || m.status, ',' order by m.id) from public.connect_payout_run_shipments m
+     where m.shipment_id in (select pg_temp.mu(n) from generate_series(9101, 9125) as n)) || '|' ||
+    (select string_agg(r.id::text || ':' || r.status || ':' || coalesce(r.action_required_reason, '-'), ',' order by r.id)
+     from public.connect_payout_runs r where r.seller_id in (select pg_temp.mu(n) from generate_series(9011, 9015) as n)) || '|' ||
+    (select count(*) from public.notifications
+     where event_payload ->> 'shipment_id' in (select pg_temp.mu(n)::text from generate_series(9101, 9125) as n)) || '|' ||
+    (select count(*) from public.admin_audit_logs where action_type = 'SHIPMENT_REFUND_RESOLVED') || '|' ||
+    (select string_agg(coalesce(o.cancellation_loss_cents::text, '-') || ':' || o.status, ',' order by o.id) from public.orders o
+     where o.id in (select pg_temp.mu(n) from generate_series(9201, 9225) as n))
+$$;
 create function pg_temp.err(p_sql text) returns text language plpgsql as $$
 begin
   execute p_sql;
@@ -132,7 +158,8 @@ select pg_temp.money_shipment(9209, 9109, 9014, 9019);
 select pg_temp.money_shipment(n + 100, n, 9013, 9019) from generate_series(9110, 9111) as n;
 select pg_temp.money_shipment(n + 100, n, 9011, 9019) from generate_series(9112, 9116) as n;
 select pg_temp.money_shipment(9217, 9117, 9015, 9019);
-select pg_temp.complete(n, '40 days') from generate_series(9101, 9117) as n;
+select pg_temp.money_shipment(n + 100, n, 9011, 9019) from generate_series(9118, 9125) as n;
+select pg_temp.complete(n, '40 days') from generate_series(9101, 9125) as n;
 select pg_temp.complete(9102, '10 days');
 update public.shipments set status = 'delivered', completed_at = null where id = pg_temp.mu(9104);
 -- Stripe's actual fee of every order, reconciled from its balance transaction.
@@ -155,10 +182,20 @@ select pg_temp.parked_run(9309, 9014, array[9109]);
 select pg_temp.parked_run(9310, 9013, array[9110, 9111]);
 select pg_temp.parked_run(9313, 9011, array[9113]);
 select pg_temp.money_payout_run(9312, 9011, 9010, array[9112], 'pending_reconciliation', 'release_accepted');
+-- T2b: 9119 alone in parked run 9319; 9124 shares parked run 9324 with 9125.
+select pg_temp.parked_run(9319, 9011, array[9119]);
+select pg_temp.parked_run(9324, 9011, array[9124, 9125]);
+-- 9122: a buyer cancellation whose refund failed, on a shipment that is completed.
+insert into public.shipment_cancellation_operations (shipment_id, order_id, source, actor_id, reason, claim_token,
+    claim_expires_at, external_started_at, refund_request, cancellation_loss_cents, refund_id, refund_status,
+    refund_status_updated_at)
+values (pg_temp.mu(9122), pg_temp.mu(9222), 'buyer', pg_temp.mu(9019), 'Changed my mind',
+  'f0000000-0000-4000-8000-000000097122', now() - interval '1 day', now() - interval '1 day',
+  jsonb_build_object('payment_intent', 'pi_test_9222', 'amount', 11000), 300, 're_test_9122', 'failed', now());
 
 -- The RPCs check the service_role claim; the assertions read tables only the
 -- owner can, so the file runs as the owner and proves the grants at the end
--- (section 12) and one webhook call as service_role (section 9).
+-- (section 14) and one webhook call as service_role (section 9).
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 
 -- 1. The claim refuses, and stores nothing. ---------------------------------------
@@ -383,7 +420,127 @@ select throws_ok(format('select pg_temp.start(9117, %L::jsonb)', (select value f
 select is((select external_started_at from public.shipment_cancellation_operations where shipment_id = pg_temp.mu(9117)),
   null, 'a refused start leaves the fence unset');
 
--- 12. Grants. ----------------------------------------------------------------------
+-- 12. A failed overdue refund is repaid by hand (L11). -----------------------------
+-- 9118: the refund is still pending. 9123: started, Stripe has no refund, recovery escalated.
+-- 9119: alone in a parked run, its refund failed.
+create temporary table claim_9118 as select pg_temp.claim(9010, 9118) as value;
+select lives_ok(format('select pg_temp.start(9118, %L::jsonb)', (select value from claim_9118)), 'the refund of 9118 starts');
+select is(pg_temp.rec(9118, 're_test_9118', 'pending') ->> 'refund_status', 'pending', 'the refund of 9118 is pending');
+create temporary table claim_9123 as select pg_temp.claim(9010, 9123) as value;
+select lives_ok(format('select pg_temp.start(9123, %L::jsonb)', (select value from claim_9123)), 'the refund of 9123 starts');
+select is(public.fn_escalate_shipment_cancellation(pg_temp.mu(9123), 'refund_not_found') ->> 'escalated', 'true',
+  'the recovery of 9123 found no refund at Stripe and escalated');
+create temporary table claim_9119 as select pg_temp.claim(9010, 9119) as value;
+select lives_ok(format('select pg_temp.start(9119, %L::jsonb)', (select value from claim_9119)), 'the refund of 9119 starts');
+select is(pg_temp.apply(9119, 're_test_9119', 'canceled') ->> 'outcome', 'failed_before_cancellation',
+  'the refund of 9119 was canceled');
+
+create temporary table before_resolution_refusals as select pg_temp.resolution_state() as value;
+select throws_ok($$select pg_temp.resolve(9019, 9114)$$, 'P0001', 'ADMIN_REQUIRED',
+  'a user who is not an admin cannot record a manual repayment');
+select throws_ok($$select pg_temp.resolve(9018, 9114)$$, 'P0001', 'ADMIN_REQUIRED',
+  'a suspended admin cannot record a manual repayment');
+select throws_ok($$select pg_temp.resolve(9010, 9114, '   ')$$, 'P0001', 'INVALID_RESOLUTION_REFERENCE',
+  'a manual repayment needs a reference');
+select throws_ok($$select pg_temp.resolve(9010, 9118)$$, 'P0001', 'REFUND_NOT_RESOLVABLE',
+  'an overdue refund still pending at Stripe cannot be repaid by hand');
+select throws_ok($$select pg_temp.resolve(9010, 9101)$$, 'P0001', 'REFUND_NOT_RESOLVABLE',
+  'an overdue refund that succeeded cannot be repaid by hand');
+select throws_ok($$select pg_temp.resolve(9010, 9123)$$, 'P0001', 'REFUND_NOT_RESOLVABLE',
+  'an overdue refund with no failed Stripe refund cannot be repaid by hand');
+select throws_ok($$select pg_temp.resolve(9010, 9117)$$, 'P0001', 'REFUND_NOT_RESOLVABLE',
+  'an overdue refund that never started cannot be repaid by hand');
+select throws_ok($$select pg_temp.resolve(9010, 9122)$$, 'P0001', 'SHIPMENT_STATUS_UNEXPECTED: completed',
+  'a failed buyer cancellation refund of a completed shipment is still refused');
+select is(pg_temp.resolution_state(), (select value from before_resolution_refusals),
+  'refused manual repayments leave every stored row unchanged');
+
+create temporary table resolved_9114 as select pg_temp.resolve(9010, 9114, '  SPEI 7781  ') as value;
+select is((select value from resolved_9114),
+  '{"resolved": true, "shipment_cancelled": false, "amount_owed_cents": 11000, "reference": "SPEI 7781"}'::jsonb,
+  'an admin records the manual repayment of a failed overdue refund');
+select is(pg_temp.status(9114) || ':' || (select status::text from public.orders where id = pg_temp.mu(9214)),
+  'refunded:refunded', 'the manual repayment refunds the shipment and its order');
+select is(
+  (select row(o.refund_status, o.refund_resolved_by, o.refund_resolution_reference, o.label_cost_loss_cents)::text
+   from public.shipment_cancellation_operations o where o.shipment_id = pg_temp.mu(9114)),
+  row('failed', pg_temp.mu(9010), 'SPEI 7781', 15000)::text,
+  'the operation keeps the failed refund and records the admin, the reference and the lost label');
+select is((select cancellation_loss_cents from public.orders where id = pg_temp.mu(9214)), 300::bigint,
+  'the Stripe fee loss is recorded on the order');
+select is(
+  (select row(a.admin_id, a.details ->> 'refund_status', a.details ->> 'shipment_status_before',
+     a.details ->> 'reference', (a.details ->> 'amount_owed_cents')::bigint)::text
+   from public.admin_audit_logs a where a.action_type = 'SHIPMENT_REFUND_RESOLVED' and a.target_id = pg_temp.mu(9114)),
+  row(pg_temp.mu(9010), 'failed', 'completed', 'SPEI 7781', 11000)::text,
+  'the manual repayment is audited as a cancellation refund resolution');
+select is(
+  (select row(n.user_id, n.type, n.title, n.message)::text from public.notifications n
+   where n.event_kind = 'shipment.refunded' and n.event_payload ->> 'shipment_id' = pg_temp.mu(9114)::text),
+  row(pg_temp.mu(9019), 'success', 'Te devolvimos tu dinero',
+    'El reembolso a tu método de pago no se completó, así que te devolvimos el dinero de tu compra por otro medio.')::text,
+  'the buyer is told the money came back by another means');
+select is((select count(*) from public.fn_list_shipment_refund_problems() where shipment_id = pg_temp.mu(9114)), 0::bigint,
+  'the resolved refund leaves the admin problem list');
+
+create temporary table after_resolution as select pg_temp.resolution_state() as value;
+select is(pg_temp.resolve(9010, 9114, 'SPEI 9999'),
+  '{"resolved": false, "shipment_cancelled": false, "amount_owed_cents": 11000, "reference": "SPEI 7781"}'::jsonb,
+  'a second resolution keeps the first reference');
+select is(pg_temp.finish(9114) ->> 'shipment_status', 'refunded', 'a completion after the resolution reports the refunded shipment');
+select is(pg_temp.apply(9114, 're_test_9114', 'failed') ->> 'outcome', 'unchanged',
+  'a redelivered failure event after the resolution changes nothing');
+select is(pg_temp.resolution_state(), (select value from after_resolution),
+  'a second resolution, a completion and a redelivered event count no second loss, notice or audit row');
+select throws_ok($$select pg_temp.claim(9010, 9114)$$, 'P0001', 'SHIPMENT_ALREADY_REFUNDED',
+  'a repaid shipment cannot be claimed again');
+
+-- Defense in depth: a resolution without a failed Stripe refund never refunds the shipment.
+update public.shipment_cancellation_operations
+set refund_resolved_at = now(), refund_resolved_by = pg_temp.mu(9010), refund_resolution_reference = 'SPEI 0000'
+where shipment_id = pg_temp.mu(9123);
+select throws_ok($$select pg_temp.finish(9123)$$, 'P0001', 'REFUND_NOT_SUCCEEDED',
+  'a resolved operation with no Stripe refund is never completed as refunded');
+
+select is(pg_temp.resolve(9010, 9119) ->> 'resolved', 'true', 'a canceled overdue refund is repaid by hand');
+select is(pg_temp.status(9119) || ':' || pg_temp.notices(9119, 'shipment.refunded'), 'refunded:1',
+  'the repaid shipment is refunded and its buyer told once');
+select is(pg_temp.mapping(9319, 9119), 'canceled', 'its run mapping that never transferred is closed');
+select is(pg_temp.run(9319), 'canceled:action_required:-:overdue_payout_refunded',
+  'its run left with no open mapping is closed');
+
+-- 13. A run that resumed is never parked by the completion (L12). ---------------------
+-- 9113's run resumed in section 7 and held nothing else: it closes once the refund succeeds.
+select is(pg_temp.rec(9113, 're_test_9113', 'succeeded') ->> 'refund_status', 'succeeded', 'the refund of 9113 succeeded');
+select is(pg_temp.finish(9113) ->> 'shipment_status', 'refunded', 'the shipment of the resumed run is refunded');
+select is(pg_temp.run(9313), 'canceled:awaiting_connected_balance:-:overdue_payout_refunded',
+  'a resumed run left with no open mapping is closed');
+
+-- 9124 is claimed while run 9324 is parked; the run resumes and starts the transfer of 9125.
+create temporary table claim_9124 as select pg_temp.claim(9010, 9124) as value;
+select is((select value ->> 'status' from claim_9124), 'claimed', 'a shipment that shares a parked run is claimed');
+update public.connect_payout_runs
+set status = 'pending_reconciliation', release_stage = 'awaiting_connected_balance', action_required_reason = null, last_error = null
+where id = pg_temp.mu(9324);
+update public.connect_payout_run_shipments
+set transfer_started_at = now(), transfer_token = 'f0000000-0000-4000-8000-000000099125'
+where run_id = pg_temp.mu(9324) and shipment_id = pg_temp.mu(9125);
+select lives_ok(format('select pg_temp.start(9124, %L::jsonb)', (select value from claim_9124)), 'the refund of 9124 starts');
+select is(pg_temp.rec(9124, 're_test_9124', 'succeeded') ->> 'refund_status', 'succeeded', 'the refund of 9124 succeeded');
+create temporary table run_9324 as
+  select row(r.*)::text as value, r.release_stage_version as version from public.connect_payout_runs r where r.id = pg_temp.mu(9324);
+select is(pg_temp.finish(9124) ->> 'shipment_status', 'refunded', 'the shipment that shared the resumed run is refunded');
+select is((select row(r.*)::text from public.connect_payout_runs r where r.id = pg_temp.mu(9324)), (select value from run_9324),
+  'the completion leaves the resumed run that still holds another shipment untouched');
+select is(pg_temp.mapping(9324, 9124) || ':' || pg_temp.mapping(9324, 9125), 'canceled:pending_reconciliation',
+  'only the refunded shipment''s mapping is closed');
+select ok(public.fn_complete_shipment_transfer(pg_temp.mu(9324), pg_temp.mu(9125), (select version from run_9324),
+    'f0000000-0000-4000-8000-000000099125', 'tr_test_9125'),
+  'the transfer of the other shipment of the run is still recorded');
+select is((select stripe_transfer_id from public.shipments where id = pg_temp.mu(9125)), 'tr_test_9125',
+  'the other shipment keeps its transfer');
+
+-- 14. Grants. ----------------------------------------------------------------------
 select is(
   (select string_agg(p.proname || ':' || has_function_privilege('anon', p.oid, 'execute')
      || ':' || has_function_privilege('authenticated', p.oid, 'execute')

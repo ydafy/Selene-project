@@ -60,7 +60,7 @@ CREATE TRIGGER connect_payout_runs_set_updated_at
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."connect_payout_runs" TO "service_role";
 
-COMMENT ON COLUMN "public"."connect_payout_runs"."action_required_reason" IS 'Why a run sits in the action_required stage. Only the account_not_actionable reason may be auto-resumed by a later actionable account update; every other action_required state requires an admin decision.';
+COMMENT ON COLUMN "public"."connect_payout_runs"."action_required_reason" IS 'Why a run sits in the action_required stage. Only the account_not_actionable reason may be auto-resumed by a later actionable account update; every other action_required state requires an admin decision, including overdue_payout_refunded (an overdue payout refund (#549) refunded one of the shipments of the parked run).';
 
 COMMENT ON COLUMN "public"."connect_payout_runs"."amount_cents" IS 'Total payout amount in cents. Single-modal orders use the checkout-fixed sum of order_items.net_payout_cents; legacy orders retain the shipment shipping_cost_cents deduction.';
 

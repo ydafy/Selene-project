@@ -41,9 +41,22 @@ const FUNCTIONS = readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
 const adminWebSource = sourceFiles(ADMIN_WEB_SRC, /\.tsx?$/)
   .map((path) => readFileSync(path, 'utf8'))
   .join('\n');
-const ADMIN_WEB_FUNCTIONS = FUNCTIONS.filter((name) =>
+const NAMED_BY_ADMIN_WEB = FUNCTIONS.filter((name) =>
   new RegExp(`['"\`]${name}['"\`]`).test(adminWebSource),
 );
+
+// Functions built for an admin-web screen that does not call them yet, each with the task that
+// adds the caller. They already serve with CORS so the function and its screen can ship apart; an
+// entry must go once the admin-web names the function (checked below).
+const PENDING_ADMIN_WEB_CALLERS: Record<string, string> = {
+  'record-payout-hold-note':
+    'odd/tasks/held-payout-overdue-refund.md T6: hold-with-note dialog in the overdue payouts section',
+};
+
+const ADMIN_WEB_FUNCTIONS = [
+  ...NAMED_BY_ADMIN_WEB,
+  ...Object.keys(PENDING_ADMIN_WEB_CALLERS),
+].sort();
 
 const indexSource = (name: string) =>
   readFileSync(join(FUNCTIONS_DIR, name, 'index.ts'), 'utf8');
@@ -53,6 +66,19 @@ describe('CORS wiring', () => {
     expect(ADMIN_WEB_FUNCTIONS).toContain('release-connect-payout');
     expect(ADMIN_WEB_FUNCTIONS).toContain('list-shipment-refund-problems');
     expect(ADMIN_WEB_FUNCTIONS).not.toContain('stripe-webhooks');
+  });
+
+  it('lists a pending admin-web caller only while it exists and the admin-web does not name it', () => {
+    for (const name of Object.keys(PENDING_ADMIN_WEB_CALLERS)) {
+      expect({ name, exists: FUNCTIONS.includes(name) }).toEqual({
+        name,
+        exists: true,
+      });
+      expect({ name, named: NAMED_BY_ADMIN_WEB.includes(name) }).toEqual({
+        name,
+        named: false,
+      });
+    }
   });
 
   it('sets CORS headers only in the shared module', () => {

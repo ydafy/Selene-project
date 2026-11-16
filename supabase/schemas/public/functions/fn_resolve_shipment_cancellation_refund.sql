@@ -31,7 +31,17 @@ BEGIN
     RAISE EXCEPTION 'INVALID_RESOLUTION_REFERENCE';
   END IF;
 
-  -- Same lock order as claim/start, record and fn_cancel_shipment: shipment first.
+  -- The lock order of fn_begin_shipment_transfer and fn_complete_overdue_payout_refund:
+  -- the payout runs and mappings of a completed shipment, then the shipment. A
+  -- cancelled shipment was never released, so it has none and only the shipment
+  -- is locked first, as in claim/start, record and fn_cancel_shipment.
+  PERFORM 1 FROM public.connect_payout_runs r
+    WHERE r.id IN (SELECT m.run_id FROM public.connect_payout_run_shipments m
+      WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed'))
+    ORDER BY r.id FOR UPDATE;
+  PERFORM 1 FROM public.connect_payout_run_shipments m
+    WHERE m.shipment_id = p_shipment_id AND m.status IN ('pending_reconciliation', 'reconciliation_needed')
+    ORDER BY m.id FOR UPDATE;
   SELECT status::text INTO v_shipment_status
     FROM public.shipments WHERE id = p_shipment_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE'; END IF;
@@ -58,7 +68,15 @@ BEGIN
   IF NOT v_unrecorded_escalated AND v_operation.refund_status NOT IN ('failed', 'canceled') THEN
     RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE';
   END IF;
-  IF v_shipment_status NOT IN ('paid', 'preparing', 'cancelled') THEN
+  IF v_operation.source = 'admin_overdue_payout' THEN
+    -- An overdue payout refund (#549) is repaid by hand only after Stripe
+    -- reported its refund failed or canceled, so the money is back in Selene's
+    -- balance; an escalated operation without a refund may still pay out (L11).
+    IF v_unrecorded_escalated THEN RAISE EXCEPTION 'REFUND_NOT_RESOLVABLE'; END IF;
+    IF v_shipment_status IS DISTINCT FROM 'completed' THEN
+      RAISE EXCEPTION 'SHIPMENT_STATUS_UNEXPECTED: %', v_shipment_status;
+    END IF;
+  ELSIF v_shipment_status NOT IN ('paid', 'preparing', 'cancelled') THEN
     RAISE EXCEPTION 'SHIPMENT_STATUS_UNEXPECTED: %', v_shipment_status;
   END IF;
 
@@ -79,7 +97,11 @@ BEGIN
     || CASE WHEN v_operation.recovery_escalation_reason IS NULL THEN '{}'::JSONB
             ELSE jsonb_build_object('escalation_reason', v_operation.recovery_escalation_reason) END);
 
-  IF v_shipment_status IN ('paid', 'preparing') THEN
+  IF v_operation.source = 'admin_overdue_payout' THEN
+    -- The completion of a succeeded overdue refund: refunded, loss, run
+    -- mappings and buyer notice, once.
+    PERFORM public.fn_complete_overdue_payout_refund(p_shipment_id);
+  ELSIF v_shipment_status IN ('paid', 'preparing') THEN
     -- Complete with the stored winner, reason and frozen loss, never the admin's.
     SELECT c.success, c.error_message INTO v_cancel_success, v_cancel_error
       FROM public.fn_cancel_shipment(
@@ -100,7 +122,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) IS 'Service-only (SECURITY DEFINER): an admin marks a failed or canceled shipment refund, or an escalated operation without a refund, as resolved with a reference (audited) and, when the shipment is still open, completes the cancellation. The caller must have verified the admin; the amount owed is the frozen request amount.';
+COMMENT ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) IS 'Service-only (SECURITY DEFINER): an admin marks a failed or canceled shipment refund, or an escalated operation without a refund, as resolved with a reference (audited) and, when the shipment is still open, completes the cancellation. A failed or canceled overdue payout refund (#549) of a completed shipment is resolved the same way and refunds the shipment through fn_complete_overdue_payout_refund. The caller must have verified the admin; the amount owed is the frozen request amount.';
 
 REVOKE ALL ON FUNCTION "public"."fn_resolve_shipment_cancellation_refund"(uuid, uuid, text) FROM "postgres";
 

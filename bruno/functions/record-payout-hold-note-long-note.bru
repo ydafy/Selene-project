@@ -1,0 +1,35 @@
+meta {
+  name: record-payout-hold-note-long-note
+  type: http
+  seq: 172
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/record-payout-hold-note
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+script:pre-request {
+  req.setBody({ shipment_id: bru.getVar("poShipment"), note: "x".repeat(1001) });
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("a note longer than 1000 characters is refused", function () {
+    expect(res.getStatus()).to.equal(422);
+    expect(res.getBody()).to.deep.equal({ error: "INVALID_HOLD_NOTE" });
+  });
+}
+
+docs {
+  Run after functions/login-admin.
+}
