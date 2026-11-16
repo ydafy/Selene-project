@@ -9,17 +9,38 @@ export interface CronHealthRow {
   active: boolean;
   last_start: string | null;
   last_status: string | null;
+  /** Time of the job's newest failed HTTP response (pg_net), if any. */
+  last_http_failed_at: string | null;
+  /** 'HTTP <code>', 'timed out', or the pg_net error message. */
+  last_http_error: string | null;
 }
 
-export type CronUnhealthyReason = 'failed' | 'overdue' | 'unsupported-schedule';
+export type CronUnhealthyReason =
+  'failed' | 'http-failed' | 'overdue' | 'unsupported-schedule';
 
-export interface CronUnhealthyJob {
-  jobname: string;
-  reason: CronUnhealthyReason;
-}
+export type CronUnhealthyJob =
+  | {
+      jobname: string;
+      reason: Exclude<CronUnhealthyReason, 'http-failed'>;
+    }
+  | {
+      jobname: string;
+      reason: 'http-failed';
+      httpError: string | null;
+      httpFailedAt: string;
+    };
 
 const MINUTE_MS = 60_000;
 const GRACE_MINUTES = 5;
+/** The watchdog's own schedule (`*\/15 * * * *`, see index.ts). */
+const WATCHDOG_INTERVAL_MINUTES = 15;
+/**
+ * An HTTP failure is reported when it happened within the last watchdog
+ * interval plus the grace, so a late watchdog run does not miss it and a single
+ * old failure does not alarm forever (at most one extra report, grouped by
+ * fingerprint).
+ */
+const HTTP_FAILURE_WINDOW_MINUTES = WATCHDOG_INTERVAL_MINUTES + GRACE_MINUTES;
 
 /** Interval in minutes for the supported schedule shapes, or null when unsupported. */
 const intervalMinutes = (schedule: string): number | null => {
@@ -55,26 +76,38 @@ const intervalMinutes = (schedule: string): number | null => {
 export const isSupportedSchedule = (schedule: string): boolean =>
   intervalMinutes(schedule) !== null;
 
-const classify = (
-  row: CronHealthRow,
-  now: Date,
-): CronUnhealthyReason | null => {
-  if (row.last_status === 'failed') return 'failed';
+const classify = (row: CronHealthRow, now: Date): CronUnhealthyJob | null => {
+  const { jobname } = row;
+  if (row.last_status === 'failed') return { jobname, reason: 'failed' };
+
+  if (
+    row.last_http_failed_at &&
+    now.getTime() - new Date(row.last_http_failed_at).getTime() <=
+      HTTP_FAILURE_WINDOW_MINUTES * MINUTE_MS
+  ) {
+    return {
+      jobname,
+      reason: 'http-failed',
+      httpError: row.last_http_error,
+      httpFailedAt: row.last_http_failed_at,
+    };
+  }
 
   const interval = intervalMinutes(row.schedule);
-  if (interval === null) return 'unsupported-schedule';
+  if (interval === null) return { jobname, reason: 'unsupported-schedule' };
 
-  if (!row.last_start) return 'overdue';
+  if (!row.last_start) return { jobname, reason: 'overdue' };
   const thresholdMs = (2 * interval + GRACE_MINUTES) * MINUTE_MS;
   return now.getTime() - new Date(row.last_start).getTime() > thresholdMs
-    ? 'overdue'
+    ? { jobname, reason: 'overdue' }
     : null;
 };
 
 /**
- * Lists the active jobs whose latest run failed, that did not run within
- * 2x their schedule interval + 5 minutes (or never ran), or whose schedule the
- * watchdog cannot interpret. One reason per job, ordered by jobname.
+ * Lists the active jobs whose latest run failed, whose newest HTTP failure is
+ * within HTTP_FAILURE_WINDOW_MINUTES, that did not run within 2x their schedule
+ * interval + 5 minutes (or never ran), or whose schedule the watchdog cannot
+ * interpret. One reason per job, in that order, ordered by jobname.
  */
 export function evaluateCronHealth(
   rows: CronHealthRow[],
@@ -83,8 +116,8 @@ export function evaluateCronHealth(
   return rows
     .filter((row) => row.active)
     .flatMap((row) => {
-      const reason = classify(row, now);
-      return reason ? [{ jobname: row.jobname, reason }] : [];
+      const job = classify(row, now);
+      return job ? [job] : [];
     })
     .sort((a, b) =>
       a.jobname < b.jobname ? -1 : a.jobname > b.jobname ? 1 : 0,

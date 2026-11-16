@@ -16,6 +16,8 @@ const row = (overrides: Partial<CronHealthRow> = {}): CronHealthRow => ({
   active: true,
   last_start: minutesAgo(1),
   last_status: 'succeeded',
+  last_http_failed_at: null,
+  last_http_error: null,
   ...overrides,
 });
 
@@ -87,6 +89,12 @@ describe('evaluateCronHealth', () => {
       row({ jobname: 'b', active: false, last_start: minutesAgo(10_000) }),
       row({ jobname: 'c', active: false, last_start: null, last_status: null }),
       row({ jobname: 'd', active: false, schedule: '0 9 * * 1' }),
+      row({
+        jobname: 'e',
+        active: false,
+        last_http_failed_at: minutesAgo(1),
+        last_http_error: 'HTTP 500',
+      }),
     ];
     expect(evaluateCronHealth(rows, NOW)).toEqual([]);
   });
@@ -112,6 +120,90 @@ describe('evaluateCronHealth', () => {
       { jobname: 'a', reason: 'failed' },
     ]);
   });
+
+  describe('http-failed', () => {
+    // Window = watchdog interval (15 min) + 5 min grace.
+    it('flags a job whose latest HTTP failure happened within the window', () => {
+      const rows = [
+        row({
+          jobname: 'web',
+          last_http_failed_at: minutesAgo(3),
+          last_http_error: 'HTTP 503',
+        }),
+      ];
+      expect(evaluateCronHealth(rows, NOW)).toEqual([
+        {
+          jobname: 'web',
+          reason: 'http-failed',
+          httpError: 'HTTP 503',
+          httpFailedAt: minutesAgo(3),
+        },
+      ]);
+    });
+
+    it('still flags the failure exactly at the window edge', () => {
+      const rows = [
+        row({
+          jobname: 'edge',
+          last_http_failed_at: minutesAgo(20),
+          last_http_error: 'timed out',
+        }),
+      ];
+      expect(evaluateCronHealth(rows, NOW)).toEqual([
+        {
+          jobname: 'edge',
+          reason: 'http-failed',
+          httpError: 'timed out',
+          httpFailedAt: minutesAgo(20),
+        },
+      ]);
+    });
+
+    it('does not alarm again for a failure older than the window', () => {
+      const rows = [
+        row({
+          last_http_failed_at: minutesAgo(21),
+          last_http_error: 'HTTP 500',
+        }),
+      ];
+      expect(evaluateCronHealth(rows, NOW)).toEqual([]);
+    });
+
+    it('reports failed instead of http-failed when the latest run failed too', () => {
+      const rows = [
+        row({
+          jobname: 'a',
+          last_status: 'failed',
+          last_http_failed_at: minutesAgo(1),
+          last_http_error: 'HTTP 500',
+        }),
+      ];
+      expect(evaluateCronHealth(rows, NOW)).toEqual([
+        { jobname: 'a', reason: 'failed' },
+      ]);
+    });
+  });
+
+  it.each([
+    ['failed', { last_status: 'failed' }],
+    ['overdue', { last_start: minutesAgo(16) }],
+    ['unsupported-schedule', { schedule: '0 9 * * 1' }],
+  ] as const)(
+    'keeps reporting %s when the job also has an old HTTP failure',
+    (reason, overrides) => {
+      const rows = [
+        row({
+          jobname: 'old-http',
+          last_http_failed_at: minutesAgo(60),
+          last_http_error: 'HTTP 500',
+          ...overrides,
+        }),
+      ];
+      expect(evaluateCronHealth(rows, NOW)).toEqual([
+        { jobname: 'old-http', reason },
+      ]);
+    },
+  );
 
   it('orders the output by jobname regardless of input order', () => {
     const rows = [
