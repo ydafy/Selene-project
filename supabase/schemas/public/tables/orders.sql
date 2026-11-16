@@ -69,6 +69,9 @@ ALTER TABLE "public"."orders"
   ADD COLUMN "compensation_last_error" text;
 
 ALTER TABLE "public"."orders"
+  ADD COLUMN "evidence_purged_at" timestamp WITH time zone;
+
+ALTER TABLE "public"."orders"
   ADD CONSTRAINT "orders_compensation_state_check"
     CHECK (((compensation_state IS NULL) OR (compensation_state = ANY (ARRAY['refund_pending'::text, 'refunding'::text, 'refund_failed_retry_queued'::text, 'refunded'::text, 'reconciliation_needed'::text]))));
 
@@ -114,6 +117,8 @@ CREATE POLICY "orders_select_v4" ON "public"."orders"
   USING ((( SELECT public.is_admin() AS is_admin) OR internal.fn_check_order_access(id, ( SELECT auth.uid() AS uid))));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."orders" TO "service_role";
+
+COMMENT ON COLUMN "public"."orders"."evidence_purged_at" IS 'When purge-old-evidence removed the order''s objects from the evidence bucket (120 days after the order closed). The evidence paths in disputes and shipments stay as history. NULL until then.';
 
 COMMENT ON COLUMN "public"."orders"."payment_processing" IS 'True when the platform payment succeeded but order/shipment/allocation persistence failed and is pending ops recovery. Keeps status=pending until durable.';
 

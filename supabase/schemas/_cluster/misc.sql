@@ -77,6 +77,16 @@ SELECT
   'update public.products set status = ''verified'', reserved_at = null, updated_at = now() where status = ''reserved'' and reserved_at < now() - interval ''30 minutes''',
   'postgres', NULL, true);
 
+SELECT cron.schedule_in_database('purge-old-evidence', '0 9 * * *', 'select internal.fn_track_cron_request(''purge-old-evidence'', net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/purge-old-evidence'',
+    headers := jsonb_build_object(
+      ''Content-Type'', ''application/json'',
+      ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''purge_old_evidence_cron_secret'')
+    ),
+    body := ''{}''::jsonb,
+    timeout_milliseconds := 120000
+  ))', 'postgres', NULL, true);
+
 SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from internal.fn_reconcile_connect_payments()', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('reconcile-stripe-fees-every-5-minutes', '*/5 * * * *', 'select internal.fn_track_cron_request(''reconcile-stripe-fees-every-5-minutes'', net.http_post(

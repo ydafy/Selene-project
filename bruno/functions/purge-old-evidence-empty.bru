@@ -1,0 +1,39 @@
+meta {
+  name: purge-old-evidence-empty
+  type: http
+  seq: 162
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/purge-old-evidence
+  body: json
+  auth: none
+}
+
+headers {
+  x-cron-secret: {{cronSecret}}
+}
+
+body:json {
+  {}
+}
+
+tests {
+  test("accepts the cron secret and finds no evidence old enough to purge", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.deep.equal({
+      orders: 0,
+      removed: 0,
+      marked: 0,
+      failed: 0,
+    });
+  });
+}
+
+docs {
+  Needs the functions server and CRON_SECRET in the functions env file. No seeded or
+  collection order closed more than 120 days ago, so the run lists nothing. The retention
+  rule and the mark are covered by supabase/tests/database/evidence_purge.test.sql, and
+  the removal, paging and failure handling by
+  supabase/functions/purge-old-evidence/handler.test.ts.
+}
