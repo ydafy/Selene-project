@@ -73,10 +73,13 @@ const shipments = {
 const shipmentIds = Object.values(shipments).map((shipment) => shipment.id);
 
 function status(): Record<string, string> {
-  const result = Bun.spawnSync(['supabase', 'status', '--env'], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const result = Bun.spawnSync(
+    ['supabase', 'status', '--env', '--output-format', 'json'],
+    {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
   if (result.exitCode !== 0)
     throw new Error(
       'Local Supabase stack is not running for this worktree: run `supabase start`.',

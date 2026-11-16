@@ -235,10 +235,13 @@ export async function runFeeJobProof(p: Ports): Promise<void> {
 type Status = { DB_URL?: string; API_URL?: string; SECRET_KEY?: string };
 
 function stackStatus(): Status {
-  const status = Bun.spawnSync(['supabase', 'status', '--env'], {
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
+  const status = Bun.spawnSync(
+    ['supabase', 'status', '--env', '--output-format', 'json'],
+    {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  );
   if (status.exitCode !== 0)
     throw new Error(
       'Local Supabase stack is not running for this worktree: run `supabase start`.',
