@@ -19,7 +19,7 @@ Read the root `AGENTS.md` first; it wins over this file. This file holds the pro
 5. When a change adds a secret, bucket, webhook, or Dashboard setting, update `docs/go-live.md` in the same commit. A cron job lives in `schemas/_cluster/misc.sql`; the Vault secret it reads goes in `docs/go-live.md`, section 5.
 6. `supabase/config.toml` mirrors the deployed `verify_jwt` flags. Keep it in sync when a function's auth changes.
 
-For Postgres design and performance, load the `supabase-postgres-best-practices` skill.
+For Postgres design and performance, load the `supabase-postgres-best-practices` skill. Design a new table for the volume in `docs/conventions.md`, "Design target": decide how it grows and which job deletes its rows before you write it.
 
 ## Declarative schema
 
