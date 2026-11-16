@@ -21,7 +21,7 @@ Three PRs (L7): A1 (C1, C2, C3a), A2 (C3b, C4: cron HTTP failures reach Sentry),
 - [x] T4 (S4) `cron-watchdog` `http-failed`. Inline. PR A2 (L7), C4. Commit C4 on `feat/cron-http-failures`.
 - [x] T5 (S5) purge: C5a SQL (column `orders.evidence_purged_at`, candidate and mark RPCs, pgTAP, types); C5b `purge-old-evidence` Edge Function (tests, Bruno, config). Worker. PR B. Commits `bf662ab3`, `e4324cc5`, `93fd14f0`.
 - [x] T6 (S6, S7) purge cron job, guard, docs, #541 comment. Inline. PR B, C6. Commit `626bb96c`.
-- [ ] T7 (S5) closed-at takes the later of `completed_at` and `updated_at` per shipment (L12, CodeRabbit Major on #631). Worker. PR B.
+- [x] T7 (S5) closed-at takes the later of `completed_at` and `updated_at` per shipment (L12, CodeRabbit Major on #631). Worker. PR B. Commits `2e19db98`, `b12d9a5c`, `14e57388`; independent verify PASS.
 
 ## Log
 
