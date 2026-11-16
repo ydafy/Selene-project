@@ -1,22 +1,22 @@
-SELECT cron.schedule_in_database('account-closure-cleanup', '0 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('account-closure-cleanup', '0 * * * *', 'select internal.fn_track_cron_request(''account-closure-cleanup'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/account-closure-cleanup'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''account_closure_cleanup_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('auto-cancel-orders-job', '0 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('auto-cancel-orders-job', '0 * * * *', 'select internal.fn_track_cron_request(''auto-cancel-orders-job'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/auto-cancel-orders'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''auto_cancel_orders_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('auto-cancel-preparing-job', '30 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('auto-cancel-preparing-job', '30 * * * *', 'select internal.fn_track_cron_request(''auto-cancel-preparing-job'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/auto-cancel-preparing'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
@@ -24,27 +24,27 @@ SELECT cron.schedule_in_database('auto-cancel-preparing-job', '30 * * * *', 'sel
     ),
     body := ''{}''::jsonb,
     timeout_milliseconds := 120000
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('checkout-recovery-worker-every-5-minutes', '*/5 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('checkout-recovery-worker-every-5-minutes', '*/5 * * * *', 'select internal.fn_track_cron_request(''checkout-recovery-worker-every-5-minutes'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/checkout-recovery-worker'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''checkout_recovery_worker_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('complete-delivered-shipments', '*/5 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('complete-delivered-shipments', '*/5 * * * *', 'select internal.fn_track_cron_request(''complete-delivered-shipments'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/complete-delivered-shipments'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''complete_delivered_shipments_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('cron-watchdog-every-15-minutes', '*/15 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('cron-watchdog-every-15-minutes', '*/15 * * * *', 'select internal.fn_track_cron_request(''cron-watchdog-every-15-minutes'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/cron-watchdog'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
@@ -52,9 +52,9 @@ SELECT cron.schedule_in_database('cron-watchdog-every-15-minutes', '*/15 * * * *
     ),
     body := ''{}''::jsonb,
     timeout_milliseconds := 30000
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('dispatch-push-every-minute', '*/1 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('dispatch-push-every-minute', '*/1 * * * *', 'select internal.fn_track_cron_request(''dispatch-push-every-minute'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/dispatch-push'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
@@ -62,7 +62,7 @@ SELECT cron.schedule_in_database('dispatch-push-every-minute', '*/1 * * * *', 's
     ),
     body := ''{}''::jsonb,
     timeout_milliseconds := 120000
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('dispute-payout-timeout-job', '0 * * * *', 'select public.fn_cron_dispute_payout_timeout()', 'postgres', NULL, true);
 
@@ -79,40 +79,40 @@ SELECT
 
 SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from internal.fn_reconcile_connect_payments()', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('reconcile-stripe-fees-every-5-minutes', '*/5 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('reconcile-stripe-fees-every-5-minutes', '*/5 * * * *', 'select internal.fn_track_cron_request(''reconcile-stripe-fees-every-5-minutes'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/reconcile-stripe-fees'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''reconcile_stripe_fees_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('resume-pending-payouts', '*/5 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('resume-pending-payouts', '*/5 * * * *', 'select internal.fn_track_cron_request(''resume-pending-payouts'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/resume-pending-payouts'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''x-cron-secret'', (select decrypted_secret from vault.decrypted_secrets where name = ''resume_pending_payouts_cron_secret'')
     ),
     body := ''{}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('return-delivery-timeout', '0 * * * *', 'select * from public.fn_cron_return_delivery_timeout()', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('track-shipments-preparing', '*/5 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('track-shipments-preparing', '*/5 * * * *', 'select internal.fn_track_cron_request(''track-shipments-preparing'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/track-shipments'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''track_shipments_cron_secret'')
     ),
     body := ''{"lane": "preparing"}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
 
-SELECT cron.schedule_in_database('track-shipments-shipped', '*/15 * * * *', 'select net.http_post(
+SELECT cron.schedule_in_database('track-shipments-shipped', '*/15 * * * *', 'select internal.fn_track_cron_request(''track-shipments-shipped'', net.http_post(
     url := (select decrypted_secret from vault.decrypted_secrets where name = ''project_url'') || ''/functions/v1/track-shipments'',
     headers := jsonb_build_object(
       ''Content-Type'', ''application/json'',
       ''Authorization'', ''Bearer '' || (select decrypted_secret from vault.decrypted_secrets where name = ''track_shipments_cron_secret'')
     ),
     body := ''{"lane": "shipped"}''::jsonb
-  )', 'postgres', NULL, true);
+  ))', 'postgres', NULL, true);
