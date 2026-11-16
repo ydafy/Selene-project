@@ -81,6 +81,9 @@ jobs:
       # The check formats with the repository's Prettier, so it needs the install.
       - run: bun install --frozen-lockfile
       - run: bun run db:types:check
+      # The scripts/verify/ harnesses that need only this stack, in sequence
+      # (scripts/verify/run-harnesses.ts lists the groups; about 20 s).
+      - run: bun run verify:harnesses --group pr
 
   # Playwright specs in e2e/admin-web/ (`bun run test:e2e`). Every backend call
   # is mocked, so the job needs no stack and no secrets; playwright.config.ts

@@ -128,7 +128,7 @@ A script in `scripts/` goes in the folder for its purpose, with its test next to
 - `scripts/dev/`: tools a developer or a Git hook runs (`worktree-env`, `stripe-listen`).
 - `scripts/ci/`: helpers a workflow runs (`check-commit-msg`, `dependency-report`).
 - `scripts/guards/`: tests over the whole repository that fail on a broken rule (`agent-instructions`, `markdown-placement`).
-- `scripts/verify/`: manual verification harnesses against the local stack (`test-shipment-*`, `postgres-smoke`). No CI job runs them.
+- `scripts/verify/`: verification harnesses against the local stack (`test-shipment-*`, `postgres-smoke`). `scripts/verify/run-harnesses.ts` lists each one in a group: `pr` runs in the `db-test` CI job, `weekly` in a weekly workflow, and the manual ones say why. Run a group with `bun run verify:harnesses --group pr`. A new harness goes in a list, or `scripts/guards/verify-harness-lists.test.ts` fails.
 
 A script under `scripts/<folder>/` reaches the repository root with `join(import.meta.dir, '..', '..')`. `scripts/guards/script-folders.test.ts` fails on a file anywhere else in `scripts/`.
 
