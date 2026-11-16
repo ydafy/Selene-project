@@ -61,14 +61,14 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 4. Storage buckets
 
-| Bucket         | Public | Size limit | Allowed types                                    |
-| -------------- | ------ | ---------- | ------------------------------------------------ |
-| `Avatars`      | yes    | 2 MiB      | JPEG, PNG, WebP, HEIC, HEIF                      |
-| `products`     | yes    | 10 MiB     | JPEG, PNG, WebP, HEIC, HEIF                      |
-| `evidence`     | no     | 50 MiB     | JPEG, PNG, WebP, HEIC, HEIF, MP4, QuickTime, M4V |
-| `verification` | no     | none       | any                                              |
+| Bucket         | Public | Size limit | Allowed types                                    | Object paths                                                            |
+| -------------- | ------ | ---------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `Avatars`      | yes    | 2 MiB      | JPEG, PNG, WebP, HEIC, HEIF                      | `<user_id>/avatar.<ext>`                                                |
+| `products`     | yes    | 10 MiB     | JPEG, PNG, WebP, HEIC, HEIF                      | `<seller_id>/<file>`                                                    |
+| `evidence`     | no     | 50 MiB     | JPEG, PNG, WebP, HEIC, HEIF, MP4, QuickTime, M4V | `disputes`, `returns` or `shipments` `/<order_id>/<uploader_id>/<file>` |
+| `verification` | no     | 10 MiB     | JPEG, PNG, WebP, HEIC, HEIF                      | `<product_id>/<proof>_<timestamp>.<ext>`                                |
 
-Bucket settings and policies on `storage.objects` come from migrations (`supabase/migrations/20261109020901_storage_bucket_access.sql` sets the limits above).
+Bucket settings and policies on `storage.objects` come from migrations: `supabase/migrations/20261109020901_storage_bucket_access.sql` sets the limits of `Avatars`, `products` and `evidence`, and `supabase/migrations/20261116015453_verification_bucket_limits.sql` those of `verification`. `supabase/tests/database/storage_access.test.sql` pins every bucket.
 
 ## 5. Vault secrets
 

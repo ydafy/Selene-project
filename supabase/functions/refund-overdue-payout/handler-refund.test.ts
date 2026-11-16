@@ -14,6 +14,24 @@ import {
 } from './handler.test-support.ts';
 
 describe('refund-overdue-payout: the refund', () => {
+  test('200: an uppercase shipment id is read as the stored lowercase id and refunds only its own items', async () => {
+    const { rec, call } = harness();
+    expect(await call({ shipment_id: SHIP.toUpperCase() })).toEqual({
+      status: 200,
+      body: {
+        status: 'refunded',
+        shipment_id: SHIP,
+        refund_id: 're_overdue',
+        amount_cents: 10600,
+      },
+    });
+    expect(writes(rec)).toEqual(['claim', 'start', 'record', 'complete']);
+    expect(rec.refundRequests).toEqual([
+      { request: frozenRequest(), idempotencyKey: KEY },
+    ]);
+    expect(rec.starts[0]?.cancellationLossCents).toBe(390);
+  });
+
   test('200: amount computed on the server, Stripe refund before the record, then completion', async () => {
     const { rec, call } = harness();
     expect(await call({ shipment_id: SHIP, amount_cents: 1 })).toEqual({
