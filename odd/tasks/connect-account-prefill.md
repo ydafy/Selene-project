@@ -14,7 +14,7 @@ Branch `feat/connect-account-prefill` from `origin/main`, worktree `bruno-money-
 ## Tasks
 
 - [x] T1 (S1, S5): baseline. Local stack, Bruno call to the current `create-connect-account`, record what the hosted form asks. Route: inline. Commit: none (evidence L6-L7).
-- [x] T2 (S2, S3, S4): test first, then send `identity.entity_type`, `defaults.profile.business_url` (`SELENE_CONNECT_BUSINESS_URL`) and `defaults.profile.product_description`; document the setting and the go-live step. Route: inline. Commit: 3a8055f5.
+- [x] T2 (S2, S3, S4): test first, then send `identity.entity_type`, `defaults.profile.business_url` (`SELENE_CONNECT_BUSINESS_URL`) and `defaults.profile.product_description`; document the setting and the go-live step. Route: inline. Commits: 3a8055f5, 64384c55.
 - T3 (S1, S3, S5): rerun the Bruno call with T2, record the remaining screens, compare with T1, and write the result where #551 can use it. Route: inline. Commit: pending.
 
 ## Log
@@ -27,3 +27,4 @@ Branch `feat/connect-account-prefill` from `origin/main`, worktree `bruno-money-
 - L6 (2026-11-16): baseline account `acct_1UcJ6TACloAcowPp` (seeded buyer; the seeded seller has the fake `acct_local_seller_pending`, which fails manual payouts). The hosted form shows an hCaptcha after "Use test phone number"; the agent does not solve CAPTCHAs, so screens are read from the account requirements (Stripe MCP, read-only) and the maintainer confirms the form by hand.
 - L7 (2026-11-16): baseline `requirements.currently_due`: `business_profile.url`, `business_type`, `external_account`, `tos_acceptance.date`, `tos_acceptance.ip`. No MCC is due (recipient configuration), so no MCC prefill.
 - L8 (2026-11-16): `supabase/functions/.env` and `.env.example` are blocked for the agent; the maintainer adds `SELENE_CONNECT_BUSINESS_URL` to both. Until `.env` has it, every local call to `create-connect-account` answers 500 `MISSING_SERVER_CONFIG` (including Bruno `functions/create-connect-account-invalid-link`).
+- L9 (2026-11-16): independent verify (risk item 5): S2 and S4 met, S3 met for tests and unproven for the sandbox (T3). Its advisories fixed in 64384c55: the URL is trimmed (whitespace test RED then GREEN), the Bruno request lists `SELENE_CONNECT_BUSINESS_URL`, and `supabase/functions/AGENTS.md` names the request. Native review assess: risk high (escalated item 5), `reviewDue: false` (under budget).
