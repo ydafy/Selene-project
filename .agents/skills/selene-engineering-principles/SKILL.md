@@ -4,13 +4,13 @@ description: "Trigger: money flows, Stripe webhooks, cron, refunds, payouts, ord
 license: MIT
 metadata:
   author: "school-portal"
-  version: "1.0"
+  version: "1.1"
   source: "Adapted from pstack (backnotprop/pstack, MIT) at upstream cursor/plugins/pstack@0f77cd5; see LICENSE"
 ---
 
 ## Activation Contract
 
-Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Also load it when an agent repeats a mistake the maintainer already corrected.
+Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Load it as well when you write the specs of a feature that changes such state. Also load it when an agent repeats a mistake the maintainer already corrected.
 
 Skip for copy changes, styling, and trivial edits.
 
@@ -33,6 +33,7 @@ Skip for copy changes, styling, and trivial edits.
 | --- | --- | --- |
 | Touching money, webhook, or cron | Idempotency | `references/principles.md` §1 |
 | Adding a state or status | Domain model | §2 |
+| Writing the specs of a feature with state | Name the other states | §11 |
 | Parsing external input | Boundary + types | §3, §4 |
 | Writing or keeping a test | Behavior tests | §5 |
 | Fixing a bug | Root cause + bug-fix sequence | §6, §8 |
@@ -43,11 +44,12 @@ Skip for copy changes, styling, and trivial edits.
 ## Execution Steps
 
 1. Match the task to the Decision Gates and read only the referenced sections.
-2. For state-mutating work, answer: what if this runs twice, and what if the previous run crashed here? Test both.
-3. For bugs, follow §8: reproduce on the matching surface, narrow with runtime evidence, failing test observed RED, fix, rerun the same repro.
-4. For cross-boundary code, write the caller's usage first, then types and signatures, screen them against the red flags, then implement. Treat deviations from the sketch as signal. Never commit sketches or `not implemented` stubs in production paths.
-5. After two failed fixes with one premise, write the premise as one sentence and test it directly before a third fix.
-6. Check the touched code against the Hard Rules before handing off.
+2. Before the specs of a feature with state are final, run the §11 pass and record in `## Log` the states it added or ruled out.
+3. For state-mutating work, answer: what if this runs twice, and what if the previous run crashed here? Test both.
+4. For bugs, follow §8: reproduce on the matching surface, narrow with runtime evidence, failing test observed RED, fix, rerun the same repro.
+5. For cross-boundary code, write the caller's usage first, then types and signatures, screen them against the red flags, then implement. Treat deviations from the sketch as signal. Never commit sketches or `not implemented` stubs in production paths.
+6. After two failed fixes with one premise, write the premise as one sentence and test it directly before a third fix.
+7. Check the touched code against the Hard Rules before handing off.
 
 ## Output Contract
 
@@ -58,6 +60,6 @@ Report only what applies:
 
 ## References
 
-- `references/principles.md`: the ten adapted principles with Selene examples.
+- `references/principles.md`: the ten adapted principles with Selene examples, and §11, our own pass for the states a spec forgets.
 - `references/design-red-flags.md`: design checklist for new cross-module code.
 - `LICENSE`: pstack MIT notice.
