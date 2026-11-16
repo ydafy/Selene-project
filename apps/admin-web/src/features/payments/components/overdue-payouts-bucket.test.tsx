@@ -76,6 +76,23 @@ function harness(overrides: Record<string, unknown> = {}) {
     refs[index] ??= { current: initial };
     return refs[index];
   }) as typeof React.useRef);
+  // Effects run after each render when their dependencies change, as React's do.
+  const effects: (() => void)[] = [];
+  const effectDeps: (readonly unknown[] | undefined)[] = [];
+  let effectIndex = 0;
+  spyOn(React, 'useEffect').mockImplementation((effect, deps) => {
+    const index = effectIndex++;
+    const previous = effectDeps[index];
+    const changed =
+      !deps ||
+      !previous ||
+      deps.some((value, i) => !Object.is(value, previous[i]));
+    effectDeps[index] = deps;
+    if (changed)
+      effects.push(() => {
+        effect();
+      });
+  });
   const notes: Array<[string, string]> = [];
   const refunds: string[] = [];
   const props = {
@@ -98,9 +115,13 @@ function harness(overrides: Record<string, unknown> = {}) {
   const render = () => {
     stateIndex = 0;
     refIndex = 0;
-    return OverduePayoutsBucket(
+    effectIndex = 0;
+    effects.length = 0;
+    const tree = OverduePayoutsBucket(
       props as Parameters<typeof OverduePayoutsBucket>[0],
     );
+    for (const effect of effects.splice(0)) effect();
+    return tree;
   };
   const html = () => renderToStaticMarkup(render());
   const buttons = (text: string) =>
@@ -215,8 +236,37 @@ it('marks and focuses the note field when the note is invalid', async () => {
   );
   expect(h.html()).toContain('id="hold-note-error"');
   expect(focus).toHaveBeenCalledTimes(1);
+  await h.click('Guardar nota');
+  h.render();
+  expect(focus).toHaveBeenCalledTimes(2);
   h.type('Nota');
   expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+});
+
+it('marks and focuses the note field once enabled again when the server rejects the note', async () => {
+  const h = harness({
+    onRecordHoldNote: async () => {
+      throw Object.assign(new Error('x'), { code: 'INVALID_HOLD_NOTE' });
+    },
+  });
+  await h.click('Seguir reteniendo');
+  h.type('Nota');
+  const focus = mock(() => undefined);
+  let disabled = false;
+  const ref = h.textarea()!.props.ref as { current: unknown };
+  // A disabled textarea cannot take focus.
+  ref.current = { focus: () => (disabled ? undefined : focus()) };
+  const click = h.click('Guardar nota');
+  disabled = h.textarea()?.props.disabled === true;
+  expect(disabled).toBe(true);
+  await click;
+  expect(focus).not.toHaveBeenCalled();
+  disabled = false;
+  const field = h.textarea();
+  expect(field?.props.disabled).not.toBe(true);
+  expect(field?.props['aria-invalid']).toBe(true);
+  expect(h.html()).toContain(holdNoteErrorMessage('INVALID_HOLD_NOTE'));
+  expect(focus).toHaveBeenCalled();
 });
 
 it('does not mark the note field for a refusal unrelated to the note', async () => {
@@ -227,9 +277,12 @@ it('does not mark the note field for a refusal unrelated to the note', async () 
   });
   await h.click('Seguir reteniendo');
   h.type('Nota');
+  const focus = mock(() => undefined);
+  (h.textarea()!.props.ref as { current: unknown }).current = { focus };
   await h.click('Guardar nota');
   expect(h.html()).toContain(holdNoteErrorMessage('ADMIN_ONLY'));
   expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+  expect(focus).not.toHaveBeenCalled();
 });
 
 it('keeps an open note dialog and its text while the queue refreshes', async () => {

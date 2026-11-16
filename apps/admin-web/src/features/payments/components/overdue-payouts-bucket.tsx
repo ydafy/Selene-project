@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CalendarClock, ShieldCheck, Undo2 } from 'lucide-react';
 import { Modal } from '@/shared/ui/modal';
 import { BucketEmptyState } from '@/shared/ui/bucket-empty-state';
@@ -62,6 +62,8 @@ export const OverduePayoutsBucket = ({
   const [noteError, setNoteError] = useState<string | null>(null);
   /** The note itself is wrong, not the request; the field is marked. */
   const [noteInvalid, setNoteInvalid] = useState(false);
+  /** Bumped on each rejected note so every rejection refocuses the field. */
+  const [noteFocusRequest, setNoteFocusRequest] = useState(0);
   const [savingNote, setSavingNote] = useState(false);
   const [refunding, setRefunding] = useState<OverduePayout | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
@@ -72,6 +74,10 @@ export const OverduePayoutsBucket = ({
   const noteInFlight = useRef(false);
   const refundInFlight = useRef(false);
   const noteField = useRef<HTMLTextAreaElement>(null);
+  // Focus waits for the save to end: a disabled textarea cannot take focus.
+  useEffect(() => {
+    if (noteFocusRequest > 0 && !savingNote) noteField.current?.focus();
+  }, [noteFocusRequest, savingNote]);
 
   // The queue refetches in the background; an open dialog stays mounted so the
   // admin keeps the note being written or the refund outcome being read.
@@ -103,6 +109,7 @@ export const OverduePayoutsBucket = ({
     setNote('');
     setNoteError(null);
     setNoteInvalid(false);
+    setNoteFocusRequest(0);
   };
   const saveNote = async () => {
     if (!holding || noteInFlight.current) return;
@@ -110,13 +117,14 @@ export const OverduePayoutsBucket = ({
     if (!normalized) {
       setNoteError(holdNoteErrorMessage('INVALID_HOLD_NOTE'));
       setNoteInvalid(true);
-      noteField.current?.focus();
+      setNoteFocusRequest((request) => request + 1);
       return;
     }
     noteInFlight.current = true;
     setSavingNote(true);
     setNoteError(null);
     setNoteInvalid(false);
+    setNoteFocusRequest(0);
     try {
       await onRecordHoldNote(holding.shipmentId, normalized);
       noteInFlight.current = false;
@@ -128,7 +136,7 @@ export const OverduePayoutsBucket = ({
       setNoteError(holdNoteErrorMessage(code));
       if (code === 'INVALID_HOLD_NOTE') {
         setNoteInvalid(true);
-        noteField.current?.focus();
+        setNoteFocusRequest((request) => request + 1);
       }
     } finally {
       setSavingNote(false);
