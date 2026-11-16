@@ -20,10 +20,11 @@ BEGIN
     RAISE EXCEPTION 'INVALID_ARGUMENT';
   END IF;
 
-  -- Retention (ops-cron-storage L2, L10): 120 days after the order closed. An order
-  -- closed when every shipment is completed, cancelled or refunded, at the latest
-  -- coalesce(completed_at, updated_at) of its shipments; an order without shipments
-  -- never closes (bool_and over no rows is NULL). Any dispute of the order whose
+  -- Retention (ops-cron-storage L2, L10, L12): 120 days after the order closed. An
+  -- order closed when every shipment is completed, cancelled or refunded, at the
+  -- latest greatest(completed_at, updated_at) of its shipments (greatest ignores
+  -- NULL; a refund after completion keeps completed_at and moves updated_at); an
+  -- order without shipments never closes (bool_and over no rows is NULL). Any dispute of the order whose
   -- status is not resolved or rejected (NULL included) holds its evidence.
   -- fn_mark_evidence_purged applies the same rule.
   RETURN QUERY
@@ -32,7 +33,7 @@ BEGIN
     FROM public.orders AS o
     CROSS JOIN LATERAL (
       SELECT
-        max(COALESCE(s.completed_at, s.updated_at)) AS closed_at,
+        max(GREATEST(s.completed_at, s.updated_at)) AS closed_at,
         bool_and(s.status IN ('completed', 'cancelled', 'refunded')) AS all_closed
       FROM public.shipments AS s
       WHERE s.order_id = o.id
@@ -80,7 +81,7 @@ CREATE OR REPLACE FUNCTION public.fn_mark_evidence_purged (
   AS $function$
 BEGIN
   -- Same retention rule as fn_list_evidence_purge_candidates (ops-cron-storage L2,
-  -- L10), checked again here: a shipment or dispute may have changed since the list.
+  -- L10, L12), checked again here: a shipment or dispute may have changed since the list.
   -- Marks only when no object of the order remains in the evidence bucket, so a run
   -- that failed halfway leaves the order unmarked and the next run finishes it.
   UPDATE public.orders AS o
@@ -90,7 +91,7 @@ BEGIN
     AND (
       SELECT
         bool_and(s.status IN ('completed', 'cancelled', 'refunded'))
-        AND max(COALESCE(s.completed_at, s.updated_at)) < now() - interval '120 days'
+        AND max(GREATEST(s.completed_at, s.updated_at)) < now() - interval '120 days'
       FROM public.shipments AS s
       WHERE s.order_id = o.id
     ) IS TRUE

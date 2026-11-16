@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.fn_mark_evidence_purged (
   AS $function$
 BEGIN
   -- Same retention rule as fn_list_evidence_purge_candidates (ops-cron-storage L2,
-  -- L10), checked again here: a shipment or dispute may have changed since the list.
+  -- L10, L12), checked again here: a shipment or dispute may have changed since the list.
   -- Marks only when no object of the order remains in the evidence bucket, so a run
   -- that failed halfway leaves the order unmarked and the next run finishes it.
   UPDATE public.orders AS o
@@ -18,7 +18,7 @@ BEGIN
     AND (
       SELECT
         bool_and(s.status IN ('completed', 'cancelled', 'refunded'))
-        AND max(COALESCE(s.completed_at, s.updated_at)) < now() - interval '120 days'
+        AND max(GREATEST(s.completed_at, s.updated_at)) < now() - interval '120 days'
       FROM public.shipments AS s
       WHERE s.order_id = o.id
     ) IS TRUE
