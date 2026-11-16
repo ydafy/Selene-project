@@ -11,7 +11,7 @@
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(53);
+select plan(54);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -93,6 +93,10 @@ select is(
   (select row(public, file_size_limit, allowed_mime_types)::text from storage.buckets where id = 'Avatars'),
   row(true, 2097152::bigint, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']::text[])::text,
   'Avatars is public, limited to 2 MiB and to photo types');
+select is(
+  (select row(public, file_size_limit, allowed_mime_types)::text from storage.buckets where id = 'verification'),
+  row(false, 10485760::bigint, array['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']::text[])::text,
+  'verification is private, limited to 10 MiB and to photo types');
 
 select is(
   (select string_agg(policyname || ':' || cmd || ':' || roles::text, ', ' order by policyname)
