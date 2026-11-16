@@ -17,6 +17,10 @@
  *   - If not, we create a new v2 account (country MX, `stripe_transfers` only;
  *     no `merchant` configuration or `card_payments`, because Selene uses
  *     separate charges and transfers) and store its id at once.
+ *   - A new account is created as an `individual` with Selene's URL
+ *     (`SELENE_CONNECT_BUSINESS_URL`) and a product description, so the hosted
+ *     form does not ask the seller for a business type or website (#550).
+ *     Existing accounts are not updated.
  *   - Either way, manual payouts are applied through `POST /v1/balance_settings`
  *     before a link is minted: a new v2 account starts with daily payouts, and a
  *     retry after a failed call repairs the stored account instead of creating a
@@ -69,6 +73,17 @@ export interface CreateConnectAccountDependencies {
 
 const APP_NAME = 'selene';
 
+// Sent as the seller's business profile: sellers are people selling their own
+// hardware on Selene, so they have no website or business of their own.
+const PRODUCT_DESCRIPTION =
+  'Sells used PC hardware to buyers in Mexico through the Selene marketplace.';
+
+/** The configured HTTPS Selene URL, or null when it is missing or not HTTPS. */
+function parseBusinessUrl(value: string | undefined): string | null {
+  if (!value || !URL.canParse(value)) return null;
+  return new URL(value).protocol === 'https:' ? value : null;
+}
+
 // Selene creates each payout itself when an admin releases a completed
 // shipment (full amount or nothing). Automatic payouts would pay out on
 // Stripe's schedule and make the payout ledger diverge from Stripe.
@@ -101,7 +116,10 @@ export function createCreateConnectAccountHandler(
       const stripeSecret = deps.getEnv('STRIPE_SECRET_KEY');
       const supabaseSecretKey = deps.readSupabaseSecretKey();
       const supabaseUrl = deps.getEnv('SUPABASE_URL');
-      if (!stripeSecret || !supabaseSecretKey || !supabaseUrl) {
+      const businessUrl = parseBusinessUrl(
+        deps.getEnv('SELENE_CONNECT_BUSINESS_URL'),
+      );
+      if (!stripeSecret || !supabaseSecretKey || !supabaseUrl || !businessUrl) {
         throw new Error('MISSING_SERVER_CONFIG');
       }
 
@@ -159,11 +177,15 @@ export function createCreateConnectAccountHandler(
 
         const contactEmail = user.email ?? profile?.email ?? undefined;
         const account = await stripe.v2.core.accounts.create({
-          identity: { country: 'mx' },
+          identity: { country: 'mx', entity_type: 'individual' },
           dashboard: 'express',
           ...(contactEmail ? { contact_email: contactEmail } : {}),
           defaults: {
             currency: 'mxn',
+            profile: {
+              business_url: businessUrl,
+              product_description: PRODUCT_DESCRIPTION,
+            },
             responsibilities: {
               fees_collector: 'application',
               losses_collector: 'application',

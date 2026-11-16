@@ -16,9 +16,12 @@ const TOKEN = 'seller-access-token';
 const SUPABASE_URL = 'https://project.supabase.co';
 const BRIDGE = `${SUPABASE_URL}/functions/v1/connect-onboarding-return`;
 
+const BUSINESS_URL = 'https://selene.example';
+
 const ENV: Record<string, string> = {
   STRIPE_SECRET_KEY: 'sk_test_x',
   SUPABASE_URL,
+  SELENE_CONNECT_BUSINESS_URL: BUSINESS_URL,
 };
 
 // A recording Supabase client: `respond` answers each query once its chain settles, and
@@ -202,11 +205,16 @@ const onboardingLinkFor = (
 ];
 
 const v2AccountFor = (email: string | undefined) => ({
-  identity: { country: 'mx' },
+  identity: { country: 'mx', entity_type: 'individual' },
   dashboard: 'express',
   ...(email === undefined ? {} : { contact_email: email }),
   defaults: {
     currency: 'mxn',
+    profile: {
+      business_url: BUSINESS_URL,
+      product_description:
+        'Sells used PC hardware to buyers in Mexico through the Selene marketplace.',
+    },
     responsibilities: {
       fees_collector: 'application',
       losses_collector: 'application',
@@ -257,6 +265,21 @@ describe('create-connect-account handler', () => {
     ['STRIPE_SECRET_KEY', { STRIPE_SECRET_KEY: undefined }, 'sb_secret_x'],
     ['the Supabase secret key', {}, undefined],
     ['SUPABASE_URL', { SUPABASE_URL: undefined }, 'sb_secret_x'],
+    [
+      'SELENE_CONNECT_BUSINESS_URL',
+      { SELENE_CONNECT_BUSINESS_URL: undefined },
+      'sb_secret_x',
+    ],
+    [
+      'an HTTPS SELENE_CONNECT_BUSINESS_URL',
+      { SELENE_CONNECT_BUSINESS_URL: 'http://selene.example' },
+      'sb_secret_x',
+    ],
+    [
+      'a valid SELENE_CONNECT_BUSINESS_URL',
+      { SELENE_CONNECT_BUSINESS_URL: 'not a url' },
+      'sb_secret_x',
+    ],
   ] as const) {
     it(`answers 500 MISSING_SERVER_CONFIG without ${missing}, before any client`, async () => {
       const { handler, created, database, stripe } = harness({
