@@ -18,7 +18,7 @@ describe('create-return-intent helpers', () => {
       amount: 30_000,
       currency: 'mxn',
       customer: 'cus_seller',
-      automatic_payment_methods: { enabled: true },
+      allowed_payment_method_types: ['card'],
       on_behalf_of: 'acct_seller',
       metadata: {
         app_name: 'selene',
@@ -31,6 +31,7 @@ describe('create-return-intent helpers', () => {
       },
     });
     expect(params).not.toHaveProperty('payment_method_types');
+    expect(params).not.toHaveProperty('automatic_payment_methods');
     expect(options).toEqual({ idempotencyKey: 'return_pay_dispute-1' });
   });
 });

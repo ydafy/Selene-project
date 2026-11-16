@@ -13,7 +13,7 @@ DECLARE
   v_search TEXT := btrim(COALESCE(p_search, ''));
   v_result JSONB;
 BEGIN
-  IF p_bucket IS NULL OR p_bucket NOT IN ('ready', 'processing', 'action-required', 'history') THEN
+  IF p_bucket IS NULL OR p_bucket NOT IN ('ready', 'overdue', 'processing', 'action-required', 'history') THEN
     RAISE EXCEPTION 'INVALID_QUEUE_BUCKET';
   END IF;
   IF p_scope IS NULL OR p_scope NOT IN ('page', 'selection') THEN
@@ -29,10 +29,16 @@ BEGIN
   WITH queue_rows AS MATERIALIZED (
     SELECT q.*,
       to_jsonb(q) AS row_data,
-      CASE WHEN q.payout_run_id IS NULL
+      -- An overdue held payout (#549) leaves its seller's ready group for an
+      -- overdue group of its own, and returns once the account is payable.
+      -- A shipment in a run stays with its run.
+      CASE WHEN q.payout_run_id IS NULL AND q.is_payout_overdue
+        THEN 'overdue:' || q.seller_id::TEXT
+        WHEN q.payout_run_id IS NULL
         THEN 'seller:' || q.seller_id::TEXT
         ELSE 'run:' || q.payout_run_id::TEXT END AS queue_group_id,
-      CASE WHEN q.payout_run_id IS NULL THEN 0
+      CASE WHEN q.payout_run_id IS NULL AND q.is_payout_overdue THEN 4
+        WHEN q.payout_run_id IS NULL THEN 0
         WHEN q.payout_run_status = 'paid' THEN 1
         WHEN q.payout_run_status = 'pending_reconciliation' THEN 2
         ELSE 3 END AS bucket_rank
@@ -43,11 +49,12 @@ BEGIN
   ), groups AS (
     SELECT queue_group_id,
       CASE MAX(bucket_rank) WHEN 0 THEN 'ready' WHEN 1 THEN 'history'
-        WHEN 2 THEN 'processing' ELSE 'action-required' END AS bucket,
+        WHEN 2 THEN 'processing' WHEN 4 THEN 'overdue' ELSE 'action-required' END AS bucket,
       MIN(seller_name) AS seller_name,
       MAX(payout_run_paid_at) AS paid_at,
       CASE WHEN MAX(bucket_rank) = 0 THEN
         BOOL_OR(is_eligible IS TRUE AND release_amount_cents > 0)
+      WHEN MAX(bucket_rank) = 4 THEN FALSE
       ELSE BOOL_AND(COALESCE(payout_run_status = 'failed', FALSE) AND COALESCE(is_retryable, FALSE))
       END AS selectable
     FROM queue_rows
@@ -55,6 +62,7 @@ BEGIN
   ), counts AS (
     SELECT jsonb_build_object(
       'ready', COUNT(*) FILTER (WHERE bucket = 'ready'),
+      'overdue', COUNT(*) FILTER (WHERE bucket = 'overdue'),
       'processing', COUNT(*) FILTER (WHERE bucket = 'processing'),
       'action-required', COUNT(*) FILTER (WHERE bucket = 'action-required'),
       'history', COUNT(*) FILTER (WHERE bucket = 'history')

@@ -26,7 +26,10 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
                    FROM public.connect_payout_run_shipments crs
                   WHERE ((crs.shipment_id = s.id) AND (crs.status = ANY (ARRAY['pending_reconciliation'::text, 'paid'::text, 'reconciliation_needed'::text]))))) AS has_active_release,
             o.stripe_transfer_group AS transfer_group,
-            s.stripe_transfer_id
+            s.stripe_transfer_id,
+            (EXISTS ( SELECT 1
+                   FROM public.connect_payout_run_shipments started
+                  WHERE ((started.shipment_id = s.id) AND (started.transfer_started_at IS NOT NULL)))) AS has_transfer_started
            FROM ((((public.shipments s
              JOIN public.orders o ON ((o.id = s.order_id)))
              LEFT JOIN public.order_items oi ON ((oi.shipment_id = s.id)))
@@ -71,17 +74,13 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
     COALESCE(((payout_run.status = 'failed'::text) AND (NOT payout_run.has_protected_release) AND (NOT payout_run.has_retry_child)), false) AS is_retryable,
     COALESCE((payout_run.status = 'canceled'::text), false) AS requires_manual_review,
     payout_run.paid_at AS payout_run_paid_at,
-        CASE
-            WHEN ((NOT sa.is_completed) OR (sa.stripe_transfer_id IS NOT NULL) OR (sa.stripe_account_id IS NULL) OR (payout_run.status = 'paid'::text)) THEN NULL::text
-            WHEN (sa.stripe_onboarding_status = 'rejected'::public.stripe_onboarding_status) THEN 'onboarding_rejected'::text
-            WHEN ((sa.stripe_onboarding_status <> 'complete'::public.stripe_onboarding_status) OR (sa.stripe_onboarding_status IS NULL)) THEN 'onboarding_pending'::text
-            ELSE account_gate.blocked_reason
-        END AS seller_payout_block_reason,
-        CASE
-            WHEN (sa.completed_at IS NULL) THEN NULL::integer
-            ELSE (EXTRACT(day FROM (now() - sa.completed_at)))::integer
-        END AS days_since_completed
-   FROM ((shipment_amounts sa
+    held.seller_payout_block_reason,
+    held.days_since_completed,
+    (sa.is_completed AND sa.has_completed_at AND (sa.stripe_transfer_id IS NULL) AND (sa.stripe_payout_id IS NULL) AND (NOT sa.has_transfer_started) AND (payout_run.status IS DISTINCT FROM 'paid'::text) AND (held.seller_payout_block_reason IS NOT NULL) AND (held.days_since_completed >= 30)) AS is_payout_overdue,
+    latest_hold_note.note AS latest_hold_note,
+    latest_hold_note.created_at AS latest_hold_noted_at,
+    latest_hold_note.admin_id AS latest_hold_noted_by
+   FROM ((((shipment_amounts sa
      LEFT JOIN LATERAL ( SELECT pr.id,
             pr.status,
             pr.amount_cents,
@@ -110,7 +109,25 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
                             END AS "case"
                        FROM public.fn_get_connect_account_actionability(sa.stripe_account_id) gate(is_actionable, blocked_reason))
                     ELSE NULL::text
-                END AS blocked_reason) account_gate ON (true));
+                END AS blocked_reason) account_gate ON (true))
+     LEFT JOIN LATERAL ( SELECT
+                CASE
+                    WHEN ((NOT sa.is_completed) OR (sa.stripe_transfer_id IS NOT NULL) OR (sa.stripe_account_id IS NULL) OR (payout_run.status = 'paid'::text)) THEN NULL::text
+                    WHEN (sa.stripe_onboarding_status = 'rejected'::public.stripe_onboarding_status) THEN 'onboarding_rejected'::text
+                    WHEN ((sa.stripe_onboarding_status <> 'complete'::public.stripe_onboarding_status) OR (sa.stripe_onboarding_status IS NULL)) THEN 'onboarding_pending'::text
+                    ELSE account_gate.blocked_reason
+                END AS seller_payout_block_reason,
+                CASE
+                    WHEN (sa.completed_at IS NULL) THEN NULL::integer
+                    ELSE (EXTRACT(day FROM (now() - sa.completed_at)))::integer
+                END AS days_since_completed) held ON (true))
+     LEFT JOIN LATERAL ( SELECT n.note,
+            n.created_at,
+            n.admin_id
+           FROM public.shipment_payout_hold_notes n
+          WHERE (n.shipment_id = sa.shipment_id)
+          ORDER BY n.created_at DESC, n.id DESC
+         LIMIT 1) latest_hold_note ON (true));
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."admin_connect_payout_release_view" TO "service_role";
 

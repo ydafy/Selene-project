@@ -16,7 +16,10 @@ export function buildReturnShippingPaymentIntentParams(
       amount: input.amountCents,
       currency: 'mxn',
       customer: input.customerId,
-      automatic_payment_methods: { enabled: true },
+      // Cards only, fixed in code instead of the Dashboard configuration (#567):
+      // OXXO cannot be refunded through Stripe and bank transfer refunds are
+      // asynchronous. The pinned API rejects `payment_method_types`.
+      allowed_payment_method_types: ['card'],
       on_behalf_of: input.stripeAccountId,
       metadata: {
         app_name: 'selene',
