@@ -20,9 +20,9 @@ import {
 } from '../logic/connect-payout-queue-pagination';
 import { formatConnectPayoutReleaseError } from '../logic/connect-payout-release-errors';
 
-export const CONNECT_PAYOUT_RELEASE_QUEUE_KEY = [
-  'connect-payout-release-queue',
-] as const;
+import { CONNECT_PAYOUT_RELEASE_QUEUE_KEY } from './payment-query-keys';
+
+export { CONNECT_PAYOUT_RELEASE_QUEUE_KEY };
 
 interface ReleaseSelectedShipmentsInput {
   batch: ReleaseQueueBatch;
@@ -170,6 +170,7 @@ export function useConnectPayoutReleaseQueue(
       });
     },
     batches: queueQuery.data?.releaseBatches ?? [],
+    overduePayouts: queueQuery.data?.overduePayouts ?? [],
     processingRuns: queueQuery.data?.processingRuns ?? [],
     actionRequiredRuns: queueQuery.data?.actionRequiredRuns ?? [],
     historyRuns: queueQuery.data?.historyRuns ?? [],

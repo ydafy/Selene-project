@@ -48,12 +48,7 @@ const NAMED_BY_ADMIN_WEB = FUNCTIONS.filter((name) =>
 // Functions built for an admin-web screen that does not call them yet, each with the task that
 // adds the caller. They already serve with CORS so the function and its screen can ship apart; an
 // entry must go once the admin-web names the function (checked below).
-const PENDING_ADMIN_WEB_CALLERS: Record<string, string> = {
-  'record-payout-hold-note':
-    'odd/tasks/held-payout-overdue-refund.md T6: hold-with-note dialog in the overdue payouts section',
-  'refund-overdue-payout':
-    'odd/tasks/held-payout-overdue-refund.md T6: refund confirmation for a rejected seller in the overdue payouts section',
-};
+const PENDING_ADMIN_WEB_CALLERS: Record<string, string> = {};
 
 const ADMIN_WEB_FUNCTIONS = [
   ...NAMED_BY_ADMIN_WEB,

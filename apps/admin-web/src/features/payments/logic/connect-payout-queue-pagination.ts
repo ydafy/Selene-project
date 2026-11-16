@@ -5,6 +5,7 @@ import type {
   ConnectPayoutReleaseQueueRow,
 } from '@selene/types';
 import { isRecord } from '@/shared/utils/as-record';
+import { OVERDUE_REFUND_CLOSED_RUN } from './overdue-payouts';
 
 export interface PayoutQueueRequest {
   bucket: ConnectPayoutQueueBucket;
@@ -22,10 +23,9 @@ export interface ValidatedPayoutQueueResponse extends PayoutQueueRequest {
   selectionComplete: boolean;
 }
 
-// The admin-web does not read the `overdue` bucket yet (held-payout-overdue-refund T6), so a
-// request for it is refused here like any unknown bucket.
 const buckets: readonly ConnectPayoutQueueBucket[] = [
   'ready',
+  'overdue',
   'processing',
   'action-required',
   'history',
@@ -86,15 +86,24 @@ export function validatePayoutQueueResponse(
       return invalid();
     if (!runId && (!row.seller_id || !row.shipment_id || !row.order_id))
       return invalid();
+    // Mirrors fn_get_admin_payout_queue: a run-less overdue shipment has its own
+    // group, and a run closed by the overdue refund is history (#549).
+    const overdue = !runId && row.is_payout_overdue === true;
     const bucket: ConnectPayoutQueueBucket = !runId
-      ? 'ready'
-      : row.payout_run_status === 'paid'
+      ? overdue
+        ? 'overdue'
+        : 'ready'
+      : row.payout_run_status === 'paid' ||
+          (row.payout_run_status === 'canceled' &&
+            row.payout_run_failure_reason === OVERDUE_REFUND_CLOSED_RUN)
         ? 'history'
         : row.payout_run_status === 'pending_reconciliation'
           ? 'processing'
           : 'action-required';
     if (bucket !== request.bucket) return invalid();
-    const groupId = runId ? `run:${runId}` : `seller:${row.seller_id}`;
+    const groupId = runId
+      ? `run:${runId}`
+      : `${overdue ? 'overdue' : 'seller'}:${row.seller_id}`;
     if (row.shipment_id !== null) {
       if (
         typeof row.shipment_id !== 'string' ||
@@ -108,9 +117,12 @@ export function validatePayoutQueueResponse(
       ? row.payout_run_amount_cents
       : row.release_amount_cents;
     if (amount !== null && !count(amount)) return invalid();
+    // Nothing in the overdue bucket can be released.
     const selectable = runId
       ? row.payout_run_status === 'failed' && row.is_retryable === true
-      : row.is_eligible === true && (row.release_amount_cents ?? 0) > 0;
+      : !overdue &&
+        row.is_eligible === true &&
+        (row.release_amount_cents ?? 0) > 0;
     const signature = JSON.stringify(
       runId
         ? [

@@ -52,6 +52,8 @@ const paymentTime = (run: ReleaseQueueRun) =>
   ) : (
     'No disponible'
   );
+const overdueLabel = (count: number) =>
+  count === 1 ? '1 envío vencido' : `${count} envíos vencidos`;
 const sellerLabel = (run: ReleaseQueueRun) =>
   run.sellerName
     ? `@${run.sellerName}`
@@ -269,7 +271,10 @@ export const PayoutRunsWorkbench = ({
     return mode === 'action-required' && details
       ? reasonLabels[details.reason]
       : mode === 'history'
-        ? 'Pago observado'
+        ? // History holds a canceled run only when an overdue refund closed it.
+          item.status === 'canceled'
+          ? 'Cerrada por reembolso'
+          : 'Pago observado'
         : 'Autorizada · en proceso';
   };
 
@@ -325,6 +330,16 @@ export const PayoutRunsWorkbench = ({
           {money(run.amountCents)}{' '}
           <span className="text-xs font-medium text-blue-light">MXN</span>
         </p>
+        {run.overdueShipmentCount ? (
+          <p className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-amber-400">
+            <span className="font-bold">
+              {overdueLabel(run.overdueShipmentCount)}
+            </span>
+            {
+              ': completados hace 30 días o más sin que el vendedor pueda cobrar. Siguen en esta dispersión.'
+            }
+          </p>
+        ) : null}
       </header>
       <div
         className={
@@ -373,7 +388,9 @@ export const PayoutRunsWorkbench = ({
             {mode === 'processing'
               ? 'La dispersión ya fue autorizada. La conciliación continúa automáticamente; esta consulta no expone la etapa específica ni una fecha de llegada al banco.'
               : mode === 'history'
-                ? 'Stripe informó el pago. Este estado observado no es una garantía irreversible: una devolución posterior puede llevar esta ejecución a Necesita atención.'
+                ? run.status === 'canceled'
+                  ? 'Stripe no pagó esta ejecución: se cerró porque el envío se reembolsó al comprador. No se puede reintentar ni volver a liberar.'
+                  : 'Stripe informó el pago. Este estado observado no es una garantía irreversible: una devolución posterior puede llevar esta ejecución a Necesita atención.'
                 : canRetry
                   ? 'Revisa y corrige la causa reportada antes de reintentar. Antes de mover dinero, el servidor verifica el fallo confirmado y el retorno de fondos. El reintento reutiliza las transferencias existentes.'
                   : attention?.reason === 'reconciliation_needed' ||
@@ -691,6 +708,11 @@ export const PayoutRunsWorkbench = ({
                       <span className={`mt-2 block text-xs ${tone}`}>
                         {statusLabel(item)}
                       </span>
+                      {item.overdueShipmentCount ? (
+                        <span className="mt-2 inline-block rounded-md bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                          {overdueLabel(item.overdueShipmentCount)}
+                        </span>
+                      ) : null}
                       {mode === 'history' ? (
                         <span className="mt-2 block text-xs text-blue-light">
                           Fecha de pago observada: {paymentTime(item)}
