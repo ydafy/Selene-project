@@ -122,7 +122,19 @@ function harness(overrides: Record<string, unknown> = {}) {
       target: { value },
     });
   };
-  return { render, html, button, buttons, click, type, notes, refunds };
+  const textarea = () => nodes(render()).find((n) => n.type === 'textarea');
+  return {
+    props,
+    render,
+    html,
+    button,
+    buttons,
+    click,
+    type,
+    textarea,
+    notes,
+    refunds,
+  };
 }
 afterEach(() => mock.restore());
 
@@ -187,6 +199,63 @@ it('requires a 1-1000 character note and shows a counter before sending', async 
   expect(html).toContain('1001/1000');
   await h.click('Guardar nota');
   expect(h.notes).toEqual([]);
+});
+
+it('marks and focuses the note field when the note is invalid', async () => {
+  const h = harness();
+  await h.click('Seguir reteniendo');
+  expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+  const focus = mock(() => undefined);
+  (h.textarea()!.props.ref as { current: unknown }).current = { focus };
+  h.type('   ');
+  await h.click('Guardar nota');
+  expect(h.textarea()?.props['aria-invalid']).toBe(true);
+  expect(h.textarea()?.props['aria-describedby']).toBe(
+    'hold-note-counter hold-note-error',
+  );
+  expect(h.html()).toContain('id="hold-note-error"');
+  expect(focus).toHaveBeenCalledTimes(1);
+  h.type('Nota');
+  expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+});
+
+it('does not mark the note field for a refusal unrelated to the note', async () => {
+  const h = harness({
+    onRecordHoldNote: async () => {
+      throw Object.assign(new Error('x'), { code: 'ADMIN_ONLY' });
+    },
+  });
+  await h.click('Seguir reteniendo');
+  h.type('Nota');
+  await h.click('Guardar nota');
+  expect(h.html()).toContain(holdNoteErrorMessage('ADMIN_ONLY'));
+  expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+});
+
+it('keeps an open note dialog and its text while the queue refreshes', async () => {
+  const h = harness();
+  await h.click('Seguir reteniendo');
+  h.type('Stripe sigue revisando.');
+  h.props.isLoading = true;
+  const html = h.html();
+  expect(html).toContain('<dialog');
+  expect(html).toContain('Stripe sigue revisando.');
+  expect(html).not.toContain('Consultando pagos vencidos');
+});
+
+it('keeps the refund outcome open when the refreshed queue no longer lists the shipment', async () => {
+  const h = harness({ payouts: [rejected] });
+  await h.click('Reembolsar al comprador');
+  await h.click('Confirmar reembolso');
+  h.props.isLoading = true;
+  expect(h.html()).toContain('Reembolso hecho');
+  h.props.isLoading = false;
+  h.props.payouts = [];
+  const html = h.html();
+  expect(html).toContain('Reembolso hecho');
+  expect(html).not.toContain('Ningún pago vencido');
+  await h.click('Cerrar');
+  expect(h.html()).toContain('Ningún pago vencido');
 });
 
 it('sends the trimmed note for that shipment and closes the dialog', async () => {

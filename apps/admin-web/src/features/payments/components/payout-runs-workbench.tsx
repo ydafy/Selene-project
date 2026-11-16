@@ -271,7 +271,10 @@ export const PayoutRunsWorkbench = ({
     return mode === 'action-required' && details
       ? reasonLabels[details.reason]
       : mode === 'history'
-        ? 'Pago observado'
+        ? // History holds a canceled run only when an overdue refund closed it.
+          item.status === 'canceled'
+          ? 'Cerrada por reembolso'
+          : 'Pago observado'
         : 'Autorizada · en proceso';
   };
 
@@ -385,7 +388,9 @@ export const PayoutRunsWorkbench = ({
             {mode === 'processing'
               ? 'La dispersión ya fue autorizada. La conciliación continúa automáticamente; esta consulta no expone la etapa específica ni una fecha de llegada al banco.'
               : mode === 'history'
-                ? 'Stripe informó el pago. Este estado observado no es una garantía irreversible: una devolución posterior puede llevar esta ejecución a Necesita atención.'
+                ? run.status === 'canceled'
+                  ? 'Stripe no pagó esta ejecución: se cerró porque el envío se reembolsó al comprador. No se puede reintentar ni volver a liberar.'
+                  : 'Stripe informó el pago. Este estado observado no es una garantía irreversible: una devolución posterior puede llevar esta ejecución a Necesita atención.'
                 : canRetry
                   ? 'Revisa y corrige la causa reportada antes de reintentar. Antes de mover dinero, el servidor verifica el fallo confirmado y el retorno de fondos. El reintento reutiliza las transferencias existentes.'
                   : attention?.reason === 'reconciliation_needed' ||

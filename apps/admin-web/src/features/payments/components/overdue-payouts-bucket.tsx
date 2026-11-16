@@ -60,6 +60,8 @@ export const OverduePayoutsBucket = ({
   const [holding, setHolding] = useState<OverduePayout | null>(null);
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | null>(null);
+  /** The note itself is wrong, not the request; the field is marked. */
+  const [noteInvalid, setNoteInvalid] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
   const [refunding, setRefunding] = useState<OverduePayout | null>(null);
   const [refundError, setRefundError] = useState<string | null>(null);
@@ -69,8 +71,12 @@ export const OverduePayoutsBucket = ({
   const [sendingRefund, setSendingRefund] = useState(false);
   const noteInFlight = useRef(false);
   const refundInFlight = useRef(false);
+  const noteField = useRef<HTMLTextAreaElement>(null);
 
-  if (isLoading) {
+  // The queue refetches in the background; an open dialog stays mounted so the
+  // admin keeps the note being written or the refund outcome being read.
+  const dialogOpen = holding !== null || refunding !== null;
+  if (isLoading && !dialogOpen) {
     return (
       <p
         role="status"
@@ -80,7 +86,7 @@ export const OverduePayoutsBucket = ({
       </p>
     );
   }
-  if (payouts.length === 0) {
+  if (payouts.length === 0 && !dialogOpen) {
     return (
       <BucketEmptyState
         icon={ShieldCheck}
@@ -96,17 +102,21 @@ export const OverduePayoutsBucket = ({
     setHolding(null);
     setNote('');
     setNoteError(null);
+    setNoteInvalid(false);
   };
   const saveNote = async () => {
     if (!holding || noteInFlight.current) return;
     const normalized = normalizeHoldNote(note);
     if (!normalized) {
       setNoteError(holdNoteErrorMessage('INVALID_HOLD_NOTE'));
+      setNoteInvalid(true);
+      noteField.current?.focus();
       return;
     }
     noteInFlight.current = true;
     setSavingNote(true);
     setNoteError(null);
+    setNoteInvalid(false);
     try {
       await onRecordHoldNote(holding.shipmentId, normalized);
       noteInFlight.current = false;
@@ -114,7 +124,12 @@ export const OverduePayoutsBucket = ({
       setNote('');
     } catch (failure) {
       noteInFlight.current = false;
-      setNoteError(holdNoteErrorMessage(getErrorCode(failure)));
+      const code = getErrorCode(failure);
+      setNoteError(holdNoteErrorMessage(code));
+      if (code === 'INVALID_HOLD_NOTE') {
+        setNoteInvalid(true);
+        noteField.current?.focus();
+      }
     } finally {
       setSavingNote(false);
     }
@@ -212,11 +227,20 @@ export const OverduePayoutsBucket = ({
             <label className="block text-xs font-semibold text-platinum">
               Nota para seguir reteniendo
               <textarea
+                ref={noteField}
                 value={note}
                 rows={4}
                 disabled={savingNote}
-                aria-describedby="hold-note-counter"
-                onChange={(event) => setNote(event.target.value)}
+                aria-invalid={noteInvalid || undefined}
+                aria-describedby={
+                  noteInvalid
+                    ? 'hold-note-counter hold-note-error'
+                    : 'hold-note-counter'
+                }
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  setNoteInvalid(false);
+                }}
                 placeholder="Ej. Stripe sigue revisando la cuenta; volver a revisar el lunes."
                 className={`mt-1 w-full rounded-xl border border-white/10 bg-night px-3 py-2 text-sm text-platinum disabled:opacity-40 ${workbenchFocus}`}
               />
@@ -228,7 +252,11 @@ export const OverduePayoutsBucket = ({
               {`${noteLength}/${MAX_HOLD_NOTE_LENGTH}`}
             </p>
             {noteError ? (
-              <p role="alert" className="text-xs text-fire">
+              <p
+                id="hold-note-error"
+                role="alert"
+                className="text-xs text-fire"
+              >
                 {noteError}
               </p>
             ) : null}

@@ -730,10 +730,12 @@ test('keeps holding with a required note and shows it after the refresh', async 
   await expect(dialog.getByRole('alert')).toContainText(
     'Escribe una nota de entre 1 y 1000 caracteres.',
   );
+  const noteField = dialog.getByLabel('Nota para seguir reteniendo');
+  await expect(noteField).toHaveAttribute('aria-invalid', 'true');
+  await expect(noteField).toBeFocused();
   expect(audit.actions).toEqual([]);
-  await dialog
-    .getByLabel('Nota para seguir reteniendo')
-    .fill('  Esperamos la revisión de Stripe.  ');
+  await noteField.fill('  Esperamos la revisión de Stripe.  ');
+  await expect(noteField).not.toHaveAttribute('aria-invalid', 'true');
   await expect(dialog).toContainText('32/1000');
   await page.screenshot({
     path: testInfo.outputPath('hold-note-dialog.png'),

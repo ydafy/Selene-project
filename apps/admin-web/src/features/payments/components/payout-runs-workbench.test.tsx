@@ -314,6 +314,21 @@ it('uses taller twenty-row attention pages without list scrolling or lateral che
     'Detalle de dispersión',
   );
 });
+it('labels a run closed by an overdue refund as a refund, never as a payment', () => {
+  const h = harness({
+    mode: 'history',
+    runs: [{ ...run, status: 'canceled', paidAt: null }],
+  });
+  expect(renderToStaticMarkup(h.render())).toContain('Cerrada por reembolso');
+  h.openDetail();
+  const html = renderToStaticMarkup(h.render());
+  expect(html).toContain('Cerrada por reembolso');
+  expect(html).toContain('el envío se reembolsó al comprador');
+  expect(html).not.toContain('Pago observado');
+  expect(html).not.toContain('Stripe informó el pago');
+  expect(html).not.toContain('Reintentar');
+});
+
 it('opens and closes existing read-only history details only through its card modal', () => {
   const h = harness({ mode: 'history', runs: [{ ...run, status: 'paid' }] });
   expect(renderToStaticMarkup(h.render())).not.toContain(
