@@ -9,7 +9,7 @@
 -- back. Runs against the local database only: `supabase start`,
 -- then `bun run test:db`.
 begin;
-select plan(13);
+select plan(14);
 
 -- Jobs created out of name order: z, a, b, c, then one without a name.
 create temporary table t8_jobs (tag text primary key, jobid bigint not null) on commit drop;
@@ -47,12 +47,17 @@ select pg_temp.run('c', null, 'starting');
 -- request still pending. Jobs a, b, c and the unnamed one: no tracked request.
 create temporary sequence t8_request_id start 9000000000000001;
 create function pg_temp.http(p_tag text, p_ago interval, p_status integer, p_timed_out boolean, p_error text)
-returns void language sql as $$
-  with tracked as (
-    select internal.fn_track_cron_request('t8_health_' || p_tag, nextval('t8_request_id')) as id
-  )
-  insert into net._http_response (id, status_code, timed_out, error_msg, created)
-  select id, p_status, p_timed_out, p_error, now() - p_ago from tracked where p_ago is not null
+returns void language plpgsql as $$
+declare
+  v_id bigint := internal.fn_track_cron_request('t8_health_' || p_tag, nextval('t8_request_id'));
+begin
+  -- Tracked first, unconditionally: a CTE filtered by a constant-false WHERE
+  -- is never evaluated, which would drop the pending request.
+  if p_ago is not null then
+    insert into net._http_response (id, status_code, timed_out, error_msg, created)
+    values (v_id, p_status, p_timed_out, p_error, now() - p_ago);
+  end if;
+end
 $$;
 select pg_temp.http('d', interval '50 minutes', 500, false, null);
 select pg_temp.http('d', interval '10 minutes', 200, false, null);
@@ -61,6 +66,13 @@ select pg_temp.http('e', interval '20 minutes', null, true, null);
 select pg_temp.http('f', interval '30 minutes', null, false, 'Could not connect to server');
 select pg_temp.http('g', interval '15 minutes', 200, false, null);
 select pg_temp.http('g', null, null, null, null);
+
+select is(
+  (select count(*) from internal.cron_http_requests t
+   where t.jobname = 't8_health_g'
+     and not exists (select 1 from net._http_response r where r.id = t.request_id)),
+  1::bigint,
+  'job g has one tracked request still waiting for its response');
 
 -- The row of a job tag, as text, read as service_role.
 create function pg_temp.health(p_tag text) returns text language sql as $$
