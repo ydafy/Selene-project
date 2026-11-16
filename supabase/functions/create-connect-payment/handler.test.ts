@@ -209,6 +209,16 @@ describe('create-connect-payment handler: successful checkout', () => {
     expect(expected).not.toHaveProperty('application_fee_amount');
   });
 
+  it('sends Stripe a card-only PaymentIntent (#567)', async () => {
+    const result = await runCreateConnectPayment();
+
+    expect(result.status).toBe(200);
+    const sent = result.paymentIntentsCreate[0][0] as Record<string, unknown>;
+    expect(sent.allowed_payment_method_types).toEqual(['card']);
+    expect(sent).not.toHaveProperty('automatic_payment_methods');
+    expect(sent).not.toHaveProperty('payment_method_types');
+  });
+
   it('creates and stores a Stripe customer when the buyer has none', async () => {
     const result = await runCreateConnectPayment({
       buyerProfile: { stripe_customer_id: null, email: 'profile@example.test' },

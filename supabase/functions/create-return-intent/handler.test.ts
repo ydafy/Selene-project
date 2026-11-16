@@ -409,7 +409,7 @@ describe('create-return-intent handler', () => {
           amount: 45_000,
           currency: 'mxn',
           customer: 'cus_seller',
-          automatic_payment_methods: { enabled: true },
+          allowed_payment_method_types: ['card'],
           on_behalf_of: 'acct_seller',
           metadata: {
             app_name: 'selene',
