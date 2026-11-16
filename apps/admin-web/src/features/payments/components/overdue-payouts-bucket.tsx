@@ -248,6 +248,7 @@ export const OverduePayoutsBucket = ({
                 onChange={(event) => {
                   setNote(event.target.value);
                   setNoteInvalid(false);
+                  setNoteError(null);
                 }}
                 placeholder="Ej. Stripe sigue revisando la cuenta; volver a revisar el lunes."
                 className={`mt-1 w-full rounded-xl border border-white/10 bg-night px-3 py-2 text-sm text-platinum disabled:opacity-40 ${workbenchFocus}`}

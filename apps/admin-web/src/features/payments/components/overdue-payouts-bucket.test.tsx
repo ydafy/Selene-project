@@ -241,6 +241,7 @@ it('marks and focuses the note field when the note is invalid', async () => {
   expect(focus).toHaveBeenCalledTimes(2);
   h.type('Nota');
   expect(h.textarea()?.props['aria-invalid']).toBeUndefined();
+  expect(h.html()).not.toContain(holdNoteErrorMessage('INVALID_HOLD_NOTE'));
 });
 
 it('marks and focuses the note field once enabled again when the server rejects the note', async () => {
