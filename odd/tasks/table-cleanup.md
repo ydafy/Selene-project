@@ -1,0 +1,34 @@
+# Table cleanup: dead objects, one source per money value, system_logs, payment_methods, blocked_users
+
+Roadmap #299 item 10, issue #309. Branch `chore/table-cleanup` from `origin/main` 87c3ba4c, worktree supabase-health.
+Scope reviewed against the code and the live project on 2026-11-16 (L2): leases, `*_running` flags, `updated_at` trigger, constraints and cents were already done by #306, #307 and #308. #64 stays its own feature (L4).
+
+## Specs
+
+- S1. "Wallet-era leftovers: the enums `payout_status` and `wallet_transaction_type`, the `system_settings` columns no code reads, the legacy `shipping_cost` branch of the payout amount." Drop the enum `payout_status` and its `PayoutStatus` alias (`wallet_transaction_type` is already gone); drop `system_settings.service_fee_fixed_cents`, `payout_fee_fixed_cents`, `min_payout_amount_cents`, `isr_withholding_pct`, `iva_withholding_pct` and `currency`; remove the `stripe_transfer_group IS NULL` branch that subtracts `shipping_cost_cents` in `admin_connect_payout_release_view` and the legacy text in the `connect_payout_runs.amount_cents` comment; remove the unused `SEGURO_SELENE_RATE` and `SEGURO_SELENE_FIXED_CENTS`. `novice_completed_threshold`, `novice_active_limit` and `trusted_active_limit` stay: `generate-shipping-label` reads them.
+- S2. "One source per money value" (#309 comment, 2026-11-11): "the table is the source (changes without a deploy), code reads it and fails instead of falling back." Today the table and the code disagree: commission 0.05 vs `CONNECT_COMMISSION_RATE = 0.06`, shipping buffer 5000 vs `DEFAULT_SHIPPING_BUFFER_CENTS = 3_000`, return label fee 20000 vs `|| 30000` in `create-return-intent`; `create-connect-payment` and the frontend estimate fall back silently when the settings read fails. Done when no money value has a code fallback that can disagree with `system_settings`, and a failed read stops the operation with an error.
+- S3. "One refund-recovery state shared by `orders` and `checkout_recovery_shells`." One enum type replaces the two CHECKs and the repeated literal lists; the two tables stay separate.
+- S4. Clients read only the `shipments` columns the app uses (L3). The label claim and quote columns (`claim_token`, `claim_expires_at`, `label_quote_*`) and `label_provider_cost_cents` stay server-only. The label columns stay on `shipments` and the three event tables stay separate (L3).
+- S5. "Drop `blocked_users` until blocking is built." Remove the table, the block action in the app and its strings, and the delete in `fn_close_account`.
+- S6. "Sentry for errors and `admin_audit_logs` for audit; drop `system_logs`." Every writer (SQL functions, `apps/frontend/src/app/error.tsx`) moves to Sentry, `admin_audit_logs`, or nothing when `cron.job_run_details` already records the fact; then the table is dropped. Inside #309, on this branch (L3).
+- S7. "Read saved payment methods from Stripe and drop the `payment_methods` copy." Inside #309, on this branch (L3).
+- S8. "Every table has one purpose, and no column or enum is unused." `odd/tasks/rls-performance-indexes.md` no longer assumes a `shipment_events` merge; #309 closes with `Closes #309`.
+
+## Tasks
+
+- [ ] T1 (S1, #636) dead objects. Inline. Commit SQL + types, then TS.
+- [ ] T2 (S2, #637) one source per money value. Own commit (money).
+- [ ] T3 (S3, #638) shared compensation state enum. Own commit (SQL).
+- [ ] T4 (S4, #639) shipments column grants for clients. Own commit (RLS/grants).
+- [ ] T5 (S5, #640) drop `blocked_users` and the block action.
+- [ ] T6 (S6, #641) `system_logs` writers to Sentry or `admin_audit_logs`, then drop. Design first (explorer), several commits.
+- [ ] T7 (S7, #642) saved cards from Stripe, drop `payment_methods`. Design first (explorer), money/payments commits.
+- [ ] T8 (S8) docs, issue comments, close #309.
+
+## Log
+
+- L1 (2026-11-16, maintainer): "Seguimos el roadmap #299 en supabase-health: leé en Engram roadmap/supabase-health y empezá #309 (limpieza de tablas, va con #64) desde una rama nueva sobre origin/main. De paso, revisá por MCP que la primera corrida de purge-old-evidence (09:00 UTC) haya respondido 200. Tambein dime qeu opinas del issue que vamos atacar, osea, el issue, si, ya esta escrito, pero no significa que este bien o que este mal, entonces aprovehca para invetsigarlo mas a fondo por decir en vez de confiar 100% ciegamente lo que dice el issue."
+- L2 (2026-11-16, evidence): two read-only audits plus the live project. Already done: leases (#306), `updated_at` trigger and constraints (#308), cents (#307), `wallet_transaction_type`. `system_logs` is live: 28 schema files and the frontend write it, about one row per hour from `fn_cron_return_delivery_timeout` (4,091 rows). `payment_methods` is the saved-cards mirror (15 rows, `manage-payment-methods`, `stripe-webhooks`, 3-card trigger). `blocked_users` is written by the block button and read by nothing. Labels are 1:1 with shipments (no relabel flow); label events (append-only log), completion events (one idempotent row per shipment) and tracking events (client-readable) have different keys and RLS. `purge-old-evidence` first run is 2026-11-17 09:00 UTC (not run yet at 22:22 UTC).
+- L3 (2026-11-16, decisions): labels/events, maintainer: "no devemos usar pacrhes, la idea es ocntruir fuerte y solido desde el inicio [...] ahi es donde debes tu decidir si es mejor hacerlo ya o podemos hacrelo por partes ya en prodcuion". Agent decision: keep label columns on `shipments` and the three event tables separate (the split and the merge are the weaker model, not the safer one); fix the real gap instead, clients reading server-only label columns (S4). `system_logs`: "Dentro de #309 en esta rama". `payment_methods`: "Hacerlo dentro de #309". `blocked_users`: "Quitar botón y tabla (recomendado)".
+- L4 (2026-11-16, agent recommendation): #64 stays a separate payments feature (open product decisions: who qualifies, N sales or a date, whether refunds count, what the seller sees). S2 keeps `service_fee_pct` as the single default rate #64 builds on.
+- L5 (2026-11-16, maintainer): "master , como metemos mas cosas, acttualiza los sub issues o issues paarq ue qeuden como que anotados como evidencia, no lo hagamos nomas aqui, y un dia si alguien lee el rodamp se quede con lo que estaba hi y no los cambios". Done: #309 split into sub-issues #636-#642 (attached to #309), #309 body rewritten with the reviewed scope, evidence comments on #309, #299 and #64.
