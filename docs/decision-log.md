@@ -326,7 +326,7 @@ It is established as the standard procedure for structural inconsistencies.
 **Decision:**
 
 - `reviews.auto_review.base_branches: ['.*']`: CodeRabbit reviews pull requests on any base branch, so each layer of a stack is reviewed against the layer below it.
-- `reviews.fail_commit_status: true`: a review that errors fails the required check. A rate-limited review still passes; check that a review was posted.
+- `reviews.fail_commit_status: true`: a review that errors fails the required check. A rate-limited review still passes; check that CodeRabbit reviewed the current head commit, and if it did not, comment `@coderabbitai review` once capacity returns.
 - Before merging, wait for CodeRabbit to post its review and read its comments (`gh api repos/ydafy/Selene-project/pulls/<N>/comments`, and `issues/<N>/comments` for the summary). Never set `gh pr merge --auto` before it reports. If it stalls or skipped a pull request, comment `@coderabbitai review`.
 
-**Consequence:** CodeRabbit reads `.coderabbit.yaml` from the pull request's branch, so stacked branches created before this change need `@coderabbitai review` once. If CodeRabbit is down, merges wait for it.
+**Consequence:** CodeRabbit reads `.coderabbit.yaml` from the pull request's branch, so a stacked branch created before this change skips every push until it is rebased onto a `main` that has it. Until then, comment `@coderabbitai review` after each push. If CodeRabbit is down, merges wait for it.
