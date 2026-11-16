@@ -7,7 +7,8 @@ const help =
   'B3.3 live: drives the REAL served auto-cancel-orders function over HTTP and checks its effects in the\n' +
   'database: paid-timeout boundaries with a live order_expiration_hours (just expired vs not yet, tracked and\n' +
   'non-paid and label-blocked orphan_pending shipments excluded), rerun idempotence, a held lease ("Already running"), two simultaneous runs,\n' +
-  'an invalid live setting (500 AUTO_CANCEL_SETTINGS_INVALID) and a free lease after every run.\n' +
+  "an invalid live setting rejected by the database (system_settings_order_expiration_hours_check; the function's\n" +
+  'fail-closed 500 AUTO_CANCEL_SETTINGS_INVALID is covered by auto-cancel-settings.test.ts) and a free lease after every run.\n' +
   'T7: the paid untracked shipment whose deadline is less than 12 h away gets exactly one seller label deadline\n' +
   'notice ("reminded" in the reply), the others none, and a rerun writes no second notice.\n' +
   'Fixtures have no Stripe payment intent, so every selected shipment stops at the AUTO_CANCEL_MISSING_PAYMENT_INTENT\n' +
@@ -229,24 +230,28 @@ async function run() {
     await fixture(sql);
     await setHours(sql, HOURS);
 
+    // Since fd73ee5d the column is NOT NULL with CHECK (> 0), so the live function can no longer
+    // read an invalid value; its fail-closed 500 stays covered by auto-cancel-settings.test.ts.
     check(
-      'an invalid live setting (0) returns 500 AUTO_CANCEL_SETTINGS_INVALID, selects nothing and frees the lease',
+      'an invalid live setting (0) is rejected by the database and the live value stays unchanged',
       async () => {
-        await setHours(sql, 0);
-        try {
-          const reply = await call();
-          assert.equal(reply.status, 500);
-          assert.equal(reply.text, '{"error":"AUTO_CANCEL_SETTINGS_INVALID"}');
-          assert.equal(await operationCount(sql), 0);
+        await assert.rejects(setHours(sql, 0), (error: unknown) => {
+          const { errno, constraint } = error as {
+            errno?: string;
+            constraint?: string;
+          };
+          assert.equal(errno, '23514');
           assert.equal(
-            (await reminders(sql)).length,
-            0,
-            'an invalid setting writes no reminder',
+            constraint,
+            'system_settings_order_expiration_hours_check',
           );
-          assert.equal(await leaseFree(sql), true);
-        } finally {
-          await setHours(sql, HOURS);
-        }
+          return true;
+        });
+        const [row] =
+          await sql`SELECT order_expiration_hours FROM public.system_settings WHERE id = 1`;
+        assert.equal(row.order_expiration_hours, HOURS);
+        assert.equal(await operationCount(sql), 0);
+        assert.equal(await leaseFree(sql), true);
       },
     );
 
