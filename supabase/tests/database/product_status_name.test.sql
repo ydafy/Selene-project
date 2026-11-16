@@ -5,7 +5,7 @@
 -- `ALTER TYPE ... RENAME VALUE` keeps their order and every stored row.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(9);
+select plan(11);
 
 select has_type('public', 'product_status', 'public.product_status exists');
 select hasnt_type('public', 'product_status_enum', 'public.product_status_enum is gone');
@@ -43,6 +43,24 @@ select is(
     where t.typtype = 'e' and t.typname like '%\_enum'),
   null,
   'no enum type in any schema ends in _enum');
+
+-- No function body or cron command stores an old uppercase label (S11, T11):
+-- labels in plpgsql and cron text are not bound by OID, so RENAME VALUE does not reach them.
+select is(
+  (select array_agg(p.oid::regprocedure::text order by p.oid::regprocedure::text)
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname in ('public', 'internal')
+      and p.prosrc ~ '''(PENDING_VERIFICATION|IN_REVIEW|VERIFIED|SOLD|REJECTED|HIDDEN|RESERVED|IN_DISPUTE)'''),
+  null,
+  'no function body quotes an uppercase product status label'
+);
+
+select is(
+  (select array_agg(jobname order by jobname) from cron.job
+    where command ~ '''(PENDING_VERIFICATION|IN_REVIEW|VERIFIED|SOLD|REJECTED|HIDDEN|RESERVED|IN_DISPUTE)'''),
+  null,
+  'no cron command quotes an uppercase product status label'
+);
 
 select * from finish();
 rollback;
