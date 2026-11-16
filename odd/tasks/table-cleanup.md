@@ -18,7 +18,7 @@ Scope reviewed against the code and the live project on 2026-11-16 (L2): leases,
 
 - [ ] T1 (S1, #636) dead objects. Inline. Commit SQL + types, then TS.
 - [ ] T2 (S2, #637) one source per money value. Own commit (money).
-- [ ] T3 (S3, #638) shared compensation state enum. Own commit (SQL).
+- [ ] T3 (S3, #638) superseded by #648 (roadmap #644, L6); not done here.
 - [ ] T4 (S4, #639) shipments column grants for clients. Own commit (RLS/grants).
 - [ ] T5 (S5, #640) drop `blocked_users` and the block action.
 - [ ] T6 (S6, #641) `system_logs` writers to Sentry or `admin_audit_logs`, then drop. Design first (explorer), several commits.
@@ -32,3 +32,4 @@ Scope reviewed against the code and the live project on 2026-11-16 (L2): leases,
 - L3 (2026-11-16, decisions): labels/events, maintainer: "no devemos usar pacrhes, la idea es ocntruir fuerte y solido desde el inicio [...] ahi es donde debes tu decidir si es mejor hacerlo ya o podemos hacrelo por partes ya en prodcuion". Agent decision: keep label columns on `shipments` and the three event tables separate (the split and the merge are the weaker model, not the safer one); fix the real gap instead, clients reading server-only label columns (S4). `system_logs`: "Dentro de #309 en esta rama". `payment_methods`: "Hacerlo dentro de #309". `blocked_users`: "Quitar botón y tabla (recomendado)".
 - L4 (2026-11-16, agent recommendation): #64 stays a separate payments feature (open product decisions: who qualifies, N sales or a date, whether refunds count, what the seller sees). S2 keeps `service_fee_pct` as the single default rate #64 builds on.
 - L5 (2026-11-16, maintainer): "master , como metemos mas cosas, acttualiza los sub issues o issues paarq ue qeuden como que anotados como evidencia, no lo hagamos nomas aqui, y un dia si alguien lee el rodamp se quede con lo que estaba hi y no los cambios". Done: #309 split into sub-issues #636-#642 (attached to #309), #309 body rewritten with the reviewed scope, evidence comments on #309, #299 and #64.
+- L6 (2026-11-16, decisions): whole-schema review against the design target (50k users, 5k orders a month; `docs/conventions.md`, "Design target", branch `docs/design-target` commit ed31c863, #645) produced roadmap #644. #638 is superseded by #648; #639 moved to #644 item 7. Order: #636 and #637 first, then #644's money core design (#646). Maintainer: next session starts with T1.
