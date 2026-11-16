@@ -1192,6 +1192,7 @@ export type Database = {
           created_at: string;
           currency: string;
           delivered_at: string | null;
+          evidence_purged_at: string | null;
           id: string;
           next_compensation_retry_at: string | null;
           payment_processing: boolean;
@@ -1220,6 +1221,7 @@ export type Database = {
           created_at?: string;
           currency?: string;
           delivered_at?: string | null;
+          evidence_purged_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
           payment_processing?: boolean;
@@ -1247,6 +1249,7 @@ export type Database = {
           created_at?: string;
           currency?: string;
           delivered_at?: string | null;
+          evidence_purged_at?: string | null;
           id?: string;
           next_compensation_retry_at?: string | null;
           payment_processing?: boolean;
@@ -3850,6 +3853,13 @@ export type Database = {
           user_id: string;
         }[];
       };
+      fn_list_evidence_purge_candidates: {
+        Args: { p_limit: number };
+        Returns: {
+          object_names: string[];
+          order_id: string;
+        }[];
+      };
       fn_list_push_receipts_due: {
         Args: { p_limit: number };
         Returns: {
@@ -3952,6 +3962,10 @@ export type Database = {
       fn_mark_checkout_recovery_retry: {
         Args: { p_error: string; p_stripe_payment_intent_id: string };
         Returns: undefined;
+      };
+      fn_mark_evidence_purged: {
+        Args: { p_order_id: string };
+        Returns: boolean;
       };
       fn_mark_payout_run_reconciliation_needed: {
         Args: { p_failure_reason: string; p_run_id: string };
