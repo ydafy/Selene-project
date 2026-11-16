@@ -107,6 +107,10 @@ verify_jwt = false
 [functions.record-payout-hold-note]
 verify_jwt = false
 
+# Admin-invoked refund of an overdue held payout (#549); same admin check as the queue.
+[functions.refund-overdue-payout]
+verify_jwt = false
+
 [functions.reconcile-connect-payments]
 verify_jwt = false
 

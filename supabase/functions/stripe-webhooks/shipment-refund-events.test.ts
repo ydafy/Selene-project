@@ -67,6 +67,35 @@ function harness(
 }
 
 describe('handleShipmentRefundEvent', () => {
+  it('applies the refund of an overdue held payout (caller_role admin, #549) like a cancellation refund', async () => {
+    const h = harness();
+    const result = await handleShipmentRefundEvent(
+      event(
+        refund({
+          metadata: {
+            shipment_id: SHIPMENT,
+            order_id: '7b300000-0000-4000-8000-000000000001',
+            caller_role: 'admin',
+            reason: 'overdue_payout_seller_rejected',
+            seguro_share_cents: '600',
+          },
+        }),
+      ),
+      h.ports,
+    );
+    expect(h.applied).toEqual([
+      {
+        shipmentId: SHIPMENT,
+        refundId: 're_1',
+        paymentIntentId: 'pi_1',
+        amountCents: 11000,
+        status: 'succeeded',
+        failureReason: null,
+      },
+    ]);
+    expect(result).toEqual({ handled: true, outcome: 'completed' });
+  });
+
   it('passes Stripe id, payment intent, amount, status and failure reason to the RPC', async () => {
     const h = harness();
     const result = await handleShipmentRefundEvent(

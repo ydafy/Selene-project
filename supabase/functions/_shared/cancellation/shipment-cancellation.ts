@@ -2,8 +2,17 @@ import type { Tables } from '../../../../packages/types/src/types.ts';
 import { ApiError } from './refund-basis.ts';
 
 type Operation = Tables<'shipment_cancellation_operations'>;
+/**
+ * `admin_overdue_payout` is the admin refund of an overdue held payout (#549): a completed
+ * shipment, so it never completes through `fn_cancel_shipment`. It never mixes with the
+ * cancellation sources: a claim or recovered operation of the other kind is invalid.
+ */
 export type CancellationSource =
-  'buyer' | 'seller' | 'paid_timeout' | 'preparing_timeout';
+  | 'buyer'
+  | 'seller'
+  | 'paid_timeout'
+  | 'preparing_timeout'
+  | 'admin_overdue_payout';
 export interface CancellationContext {
   shipmentId: Operation['shipment_id'];
   orderId: Operation['order_id'];
@@ -24,7 +33,7 @@ export interface CancellationRefundRequest {
   metadata: {
     shipment_id: string;
     order_id: string;
-    caller_role: 'buyer' | 'seller' | 'system';
+    caller_role: 'buyer' | 'seller' | 'system' | 'admin';
     reason: string;
     seguro_share_cents: number;
   };
@@ -107,21 +116,36 @@ function source(value: unknown): value is CancellationSource {
     value === 'buyer' ||
     value === 'seller' ||
     value === 'paid_timeout' ||
-    value === 'preparing_timeout'
+    value === 'preparing_timeout' ||
+    value === 'admin_overdue_payout'
   );
 }
+const overdue = (value: CancellationSource): boolean =>
+  value === 'admin_overdue_payout';
 function validWinner(
   winnerSource: unknown,
   actorId: unknown,
   reason: unknown,
+  context: CancellationContext,
 ): winnerSource is CancellationSource {
   return (
     source(winnerSource) &&
+    overdue(winnerSource) === overdue(context.source) &&
     nonblank(reason) &&
-    (winnerSource === 'buyer' || winnerSource === 'seller'
+    (winnerSource === 'buyer' ||
+    winnerSource === 'seller' ||
+    winnerSource === 'admin_overdue_payout'
       ? nonblank(actorId)
       : actorId === null)
   );
+}
+function callerRole(
+  winnerSource: CancellationSource,
+): CancellationRefundRequest['metadata']['caller_role'] {
+  if (winnerSource === 'buyer' || winnerSource === 'seller') {
+    return winnerSource;
+  }
+  return winnerSource === 'admin_overdue_payout' ? 'admin' : 'system';
 }
 function validFrozenRequest(
   value: unknown,
@@ -233,13 +257,26 @@ function matchesRequest(
   );
 }
 
+/**
+ * A refund the overdue payout refund recorded but Stripe has not settled as `succeeded`:
+ * `pending` or `requires_action` waits for the `refund.updated` webhook, `failed` or `canceled`
+ * waits for the admin's manual repayment (L11). Cancellation sources never return it.
+ */
+export interface UnsettledRefund {
+  status: 'refund_unsettled';
+  refundId: string;
+  refundStatus: string;
+  amountCents: number;
+}
+type Settled<T> = { status: 'cancelled'; value: T } | UnsettledRefund;
+
 /** Records the provider result and completes only on a recorded `succeeded`. */
 async function settleRefund<T>(
   ports: ShipmentCancellationPorts<T>,
   refund: ProviderRefund,
   winner: CancellationContext,
   frozen: FrozenCancellation,
-): Promise<{ status: 'cancelled'; value: T }> {
+): Promise<Settled<T>> {
   const failure = {
     shipmentId: winner.shipmentId,
     refundId: refund.id,
@@ -272,6 +309,14 @@ async function settleRefund<T>(
     throw new ApiError(500, 'CANCELLATION_REFUND_RECORD_INVALID');
   }
   if (recorded.refund_status !== 'succeeded') {
+    if (overdue(winner.source)) {
+      return {
+        status: 'refund_unsettled',
+        refundId: refund.id,
+        refundStatus: recorded.refund_status,
+        amountCents: frozen.refundRequest.amount,
+      };
+    }
     throw new ApiError(409, 'CANCELLATION_REFUND_UNCONFIRMED');
   }
   return { status: 'cancelled', value: await ports.complete(winner, frozen) };
@@ -281,12 +326,13 @@ async function settleRefund<T>(
  * Converges a started operation without new money movement: reuses the
  * recorded refund, finds it at Stripe by shipment metadata, or replays the
  * frozen request with the same idempotency key while that key is alive.
+ * An escalated overdue payout refund with nothing recorded is the exception: it
+ * stays resolvable by its admin retrying (L14), so it searches Stripe again and,
+ * when exactly no refund of the shipment exists, replays the frozen request.
  */
 async function recoverCancellation<T>(
   ports: ShipmentCancellationPorts<T>,
-): Promise<
-  { status: 'cancelled'; value: T } | { status: 'recovery_required' }
-> {
+): Promise<Settled<T> | { status: 'recovery_required' }> {
   const { context } = ports;
   const key = `cancel_shipment_${context.shipmentId}`;
   const operation = await ports.loadRecovery(context.shipmentId);
@@ -294,7 +340,12 @@ async function recoverCancellation<T>(
     !record(operation) ||
     operation.operation_key !== key ||
     operation.order_id !== context.orderId ||
-    !validWinner(operation.source, operation.actor_id, operation.reason) ||
+    !validWinner(
+      operation.source,
+      operation.actor_id,
+      operation.reason,
+      context,
+    ) ||
     !validFrozenRequest(operation.refund_request, context) ||
     (operation.cancellation_loss_cents !== null &&
       (!Number.isSafeInteger(operation.cancellation_loss_cents) ||
@@ -331,7 +382,14 @@ async function recoverCancellation<T>(
       };
     }
     if (refundStatus === 'failed' || refundStatus === 'canceled') {
-      return { status: 'recovery_required' };
+      return overdue(winner.source)
+        ? {
+            status: 'refund_unsettled',
+            refundId,
+            refundStatus,
+            amountCents: frozen.refundRequest.amount,
+          }
+        : { status: 'recovery_required' };
     }
     const retrieved = recoveredRefund(
       await ports.retrieveRefund(refundId),
@@ -345,8 +403,9 @@ async function recoverCancellation<T>(
   if (refundStatus !== null && refundStatus !== undefined) {
     return { status: 'recovery_required' };
   }
+  const escalated = operation.recovery_escalated_at !== null;
   // Already escalated and nothing recorded: no Stripe call, no repeat alert.
-  if (operation.recovery_escalated_at !== null) {
+  if (escalated && !overdue(winner.source)) {
     return { status: 'recovery_required' };
   }
   const listed = await ports.listRefunds(frozen.refundRequest.payment_intent);
@@ -381,7 +440,9 @@ async function recoverCancellation<T>(
   }
   const elapsed =
     (ports.now ?? Date.now)() - Date.parse(operation.external_started_at);
-  if (elapsed >= REFUND_REPLAY_WINDOW_MS) {
+  // An escalated overdue refund was already alerted and Stripe still has no refund of
+  // this shipment, so the admin's retry replays the frozen request.
+  if (elapsed >= REFUND_REPLAY_WINDOW_MS && !escalated) {
     await escalateOnce(
       ports,
       'refund_not_found',
@@ -412,7 +473,7 @@ async function recoverCancellation<T>(
 export async function runShipmentCancellation<T>(
   ports: ShipmentCancellationPorts<T>,
 ): Promise<
-  | { status: 'cancelled'; value: T }
+  | Settled<T>
   | { status: 'busy' | 'recovery_required' }
   | { status: 'carrier_pending'; reason: string }
 > {
@@ -429,7 +490,12 @@ export async function runShipmentCancellation<T>(
     reservation.status !== 'claimed' ||
     reservation.operation_key !== key ||
     !nonblank(reservation.claim_token) ||
-    !validWinner(reservation.source, reservation.actor_id, reservation.reason)
+    !validWinner(
+      reservation.source,
+      reservation.actor_id,
+      reservation.reason,
+      ports.context,
+    )
   ) {
     throw new ApiError(500, 'CANCELLATION_RESERVATION_INVALID');
   }
@@ -478,10 +544,7 @@ export async function runShipmentCancellation<T>(
     metadata: {
       shipment_id: winner.shipmentId,
       order_id: winner.orderId,
-      caller_role:
-        winner.source === 'buyer' || winner.source === 'seller'
-          ? winner.source
-          : 'system',
+      caller_role: callerRole(winner.source),
       reason: winner.reason,
       seguro_share_cents: plan.seguroShareCents,
     },

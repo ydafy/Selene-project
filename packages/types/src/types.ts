@@ -161,6 +161,51 @@ export type RecordPayoutHoldNoteResponse =
         | 'INTERNAL_ERROR';
     };
 
+/**
+ * Admin refund of an overdue held payout whose seller Stripe rejected (#549). Only the shipment
+ * is sent: the server computes the amount. `pending` means Stripe has not settled the refund yet;
+ * the `refund.updated` webhook completes it.
+ */
+export type RefundOverduePayoutRequest = {
+  shipment_id: string;
+};
+
+export type RefundOverduePayoutResponse =
+  | {
+      status: 'refunded' | 'pending';
+      shipment_id: string;
+      refund_id: string;
+      amount_cents: number;
+    }
+  | {
+      error:
+        | 'METHOD_NOT_ALLOWED'
+        | 'AUTH_REQUIRED'
+        | 'ADMIN_ONLY'
+        | 'INVALID_SHIPMENT_ID'
+        | 'SHIPMENT_NOT_FOUND'
+        | 'SHIPMENT_NOT_COMPLETED'
+        | 'SHIPMENT_ALREADY_REFUNDED'
+        | 'SHIPMENT_FUNDS_ALREADY_RELEASED'
+        | 'SHIPMENT_TRANSFER_OPERATION_ACTIVE'
+        | 'SHIPMENT_CANCELLATION_OPERATION_ACTIVE'
+        | 'PAYOUT_NOT_OVERDUE'
+        | 'PAYOUT_RUN_NOT_PARKED'
+        | 'SELLER_ACCOUNT_NOT_REJECTED'
+        | 'PAYMENT_METHOD_NOT_REFUNDABLE'
+        | 'REFUND_AMOUNT_EXCEEDS_CAP'
+        | 'REFUND_IN_PROGRESS'
+        | 'REFUND_RECOVERY_REQUIRED'
+        | 'REFUND_UNCONFIRMED'
+        | 'REFUND_FAILED'
+        | 'REFUND_AMOUNT_INVALID'
+        | 'REFUND_RECORD_FAILED'
+        | 'REFUND_ESCALATION_FAILED'
+        | 'REFUND_COMPLETION_FAILED'
+        | 'STRIPE_REQUEST_FAILED'
+        | 'INTERNAL_ERROR';
+    };
+
 export type ConnectPaymentErrorCode =
   'RESERVATION_EXPIRED' | 'RESERVATION_FAILED' | 'PI_CREATION_FAILED';
 
@@ -329,6 +374,10 @@ export interface EdgeFunctionRegistry {
   'record-payout-hold-note': {
     payload: RecordPayoutHoldNoteRequest;
     response: RecordPayoutHoldNoteResponse;
+  };
+  'refund-overdue-payout': {
+    payload: RefundOverduePayoutRequest;
+    response: RefundOverduePayoutResponse;
   };
   'get-shipping-quote': {
     payload: {
