@@ -51,6 +51,9 @@ jobs:
       # request. Ready when a cron function answers 401 to a call without the
       # secret, which proves the function code ran.
       - name: Serve the Edge Functions
+        # pipefail: a failing `supabase status` stops here with its own error
+        # instead of surfacing later as a functions readiness timeout.
+        shell: bash -eo pipefail {0}
         run: |
           nohup bun run functions:serve > "$RUNNER_TEMP/functions-serve.log" 2>&1 &
           api_url="$(supabase status --env --output-format json | jq -r '.env.API_URL // .API_URL')"
