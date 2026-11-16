@@ -169,6 +169,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   - Seller accounts created with Accounts v2 still emit the v1 `account.updated` event, so the Connect endpoint needs no new event type for them.
   - `scripts/dev/stripe-listen.test.ts` checks this list against `STRIPE_WEBHOOK_EVENTS` in `scripts/dev/stripe-listen.ts`.
 - Stripe Account Links return/refresh URLs → `connect-onboarding-return`.
+- Stripe payment methods: the checkout and return-shipping PaymentIntents send `allowed_payment_method_types: ['card']` (#567), so the Dashboard configuration cannot add OXXO or bank transfers to them; Apple Pay and Google Pay are card payments and Link is not offered. OXXO payments cannot be refunded through Stripe and Mexico bank transfers refund asynchronously, so every refund path assumes a card, and the admin refund of an overdue held payout (#549) refuses any charge that is not `card`. Adding a method is a code change that must first teach every refund path to handle it. In the go-live pass, check on an iOS and an Android device that the checkout still shows Apple Pay and Google Pay.
 - Envia tracking webhook → `envia-webhook`; secret into `ENVIA_WEBHOOK_SECRET_PROD`.
 
 ## 10. Auth (Dashboard)

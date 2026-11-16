@@ -476,9 +476,10 @@ export function createCreateConnectPaymentHandler(
       }
 
       // 11. Build the single platform PaymentIntent params and create the PI.
-      // No `transfer_data.destination`, no `application_fee_amount`, no hardcoded
-      // payment_method_types: seller funds are NOT routed at PI time; manual
-      // release later creates per-shipment Transfers under `transfer_group`.
+      // No `transfer_data.destination`, no `application_fee_amount`: seller funds
+      // are NOT routed at PI time; manual release later creates per-shipment
+      // Transfers under `transfer_group`. Cards only, fixed by the builder so
+      // the Dashboard cannot add a method the refund paths cannot handle (#567).
       const piParams = buildSinglePaymentIntentParams({
         allocation,
         orderId: orderGroupId,
@@ -494,7 +495,7 @@ export function createCreateConnectPaymentHandler(
         currency: piParams.currency,
         customer: piParams.customer,
         transfer_group: piParams.transfer_group,
-        automatic_payment_methods: { enabled: true },
+        allowed_payment_method_types: piParams.allowed_payment_method_types,
         metadata: piParams.metadata,
       };
 

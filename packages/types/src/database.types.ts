@@ -2333,6 +2333,81 @@ export type Database = {
           },
         ];
       };
+      shipment_payout_hold_notes: {
+        Row: {
+          admin_id: string;
+          created_at: string;
+          id: string;
+          note: string;
+          shipment_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          admin_id: string;
+          created_at?: string;
+          id?: string;
+          note: string;
+          shipment_id: string;
+        };
+        Update: {
+          admin_id?: string;
+          created_at?: string;
+          id?: string;
+          note?: string;
+          shipment_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_shipment_id_fkey';
+            columns: ['shipment_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_connect_payout_release_view';
+            referencedColumns: ['shipment_id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_shipment_id_fkey';
+            columns: ['shipment_id'];
+            isOneToOne: false;
+            referencedRelation: 'shipments';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       shipment_tracking_events: {
         Row: {
           carrier_name: string | null;
@@ -2789,7 +2864,11 @@ export type Database = {
           days_since_completed: number | null;
           ineligible_reason: string | null;
           is_eligible: boolean | null;
+          is_payout_overdue: boolean | null;
           is_retryable: boolean | null;
+          latest_hold_note: string | null;
+          latest_hold_noted_at: string | null;
+          latest_hold_noted_by: string | null;
           order_id: string;
           payout_run_amount_cents: number | null;
           payout_run_failed_at: string | null;
@@ -2826,6 +2905,41 @@ export type Database = {
             columns: ['retry_of_run_id'];
             isOneToOne: false;
             referencedRelation: 'connect_payout_runs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['latest_hold_noted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['latest_hold_noted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['latest_hold_noted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['latest_hold_noted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shipment_payout_hold_notes_admin_id_fkey';
+            columns: ['latest_hold_noted_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
@@ -3262,6 +3376,22 @@ export type Database = {
           lease_id: string;
         }[];
       };
+      fn_admin_record_payout_hold_note: {
+        Args: { p_admin_id: string; p_note: string; p_shipment_id: string };
+        Returns: {
+          admin_id: string;
+          created_at: string;
+          id: string;
+          note: string;
+          shipment_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'shipment_payout_hold_notes';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       fn_admin_restore_product: {
         Args: { p_product_id: string };
         Returns: boolean;
@@ -3420,6 +3550,10 @@ export type Database = {
           kind: string;
         }[];
       };
+      fn_claim_overdue_payout_refund: {
+        Args: { p_admin_id: string; p_shipment_id: string };
+        Returns: Json;
+      };
       fn_claim_payout_create_reconciliation: {
         Args: { p_grace_seconds?: number };
         Returns: {
@@ -3501,6 +3635,10 @@ export type Database = {
           p_stripe_account_id: string;
         };
         Returns: boolean;
+      };
+      fn_complete_overdue_payout_refund: {
+        Args: { p_shipment_id: string };
+        Returns: Json;
       };
       fn_complete_payout_create_fence: {
         Args: {

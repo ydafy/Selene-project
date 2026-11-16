@@ -58,7 +58,9 @@ select is_empty(
       ('public.shipment_cancellation_operations', 'shipment_id', 'public.shipments'),
       ('public.shipment_completion_events', 'order_id', 'public.orders'),
       ('public.shipment_completion_events', 'shipment_id', 'public.shipments'),
-      ('public.shipment_completion_events', 'actor_id', 'public.profiles')
+      ('public.shipment_completion_events', 'actor_id', 'public.profiles'),
+      ('public.shipment_payout_hold_notes', 'shipment_id', 'public.shipments'),
+      ('public.shipment_payout_hold_notes', 'admin_id', 'public.profiles')
     ) as e(tbl, col, target)
     left join fk_actions f on f.tbl = e.tbl and f.col = e.col
     where f.action is distinct from 'r' or f.target is distinct from e.target
