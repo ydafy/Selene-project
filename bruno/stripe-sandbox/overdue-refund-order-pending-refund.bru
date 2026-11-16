@@ -72,6 +72,13 @@ script:pre-request {
       "metadata[purpose]": "bruno-sandbox-overdue-refund",
     });
     if (intent.status !== "succeeded") throw new Error("the sandbox charge did not succeed: " + intent.status);
+    // The balance transaction of an automatic_async capture appears shortly after confirm.
+    let charge = null;
+    for (let attempt = 0; attempt < 15 && !(charge && charge.balance_transaction); attempt += 1) {
+      if (attempt > 0) await bru.sleep(1000);
+      charge = await stripe("GET", "charges/" + intent.latest_charge);
+    }
+    if (!charge.balance_transaction) throw new Error("the sandbox charge has no balance transaction after 15 attempts: " + charge.id);
     bru.setVar("overduePendingOrderId", orderId);
     bru.setVar("overduePendingShipmentId", shipmentId);
     bru.setVar("overduePendingIntentId", intent.id);
