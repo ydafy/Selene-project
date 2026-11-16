@@ -9,7 +9,7 @@
 -- so the list sees only this file's orders (ids starting with e5000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(35);
+select plan(37);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -51,7 +51,7 @@ from generate_series(1, 9) as n;
 insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
 select ('e5000000-0000-4000-8000-0000000b00' || n)::uuid,
   'e5000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb
-from generate_series(10, 16) as n;
+from generate_series(10, 17) as n;
 
 insert into public.shipments (id, order_id, seller_id, status, completed_at, updated_at, stripe_payment_intent_id)
 values
@@ -92,7 +92,10 @@ values
   ('e5000000-0000-4000-8000-0000000c0150', 'e5000000-0000-4000-8000-0000000b0015', 'e5000000-0000-4000-8000-000000000002',
     'refunded', now() - interval '200 days', now() - interval '30 days', 'pi_test_evp_150'),
   ('e5000000-0000-4000-8000-0000000c0160', 'e5000000-0000-4000-8000-0000000b0016', 'e5000000-0000-4000-8000-000000000002',
-    'refunded', now() - interval '200 days', now() - interval '130 days', 'pi_test_evp_160');
+    'refunded', now() - interval '200 days', now() - interval '130 days', 'pi_test_evp_160'),
+  -- b17 completed 100 days ago but last updated 200 days ago: the later date counts.
+  ('e5000000-0000-4000-8000-0000000c0170', 'e5000000-0000-4000-8000-0000000b0017', 'e5000000-0000-4000-8000-000000000002',
+    'completed', now() - interval '100 days', now() - interval '200 days', 'pi_test_evp_170');
 
 -- The dispute insert triggers need the service role claim and a shipment_id; the
 -- order-level disputes (shipment_id NULL) drop it afterwards.
@@ -207,6 +210,10 @@ select is_empty(
   $$select order_id from public.fn_list_evidence_purge_candidates(100)
     where order_id = 'e5000000-0000-4000-8000-0000000b0015'$$,
   'an order refunded 30 days ago after a completion 200 days ago is not listed');
+select is_empty(
+  $$select order_id from public.fn_list_evidence_purge_candidates(100)
+    where order_id = 'e5000000-0000-4000-8000-0000000b0017'$$,
+  'an order completed 100 days ago with an older updated_at is not listed');
 select results_eq(
   $$select order_id from public.fn_list_evidence_purge_candidates(100)
     where order_id = 'e5000000-0000-4000-8000-0000000b0016'$$,
@@ -240,6 +247,8 @@ select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0013')
   'an order with an open order-level dispute is not marked');
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0015'), false,
   'an order refunded 30 days ago after a completion 200 days ago is not marked');
+select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0017'), false,
+  'an order completed 100 days ago with an older updated_at is not marked');
 
 -- Marking: refused while evidence remains.
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0001'), false,
