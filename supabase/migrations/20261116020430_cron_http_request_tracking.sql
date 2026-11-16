@@ -34,6 +34,8 @@ CREATE OR REPLACE FUNCTION internal.fn_track_cron_request (
 
   INSERT INTO internal.cron_http_requests (request_id, jobname)
   VALUES (p_request_id, p_jobname)
+  ON CONFLICT (request_id) DO UPDATE
+    SET jobname = excluded.jobname, requested_at = excluded.requested_at
   RETURNING request_id;
 $function$;
 

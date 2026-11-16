@@ -9,7 +9,7 @@
 -- guard checks the targets and schedules. Runs against the local database only: `supabase start`, then
 -- `bun run test:db`.
 begin;
-select plan(18);
+select plan(20);
 
 create temporary table captured (
   jobname text not null,
@@ -186,6 +186,20 @@ select is(
    where jobname = 'cron-jobs-test'),
   array[9100000000000001, 9100000000000003, 9100000000000004]::bigint[],
   'fn_track_cron_request deletes tracking rows older than 1 day and keeps newer ones'
+);
+
+-- pg_net's request id sequence is unlogged, so an unclean restart reissues ids
+-- a tracking row may still hold. Tracking must not abort the cron command (and
+-- with it the HTTP request): the reissued id belongs to the new request.
+select lives_ok(
+  $$select internal.fn_track_cron_request('cron-jobs-test-reissued', 9100000000000003)$$,
+  'fn_track_cron_request accepts a request id pg_net reissued after a restart'
+);
+select is(
+  (select jobname || ' ' || (requested_at = now())::text from internal.cron_http_requests
+   where request_id = 9100000000000003),
+  'cron-jobs-test-reissued true',
+  'a reissued request id is recorded under the new job and time'
 );
 
 select is(

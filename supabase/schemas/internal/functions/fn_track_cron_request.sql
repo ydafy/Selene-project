@@ -4,6 +4,9 @@
 -- `select internal.fn_track_cron_request('<jobname>', net.http_post(...))`.
 -- It deletes tracking rows older than 1 day: pg_net keeps responses for 6 hours
 -- (pg_net.ttl), so an older row has nothing left to join.
+-- pg_net's request id sequence is unlogged: after an unclean restart it
+-- reissues ids, so a reissued id overwrites the stale row instead of raising a
+-- duplicate key error that would roll back the cron command and its request.
 --
 -- Grant review (AGENTS.md): SECURITY INVOKER; only pg_cron calls it, as
 -- postgres, which owns internal.cron_http_requests. EXECUTE is revoked from
@@ -21,6 +24,8 @@ CREATE OR REPLACE FUNCTION internal.fn_track_cron_request (
 
   INSERT INTO internal.cron_http_requests (request_id, jobname)
   VALUES (p_request_id, p_jobname)
+  ON CONFLICT (request_id) DO UPDATE
+    SET jobname = excluded.jobname, requested_at = excluded.requested_at
   RETURNING request_id;
 $function$;
 
