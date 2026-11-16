@@ -2,7 +2,10 @@
 -- evidence (private): `<disputes|returns|shipments>/<order_id>/<uploader_id>/<file>`.
 -- The uploader is the order's buyer or a seller with a shipment in that order
 -- (`returns/` is the buyer's, `shipments/` the seller's packing evidence); the
--- uploader and admins read it.
+-- uploader and admins read it. An order with `evidence_purged_at` set refuses new
+-- uploads (purge-old-evidence skips it, so a new object would stay forever). The
+-- policy reads the order under the uploader's RLS: the buyer sees it as buyer, the
+-- seller through their order item; an order the uploader cannot see is refused.
 -- products: `<seller_id>/<file>`. Avatars: `<user_id>/avatar.<ext>`.
 -- verification: `<product_id>/<file>` (verification_access.test.sql covers the
 -- uploads and reads per role; this file covers a first folder that is not a uuid).
@@ -11,7 +14,7 @@
 -- Assertions count only this file's objects (ids starting with f2000000-).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(54);
+select plan(65);
 
 create function pg_temp.as_user(p_id uuid) returns void language sql as $$
   select set_config('request.jwt.claims',
@@ -42,14 +45,21 @@ where id = 'f2000000-0000-4000-8000-000000000004';
 
 -- Order 1: bought by the buyer, one shipment of the seller.
 -- Order 2: bought by the stranger, one shipment of another seller (the admin account).
-insert into public.orders (id, buyer_id, total_amount_cents, shipping_address)
+-- Order 3: like order 1, but purge-old-evidence already marked it.
+-- Order 4: bought by the stranger, a shipment of the seller with no order item, so
+-- RLS hides the order from the seller.
+insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, evidence_purged_at)
 values
-  ('f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb),
-  ('f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000003', 100000, '{}'::jsonb);
+  ('f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb, null),
+  ('f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000003', 100000, '{}'::jsonb, null),
+  ('f2000000-0000-4000-8000-0000000b0003', 'f2000000-0000-4000-8000-000000000001', 100000, '{}'::jsonb, now()),
+  ('f2000000-0000-4000-8000-0000000b0004', 'f2000000-0000-4000-8000-000000000003', 100000, '{}'::jsonb, null);
 insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id)
 values
   ('f2000000-0000-4000-8000-0000000c0001', 'f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-000000000002', 'paid', 'pi_test_sta_1'),
-  ('f2000000-0000-4000-8000-0000000c0002', 'f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000004', 'paid', 'pi_test_sta_2');
+  ('f2000000-0000-4000-8000-0000000c0002', 'f2000000-0000-4000-8000-0000000b0002', 'f2000000-0000-4000-8000-000000000004', 'paid', 'pi_test_sta_2'),
+  ('f2000000-0000-4000-8000-0000000c0003', 'f2000000-0000-4000-8000-0000000b0003', 'f2000000-0000-4000-8000-000000000002', 'completed', 'pi_test_sta_3'),
+  ('f2000000-0000-4000-8000-0000000c0004', 'f2000000-0000-4000-8000-0000000b0004', 'f2000000-0000-4000-8000-000000000002', 'paid', 'pi_test_sta_4');
 
 -- A listing of the seller, with one verification file in its folder and one file
 -- whose first folder is not a uuid.
@@ -64,6 +74,10 @@ select 'f2000000-0000-4000-8000-0000000d0001', 'sta-listing', 'Test listing', 10
   10000::bigint + s.shipping_buffer_cents + ceil(100000::numeric * s.insurance_rate)::bigint,
   s.service_fee_pct, s.insurance_rate
 from public.system_settings s where s.id = 1;
+insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, shipment_id)
+values
+  ('f2000000-0000-4000-8000-0000000b0001', 'f2000000-0000-4000-8000-0000000d0001', 'f2000000-0000-4000-8000-000000000002', 100000, 'f2000000-0000-4000-8000-0000000c0001'),
+  ('f2000000-0000-4000-8000-0000000b0003', 'f2000000-0000-4000-8000-0000000d0001', 'f2000000-0000-4000-8000-000000000002', 100000, 'f2000000-0000-4000-8000-0000000c0003');
 insert into storage.objects (bucket_id, name)
 values
   ('verification', 'f2000000-0000-4000-8000-0000000d0001/sta-front.jpg'),
@@ -144,6 +158,16 @@ select throws_ok(
 select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0001/defect.jpg')$$,
   '42501', null, 'a path without the uploader folder is denied');
+select is(
+  (select evidence_purged_at is not null from public.orders where id = 'f2000000-0000-4000-8000-0000000b0003'),
+  true,
+  'the buyer reads evidence_purged_at of their purged order under RLS');
+select throws_ok(
+  $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000001/defect.jpg')$$,
+  '42501', null, 'the buyer cannot upload dispute evidence for a purged order');
+select throws_ok(
+  $$select pg_temp.put('evidence', 'returns/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000001/return.jpg')$$,
+  '42501', null, 'the buyer cannot upload return evidence for a purged order');
 
 -- The seller of the shipment in order 1.
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000002');
@@ -159,6 +183,23 @@ select throws_ok(
 select throws_ok(
   $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0002/f2000000-0000-4000-8000-000000000002/reply.jpg')$$,
   '42501', null, 'the seller cannot upload for an order they do not ship');
+select is(
+  (select evidence_purged_at is not null from public.orders where id = 'f2000000-0000-4000-8000-0000000b0003'),
+  true,
+  'the seller reads evidence_purged_at of an order they ship under RLS');
+select throws_ok(
+  $$select pg_temp.put('evidence', 'disputes/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000002/reply.jpg')$$,
+  '42501', null, 'the seller cannot upload dispute evidence for a purged order');
+select throws_ok(
+  $$select pg_temp.put('evidence', 'shipments/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000002/box.jpg')$$,
+  '42501', null, 'the seller cannot upload packing evidence for a purged order');
+select is(
+  (select count(*) from public.orders where id = 'f2000000-0000-4000-8000-0000000b0004'),
+  0::bigint,
+  'RLS hides an order from a seller with a shipment but no order item in it');
+select throws_ok(
+  $$select pg_temp.put('evidence', 'shipments/f2000000-0000-4000-8000-0000000b0004/f2000000-0000-4000-8000-000000000002/box.jpg')$$,
+  '42501', null, 'an upload for an order the seller cannot read is refused, not let through unchecked');
 select throws_ok(
   $$select pg_temp.put('verification', 'F2000000-0000-4000-8000-0000000D0001/sta-upper.jpg')$$,
   '42501', null, 'the verification folder matches only the lowercase product id of the owner''s listing');
@@ -233,12 +274,29 @@ select throws_ok(
     where bucket_id = 'evidence'
       and name = 'returns/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/return.jpg'$$,
   '42501', null, 'moving evidence to an order segment that is not a uuid is denied by the policy');
+select throws_ok(
+  $$update storage.objects
+    set name = 'disputes/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000001/moved.jpg'
+    where bucket_id = 'evidence'
+      and name = 'returns/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/return.jpg'$$,
+  '42501', null, 'the buyer cannot move their evidence into a purged order');
 select pg_temp.as_user('f2000000-0000-4000-8000-000000000002');
 select lives_ok(
   $$update storage.objects set metadata = '{"v": 3}'::jsonb
     where bucket_id = 'evidence'
       and name = 'disputes/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000001/defect.jpg'$$,
   'the seller''s update of the buyer''s evidence runs');
+select lives_ok(
+  $$update storage.objects set metadata = '{"v": 4}'::jsonb
+    where bucket_id = 'evidence'
+      and name = 'shipments/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000002/box.jpg'$$,
+  'the seller overwrites their own evidence in an unpurged order');
+select throws_ok(
+  $$update storage.objects
+    set name = 'shipments/f2000000-0000-4000-8000-0000000b0003/f2000000-0000-4000-8000-000000000002/box.jpg'
+    where bucket_id = 'evidence'
+      and name = 'shipments/f2000000-0000-4000-8000-0000000b0001/f2000000-0000-4000-8000-000000000002/box.jpg'$$,
+  '42501', null, 'the seller cannot move their evidence into a purged order');
 reset role;
 select is(
   (select metadata from storage.objects where bucket_id = 'evidence'
