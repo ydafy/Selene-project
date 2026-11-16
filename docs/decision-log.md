@@ -318,3 +318,15 @@ It is established as the standard procedure for structural inconsistencies.
 - Two layers keep automatic payouts off. `create-connect-account` sets manual payouts through `POST /v1/balance_settings` on every call. `fn_commit_connect_account_refresh` blocks payouts to an account whose payout schedule is not `manual` (`payouts_schedule_not_manual`).
 
 **Consequence:** A seller's account requests no `card_payments`, so `charges_enabled` says nothing about readiness (sandbox: false before onboarding, true after it). Onboarding is `complete` when payouts are enabled and the `transfers` capability is active. The migration and `stripe-webhooks` deploy together (`docs/go-live.md`, "7. Edge Functions"). The Connect webhook endpoint needs no new event type.
+
+## 2026-11-15: CodeRabbit Reviews Every Pull Request Before It Merges
+
+**Context:** CodeRabbit (`.coderabbit.yaml`, #595) is a required check in the `main` ruleset since #601, after an auto-merge landed #599 before CodeRabbit finished. CodeRabbit auto-reviews only pull requests whose base is the default branch, so in the stacked chain #603-#610 only #603 got a review; the others reported the `CodeRabbit` check as `skipped`. GitHub counts a skipped required check as passing, and by default a review that stops on an error ends as neutral, which also passes.
+
+**Decision:**
+
+- `reviews.auto_review.base_branches: ['.*']`: CodeRabbit reviews pull requests on any base branch, so each layer of a stack is reviewed against the layer below it.
+- `reviews.fail_commit_status: true`: a review that errors fails the required check. A rate-limited review still passes; check that a review was posted.
+- Before merging, wait for CodeRabbit to post its review and read its comments (`gh api repos/ydafy/Selene-project/pulls/<N>/comments`, and `issues/<N>/comments` for the summary). Never set `gh pr merge --auto` before it reports. If it stalls or skipped a pull request, comment `@coderabbitai review`.
+
+**Consequence:** CodeRabbit reads `.coderabbit.yaml` from the pull request's branch, so stacked branches created before this change need `@coderabbitai review` once. If CodeRabbit is down, merges wait for it.
