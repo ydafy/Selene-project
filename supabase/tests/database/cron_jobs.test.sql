@@ -3,19 +3,24 @@
 -- name (cron-functions-as-code S2, S6, S7). The test pins invariants, not the
 -- job list. It gives each Vault name a known value, runs every HTTP job's
 -- command with net.http_post swapped for a recorder, and checks what the job
--- would send. The scripts/guards/cron-jobs.test.ts guard checks the targets and
--- schedules. Runs against the local database only: `supabase start`, then
+-- would send. Every HTTP job also records its pg_net request id under its own
+-- name through internal.fn_track_cron_request (odd/tasks/ops-cron-storage.md
+-- S3, L6), which fn_cron_health reads. The scripts/guards/cron-jobs.test.ts
+-- guard checks the targets and schedules. Runs against the local database only: `supabase start`, then
 -- `bun run test:db`.
 begin;
-select plan(12);
+select plan(18);
 
 create temporary table captured (
   jobname text not null,
   url text,
-  headers jsonb
+  headers jsonb,
+  request_id bigint not null
 ) on commit drop;
 
--- Same parameters as net.http_post; records the call instead of sending it.
+-- Same parameters as net.http_post; records the call instead of sending it and
+-- returns a distinct request id per call, far above the real ones.
+create temporary sequence cron_jobs_request_id start 9000000000000001;
 create function pg_temp.http_post(
   url text,
   body jsonb default '{}'::jsonb,
@@ -23,9 +28,9 @@ create function pg_temp.http_post(
   headers jsonb default '{"Content-Type": "application/json"}'::jsonb,
   timeout_milliseconds integer default 5000
 ) returns bigint language sql as $$
-  insert into captured (jobname, url, headers)
-  values (current_setting('cron_jobs_test.jobname'), url, headers);
-  select 1::bigint;
+  insert into captured (jobname, url, headers, request_id)
+  values (current_setting('cron_jobs_test.jobname'), url, headers, nextval('cron_jobs_request_id'))
+  returning request_id;
 $$;
 
 -- Every Vault name a job reads now holds 'vault:<name>'.
@@ -142,6 +147,58 @@ select is_empty(
 select is_empty(
   $$ select jobname from cron.job where jobname = 'purge-old-evidence' $$,
   'purge-old-evidence is not scheduled (#29 recreates it through the Storage API)'
+);
+
+-- Request tracking (S3) -------------------------------------------------------
+select is_empty(
+  $$ select jobname from cron.job
+     where command ~* 'net\.http_post\s*\('
+       and position(format('select internal.fn_track_cron_request(%L, net.http_post(', jobname) in command) <> 1 $$,
+  'every HTTP job command is select internal.fn_track_cron_request(<its own jobname>, net.http_post(...))'
+);
+
+select is(
+  (select count(distinct request_id) from captured),
+  (select count(*) from captured),
+  'the recorder returned a distinct request id for every HTTP job call'
+);
+
+select is_empty(
+  $$ select c.jobname, c.request_id from captured c
+     left join internal.cron_http_requests t on t.request_id = c.request_id
+     where t.jobname is distinct from c.jobname
+        or t.requested_at is distinct from now() $$,
+  'every HTTP job call wrote a tracking row with its request id, its own jobname and the request time'
+);
+
+select is(
+  internal.fn_track_cron_request('cron-jobs-test', 9100000000000001),
+  9100000000000001::bigint,
+  'fn_track_cron_request returns the request id it records'
+);
+
+insert into internal.cron_http_requests (request_id, jobname, requested_at) values
+  (9100000000000002, 'cron-jobs-test', now() - interval '25 hours'),
+  (9100000000000003, 'cron-jobs-test', now() - interval '23 hours');
+select internal.fn_track_cron_request('cron-jobs-test', 9100000000000004);
+select is(
+  (select array_agg(request_id order by request_id) from internal.cron_http_requests
+   where jobname = 'cron-jobs-test'),
+  array[9100000000000001, 9100000000000003, 9100000000000004]::bigint[],
+  'fn_track_cron_request deletes tracking rows older than 1 day and keeps newer ones'
+);
+
+select is(
+  (select c.relrowsecurity::text || ' '
+     || (select string_agg(r || ':' || has_table_privilege(r, 'internal.cron_http_requests',
+           'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')::text, ' ' order by r)
+         from unnest(array['anon', 'authenticated', 'service_role']) r)
+     || ' ' || (select string_agg(r || ':' || has_function_privilege(r,
+           'internal.fn_track_cron_request(text, bigint)', 'EXECUTE')::text, ' ' order by r)
+         from unnest(array['anon', 'authenticated', 'postgres', 'service_role']) r)
+   from pg_class c where c.oid = 'internal.cron_http_requests'::regclass),
+  'true anon:false authenticated:false service_role:false anon:false authenticated:false postgres:true service_role:false',
+  'cron_http_requests has RLS on and no client or service_role privilege; only postgres executes fn_track_cron_request'
 );
 
 select * from finish();
