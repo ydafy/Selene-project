@@ -229,7 +229,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
    - Sign up with email, receive the 6-digit code, verify. Sign in with Google: the first time, then again.
    - Forgot password: the code arrives and the new password works. Change the password in Settings: it asks for the current one.
    - Change the email and confirm from both inboxes. The link opens Settings.
-   - Edit only the description of a VERIFIED listing: it saves and stays on sale. Change its price: the re-price dialog shows and the listing goes to review.
+   - Edit only the description of a verified listing: it saves and stays on sale. Change its price: the re-price dialog shows and the listing goes to review.
    - Delete an account: the re-sign-in step, the "what is deleted and what is kept" copy, and other users then see "Usuario eliminado".
    - A suspended account sees the suspension notice; a banned account sees only the blocked-account screen with its reason.
    - Admin-web: log in with the CAPTCHA; a non-admin account is refused.

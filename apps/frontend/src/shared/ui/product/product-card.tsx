@@ -41,7 +41,7 @@ export const ProductCard = memo(
   }: ProductCardProps) => {
     const theme = useTheme<Theme>();
     const sharedStyles = getSharedStyles(theme);
-    const isSold = product.status === 'SOLD';
+    const isSold = product.status === 'sold';
 
     return (
       <Animated.View
@@ -147,7 +147,7 @@ export const ProductCard = memo(
                   </Box>
 
                   {/* Badge de Verificado */}
-                  {product.status === 'VERIFIED' && (
+                  {product.status === 'verified' && (
                     <Box
                       position="absolute"
                       top={8}

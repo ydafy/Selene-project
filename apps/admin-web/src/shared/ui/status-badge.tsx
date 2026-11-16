@@ -1,4 +1,7 @@
+import type { ProductStatus } from '@selene/types';
+
 export type StatusType =
+  | ProductStatus
   | 'pending'
   | 'paid'
   | 'preparing'
@@ -8,14 +11,6 @@ export type StatusType =
   | 'cancelled'
   | 'refunded'
   | 'dispute'
-  | 'VERIFIED'
-  | 'SOLD'
-  | 'REJECTED'
-  | 'IN_REVIEW'
-  | 'PENDING_VERIFICATION'
-  | 'HIDDEN'
-  | 'IN_DISPUTE'
-  | 'RESERVED'
   // Dispute statuses
   | 'open'
   | 'under_review'
@@ -37,9 +32,9 @@ export const StatusBadge = ({ status }: Props) => {
     'pending',
     'open',
     'under_review',
-    'PENDING_VERIFICATION',
-    'IN_REVIEW',
-    'IN_DISPUTE',
+    'pending_verification',
+    'in_review',
+    'in_dispute',
     'waiting_return',
     'return_shipped',
     'processing',
@@ -68,18 +63,17 @@ export const StatusBadge = ({ status }: Props) => {
       'bg-status-dispute/10 text-status-dispute border-status-dispute/20',
 
     // Productos (Mapeo lógico a colores de orden)
-    VERIFIED:
+    // `rejected` is shared with payouts (below), with the same color.
+    verified:
       'bg-status-delivered/10 text-status-delivered border-status-delivered/20',
-    SOLD: 'bg-status-completed/10 text-status-completed border-status-completed/20',
-    REJECTED:
-      'bg-status-dispute/10 text-status-dispute border-status-dispute/20',
-    IN_REVIEW:
+    sold: 'bg-status-completed/10 text-status-completed border-status-completed/20',
+    in_review:
       'bg-status-pending/10 text-status-pending border-status-pending/20',
-    HIDDEN:
+    hidden:
       'bg-status-cancelled/10 text-status-cancelled border-status-cancelled/20',
-    IN_DISPUTE:
+    in_dispute:
       'bg-status-dispute/10 text-status-dispute border-status-dispute/20',
-    RESERVED:
+    reserved:
       'bg-status-preparing/10 text-status-preparing border-status-preparing/20',
 
     //Disputas

@@ -25,7 +25,7 @@ tests {
   test("the listing starts available", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody().length).to.equal(1);
-    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].status).to.equal("verified");
     expect(res.getBody()[0].deleted_at).to.equal(null);
   });
 }

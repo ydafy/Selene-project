@@ -37,13 +37,13 @@ returns uuid language sql as $$
   returning id
 $$;
 
-select pg_temp.listing(78101, 78001, 'PENDING_VERIFICATION');
-select pg_temp.listing(78102, 78002, 'PENDING_VERIFICATION');
-select pg_temp.listing(78103, 78001, 'PENDING_VERIFICATION', true);
-select pg_temp.listing(78104, 78001, 'VERIFIED');
-select pg_temp.listing(78105, 78001, 'REJECTED');
-select pg_temp.listing(78106, 78001, 'SOLD');
-select pg_temp.listing(78107, 78001, 'IN_REVIEW');
+select pg_temp.listing(78101, 78001, 'pending_verification');
+select pg_temp.listing(78102, 78002, 'pending_verification');
+select pg_temp.listing(78103, 78001, 'pending_verification', true);
+select pg_temp.listing(78104, 78001, 'verified');
+select pg_temp.listing(78105, 78001, 'rejected');
+select pg_temp.listing(78106, 78001, 'sold');
+select pg_temp.listing(78107, 78001, 'in_review');
 
 create function pg_temp.as_user(p_n integer) returns void language sql as $$
   select set_config('request.jwt.claims',

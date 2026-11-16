@@ -22,11 +22,11 @@ BEGIN
   END IF;
 
   UPDATE public.products
-  SET status = 'IN_DISPUTE'::public.product_status,
+  SET status = 'in_dispute'::public.product_status,
       updated_at = now()
   WHERE id = v_product_id
     AND deleted_at IS NULL
-    AND status NOT IN ('SOLD'::public.product_status, 'RESERVED'::public.product_status);
+    AND status NOT IN ('sold'::public.product_status, 'reserved'::public.product_status);
 
   RETURN NEW;
 END;

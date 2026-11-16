@@ -1,6 +1,6 @@
 -- The release callers return a listing under the seller rule of T9e/T9e2:
--- an active seller's listing goes back to VERIFIED; a suspended seller's is
--- held (HIDDEN, status_before_account_hold = VERIFIED); reserved_at is cleared
+-- an active seller's listing goes back to verified; a suspended seller's is
+-- held (hidden, status_before_account_hold = verified); reserved_at is cleared
 -- either way. Covers fn_reserve_products (stale pre-release and partial
 -- rollback), fn_cancel_shipment and the refund branch of
 -- fn_finalize_checkout_recovery (auth-hardening S4; T10c.2). The stale cleanup,
@@ -89,13 +89,13 @@ from (values
 update public.profiles_private set status = 'suspended' where id = pg_temp.u(1);
 
 -- 1. fn_reserve_products, step 1: the stale pre-release ----------------------
-select pg_temp.make_product(101, 1, 'RESERVED', interval '20 minutes');
-select pg_temp.make_product(102, 2, 'RESERVED', interval '20 minutes');
-select pg_temp.make_product(103, 2, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(104, 2, 'RESERVED', interval '20 minutes');
-select pg_temp.make_product(105, 2, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(106, 1, 'RESERVED', interval '20 minutes');
-select pg_temp.make_product(107, 2, 'RESERVED', interval '20 minutes');
+select pg_temp.make_product(101, 1, 'reserved', interval '20 minutes');
+select pg_temp.make_product(102, 2, 'reserved', interval '20 minutes');
+select pg_temp.make_product(103, 2, 'reserved', interval '1 minute');
+select pg_temp.make_product(104, 2, 'reserved', interval '20 minutes');
+select pg_temp.make_product(105, 2, 'reserved', interval '1 minute');
+select pg_temp.make_product(106, 1, 'reserved', interval '20 minutes');
+select pg_temp.make_product(107, 2, 'reserved', interval '20 minutes');
 select pg_temp.remember(array[103, 105]);
 
 -- A cart with only the suspended seller's expired reservation: the pre-release
@@ -108,7 +108,7 @@ select is(
      array['e0000000-0000-4000-8000-000000000101']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a cart with only a suspended seller expired reservation is refused');
 reset role;
-select is(pg_temp.st(101), 'HIDDEN:VERIFIED:true',
+select is(pg_temp.st(101), 'hidden:verified:true',
   'reserve: the pre-release holds the suspended seller listing and clears reserved_at');
 
 -- A cart with only the active seller's expired reservation: back to sale, then
@@ -120,7 +120,7 @@ select is(
      array['e0000000-0000-4000-8000-000000000102']::uuid[])),
   'true:-:100000', 'reserve: a cart with only an active seller expired reservation succeeds');
 reset role;
-select is(pg_temp.st(102), 'RESERVED:-:false',
+select is(pg_temp.st(102), 'reserved:-:false',
   'reserve: the active seller listing was released to sale and reserved again by this call');
 
 -- Active seller: expired listing plus a fresh reservation held by someone else.
@@ -132,7 +132,7 @@ select is(
      array['e0000000-0000-4000-8000-000000000104', 'e0000000-0000-4000-8000-000000000105']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a cart with a fresh reservation of another buyer is refused');
 reset role;
-select is(pg_temp.st(104), 'VERIFIED:-:true',
+select is(pg_temp.st(104), 'verified:-:true',
   'reserve: the expired active seller listing ends back on sale with reserved_at cleared');
 select ok(pg_temp.unchanged(105), 'reserve: the fresh reservation outside the released set is unchanged');
 select ok(pg_temp.unchanged(103), 'reserve: a fresh reservation outside the cart is unchanged');
@@ -145,16 +145,16 @@ select is(
      array['e0000000-0000-4000-8000-000000000106', 'e0000000-0000-4000-8000-000000000107']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'reserve: a mixed cart of suspended and active expired reservations is refused');
 reset role;
-select is(pg_temp.st(106), 'HIDDEN:VERIFIED:true', 'reserve: the mixed cart holds the suspended seller listing');
-select is(pg_temp.st(107), 'VERIFIED:-:true', 'reserve: the mixed cart leaves the active seller listing on sale');
+select is(pg_temp.st(106), 'hidden:verified:true', 'reserve: the mixed cart holds the suspended seller listing');
+select is(pg_temp.st(107), 'verified:-:true', 'reserve: the mixed cart leaves the active seller listing on sale');
 
 -- 2. fn_reserve_products, step 4: partial rollback -----------------------------
-select pg_temp.make_product(201, 2, 'VERIFIED');
-select pg_temp.make_product(202, 2, 'HIDDEN');
-select pg_temp.make_product(203, 1, 'VERIFIED');
-select pg_temp.make_product(204, 2, 'VERIFIED');
-select pg_temp.make_product(205, 4, 'VERIFIED');
-select pg_temp.make_product(206, 2, 'HIDDEN');
+select pg_temp.make_product(201, 2, 'verified');
+select pg_temp.make_product(202, 2, 'hidden');
+select pg_temp.make_product(203, 1, 'verified');
+select pg_temp.make_product(204, 2, 'verified');
+select pg_temp.make_product(205, 4, 'verified');
+select pg_temp.make_product(206, 2, 'hidden');
 select pg_temp.remember(array[202, 203, 206]);
 
 -- Reservable (active seller) plus unreservable (hidden): the reservation is undone.
@@ -165,11 +165,11 @@ select is(
      array['e0000000-0000-4000-8000-000000000201', 'e0000000-0000-4000-8000-000000000202']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'rollback: a cart with a hidden listing is refused');
 reset role;
-select is(pg_temp.st(201), 'VERIFIED:-:true',
-  'rollback: the tentatively reserved active seller listing is back to VERIFIED with reserved_at cleared');
+select is(pg_temp.st(201), 'verified:-:true',
+  'rollback: the tentatively reserved active seller listing is back to verified with reserved_at cleared');
 select ok(pg_temp.unchanged(202), 'rollback: the hidden listing is unchanged');
 
--- Reservable (active seller) plus VERIFIED listing of a suspended seller.
+-- Reservable (active seller) plus verified listing of a suspended seller.
 set local role service_role;
 select is(
   (select success::text || ':' || coalesce(error_message, '-') || ':' || total_price_cents::text
@@ -177,13 +177,13 @@ select is(
      array['e0000000-0000-4000-8000-000000000203', 'e0000000-0000-4000-8000-000000000204']::uuid[])),
   'false:SOME_PRODUCTS_UNAVAILABLE:0', 'rollback: a cart with a suspended seller listing is refused');
 reset role;
-select is(pg_temp.st(204), 'VERIFIED:-:true',
-  'rollback: the active seller listing is back to VERIFIED, not held');
-select ok(pg_temp.unchanged(203), 'rollback: the suspended seller VERIFIED listing was never reserved and is unchanged');
+select is(pg_temp.st(204), 'verified:-:true',
+  'rollback: the active seller listing is back to verified, not held');
+select ok(pg_temp.unchanged(203), 'rollback: the suspended seller verified listing was never reserved and is unchanged');
 select is(
   (select count(*) from public.products
-   where id in (pg_temp.u(201), pg_temp.u(202), pg_temp.u(203), pg_temp.u(204)) and status = 'RESERVED'),
-  0::bigint, 'rollback: nothing from these carts stays RESERVED');
+   where id in (pg_temp.u(201), pg_temp.u(202), pg_temp.u(203), pg_temp.u(204)) and status = 'reserved'),
+  0::bigint, 'rollback: nothing from these carts stays reserved');
 
 -- A suspension that lands between the reservation and the rollback. A trigger
 -- suspends the seller as soon as listing 205 is reserved, which stands in for a
@@ -195,7 +195,7 @@ begin
   return null;
 end $$;
 create trigger rel_midcall_suspend after update on public.products
-  for each row when (new.id = 'e0000000-0000-4000-8000-000000000205'::uuid and new.status = 'RESERVED' and old.status = 'VERIFIED')
+  for each row when (new.id = 'e0000000-0000-4000-8000-000000000205'::uuid and new.status = 'reserved' and old.status = 'verified')
   execute function pg_temp.suspend_midcall();
 set local role service_role;
 select is(
@@ -206,7 +206,7 @@ select is(
 reset role;
 select is((select status from public.profiles_private where id = pg_temp.u(4)), 'suspended',
   'rollback: fixture, the trigger suspended the seller after the reservation');
-select is(pg_temp.st(205), 'HIDDEN:VERIFIED:true',
+select is(pg_temp.st(205), 'hidden:verified:true',
   'rollback: the listing of a seller suspended mid-call is held, not returned to sale');
 select ok(pg_temp.unchanged(206), 'rollback: the other hidden listing is unchanged');
 drop trigger rel_midcall_suspend on public.products;
@@ -215,10 +215,10 @@ drop trigger rel_midcall_suspend on public.products;
 -- One multi-seller order: shipment 601 (active seller, listing 301) and shipment
 -- 602 (suspended seller, listing 302). Order 502 is a bystander: shipment 603
 -- (active seller, listing 304) and 604 (suspended seller, listing 303).
-select pg_temp.make_product(301, 2, 'SOLD');
-select pg_temp.make_product(302, 1, 'SOLD');
-select pg_temp.make_product(303, 1, 'SOLD');
-select pg_temp.make_product(304, 2, 'SOLD');
+select pg_temp.make_product(301, 2, 'sold');
+select pg_temp.make_product(302, 1, 'sold');
+select pg_temp.make_product(303, 1, 'sold');
+select pg_temp.make_product(304, 2, 'sold');
 select pg_temp.make_shipment(501, 601, 2, 'paid', array[301]);
 select pg_temp.make_shipment(501, 602, 1, 'paid', array[302]);
 select pg_temp.make_shipment(502, 603, 2, 'paid', array[304]);
@@ -259,11 +259,11 @@ select is(
 reset role;
 select is((select status::text from public.shipments where id = pg_temp.u(601)), 'cancelled',
   'cancel: shipment 601 is cancelled');
-select is(pg_temp.st(301), 'VERIFIED:-:true', 'cancel: the active seller listing returns to VERIFIED');
+select is(pg_temp.st(301), 'verified:-:true', 'cancel: the active seller listing returns to verified');
 select is((select status::text from public.shipments where id = pg_temp.u(602)), 'paid',
   'cancel: the other seller shipment of the order is untouched');
-select is(pg_temp.st(302), 'SOLD:-:true',
-  'cancel: the suspended seller listing is still SOLD');
+select is(pg_temp.st(302), 'sold:-:true',
+  'cancel: the suspended seller listing is still sold');
 
 -- The suspended seller's shipment: its listings are held.
 set local role service_role;
@@ -274,8 +274,8 @@ select is(
 reset role;
 select is((select status::text from public.shipments where id = pg_temp.u(602)), 'cancelled',
   'cancel: shipment 602 is cancelled');
-select is(pg_temp.st(302), 'HIDDEN:VERIFIED:true', 'cancel: the suspended seller listing is held');
-select is(pg_temp.st(301), 'VERIFIED:-:true', 'cancel: the active seller listing stays on sale');
+select is(pg_temp.st(302), 'hidden:verified:true', 'cancel: the suspended seller listing is held');
+select is(pg_temp.st(301), 'verified:-:true', 'cancel: the active seller listing stays on sale');
 select ok(pg_temp.unchanged(304), 'cancel: a listing of another order is unchanged');
 select ok(pg_temp.unchanged(303), 'cancel: a suspended seller listing of another order is not held');
 select is((select status::text from public.shipments where id = pg_temp.u(603)), 'paid',
@@ -284,12 +284,12 @@ select is((select status::text from public.shipments where id = pg_temp.u(603)),
 -- 4. fn_finalize_checkout_recovery, refund path ---------------------------------
 -- 701: active seller (401 reserved, 402 hidden). 702: suspended seller (403).
 -- 703: both sellers (404 active, 405 suspended). 406: reserved, in no order.
-select pg_temp.make_product(401, 2, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(402, 2, 'HIDDEN');
-select pg_temp.make_product(403, 1, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(404, 2, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(405, 1, 'RESERVED', interval '1 minute');
-select pg_temp.make_product(406, 2, 'RESERVED', interval '1 minute');
+select pg_temp.make_product(401, 2, 'reserved', interval '1 minute');
+select pg_temp.make_product(402, 2, 'hidden');
+select pg_temp.make_product(403, 1, 'reserved', interval '1 minute');
+select pg_temp.make_product(404, 2, 'reserved', interval '1 minute');
+select pg_temp.make_product(405, 1, 'reserved', interval '1 minute');
+select pg_temp.make_product(406, 2, 'reserved', interval '1 minute');
 insert into public.orders (
   id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id,
   payment_processing, payment_processing_reason, compensation_state
@@ -326,7 +326,7 @@ select is(
   (select public.fn_finalize_checkout_recovery('pi_release_701', 're_release_701')->>'status'),
   'refunded', 'refund: the order of an active seller is finalized');
 reset role;
-select is(pg_temp.st(401), 'VERIFIED:-:true', 'refund: the active seller reserved listing returns to VERIFIED');
+select is(pg_temp.st(401), 'verified:-:true', 'refund: the active seller reserved listing returns to verified');
 select ok(pg_temp.unchanged(402), 'refund: a non-reserved listing of the same order is unchanged');
 select is(
   (select status::text || ':' || compensation_state || ':' || stripe_refund_id from public.orders where id = pg_temp.u(701)),
@@ -337,7 +337,7 @@ select is(
   (select public.fn_finalize_checkout_recovery('pi_release_702', 're_release_702')->>'status'),
   'refunded', 'refund: the order of a suspended seller is finalized');
 reset role;
-select is(pg_temp.st(403), 'HIDDEN:VERIFIED:true', 'refund: the suspended seller reserved listing is held');
+select is(pg_temp.st(403), 'hidden:verified:true', 'refund: the suspended seller reserved listing is held');
 select is(
   (select status::text || ':' || compensation_state || ':' || stripe_refund_id from public.orders where id = pg_temp.u(702)),
   'refunded:refunded:re_release_702', 'refund: the order of the suspended seller is still refunded');
@@ -347,8 +347,8 @@ select is(
   (select public.fn_finalize_checkout_recovery('pi_release_703', 're_release_703')->>'status'),
   'refunded', 'refund: the order of two sellers is finalized');
 reset role;
-select is(pg_temp.st(404), 'VERIFIED:-:true', 'refund: the active seller listing of a two-seller order returns to VERIFIED');
-select is(pg_temp.st(405), 'HIDDEN:VERIFIED:true', 'refund: the suspended seller listing of a two-seller order is held');
+select is(pg_temp.st(404), 'verified:-:true', 'refund: the active seller listing of a two-seller order returns to verified');
+select is(pg_temp.st(405), 'hidden:verified:true', 'refund: the suspended seller listing of a two-seller order is held');
 select ok(pg_temp.unchanged(406), 'refund: a reserved listing in no order is unchanged');
 
 select * from finish();

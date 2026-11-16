@@ -15,15 +15,15 @@ headers {
 }
 
 tests {
-  test("the listing is VERIFIED and public again after the refused checkout", function () {
+  test("the listing is verified and public again after the refused checkout", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([
-      { id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED" }
+      { id: "00000000-0000-4000-8000-0000000000b1", status: "verified" }
     ]);
   });
 }
 
 docs {
   Runs right after checkout-seller-onboarding-pending. A refused checkout must release the
-  reservation; a listing left RESERVED would be hidden from anonymous buyers.
+  reservation; a listing left reserved would be hidden from anonymous buyers.
 }

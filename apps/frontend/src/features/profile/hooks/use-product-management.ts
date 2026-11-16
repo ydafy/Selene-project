@@ -1,7 +1,7 @@
 /**
  * @file features/profile/hooks/use-product-management.ts
  * @description Hook for seller product management with optimistic delete,
- *   pre-flight guards (ownership, dispute, SOLD/RESERVED), and iOS haptics.
+ *   pre-flight guards (ownership, dispute, sold/reserved), and iOS haptics.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -65,12 +65,12 @@ export const useProductManagement = () => {
         throw new Error('FORBIDDEN_NOT_OWNER');
       }
 
-      // 2. Status guard — SOLD, RESERVED, or IN_DISPUTE cannot be deleted.
-      //    IN_DISPUTE is set by the DB trigger — no network probe needed.
+      // 2. Status guard — sold, reserved, or in_dispute cannot be deleted.
+      //    in_dispute is set by the DB trigger — no network probe needed.
       if (
-        product.status === 'SOLD' ||
-        product.status === 'RESERVED' ||
-        product.status === 'IN_DISPUTE'
+        product.status === 'sold' ||
+        product.status === 'reserved' ||
+        product.status === 'in_dispute'
       ) {
         Toast.show({
           type: 'error',
@@ -86,9 +86,9 @@ export const useProductManagement = () => {
         throw new Error('BLOCKED_STATUS');
       }
 
-      // 3. Dispute guard — trust local status (IN_DISPUTE caught by guard #2).
+      // 3. Dispute guard — trust local status (in_dispute caught by guard #2).
       //    No network probe needed: the DB trigger syncs status on dispute open.
-      //    If product is IN_DISPUTE, guard #2 already blocked it.
+      //    If product is in_dispute, guard #2 already blocked it.
 
       // ── Optimistic update ──
       await queryClient.cancelQueries({ queryKey: ['my-listings'] });
@@ -104,12 +104,12 @@ export const useProductManagement = () => {
     },
 
     mutationFn: async (product) => {
-      // Soft delete: set deleted_at + status HIDDEN
+      // Soft delete: set deleted_at + status hidden
       const { error } = await supabase
         .from('products')
         .update({
           deleted_at: new Date().toISOString(),
-          status: 'HIDDEN',
+          status: 'hidden',
         })
         .eq('id', product.id);
 

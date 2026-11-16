@@ -67,7 +67,7 @@ BEGIN
   FROM public.products p
   JOIN public.order_items oi ON oi.product_id = p.id
   WHERE oi.order_id = v_order_id
-    AND p.status = 'RESERVED'
+    AND p.status = 'reserved'
   ORDER BY p.id
   FOR UPDATE;
 

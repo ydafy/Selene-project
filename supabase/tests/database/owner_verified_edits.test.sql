@@ -1,4 +1,4 @@
--- A seller edits a VERIFIED listing without review only in name, description,
+-- A seller edits a verified listing without review only in name, description,
 -- condition and usage (S12, #141). Any other change must send it to review;
 -- admins are not limited. Runs against the local database only:
 -- `supabase start`, then `bun run test:db`.
@@ -56,17 +56,17 @@ update public.profiles_private set role = 'admin'
 where id = 'e0000000-0000-4000-8000-000000000001';
 
 -- a1 text edit, a2 refused column edits, a3 admin, a4 stranger target, a5 review path,
--- b1 HIDDEN, b2 REJECTED, b3 PENDING_VERIFICATION, c1 held by the suspension,
--- c2 VERIFIED of a suspended seller.
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a1', 'e0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a2', 'e0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a3', 'e0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a4', 'e0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a5', 'e0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b1', 'e0000000-0000-4000-8000-000000000002', 'HIDDEN');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b2', 'e0000000-0000-4000-8000-000000000002', 'REJECTED');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b3', 'e0000000-0000-4000-8000-000000000002', 'PENDING_VERIFICATION');
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000c1', 'e0000000-0000-4000-8000-000000000004', 'VERIFIED');
+-- b1 hidden, b2 rejected, b3 pending_verification, c1 held by the suspension,
+-- c2 verified of a suspended seller.
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a1', 'e0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a2', 'e0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a3', 'e0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a4', 'e0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000a5', 'e0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b1', 'e0000000-0000-4000-8000-000000000002', 'hidden');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b2', 'e0000000-0000-4000-8000-000000000002', 'rejected');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000b3', 'e0000000-0000-4000-8000-000000000002', 'pending_verification');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000c1', 'e0000000-0000-4000-8000-000000000004', 'verified');
 
 select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
@@ -74,7 +74,7 @@ set local role authenticated;
 select public.fn_admin_update_user_status(
   'e0000000-0000-4000-8000-000000000004', 'suspended', 'test');
 reset role;
-select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000c2', 'e0000000-0000-4000-8000-000000000004', 'VERIFIED');
+select pg_temp.make_listing('e0000000-0000-4000-8000-0000000000c2', 'e0000000-0000-4000-8000-000000000004', 'verified');
 
 create temp table before_edit as
   select id, to_jsonb(p) as row_json from public.products p
@@ -85,11 +85,11 @@ grant select on before_edit to authenticated;
 select lives_ok(
   $$update public.products set images = array['https://example.test/server.png']
     where id = 'e0000000-0000-4000-8000-0000000000a3'$$,
-  'the server role changes the images of a VERIFIED listing and keeps it VERIFIED');
+  'the server role changes the images of a verified listing and keeps it verified');
 update public.products set images = array['https://example.test/p.png']
 where id = 'e0000000-0000-4000-8000-0000000000a3';
 
--- The owner edits the four text columns of a VERIFIED listing -------------------
+-- The owner edits the four text columns of a verified listing -------------------
 select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
 set local role authenticated;
@@ -102,35 +102,35 @@ reset role;
 select is(
   (select status::text || '|' || name || '|' || description || '|' || condition || '|' || usage
    from public.products where id = 'e0000000-0000-4000-8000-0000000000a1'),
-  'VERIFIED|Renamed GPU|Better text|new|work',
-  'the listing stays VERIFIED and stores the new text');
+  'verified|Renamed GPU|Better text|new|work',
+  'the listing stays verified and stores the new text');
 
--- Any other change that keeps VERIFIED is refused ------------------------------
+-- Any other change that keeps verified is refused ------------------------------
 select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
 set local role authenticated;
 select throws_ok(
   $$update public.products set images = array['https://example.test/other.png']
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'images cannot change while VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'images cannot change while verified');
 select throws_ok(
   $$update public.products set specifications = '{"brand": "ASUS"}'::jsonb
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'specifications cannot change while VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'specifications cannot change while verified');
 select throws_ok(
   $$update public.products set price_cents = 120000,
       publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 10000)
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the price cannot change while VERIFIED, even with a fresh snapshot');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the price cannot change while verified, even with a fresh snapshot');
 select throws_ok(
   $$update public.products set category = 'CPU'
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the category cannot change while VERIFIED');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the category cannot change while verified');
 select throws_ok(
   $$update public.products set shipping_cost_cents = 15000,
       publication_shipping_reserve_cents = pg_temp.fresh_reserve(100000, 15000)
     where id = 'e0000000-0000-4000-8000-0000000000a2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the shipping cost cannot change while VERIFIED, even with a fresh snapshot');
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the shipping cost cannot change while verified, even with a fresh snapshot');
 reset role;
 select is(
   (select to_jsonb(p) from public.products p where id = 'e0000000-0000-4000-8000-0000000000a2'),
@@ -145,26 +145,26 @@ set local role authenticated;
 select is(
   pg_temp.rows_updated($$update public.products set description = 'Edited after a fee change'
     where id = 'e0000000-0000-4000-8000-0000000000a1'$$),
-  1::bigint, 'a text edit of a VERIFIED listing with a stale snapshot affects one row');
+  1::bigint, 'a text edit of a verified listing with a stale snapshot affects one row');
 reset role;
 select is(
   (select status::text || '|' || description from public.products where id = 'e0000000-0000-4000-8000-0000000000a1'),
-  'VERIFIED|Edited after a fee change', 'the listing with a stale snapshot stays VERIFIED with the new text');
+  'verified|Edited after a fee change', 'the listing with a stale snapshot stays verified with the new text');
 update public.system_settings set shipping_buffer_cents = shipping_buffer_cents - 500 where id = 1;
 
--- A client cannot reach VERIFIED from another status ----------------------------
+-- A client cannot reach verified from another status ----------------------------
 select set_config('request.jwt.claims',
   '{"sub": "e0000000-0000-4000-8000-000000000002", "role": "authenticated"}', true);
 set local role authenticated;
 select throws_ok(
-  $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b1'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move HIDDEN to VERIFIED');
+  $$update public.products set status = 'verified' where id = 'e0000000-0000-4000-8000-0000000000b1'$$,
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move hidden to verified');
 select throws_ok(
-  $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b2'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move REJECTED to VERIFIED');
+  $$update public.products set status = 'verified' where id = 'e0000000-0000-4000-8000-0000000000b2'$$,
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move rejected to verified');
 select throws_ok(
-  $$update public.products set status = 'VERIFIED' where id = 'e0000000-0000-4000-8000-0000000000b3'$$,
-  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move PENDING_VERIFICATION to VERIFIED');
+  $$update public.products set status = 'verified' where id = 'e0000000-0000-4000-8000-0000000000b3'$$,
+  '42501', 'VERIFIED_EDIT_REQUIRES_REVIEW', 'the owner cannot move pending_verification to verified');
 reset role;
 select is(
   (select jsonb_agg(to_jsonb(p) order by p.id) from public.products p
@@ -179,14 +179,14 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 select is(
   pg_temp.rows_updated($$update public.products
-    set images = array['https://example.test/new.png'], status = 'PENDING_VERIFICATION'
+    set images = array['https://example.test/new.png'], status = 'pending_verification'
     where id = 'e0000000-0000-4000-8000-0000000000a5'$$),
   1::bigint, 'the owner sends a listing with new images to review');
 reset role;
 select is(
   (select status::text || '|' || images[1] from public.products
    where id = 'e0000000-0000-4000-8000-0000000000a5'),
-  'PENDING_VERIFICATION|https://example.test/new.png',
+  'pending_verification|https://example.test/new.png',
   'the listing is in review with the new images');
 
 -- A suspended owner cannot edit ---------------------------------------------------
@@ -198,13 +198,13 @@ select is(
     where id = 'e0000000-0000-4000-8000-0000000000c1'$$),
   0::bigint, 'a suspended owner cannot edit the text of a listing held by the suspension');
 select is(
-  pg_temp.rows_updated($$update public.products set status = 'VERIFIED'
+  pg_temp.rows_updated($$update public.products set status = 'verified'
     where id = 'e0000000-0000-4000-8000-0000000000c1'$$),
   0::bigint, 'a suspended owner cannot put a held listing back on sale');
 select is(
   pg_temp.rows_updated($$update public.products set name = 'Edited while suspended'
     where id = 'e0000000-0000-4000-8000-0000000000c2'$$),
-  0::bigint, 'a suspended owner cannot edit the text of a VERIFIED listing');
+  0::bigint, 'a suspended owner cannot edit the text of a verified listing');
 reset role;
 select is(
   (select jsonb_agg(to_jsonb(p) order by p.id) from public.products p
@@ -220,13 +220,13 @@ set local role authenticated;
 select is(
   pg_temp.rows_updated($$update public.products set images = array['https://example.test/admin.png']
     where id = 'e0000000-0000-4000-8000-0000000000a3'$$),
-  1::bigint, 'an admin changes the images of a VERIFIED listing');
+  1::bigint, 'an admin changes the images of a verified listing');
 reset role;
 select is(
   (select status::text || '|' || images[1] from public.products
    where id = 'e0000000-0000-4000-8000-0000000000a3'),
-  'VERIFIED|https://example.test/admin.png',
-  'the listing stays VERIFIED with the admin change');
+  'verified|https://example.test/admin.png',
+  'the listing stays verified with the admin change');
 
 -- Another user cannot edit it ------------------------------------------------------
 select set_config('request.jwt.claims',

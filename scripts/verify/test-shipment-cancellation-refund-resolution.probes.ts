@@ -61,7 +61,7 @@ async function fixture(tx: Tx, status: 'paid' | 'preparing' = 'paid') {
     VALUES (${ids.shipment}, ${ids.order}, ${ids.seller}, ${status}, ${pi})`;
   await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
     VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 750000, 700000, ${ids.shipment})`;
-  await tx`UPDATE public.products SET status = 'SOLD' WHERE id = ${ids.product}`;
+  await tx`UPDATE public.products SET status = 'sold' WHERE id = ${ids.product}`;
   await asService(tx);
 }
 
@@ -288,7 +288,7 @@ const cases: Array<
       assert.equal(await shipmentStatus(tx), 'cancelled');
       const product =
         await tx`SELECT status FROM public.products WHERE id = ${ids.product}`;
-      assert.equal(product[0].status, 'VERIFIED');
+      assert.equal(product[0].status, 'verified');
     },
     'preparing',
   ],

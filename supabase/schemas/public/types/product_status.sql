@@ -1,10 +1,10 @@
 CREATE TYPE "public"."product_status" AS ENUM (
-  'PENDING_VERIFICATION',
-  'IN_REVIEW',
-  'VERIFIED',
-  'SOLD',
-  'REJECTED',
-  'HIDDEN',
-  'RESERVED',
-  'IN_DISPUTE'
+  'pending_verification',
+  'in_review',
+  'verified',
+  'sold',
+  'rejected',
+  'hidden',
+  'reserved',
+  'in_dispute'
 );

@@ -16,12 +16,12 @@ headers {
 }
 
 tests {
-  test("the seller also reads their REJECTED, HIDDEN and soft-deleted listings from the table", function () {
+  test("the seller also reads their rejected, hidden and soft-deleted listings from the table", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([
-      { id: "00000000-0000-4000-8000-0000000000b7", status: "REJECTED" },
-      { id: "00000000-0000-4000-8000-0000000000b9", status: "HIDDEN" },
-      { id: "00000000-0000-4000-8000-0000000000ba", status: "VERIFIED" }
+      { id: "00000000-0000-4000-8000-0000000000b7", status: "rejected" },
+      { id: "00000000-0000-4000-8000-0000000000b9", status: "hidden" },
+      { id: "00000000-0000-4000-8000-0000000000ba", status: "verified" }
     ]);
   });
 }

@@ -9,8 +9,8 @@ const PRODUCT_WITH_SELLER = `*, seller:profiles!products_seller_id_fkey(*)`;
 /**
  * Función de servicio blindada.
  * Everyone reads the public view first. A signed-in user who finds no row may
- * be the owner (or an admin) of a listing the view hides (HIDDEN, REJECTED,
- * RESERVED, IN_DISPUTE), so the table is read next; its RLS returns the row
+ * be the owner (or an admin) of a listing the view hides (hidden, rejected,
+ * reserved, in_dispute), so the table is read next; its RLS returns the row
  * only to them.
  */
 const fetchProductById = async (

@@ -5,12 +5,12 @@ CREATE OR REPLACE FUNCTION public.guard_owner_verified_edit()
   AS $function$
 BEGIN
   IF current_user <> 'authenticated'
-    OR NEW.status IS DISTINCT FROM 'VERIFIED'
+    OR NEW.status IS DISTINCT FROM 'verified'
     OR public.is_admin() THEN
     RETURN NEW;
   END IF;
 
-  IF OLD.status IS DISTINCT FROM 'VERIFIED'
+  IF OLD.status IS DISTINCT FROM 'verified'
     OR (to_jsonb(NEW) - ARRAY['name', 'description', 'condition', 'usage', 'updated_at', 'fts'])
       IS DISTINCT FROM
       (to_jsonb(OLD) - ARRAY['name', 'description', 'condition', 'usage', 'updated_at', 'fts']) THEN

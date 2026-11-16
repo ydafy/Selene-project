@@ -35,17 +35,17 @@ export const useAdminStats = () => {
         totalProductsResult,
         verifiedProductsResult,
       ] = await Promise.all([
-        // 1. Productos listos para moderar (IN_REVIEW)
+        // 1. Productos listos para moderar (in_review)
         supabase
           .from('products')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'IN_REVIEW'),
+          .eq('status', 'in_review'),
 
-        // Periodo anterior IN_REVIEW
+        // Periodo anterior in_review
         supabase
           .from('products')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'IN_REVIEW')
+          .eq('status', 'in_review')
           .gte('created_at', startOfLastMonth.toISOString())
           .lt('created_at', startOfMonth.toISOString()),
 
@@ -92,13 +92,13 @@ export const useAdminStats = () => {
         supabase
           .from('products')
           .select('id', { count: 'exact', head: true })
-          .not('status', 'eq', 'HIDDEN'),
+          .not('status', 'eq', 'hidden'),
 
         // 8. Productos Verificados en Catálogo
         supabase
           .from('products')
           .select('id', { count: 'exact', head: true })
-          .eq('status', 'VERIFIED'),
+          .eq('status', 'verified'),
       ]);
 
       // --- CÁLCULOS FINANCIEROS Y OPERATIVOS ---

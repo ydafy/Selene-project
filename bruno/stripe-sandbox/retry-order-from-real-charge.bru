@@ -51,7 +51,7 @@ script:pre-request {
         method: "POST",
         url: bru.getEnvVar("baseUrl") + "/rest/v1/products",
         headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
-        data: { ...JSON.parse(bru.getVar("sandboxListingTemplate")), status: "RESERVED" },
+        data: { ...JSON.parse(bru.getVar("sandboxListingTemplate")), status: "reserved" },
       });
     } catch (error) {
       listing = error.response || { status: 0, data: String(error) };

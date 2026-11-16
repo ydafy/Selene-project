@@ -1,6 +1,6 @@
 import { resolveCancelOrderFailureToast } from './shipment-cancel-safety';
 
-// fn_cancel_shipment returns the shipment's products to VERIFIED, so the
+// fn_cancel_shipment returns the shipment's products to verified, so the
 // seller's listings and every cached product (['product', id, userId]) go stale.
 export const getCancelOrderSuccessInvalidationKeys = (
   orderId: string,

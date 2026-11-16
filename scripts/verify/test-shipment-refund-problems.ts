@@ -81,7 +81,7 @@ async function fixture(tx: Tx) {
     await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
       VALUES (${ids.order}, ${product}, ${ids.seller}, 100000, 90000, ${shipmentId(index + 1)})`;
   }
-  await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN ${tx(productIds)}`;
+  await tx`UPDATE public.products SET status = 'sold' WHERE id IN ${tx(productIds)}`;
   await asService(tx);
 }
 

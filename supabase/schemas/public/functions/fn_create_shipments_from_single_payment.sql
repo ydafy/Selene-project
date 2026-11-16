@@ -142,7 +142,7 @@ BEGIN
     v_order_id := v_existing_order_id;
   END IF;
 
-  -- 5. Allocation block: shipments + order_items + product SOLD. Any failure
+  -- 5. Allocation block: shipments + order_items + product sold. Any failure
   --    here rolls back ONLY this block (the shell above survives) and is
   --    caught, marking the shell payment_processing=true for admin recovery.
   BEGIN
@@ -188,7 +188,7 @@ BEGIN
       FROM public.products
       WHERE id = ANY(v_product_ids)
         AND seller_id = v_seller_id
-        AND status = 'RESERVED';
+        AND status = 'reserved';
 
       IF v_reserved_product_count <> v_expected_product_count THEN
         RAISE EXCEPTION 'PRODUCT_NOT_RESERVED';
@@ -232,7 +232,7 @@ BEGIN
         FROM public.products
         WHERE id = ANY(v_product_ids)
           AND seller_id = v_seller_id
-          AND status = 'RESERVED'
+          AND status = 'reserved'
         ORDER BY id
         FOR UPDATE
       LOOP
@@ -281,13 +281,13 @@ BEGIN
         ON CONFLICT DO NOTHING;
       END LOOP;
 
-      -- Mark the row's RESERVED products SOLD only after their order_items
+      -- Mark the row's reserved products sold only after their order_items
       -- are durably persisted (preserves the spec invariant).
       UPDATE public.products
-      SET status = 'SOLD', updated_at = now()
+      SET status = 'sold', updated_at = now()
       WHERE id = ANY(v_product_ids)
         AND seller_id = v_seller_id
-        AND status = 'RESERVED';
+        AND status = 'reserved';
 
       -- Advance THIS shipment to 'paid' now that its allocation is durable.
       UPDATE public.shipments
@@ -362,7 +362,7 @@ BEGIN
     );
   EXCEPTION WHEN OTHERS THEN
     -- Allocation write failed. The inner block is rolled back (no shipment/
-    -- order_item/SOLD writes persist); the shell above survives. Surface it
+    -- order_item/sold writes persist); the shell above survives. Surface it
     -- to admin ops recovery: status stays 'pending' with payment_processing.
     v_failure_code := CASE
       WHEN SQLERRM IN (

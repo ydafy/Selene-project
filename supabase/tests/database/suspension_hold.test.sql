@@ -13,7 +13,7 @@ returns void language sql as $$
     publication_insurance_rate
   )
   select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'RESERVED', '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    array['https://example.test/p.png'], 'reserved', '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
     now() - p_age,
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
@@ -55,7 +55,7 @@ select is(
 reset role;
 select is(
   (select count(*) from public.products
-   where seller_id = 'd0000000-0000-4000-8000-000000000002' and status = 'RESERVED'),
+   where seller_id = 'd0000000-0000-4000-8000-000000000002' and status = 'reserved'),
   2::bigint, 'the suspension leaves the reservations in place');
 
 -- The release functions are service-only ---------------------------------------
@@ -90,14 +90,14 @@ reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-') || ':' || (reserved_at is null)::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),
-  'HIDDEN:VERIFIED:true', 'the expired-only release holds the suspended seller listing');
+  'hidden:verified:true', 'the expired-only release holds the suspended seller listing');
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-') || ':' || (reserved_at is null)::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000b1'),
-  'VERIFIED:-:true', 'the expired-only release returns the active seller listing to sale');
+  'verified:-:true', 'the expired-only release returns the active seller listing to sale');
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
-  'RESERVED', 'a fresh reservation is not released by the expired-only release');
+  'reserved', 'a fresh reservation is not released by the expired-only release');
 
 -- Explicit release (checkout ended) applies the same rule ----------------------
 set local role service_role;
@@ -110,11 +110,11 @@ reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-')
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
-  'HIDDEN:VERIFIED', 'fn_release_products holds the suspended seller listing');
+  'hidden:verified', 'fn_release_products holds the suspended seller listing');
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-')
    from public.products where id = 'd0000000-0000-4000-8000-0000000000b2'),
-  'VERIFIED:-', 'fn_release_products returns the active seller listing to sale');
+  'verified:-', 'fn_release_products returns the active seller listing to sale');
 
 -- A banned seller's listing stays held too (NULL status reads as active) -------
 select pg_temp.make_reserved('d0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-000000000003', interval '20 minutes');
@@ -127,7 +127,7 @@ reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-')
    from public.products where id = 'd0000000-0000-4000-8000-0000000000c1'),
-  'HIDDEN:VERIFIED', 'a banned seller listing is held');
+  'hidden:verified', 'a banned seller listing is held');
 update public.profiles_private set status = 'active' where id = 'd0000000-0000-4000-8000-000000000003';
 
 -- Lifting the suspension restores the held listings ---------------------------
@@ -143,16 +143,16 @@ reset role;
 select is(
   (select count(*) from public.products
    where seller_id = 'd0000000-0000-4000-8000-000000000002'
-     and status = 'VERIFIED' and status_before_account_hold is null),
-  2::bigint, 'lifting the suspension restores both held listings to VERIFIED');
+     and status = 'verified' and status_before_account_hold is null),
+  2::bigint, 'lifting the suspension restores both held listings to verified');
 select is(
   (select count(*) from public.products
-   where seller_id = 'd0000000-0000-4000-8000-000000000002' and status = 'HIDDEN'),
+   where seller_id = 'd0000000-0000-4000-8000-000000000002' and status = 'hidden'),
   0::bigint, 'no listing stays hidden by the hold');
 
--- Unrelated HIDDEN listings are not restored ------------------------------------
+-- Unrelated hidden listings are not restored ------------------------------------
 select pg_temp.make_reserved('d0000000-0000-4000-8000-0000000000d1', 'd0000000-0000-4000-8000-000000000002', interval '1 minute');
-update public.products set status = 'HIDDEN', reserved_at = null
+update public.products set status = 'hidden', reserved_at = null
 where id = 'd0000000-0000-4000-8000-0000000000d1';
 select set_config('request.jwt.claims',
   '{"sub": "d0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
@@ -164,7 +164,7 @@ select public.fn_admin_update_user_status(
 reset role;
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000d1'),
-  'HIDDEN', 'a listing hidden for another reason stays hidden after the suspension is lifted');
+  'hidden', 'a listing hidden for another reason stays hidden after the suspension is lifted');
 
 select * from finish();
 rollback;

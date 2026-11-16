@@ -23,9 +23,9 @@ script:pre-request {
   const key = bru.getEnvVar("secretKey");
   const reserve = await bru.sendRequest({
     method: "PATCH",
-    url: bru.getEnvVar("baseUrl") + "/rest/v1/products?id=eq." + product + "&status=eq.VERIFIED",
+    url: bru.getEnvVar("baseUrl") + "/rest/v1/products?id=eq." + product + "&status=eq.verified",
     headers: { apikey: key, Authorization: "Bearer " + key, "Content-Type": "application/json", Prefer: "return=representation" },
-    data: { status: "RESERVED" },
+    data: { status: "reserved" },
   });
   if (reserve.status !== 200 || reserve.data.length !== 1) {
     throw new Error("the seeded listing b4 could not be reserved: " + reserve.status + " " + JSON.stringify(reserve.data));
@@ -73,5 +73,5 @@ tests {
 }
 
 docs {
-  fn_create_shipments_from_single_payment (service role), the function the payment_intent.succeeded webhook calls for every order. Reserves the seeded listing b4 first, as checkout does, then creates the order, one shipment (paid, with the Stripe payment intent), the order item and the payment-confirmed notices, and marks the listing SOLD. Amounts in cents: price 240000, Selene commission 14400, seller-paid shipping 15000, Seguro Selene 11000, seller net 210600; the buyer paid 251000.
+  fn_create_shipments_from_single_payment (service role), the function the payment_intent.succeeded webhook calls for every order. Reserves the seeded listing b4 first, as checkout does, then creates the order, one shipment (paid, with the Stripe payment intent), the order item and the payment-confirmed notices, and marks the listing sold. Amounts in cents: price 240000, Selene commission 14400, seller-paid shipping 15000, Seguro Selene 11000, seller net 210600; the buyer paid 251000.
 }

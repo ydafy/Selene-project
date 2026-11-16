@@ -15,12 +15,12 @@ headers {
 }
 
 tests {
-  test("a guest still reads the VERIFIED, PENDING_VERIFICATION and IN_REVIEW listings from the view", function () {
+  test("a guest still reads the verified, pending_verification and in_review listings from the view", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([
-      { id: "00000000-0000-4000-8000-0000000000b1", status: "VERIFIED" },
-      { id: "00000000-0000-4000-8000-0000000000b5", status: "PENDING_VERIFICATION" },
-      { id: "00000000-0000-4000-8000-0000000000b6", status: "IN_REVIEW" }
+      { id: "00000000-0000-4000-8000-0000000000b1", status: "verified" },
+      { id: "00000000-0000-4000-8000-0000000000b5", status: "pending_verification" },
+      { id: "00000000-0000-4000-8000-0000000000b6", status: "in_review" }
     ]);
   });
 }

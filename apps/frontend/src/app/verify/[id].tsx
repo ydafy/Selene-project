@@ -222,7 +222,7 @@ export default function VerifyProductScreen() {
             subtitle={t('screen.subtitle')}
           />
 
-          {status === 'REJECTED' && rejectionReason && (
+          {status === 'rejected' && rejectionReason && (
             <Box
               backgroundColor="background"
               padding="m"

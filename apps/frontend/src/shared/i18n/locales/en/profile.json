@@ -49,13 +49,13 @@
       "history": "History"
     },
     "status": {
-      "VERIFIED": "Active",
-      "IN_REVIEW": "Under Review",
-      "PENDING_VERIFICATION": "Not Yet Verified",
-      "SOLD": "Sold",
-      "REJECTED": "Rejected",
-      "HIDDEN": "Hidden",
-      "IN_DISPUTE": "In Dispute",
+      "verified": "Active",
+      "in_review": "Under Review",
+      "pending_verification": "Not Yet Verified",
+      "sold": "Sold",
+      "rejected": "Rejected",
+      "hidden": "Hidden",
+      "in_dispute": "In Dispute",
       "ACCOUNT_HOLD": "Paused (account suspended)"
     },
     "actions": {

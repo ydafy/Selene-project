@@ -263,7 +263,7 @@ select is(
   (select s.status::text || ':' || p.status::text from public.shipments s join public.products p on p.id = s.id where s.id = pg_temp.mu(64301))
   || ':' || (select count(*) from public.notifications where event_kind = 'shipment.cancelled' and event_payload->>'shipment_id' = pg_temp.mu(64301)::text)
   || ':' || (select cancellation_loss_cents from public.orders where id = pg_temp.mu(64401)),
-  'cancelled:VERIFIED:2:120', 'resolve: completion cancels the shipment, frees the listing, notifies both parties and books the frozen loss');
+  'cancelled:verified:2:120', 'resolve: completion cancels the shipment, frees the listing, notifies both parties and books the frozen loss');
 select is(
   (select string_agg(admin_id || '|' || action_type || '|' || details::text, ' ') from public.admin_audit_logs where target_id = pg_temp.mu(64301)),
   pg_temp.mu(64003) || '|SHIPMENT_REFUND_RESOLVED|'

@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION public.fn_product_seller_payment_readiness (
   FROM public.products p
   LEFT JOIN public.profiles_private pp ON pp.id = p.seller_id
   WHERE p.id = ANY(p_product_ids[1:50])
-    AND p.status = 'VERIFIED'
+    AND p.status = 'verified'
     AND p.deleted_at IS NULL;
 $function$;
 

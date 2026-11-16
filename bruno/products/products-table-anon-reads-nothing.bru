@@ -15,7 +15,7 @@ headers {
 }
 
 tests {
-  test("a guest cannot read the products table, even a VERIFIED row", function () {
+  test("a guest cannot read the products table, even a verified row", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody().code).to.equal("42501");
   });

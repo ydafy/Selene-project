@@ -107,7 +107,9 @@ describe('screen and hook wiring (S4)', () => {
     expect(src).toContain('decidePurchaseGate');
     expect(src).not.toContain('sellerNotReady');
     const call = src.indexOf('await checkSellerBlocked(');
-    expect(src.indexOf("'VERIFIED'")).toBeLessThan(call);
+    const verified = src.indexOf("'verified'");
+    expect(verified).toBeGreaterThan(-1);
+    expect(verified).toBeLessThan(call);
     expect(call).toBeLessThan(src.indexOf('addItem(product)'));
   });
 

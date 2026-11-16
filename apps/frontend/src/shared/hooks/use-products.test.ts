@@ -22,19 +22,19 @@ describe('resolveProductsQueryEnabled', () => {
 });
 
 describe('resolveProductStatuses', () => {
-  test('defaults to VERIFIED and SOLD so home keeps its current lists', () => {
-    expect(resolveProductStatuses(undefined)).toEqual(['VERIFIED', 'SOLD']);
+  test('defaults to verified and sold so home keeps its current lists', () => {
+    expect(resolveProductStatuses(undefined)).toEqual(['verified', 'sold']);
     expect(resolveProductStatuses({ verifiedOnly: true })).toEqual([
-      'VERIFIED',
-      'SOLD',
+      'verified',
+      'sold',
     ]);
   });
 
   test('uses the statuses a screen asks for', () => {
     expect(
       resolveProductStatuses({
-        statuses: ['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW'],
+        statuses: ['verified', 'pending_verification', 'in_review'],
       }),
-    ).toEqual(['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW']);
+    ).toEqual(['verified', 'pending_verification', 'in_review']);
   });
 });

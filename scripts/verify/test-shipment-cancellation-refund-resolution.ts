@@ -101,7 +101,7 @@ async function fixture(tx: Tx) {
   await tx`INSERT INTO public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
     VALUES (${ids.order}, ${ids.product}, ${ids.seller}, 750000, 700000, ${ids.shipment}),
            (${ids.order}, ${ids.siblingProduct}, ${ids.seller}, 390000, 350000, ${ids.sibling})`;
-  await tx`UPDATE public.products SET status = 'SOLD' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
+  await tx`UPDATE public.products SET status = 'sold' WHERE id IN (${ids.product}, ${ids.siblingProduct})`;
   await asService(tx);
 }
 
@@ -252,7 +252,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'resolving a refund that failed before success cancels the shipment: products VERIFIED, notices, frozen loss',
+    'resolving a refund that failed before success cancels the shipment: products verified, notices, frozen loss',
     async (tx) => {
       await start(tx, ids.shipment, 'buyer', 300);
       assert.equal(
@@ -265,7 +265,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         'failed_before_cancellation',
       );
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
       assert.equal((await notifications(tx, 'shipment.cancelled')).length, 0);
 
       assert.deepEqual(await resolve(tx, ids.shipment), {
@@ -276,7 +276,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       });
 
       assert.equal((await snapshot(tx, ids.shipment)).shipment, 'cancelled');
-      assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+      assert.equal(await productStatus(tx, ids.product), 'verified');
       assert.deepEqual(
         (await notifications(tx, 'shipment.cancelled'))
           .map(
@@ -293,7 +293,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.equal(audit.details.shipment_status_before, 'paid');
       // The sibling shipment is untouched.
       assert.equal((await snapshot(tx, ids.sibling)).shipment, 'paid');
-      assert.equal(await productStatus(tx, ids.siblingProduct), 'SOLD');
+      assert.equal(await productStatus(tx, ids.siblingProduct), 'sold');
     },
   ],
   [
@@ -357,7 +357,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
         assert.deepEqual(await snapshot(tx, id), before);
         assert.equal((await auditRows(tx, id)).length, 0);
       }
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
 
       // Succeeded (cancelled shipment): nothing is owed, so nothing to resolve.
       await apply(tx, ids.shipment, 're_1', 'succeeded');
@@ -429,7 +429,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
 
         const state = await snapshot(tx, ids.shipment);
         assert.equal(state.shipment, 'cancelled');
-        assert.equal(await productStatus(tx, ids.product), 'VERIFIED');
+        assert.equal(await productStatus(tx, ids.product), 'verified');
         assert.equal(state.operation.refund_id, null);
         assert.equal(state.operation.refund_status, null);
         assert.equal(state.operation.refund_resolved_by, ids.admin);
@@ -568,7 +568,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
       assert.deepEqual(await snapshot(tx, ids.shipment), before);
       assert.equal(before.operation.refund_resolved_at, null);
       assert.equal((await auditRows(tx)).length, 0);
-      assert.equal(await productStatus(tx, ids.product), 'SOLD');
+      assert.equal(await productStatus(tx, ids.product), 'sold');
     },
   ],
   [

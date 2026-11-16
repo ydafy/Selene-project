@@ -32,7 +32,7 @@ select pg_temp.money_shipment(14201, 14102, 14006, 14002, 'preparing');
 
 -- Listing 14301 of seller A, published and verified.
 select pg_temp.money_product(14301, 14001);
-update public.products set status = 'VERIFIED' where id = pg_temp.mu(14301);
+update public.products set status = 'verified' where id = pg_temp.mu(14301);
 
 -- Addresses 14401 seller A, 14402 buyer, 14403 seller B.
 insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label)

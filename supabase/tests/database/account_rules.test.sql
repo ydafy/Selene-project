@@ -30,7 +30,7 @@ create function pg_temp.owner_insert(p_id uuid, p_seller uuid) returns text lang
       publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
     ) values (
       %L, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-      array['https://example.test/p.png'], 'PENDING_VERIFICATION', '{}'::jsonb, %L, 10000,
+      array['https://example.test/p.png'], 'pending_verification', '{}'::jsonb, %L, 10000,
       '06600', 'gpu_1', pg_temp.fresh_reserve(), pg_temp.commission_rate(), pg_temp.insurance_rate()
     )$f$, p_id, p_seller)
 $$;
@@ -90,19 +90,19 @@ from (values
 update public.profiles_private set role = 'admin'
 where id = 'd0000000-0000-4000-8000-000000000001';
 
--- Seller 02: s1 VERIFIED, s2 PENDING_VERIFICATION, s3 IN_REVIEW, s4 REJECTED,
--- s5 HIDDEN by the seller. Seller 03: b1 VERIFIED. Seller 05: a1, a2 VERIFIED.
--- Seller 06: v1 VERIFIED. Client 07: c1 HIDDEN.
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000002', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'PENDING_VERIFICATION');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000002', 'IN_REVIEW');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a4', 'd0000000-0000-4000-8000-000000000002', 'REJECTED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a5', 'd0000000-0000-4000-8000-000000000002', 'HIDDEN');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-000000000003', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-000000000005', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000c2', 'd0000000-0000-4000-8000-000000000005', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000d1', 'd0000000-0000-4000-8000-000000000006', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000e1', 'd0000000-0000-4000-8000-000000000007', 'HIDDEN');
+-- Seller 02: s1 verified, s2 pending_verification, s3 in_review, s4 rejected,
+-- s5 hidden by the seller. Seller 03: b1 verified. Seller 05: a1, a2 verified.
+-- Seller 06: v1 verified. Client 07: c1 hidden.
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000002', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'pending_verification');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000002', 'in_review');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a4', 'd0000000-0000-4000-8000-000000000002', 'rejected');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a5', 'd0000000-0000-4000-8000-000000000002', 'hidden');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-000000000003', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-000000000005', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000c2', 'd0000000-0000-4000-8000-000000000005', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000d1', 'd0000000-0000-4000-8000-000000000006', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000e1', 'd0000000-0000-4000-8000-000000000007', 'hidden');
 
 -- Controls: an active seller publishes and edits through the same statements --
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000002');
@@ -125,15 +125,15 @@ select is(
     'suspended', 'test'),
   true, 'smoke: an admin suspends the seller');
 reset role;
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'HIDDEN:VERIFIED',
-  'the suspension holds a VERIFIED listing');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a2'), 'HIDDEN:PENDING_VERIFICATION',
-  'the suspension holds a PENDING_VERIFICATION listing');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a3'), 'HIDDEN:IN_REVIEW',
-  'the suspension holds an IN_REVIEW listing');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a4'), 'REJECTED:-',
-  'the suspension leaves a REJECTED listing alone');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a5'), 'HIDDEN:-',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'hidden:verified',
+  'the suspension holds a verified listing');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a2'), 'hidden:pending_verification',
+  'the suspension holds a pending_verification listing');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a3'), 'hidden:in_review',
+  'the suspension holds an in_review listing');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a4'), 'rejected:-',
+  'the suspension leaves a rejected listing alone');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a5'), 'hidden:-',
   'a listing the seller hid is not marked as held');
 
 -- A suspended seller cannot publish or edit ------------------------------------
@@ -148,7 +148,7 @@ select is(
   0, 'a suspended seller cannot edit a listing they hid');
 select is(
   pg_temp.changed($$update public.products
-    set status = 'PENDING_VERIFICATION', status_before_account_hold = null
+    set status = 'pending_verification', status_before_account_hold = null
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$),
   0, 'a suspended seller cannot take a listing out of the hold');
 reset role;
@@ -158,11 +158,11 @@ select is(
 select is(
   (select description from public.products where id = 'd0000000-0000-4000-8000-0000000000a5'),
   'edited while active', 'the refused edit left the listing unchanged');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'HIDDEN:VERIFIED',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'hidden:verified',
   'the held listing is still held');
 
 -- A suspended seller cannot receive reservations; their purchases stay ---------
--- Seller 06 is suspended without the RPC, so its listing is still VERIFIED and
+-- Seller 06 is suspended without the RPC, so its listing is still verified and
 -- only the gate in fn_reserve_products stands between it and a sale.
 update public.profiles_private set status = 'suspended'
 where id = 'd0000000-0000-4000-8000-000000000006';
@@ -170,7 +170,7 @@ set local role service_role;
 select is(
   (select success::text || ':' || coalesce(error_message, '-') from public.fn_reserve_products(
     'd0000000-0000-4000-8000-000000000004', array['d0000000-0000-4000-8000-0000000000d1']::uuid[])),
-  'false:SOME_PRODUCTS_UNAVAILABLE', 'a VERIFIED listing of a suspended seller cannot be reserved');
+  'false:SOME_PRODUCTS_UNAVAILABLE', 'a verified listing of a suspended seller cannot be reserved');
 select is(
   (select success::text || ':' || coalesce(error_message, '-') from public.fn_reserve_products(
     'd0000000-0000-4000-8000-000000000004', array[
@@ -181,14 +181,14 @@ reset role;
 select is(
   (select string_agg(status::text || ':' || (reserved_at is null)::text, ',' order by id)
    from public.products where id in ('d0000000-0000-4000-8000-0000000000c1', 'd0000000-0000-4000-8000-0000000000d1')),
-  'VERIFIED:true,VERIFIED:true', 'the refused carts left both listings for sale');
+  'verified:true,verified:true', 'the refused carts left both listings for sale');
 set local role service_role;
 select is(
   (select success::text || ':' || coalesce(error_message, '-') from public.fn_reserve_products(
     'd0000000-0000-4000-8000-000000000002', array['d0000000-0000-4000-8000-0000000000c1']::uuid[])),
   'true:-', 'a suspended buyer still reserves from an active seller');
 reset role;
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c1'), 'RESERVED:-',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c1'), 'reserved:-',
   'the suspended buyer reservation holds the listing');
 
 -- Lifting the suspension restores only the held listings, each to its status ----
@@ -197,15 +197,15 @@ set local role authenticated;
 select public.fn_admin_update_user_status(
   'd0000000-0000-4000-8000-000000000002', 'active', 'lifted');
 reset role;
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'VERIFIED:-',
-  'the lift returns a held VERIFIED listing to VERIFIED');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a2'), 'PENDING_VERIFICATION:-',
-  'the lift returns a held PENDING_VERIFICATION listing to review, not to sale');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a3'), 'IN_REVIEW:-',
-  'the lift returns a held IN_REVIEW listing to IN_REVIEW');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a4'), 'REJECTED:-',
-  'the lift leaves a REJECTED listing rejected');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a5'), 'HIDDEN:-',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a1'), 'verified:-',
+  'the lift returns a held verified listing to verified');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a2'), 'pending_verification:-',
+  'the lift returns a held pending_verification listing to review, not to sale');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a3'), 'in_review:-',
+  'the lift returns a held in_review listing to in_review');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a4'), 'rejected:-',
+  'the lift leaves a rejected listing rejected');
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000a5'), 'hidden:-',
   'the lift leaves a listing the seller hid hidden');
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000002');
 set local role authenticated;
@@ -233,7 +233,7 @@ reset role;
 select is(
   (select status::text from public.profiles_private where id = 'd0000000-0000-4000-8000-000000000003'),
   'banned', 'the account stays banned');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000b1'), 'HIDDEN:VERIFIED',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000b1'), 'hidden:verified',
   'the banned seller listing stays held');
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000003');
 set local role authenticated;
@@ -242,7 +242,7 @@ select throws_ok(
   '42501', null, 'a banned seller cannot publish a listing');
 select is(
   pg_temp.changed($$update public.products
-    set status = 'PENDING_VERIFICATION', status_before_account_hold = null
+    set status = 'pending_verification', status_before_account_hold = null
     where id = 'd0000000-0000-4000-8000-0000000000b1'$$),
   0, 'a banned seller cannot take a listing out of the hold');
 reset role;
@@ -252,7 +252,7 @@ select is(
     'd0000000-0000-4000-8000-000000000003', array['d0000000-0000-4000-8000-0000000000c2']::uuid[])),
   'false:ACCOUNT_RESTRICTED', 'a banned buyer cannot reserve');
 reset role;
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c2'), 'VERIFIED:-',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000c2'), 'verified:-',
   'the banned buyer attempt left the listing for sale');
 
 -- Clients cannot write role or status ------------------------------------------
@@ -263,7 +263,7 @@ select throws_ok(
     where id = 'd0000000-0000-4000-8000-000000000004'$$,
   '42501', null, 'a client cannot write another user role or status');
 select throws_ok(
-  $$update public.products set status_before_account_hold = 'VERIFIED'
+  $$update public.products set status_before_account_hold = 'verified'
     where id = 'd0000000-0000-4000-8000-0000000000e1'$$,
   '42501', null, 'a client cannot pre-set the account hold on their own listing');
 select throws_ok(
@@ -327,12 +327,12 @@ select is(
   (select count(*) from public.admin_audit_logs
    where target_id in ('d0000000-0000-4000-8000-000000000004', 'd0000000-0000-4000-8000-000000000007')),
   0::bigint, 'no status change was audited for the targets of the refused calls');
-select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000e1'), 'HIDDEN:-',
+select is(pg_temp.listing('d0000000-0000-4000-8000-0000000000e1'), 'hidden:-',
   'the client listing has no account hold');
 
 -- Status RPC guards, stale holds and the audit row (#277) -------------------------
 -- 09 a seller to suspend and lift with an admin edit in between, 10 a suspended
--- admin. Listings: aa and ab of seller 09, both VERIFIED.
+-- admin. Listings: aa and ab of seller 09, both verified.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -346,8 +346,8 @@ from (values
 ) as u(id, email, username);
 update public.profiles_private set role = 'admin', status = 'suspended'
 where id = 'd0000000-0000-4000-8000-000000000010';
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000aa', 'd0000000-0000-4000-8000-000000000009', 'VERIFIED');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000ab', 'd0000000-0000-4000-8000-000000000009', 'VERIFIED');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000aa', 'd0000000-0000-4000-8000-000000000009', 'verified');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000ab', 'd0000000-0000-4000-8000-000000000009', 'verified');
 
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
@@ -391,8 +391,8 @@ set local role authenticated;
 select public.fn_admin_update_user_status(
   'd0000000-0000-4000-8000-000000000009', 'suspended', 'hold');
 reset role;
--- During the suspension an admin moves aa out of HIDDEN; its hold goes stale.
-update public.products set status = 'REJECTED' where id = 'd0000000-0000-4000-8000-0000000000aa';
+-- During the suspension an admin moves aa out of hidden; its hold goes stale.
+update public.products set status = 'rejected' where id = 'd0000000-0000-4000-8000-0000000000aa';
 select pg_temp.as_user('d0000000-0000-4000-8000-000000000001');
 set local role authenticated;
 select public.fn_admin_update_user_status(
@@ -400,8 +400,8 @@ select public.fn_admin_update_user_status(
 reset role;
 select is(
   pg_temp.listing('d0000000-0000-4000-8000-0000000000aa') || ',' || pg_temp.listing('d0000000-0000-4000-8000-0000000000ab'),
-  'REJECTED:-,VERIFIED:-',
-  'the lift clears the stale hold of a listing an admin moved out of HIDDEN and restores the other');
+  'rejected:-,verified:-',
+  'the lift clears the stale hold of a listing an admin moved out of hidden and restores the other');
 select is(
   (select string_agg(right(admin_id::text, 2) || ':' || action_type || ':' || (details->>'previous_status')
      || '>' || (details->>'new_status') || ':' || (details->>'reason'), ',' order by details->>'previous_status')

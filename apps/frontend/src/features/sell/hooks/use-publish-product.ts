@@ -241,7 +241,7 @@ export const usePublishProduct = () => {
         }
 
         if (sacredChanges || economicsChanges) {
-          updatePayload.status = 'PENDING_VERIFICATION';
+          updatePayload.status = 'pending_verification';
           requiresReverification = true;
         } else {
           requiresReverification = false;
@@ -272,7 +272,7 @@ export const usePublishProduct = () => {
             publication_commission_rate: publicationEconomics.commissionRate,
             publication_insurance_rate: publicationEconomics.insuranceRate,
             seller_id: session.user.id,
-            status: 'PENDING_VERIFICATION',
+            status: 'pending_verification',
             views: 0,
             aspect_ratio: aspectRatio,
           } as never)

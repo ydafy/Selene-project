@@ -5,7 +5,7 @@ begin;
 select plan(21);
 \ir ../fixtures/money.psql
 
--- A VERIFIED listing of p_seller with a snapshot computed from the current
+-- A verified listing of p_seller with a snapshot computed from the current
 -- settings; p_reserve_delta shifts the reserve to test the trigger.
 create function pg_temp.listing(
   p_n integer, p_seller integer, p_price_cents bigint, p_shipping_cents bigint,
@@ -20,7 +20,7 @@ begin
       publication_insurance_rate
     )
     select pg_temp.mu($1), 'Test GPU', 'Test listing', $3, 'GPU', 'used', 'gaming',
-      array['https://example.test/p.png'], 'VERIFIED'::public.product_status,
+      array['https://example.test/p.png'], 'verified'::public.product_status,
       '{}'::jsonb, pg_temp.mu($2), $4, '06600', 'gpu_1',
       $4 + s.shipping_buffer_cents + ceil($3::numeric * s.insurance_rate)::bigint + $5,
       s.service_fee_pct,

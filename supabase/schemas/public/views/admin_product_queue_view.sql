@@ -26,7 +26,7 @@ CREATE VIEW "public"."admin_product_queue_view" WITH (security_invoker=true) AS 
     fts,
     deleted_at
    FROM public.products
-  WHERE ((status = 'PENDING_VERIFICATION'::public.product_status) AND (deleted_at IS NULL) AND public.is_admin())
+  WHERE ((status = 'pending_verification'::public.product_status) AND (deleted_at IS NULL) AND public.is_admin())
   ORDER BY created_at;
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."admin_product_queue_view" TO "service_role";

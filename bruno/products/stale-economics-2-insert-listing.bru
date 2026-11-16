@@ -30,7 +30,7 @@ script:pre-request {
     condition: "used",
     usage: "gaming",
     images: ["https://placehold.co/800x800/png?text=Stale"],
-    status: "VERIFIED",
+    status: "verified",
     specifications: { chipset: "NVIDIA", brand: "MSI", model: "RTX 3070", memory: "8 GB" },
     seller_id: "00000000-0000-4000-8000-000000000002",
     shipping_cost_cents: 10000,
@@ -55,8 +55,8 @@ script:post-response {
 }
 
 tests {
-  test("the seeded seller gets a VERIFIED listing with a fresh snapshot", function () {
+  test("the seeded seller gets a verified listing with a fresh snapshot", function () {
     expect(res.getStatus()).to.equal(201);
-    expect(res.getBody()[0].status).to.equal("VERIFIED");
+    expect(res.getBody()[0].status).to.equal("verified");
   });
 }

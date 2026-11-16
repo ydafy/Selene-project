@@ -10,14 +10,14 @@ export const getStatusColor = (
   if (!status) return 'textSecondary';
 
   const statusMap: Record<string, keyof Theme['colors']> = {
-    VERIFIED: 'success',
-    PENDING_VERIFICATION: 'warning',
-    REJECTED: 'error',
-    SOLD: 'primary',
-    RESERVED: 'warning',
-    HIDDEN: 'textSecondary',
-    IN_REVIEW: 'warning',
-    IN_DISPUTE: 'warning',
+    verified: 'success',
+    pending_verification: 'warning',
+    rejected: 'error',
+    sold: 'primary',
+    reserved: 'warning',
+    hidden: 'textSecondary',
+    in_review: 'warning',
+    in_dispute: 'warning',
     ACCOUNT_HOLD: 'warning',
   };
 
@@ -41,7 +41,7 @@ export const isProductHistory = (
     return false;
   }
   // Los estados que ya no están a la venta pero se guardan para registro
-  const historyStatuses = ['SOLD', 'REJECTED', 'HIDDEN'];
+  const historyStatuses = ['sold', 'rejected', 'hidden'];
   return historyStatuses.includes(status);
 };
 
@@ -54,4 +54,4 @@ export const isAccountHeld = (product: {
   status: string | null | undefined;
   status_before_account_hold?: string | null;
 }): boolean =>
-  product.status === 'HIDDEN' && !!product.status_before_account_hold;
+  product.status === 'hidden' && !!product.status_before_account_hold;

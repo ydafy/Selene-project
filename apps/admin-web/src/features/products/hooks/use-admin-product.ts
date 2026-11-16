@@ -26,9 +26,9 @@ interface AdminProduct {
 
 export type ProductTab = 'active' | 'history';
 
-export const ACTIVE_STATUSES = ['VERIFIED', 'RESERVED', 'IN_DISPUTE'] as const;
+export const ACTIVE_STATUSES = ['verified', 'reserved', 'in_dispute'] as const;
 
-export const HISTORY_STATUSES = ['SOLD', 'REJECTED', 'HIDDEN'] as const;
+export const HISTORY_STATUSES = ['sold', 'rejected', 'hidden'] as const;
 
 const STATUS_GROUPS: Record<ProductTab, readonly ProductStatus[]> = {
   active: ACTIVE_STATUSES,

@@ -16,7 +16,7 @@ headers {
 }
 
 tests {
-  test("a signed-in buyer reads no row from the products table (VERIFIED, PENDING, IN_REVIEW, SOLD)", function () {
+  test("a signed-in buyer reads no row from the products table (verified, pending_verification, in_review, sold)", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([]);
   });

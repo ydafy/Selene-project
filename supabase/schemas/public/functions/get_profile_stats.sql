@@ -10,10 +10,10 @@ declare
   avg_rating numeric;
   total_reviews integer;
 begin
-  -- Contar ventas (Productos con status 'SOLD'), via the public view
+  -- Contar ventas (Productos con status 'sold'), via the public view
   select count(*) into total_sold
   from public.products_public
-  where seller_id = target_user_id and status = 'SOLD';
+  where seller_id = target_user_id and status = 'sold';
 
   -- Calcular rating promedio y conteo
   select avg(rating), count(*) into avg_rating, total_reviews

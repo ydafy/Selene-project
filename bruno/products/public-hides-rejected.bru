@@ -15,12 +15,12 @@ headers {
 }
 
 tests {
-  test("a guest cannot see a REJECTED listing", function () {
+  test("a guest cannot see a rejected listing", function () {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.deep.equal([]);
   });
 }
 
 docs {
-  REJECTED stays out of products_public (owner and admins read it from the table).
+  rejected stays out of products_public (owner and admins read it from the table).
 }

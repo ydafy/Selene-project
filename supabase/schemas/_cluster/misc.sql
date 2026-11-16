@@ -74,7 +74,7 @@ SELECT cron.schedule_in_database('purge-cron-run-details', '0 3 * * *', 'delete 
 
 SELECT
   cron.schedule_in_database('purge-expired-reservations', '*/15 * * * *',
-  'update public.products set status = ''VERIFIED'', reserved_at = null, updated_at = now() where status = ''RESERVED'' and reserved_at < now() - interval ''30 minutes''',
+  'update public.products set status = ''verified'', reserved_at = null, updated_at = now() where status = ''reserved'' and reserved_at < now() - interval ''30 minutes''',
   'postgres', NULL, true);
 
 SELECT cron.schedule_in_database('reconcile-connect-payments', '0 */6 * * *', 'select * from internal.fn_reconcile_connect_payments()', 'postgres', NULL, true);

@@ -61,29 +61,29 @@ BEGIN
     IF p_new_status IN ('suspended', 'banned') THEN
         UPDATE public.products
         SET status_before_account_hold = COALESCE(status_before_account_hold, status),
-            status = 'HIDDEN'::public.product_status,
+            status = 'hidden'::public.product_status,
             updated_at = now()
         WHERE seller_id = p_target_user_id
         AND deleted_at IS NULL
-        AND status = ANY(ARRAY['VERIFIED', 'PENDING_VERIFICATION', 'IN_REVIEW']::public.product_status[]);
+        AND status = ANY(ARRAY['verified', 'pending_verification', 'in_review']::public.product_status[]);
 
-    -- Lifting a suspension restores only listings this hold hid; other HIDDEN listings stay hidden
+    -- Lifting a suspension restores only listings this hold hid; other hidden listings stay hidden
     ELSIF p_new_status = 'active' AND v_previous_status = 'suspended' THEN
         UPDATE public.products
         SET status = status_before_account_hold,
             status_before_account_hold = NULL,
             updated_at = now()
         WHERE seller_id = p_target_user_id
-        AND status = 'HIDDEN'::public.product_status
+        AND status = 'hidden'::public.product_status
         AND status_before_account_hold IS NOT NULL
         AND deleted_at IS NULL;
 
-        -- Listings an admin moved out of HIDDEN during the suspension keep no stale hold
+        -- Listings an admin moved out of hidden during the suspension keep no stale hold
         UPDATE public.products
         SET status_before_account_hold = NULL
         WHERE seller_id = p_target_user_id
         AND status_before_account_hold IS NOT NULL
-        AND status <> 'HIDDEN'::public.product_status;
+        AND status <> 'hidden'::public.product_status;
     END IF;
 
     -- E. ADMIN AUDIT LOG

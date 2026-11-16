@@ -15,12 +15,12 @@ headers {
 }
 
 tests {
-  test("a guest sees a listing that is PENDING_VERIFICATION", function () {
+  test("a guest sees a listing that is pending_verification", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b5", status: "PENDING_VERIFICATION" }]);
+    expect(res.getBody()).to.deep.equal([{ id: "00000000-0000-4000-8000-0000000000b5", status: "pending_verification" }]);
   });
 }
 
 docs {
-  products_public shows PENDING_VERIFICATION to guests (the table policy was dropped in T4d3). Seeded in supabase/seed.sql.
+  products_public shows pending_verification to guests (the table policy was dropped in T4d3). Seeded in supabase/seed.sql.
 }

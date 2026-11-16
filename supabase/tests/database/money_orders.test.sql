@@ -13,10 +13,10 @@ select pg_temp.money_user(2);
 insert into public.addresses (id, user_id, full_name, phone, street_line1, city, state, zip_code, label)
 values (pg_temp.mu(31), pg_temp.mu(1), 'Test Buyer', '5555555555', 'Calle 1', 'CDMX', 'CDMX', '06600', 'Casa');
 
--- Three RESERVED listings of seller 2 whose prices do not split evenly.
+-- Three reserved listings of seller 2 whose prices do not split evenly.
 select pg_temp.money_product(n, 2, p)
 from (values (11, 33333::bigint), (12, 33333::bigint), (13, 33335::bigint)) v(n, p);
-update public.products set status = 'RESERVED', reserved_at = now()
+update public.products set status = 'reserved', reserved_at = now()
 where id in (pg_temp.mu(11), pg_temp.mu(12), pg_temp.mu(13));
 
 -- Columns ------------------------------------------------------------------------

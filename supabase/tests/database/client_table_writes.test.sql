@@ -15,7 +15,7 @@ returns void language sql as $$
     publication_insurance_rate
   )
   select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
-    array['https://example.test/p.png'], 'SOLD'::public.product_status, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
+    array['https://example.test/p.png'], 'sold'::public.product_status, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,

@@ -334,7 +334,7 @@ export const ProductManagementPage = () => {
           onConfirm={handleSoftDelete}
           isLoading={isDeleting}
           title="Ocultar Producto"
-          description={`Estás por ocultar "${modalProduct.name}". Esta acción cambiará el estado a HIDDEN y solo un admin puede revertirla.`}
+          description={`Estás por ocultar "${modalProduct.name}". Esta acción cambiará el estado a oculto y solo un admin puede revertirla.`}
           placeholder="Motivo de la ocultación (mínimo 5 caracteres)..."
           confirmLabel="Ocultar Producto"
           minLength={5}

@@ -18,10 +18,10 @@ headers {
 tests {
   test("the expired reservation cleaned up by a checkout is held, not re-listed", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ status: "HIDDEN", status_before_account_hold: "VERIFIED", reserved_at: null }]);
+    expect(res.getBody()).to.deep.equal([{ status: "hidden", status_before_account_hold: "verified", reserved_at: null }]);
   });
 }
 
 docs {
-  The listing is HIDDEN with the hold set to VERIFIED.
+  The listing is hidden with the hold set to verified.
 }

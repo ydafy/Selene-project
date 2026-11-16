@@ -37,13 +37,13 @@ BEGIN
   FROM public.profiles_private pp
   WHERE pp.id = v_product.seller_id;
 
-  IF v_product.status = 'PENDING_VERIFICATION' THEN
+  IF v_product.status = 'pending_verification' THEN
     v_follow_up := ' Envía tus pruebas para empezar a venderlo.';
     v_action_path := '/verify/' || v_product.id::text;
-  ELSIF v_product.status = 'IN_REVIEW' THEN
+  ELSIF v_product.status = 'in_review' THEN
     v_follow_up := ' Lo estamos revisando; te avisaremos al terminar.';
     v_action_path := '/profile/listings';
-  ELSIF v_product.status = 'VERIFIED' AND NOT COALESCE(v_ready, false) THEN
+  ELSIF v_product.status = 'verified' AND NOT COALESCE(v_ready, false) THEN
     v_follow_up := ' Activa tus pagos para poder venderlo.';
     v_action_path := '/sell/onboarding';
   ELSE

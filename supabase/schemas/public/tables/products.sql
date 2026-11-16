@@ -15,7 +15,7 @@ ALTER TABLE "public"."products"
   ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "status" public.product_status NOT NULL DEFAULT 'PENDING_VERIFICATION'::public.product_status;
+  ADD COLUMN "status" public.product_status NOT NULL DEFAULT 'pending_verification'::public.product_status;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "specifications" jsonb NOT NULL DEFAULT '{}'::jsonb;
@@ -114,7 +114,7 @@ ALTER TABLE "public"."products"
 CREATE INDEX idx_products_fts ON public.products USING gin (fts);
 
 CREATE INDEX idx_products_reserved_status_reserved_at ON public.products USING btree (status, reserved_at)
-  WHERE (status = 'RESERVED'::public.product_status);
+  WHERE (status = 'reserved'::public.product_status);
 
 CREATE INDEX idx_products_specifications ON public.products USING gin (specifications);
 
@@ -136,8 +136,8 @@ CREATE TRIGGER trg_product_available_on_verify
   AFTER UPDATE OF status ON public.products
   FOR EACH ROW
   WHEN
-    (((old.status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status, 'IN_REVIEW'::public.product_status])) AND (new.status =
-    'VERIFIED'::public.product_status)))
+    (((old.status = ANY (ARRAY['pending_verification'::public.product_status, 'in_review'::public.product_status])) AND (new.status =
+    'verified'::public.product_status)))
   EXECUTE FUNCTION public.fn_tr_product_available_on_verify();
 
 CREATE TRIGGER validate_product_publication_economics
@@ -160,7 +160,7 @@ CREATE POLICY "products_insert" ON "public"."products"
   TO "authenticated"
   WITH
     CHECK
-    (((( SELECT auth.uid() AS uid) = seller_id) AND (status = 'PENDING_VERIFICATION'::public.product_status) AND (verified_at IS NULL) AND (deleted_at IS NULL) AND
+    (((( SELECT auth.uid() AS uid) = seller_id) AND (status = 'pending_verification'::public.product_status) AND (verified_at IS NULL) AND (deleted_at IS NULL) AND
     (reserved_at IS NULL) AND (locked_by IS NULL) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
 
 CREATE POLICY "products_select_owner_or_admin" ON "public"."products"
@@ -172,14 +172,14 @@ CREATE POLICY "products_update_owner_or_admin" ON "public"."products"
   FOR UPDATE
   TO "authenticated"
   USING
-    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status,
-    'VERIFIED'::public.product_status,
-    'HIDDEN'::public.product_status, 'REJECTED'::public.product_status])) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))))
+    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (deleted_at IS NULL) AND (status = ANY (ARRAY['pending_verification'::public.product_status,
+    'verified'::public.product_status,
+    'hidden'::public.product_status, 'rejected'::public.product_status])) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))))
   WITH
     CHECK
-    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['PENDING_VERIFICATION'::public.product_status, 'VERIFIED'::public.product_status,
-    'HIDDEN'::public.product_status,
-    'IN_REVIEW'::public.product_status])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))));
+    ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['pending_verification'::public.product_status, 'verified'::public.product_status,
+    'hidden'::public.product_status,
+    'in_review'::public.product_status])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))));
 
 REVOKE ALL ON TABLE "public"."products" FROM "anon", "authenticated";
 

@@ -1,6 +1,6 @@
 -- products_public: the public catalogue view. It exposes an allow-listed set of
--- columns, only for non-deleted listings in VERIFIED, SOLD,
--- PENDING_VERIFICATION and IN_REVIEW, and runs with its owner's rights behind
+-- columns, only for non-deleted listings in verified, sold,
+-- pending_verification and in_review, and runs with its owner's rights behind
 -- a security barrier. The products table itself has no public read policy: a
 -- non-owner non-admin reads no row, while the owner and an admin still do.
 -- get_profile_stats counts sales through the view. Runs against the local
@@ -36,18 +36,18 @@ returns uuid language sql as $$
   returning id
 $$;
 
-select pg_temp.listing(77101, 'PENDING_VERIFICATION');
-select pg_temp.listing(77102, 'IN_REVIEW');
-select pg_temp.listing(77103, 'VERIFIED');
-select pg_temp.listing(77104, 'SOLD');
-select pg_temp.listing(77105, 'REJECTED');
-select pg_temp.listing(77106, 'HIDDEN');
-select pg_temp.listing(77107, 'RESERVED');
-select pg_temp.listing(77108, 'IN_DISPUTE');
-select pg_temp.listing(77109, 'VERIFIED', true);
-select pg_temp.listing(77110, 'SOLD', true);
-select pg_temp.listing(77111, 'PENDING_VERIFICATION', true);
-select pg_temp.listing(77112, 'IN_REVIEW', true);
+select pg_temp.listing(77101, 'pending_verification');
+select pg_temp.listing(77102, 'in_review');
+select pg_temp.listing(77103, 'verified');
+select pg_temp.listing(77104, 'sold');
+select pg_temp.listing(77105, 'rejected');
+select pg_temp.listing(77106, 'hidden');
+select pg_temp.listing(77107, 'reserved');
+select pg_temp.listing(77108, 'in_dispute');
+select pg_temp.listing(77109, 'verified', true);
+select pg_temp.listing(77110, 'sold', true);
+select pg_temp.listing(77111, 'pending_verification', true);
+select pg_temp.listing(77112, 'in_review', true);
 
 -- Names of this file's listings visible in a relation to the current role.
 create function pg_temp.visible(p_rel text) returns text language plpgsql as $$
@@ -98,7 +98,7 @@ from unnest(array[
 
 -- View rows per role -------------------------------------------------------------
 select is(pg_temp.visible('public.products_public'), 'pp-77101,pp-77102,pp-77103,pp-77104',
-  'anon sees only non-deleted listings in PENDING_VERIFICATION, IN_REVIEW, VERIFIED and SOLD');
+  'anon sees only non-deleted listings in pending_verification, in_review, verified and sold');
 reset role;
 select pg_temp.as_user(77002);
 set local role authenticated;
@@ -140,7 +140,7 @@ reset role;
 select pg_temp.as_user(77002);
 set local role authenticated;
 select is(pg_temp.visible('public.products'), '',
-  'a non-owner non-admin reads no products table row, not even a VERIFIED one');
+  'a non-owner non-admin reads no products table row, not even a verified one');
 reset role;
 select pg_temp.as_user(77001);
 set local role authenticated;
@@ -155,7 +155,7 @@ select is(pg_temp.visible('public.products'),
   'an admin reads every listing from the table');
 reset role;
 
--- get_profile_stats counts SOLD listings through the view ------------------------
+-- get_profile_stats counts sold listings through the view ------------------------
 -- No client calls it, so anon and authenticated cannot execute it (#305); the
 -- server still gets the counts.
 select set_config('request.jwt.claims', '{"role": "anon"}', true);
@@ -172,11 +172,11 @@ select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 select is(
   public.get_profile_stats(pg_temp.mu(77001))::jsonb,
   '{"sales_count": 1, "rating_average": 0, "reviews_count": 0}'::jsonb,
-  'get_profile_stats counts the one non-deleted SOLD listing and leaves out the soft-deleted one');
+  'get_profile_stats counts the one non-deleted sold listing and leaves out the soft-deleted one');
 select is(
   public.get_profile_stats(pg_temp.mu(77002))::jsonb,
   '{"sales_count": 0, "rating_average": 0, "reviews_count": 0}'::jsonb,
-  'get_profile_stats counts no sales for a seller with no SOLD listing');
+  'get_profile_stats counts no sales for a seller with no sold listing');
 
 select * from finish();
 rollback;

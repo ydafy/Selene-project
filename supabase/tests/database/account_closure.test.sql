@@ -17,7 +17,7 @@ returns void language sql as $$
   )
   select p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status, '{}'::jsonb, p_seller, 10000, '06600', 'gpu_1',
-    case when p_status = 'RESERVED' then now() end,
+    case when p_status = 'reserved' then now() end,
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
@@ -40,8 +40,8 @@ from (values
 ) as u(id, email, username);
 
 -- 1 blocker: a reserved listing; 2 plain: a verified listing and a favorite.
-select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000001', 'RESERVED');
-select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'VERIFIED');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000001', 'reserved');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'verified');
 insert into public.favorites (user_id, product_id)
 values ('d0000000-0000-4000-8000-000000000002', 'd0000000-0000-4000-8000-0000000000a2');
 
@@ -83,7 +83,7 @@ select is(
   'active', 'blocked: the account status is unchanged');
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),
-  'RESERVED', 'blocked: the listing is unchanged');
+  'reserved', 'blocked: the listing is unchanged');
 select is(
   (select email from auth.users where id = 'd0000000-0000-4000-8000-000000000001'),
   'blocked@test.local', 'blocked: the auth email is kept');
@@ -120,7 +120,7 @@ select is(
   0::bigint, 'closed: favorites are deleted');
 select is(
   (select status::text || ':' || (deleted_at is not null)::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
-  'HIDDEN:true', 'closed: the listing is hidden and soft-deleted');
+  'hidden:true', 'closed: the listing is hidden and soft-deleted');
 select is(
   (select count(*) from internal.account_closures where user_id = 'd0000000-0000-4000-8000-000000000002'),
   1::bigint, 'closed: the closure is recorded');
@@ -131,7 +131,7 @@ select is(
 reset role;
 
 -- A listing whose publication economics went stale no longer blocks it (#69) ---
-select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000003', 'VERIFIED');
+select pg_temp.make_product('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000003', 'verified');
 update public.system_settings set shipping_buffer_cents = shipping_buffer_cents + 500 where id = 1;
 set local role service_role;
 select is(
@@ -140,7 +140,7 @@ select is(
 reset role;
 select is(
   (select status::text || ':' || (deleted_at is not null)::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a3'),
-  'HIDDEN:true', 'the stale listing is hidden and soft-deleted');
+  'hidden:true', 'the stale listing is hidden and soft-deleted');
 
 -- Purge: personal rows and credentials go, the ledger stays ---------------------
 -- 41 closes; 42 is its counterparty (buyer of 51, seller of 53), 43 an admin,

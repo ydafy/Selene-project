@@ -44,14 +44,14 @@ from (values
 update public.profiles_private set role = 'admin'
 where id = 'd0000000-0000-4000-8000-000000000001';
 
--- a1 HIDDEN, a2 VERIFIED, a3 VERIFIED (owner edits), a4 PENDING_VERIFICATION,
--- a5 RESERVED and expired, b1 VERIFIED of a seller about to be suspended.
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000002', 'HIDDEN', null);
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'VERIFIED', null);
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000002', 'VERIFIED', null);
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a4', 'd0000000-0000-4000-8000-000000000002', 'PENDING_VERIFICATION', null);
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a5', 'd0000000-0000-4000-8000-000000000002', 'RESERVED', now() - interval '20 minutes');
-select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-000000000003', 'VERIFIED', null);
+-- a1 hidden, a2 verified, a3 verified (owner edits), a4 pending_verification,
+-- a5 reserved and expired, b1 verified of a seller about to be suspended.
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a1', 'd0000000-0000-4000-8000-000000000002', 'hidden', null);
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a2', 'd0000000-0000-4000-8000-000000000002', 'verified', null);
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a3', 'd0000000-0000-4000-8000-000000000002', 'verified', null);
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a4', 'd0000000-0000-4000-8000-000000000002', 'pending_verification', null);
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000a5', 'd0000000-0000-4000-8000-000000000002', 'reserved', now() - interval '20 minutes');
+select pg_temp.make_listing('d0000000-0000-4000-8000-0000000000b1', 'd0000000-0000-4000-8000-000000000003', 'verified', null);
 
 -- The seller of b1 is suspended, so b1 is held, before the fee change.
 select set_config('request.jwt.claims',
@@ -66,21 +66,21 @@ update public.system_settings set shipping_buffer_cents = shipping_buffer_cents 
 
 -- Status-only transitions keep the stored snapshot --------------------------------
 select lives_ok(
-  $$update public.products set status = 'VERIFIED' where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
-  'HIDDEN -> VERIFIED with a stale snapshot is accepted');
+  $$update public.products set status = 'verified' where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  'hidden -> verified with a stale snapshot is accepted');
 select lives_ok(
-  $$update public.products set status = 'RESERVED', reserved_at = now()
+  $$update public.products set status = 'reserved', reserved_at = now()
     where id = 'd0000000-0000-4000-8000-0000000000a2'$$,
-  'VERIFIED -> RESERVED with a stale snapshot is accepted');
+  'verified -> reserved with a stale snapshot is accepted');
 select lives_ok(
-  $$update public.products set status = 'VERIFIED', verified_at = now()
+  $$update public.products set status = 'verified', verified_at = now()
     where id = 'd0000000-0000-4000-8000-0000000000a4'$$,
   'an admin approval with a stale snapshot is accepted');
 select lives_ok(
   $$update public.products set name = 'Renamed GPU' where id = 'd0000000-0000-4000-8000-0000000000a2'$$,
   'an update that changes neither price nor shipping cost is accepted');
 select lives_ok(
-  $$update public.products set status = 'HIDDEN' where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  $$update public.products set status = 'hidden' where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
   'taking a stale listing off sale is allowed');
 
 -- The release paths complete with a stale snapshot -------------------------------
@@ -94,7 +94,7 @@ reset role;
 select is(
   (select status::text || ':' || (reserved_at is null)::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a5'),
-  'VERIFIED:true', 'the released stale listing is back on sale');
+  'verified:true', 'the released stale listing is back on sale');
 set local role service_role;
 select is(
   (select count(*) from public.fn_release_listings(
@@ -103,7 +103,7 @@ select is(
 reset role;
 select is(
   (select status::text from public.products where id = 'd0000000-0000-4000-8000-0000000000a2'),
-  'VERIFIED', 'the stale listing released by the helper is VERIFIED');
+  'verified', 'the stale listing released by the helper is verified');
 
 select set_config('request.jwt.claims',
   '{"sub": "d0000000-0000-4000-8000-000000000001", "role": "authenticated"}', true);
@@ -116,7 +116,7 @@ reset role;
 select is(
   (select status::text || ':' || coalesce(status_before_account_hold::text, '-')
    from public.products where id = 'd0000000-0000-4000-8000-0000000000b1'),
-  'VERIFIED:-', 'the lift restores the stale held listing');
+  'verified:-', 'the lift restores the stale held listing');
 
 -- The snapshot itself stays immutable without a price change ---------------------
 select throws_ok(
@@ -135,7 +135,7 @@ select throws_ok(
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'a new shipping cost with the old snapshot is rejected');
 select throws_ok(
-  $$update public.products set price_cents = 120000, status = 'HIDDEN'
+  $$update public.products set price_cents = 120000, status = 'hidden'
     where id = 'd0000000-0000-4000-8000-0000000000a2'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'hiding the listing does not skip the check of a new price');
@@ -170,14 +170,14 @@ set local role authenticated;
 select throws_ok(
   $$update public.products set price_cents = 120000, shipping_cost_cents = 15000,
       publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000) - 500,
-      status = 'PENDING_VERIFICATION'
+      status = 'pending_verification'
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
   'the owner cannot re-price with a snapshot from the old settings');
 select lives_ok(
   $$update public.products set price_cents = 120000, shipping_cost_cents = 15000,
       publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000),
-      status = 'PENDING_VERIFICATION'
+      status = 'pending_verification'
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'the owner re-prices with a snapshot fresh against the current settings');
 select throws_ok(
@@ -190,10 +190,10 @@ select is(
   (select status::text || ':' || price_cents::text || ':' || shipping_cost_cents::text || ':'
      || (publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 15000))::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a3'),
-  'PENDING_VERIFICATION:120000:15000:true',
+  'pending_verification:120000:15000:true',
   'the re-priced listing stores the new price and the fresh snapshot');
 select lives_ok(
-  $$update public.products set status = 'VERIFIED', verified_at = now()
+  $$update public.products set status = 'verified', verified_at = now()
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'the re-priced listing is approved');
 

@@ -79,7 +79,7 @@ async function invoke(options: InvokeOptions = {}) {
         shipping_amount_cents: 90000,
       },
     ],
-    products: [{ id: 'product', status: 'SOLD', reserved: true }],
+    products: [{ id: 'product', status: 'sold', reserved: true }],
     notifications: [],
   };
   const hash = () =>
