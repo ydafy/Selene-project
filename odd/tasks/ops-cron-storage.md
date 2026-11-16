@@ -1,7 +1,7 @@
 # Operations: storage cleanup, cron HTTP monitoring, pg_net, bucket limits
 
 Roadmap #299 item 13, issue #312 (closes #29). Branch `feat/ops-cron-storage` from `origin/main` c746e746, worktree supabase-health.
-Two PRs: A (database: C1-C3) and B (Edge Functions and the purge job: C4-C6).
+Three PRs (L7): A1 (C1, C2, C3a), A2 (C3b, C4: cron HTTP failures reach Sentry), B (C5, C6: purge).
 
 ## Specs
 
@@ -15,10 +15,10 @@ Two PRs: A (database: C1-C3) and B (Edge Functions and the purge job: C4-C6).
 
 ## Tasks
 
-- T1 (S1) bucket limits and paths doc. Inline. PR A, commit C1.
-- T2 (S2) pg_net to `extensions`. Inline, own commit (risk 3/5). PR A, C2.
-- T3 (S3) cron HTTP request tracking and `fn_cron_health`. Inline. PR A, C3 (split if over ~400 lines).
-- T4 (S4) `cron-watchdog` `http-failed`. Inline. PR B, C4.
+- [x] T1 (S1) bucket limits and paths doc. Inline. PR A, commit C1 `78b72da4`.
+- [x] T2 (S2) pg_net to `extensions`. Inline, own commit. PR A, C2 `cb8ce9a1`.
+- [x] T3 (S3) cron HTTP request tracking and `fn_cron_health`. Worker (context backstop). Split in two commits (L7): C3a `d73919f2` request tracking (PR A1); C3b health outcome (PR A2).
+- [x] T4 (S4) `cron-watchdog` `http-failed`. Inline. PR A2 (L7), C4. Commit C4 on `feat/cron-http-failures`.
 - T5 (S5) `purge-old-evidence` Edge Function. Inline. PR B, C5.
 - T6 (S6, S7) purge cron job, guard, docs, #541 comment. Inline. PR B, C6.
 
@@ -28,4 +28,8 @@ Two PRs: A (database: C1-C3) and B (Edge Functions and the purge job: C4-C6).
 - L2 (2026-11-15, decisions): evidence retention "120 días tras cerrar la orden"; `pg_net.ttl` "Dejar ttl en 6h"; #33 "Solo si es chica".
 - L3 (2026-11-15): the maintainer invited pushback on anything non-standard ("tienes libertad de cambiar algo y darle un giro de 360 grados"). Proposal: Sentry cron monitor per function instead of request tracking. Approved: "luz vrede para todo, acepto el cabio y el plan de ataque que propusiste."
 - L4 (2026-11-15): Sentry check: the Developer plan includes one cron monitor (used by `cron-watchdog`); more need pay-as-you-go, only on paid plans (Team from 26 USD/month, 0.78 USD per monitor). Maintainer chose "Plan original, gratis": request tracking (S3). A database outage like #541 is covered by the existing `cron-watchdog` monitor.
+- L6 (2026-11-16, T3 design): table `internal.cron_http_requests` (request_id bigint PK, jobname text not null, requested_at timestamptz not null default now(), index on (jobname, requested_at desc)), RLS on, no privileges for client roles or service_role (like `internal.cron_leases`). Function `internal.fn_track_cron_request(p_jobname text, p_request_id bigint) returns bigint` inserts the row, deletes rows older than 1 day, returns the id; EXECUTE only for postgres. Each of the HTTP cron commands in `supabase/schemas/_cluster/misc.sql` becomes `select internal.fn_track_cron_request('<its jobname>', net.http_post(...))` (the call text keeps `net.http_post(`, so `cron_jobs.test.sql`'s recorder still swaps it; the recorder must return a distinct id per call). History, not only the latest request, so an intermittent 500 followed by a success is still seen. `fn_cron_health` gains `last_http_status integer` (latest response of the job), `last_http_failed_at timestamptz` and `last_http_error text` (latest failed response: status >= 400 as 'HTTP <code>', timed_out as 'timed out', else error_msg), over tracked requests joined to `net._http_response`; a return type change needs DROP + CREATE. pg_net verified on the local stack after C2: a refused connection leaves a row with `error_msg` 'Could not connect to server'.
+- L7 (2026-11-16, delivery): C3 came to about 520 authored lines, so it was split into C3a (table, tracking function, cron commands; migration 20261116020430) and C3b (`fn_cron_health` outcome; migration 20261116020431). C1+C2+C3a reach 424 lines, so the slice boundary moves: PR A1 = C1, C2, C3a; PR A2 = C3b + T4 (the watchdog reports the outcome: "a failing HTTP cron call reaches Sentry"); PR B = T5, T6 (purge). Three PRs instead of two.
+- L8 (2026-11-16): PR A1 #615 opened from `d73919f2` (C1, C2, C3a). Remote check before it: pg_net is owned by `supabase_admin` on the remote and on the local stack, migrations run as non-superuser `postgres` in both, and pg_net is in supautils' privileged extensions, so the C2 drop and create should pass on `db push` as it did locally.
+- L9 (2026-11-16): CodeRabbit (Major) on #615: pg_net's request id sequence is unlogged (confirmed locally), so an unclean restart reissues ids and the tracking INSERT would roll back the cron command. Fixed in `69a6ba41` (upsert, tests RED then GREEN, pgTAP 2879 pass after db reset), pushed to #615 and answered on the thread. C3b and C4 rebased onto it: `9521b756`, `29342675` on `feat/cron-http-failures` (local only). Native review of the A2 range was dropped (maintainer: review A2 after #615 merges); its lineage `review-90b98d13506a2517` is stale after the rebase. Next: wait for CodeRabbit to re-review #615, merge with a steady RDD window (coordinate with the #549 session), `supabase db push` of 20261116015453, 20261116015722, 20261116020430 (approved), readback; then open PR A2.
 - L5 (2026-11-15): remote readback (MCP): `pg_net` 0.19.5 in `public`; `net._http_response` 10 MB, 786 rows, 6 failed; `verification` bucket has no size or MIME limit; the other buckets match the repository.

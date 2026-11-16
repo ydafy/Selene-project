@@ -12,7 +12,12 @@ const healthyRow = (jobname: string): CronHealthRow => ({
   active: true,
   last_start: new Date(NOW.getTime() - 60_000).toISOString(),
   last_status: 'succeeded',
+  last_http_failed_at: null,
+  last_http_error: null,
 });
+
+const minutesAgo = (minutes: number): string =>
+  new Date(NOW.getTime() - minutes * 60_000).toISOString();
 
 function setup(
   rpcResult: {
@@ -182,6 +187,90 @@ describe('cron-watchdog handler', () => {
         fingerprint: ['cron-unhealthy', 'zz-fail', 'failed'],
         tags: { 'cron.job': 'zz-fail', 'cron.reason': 'failed' },
       },
+    ]);
+  });
+
+  it('reports a recent HTTP failure with its error and time, and lists only its reason in the response', async () => {
+    const rows: CronHealthRow[] = [
+      {
+        ...healthyRow('dispatch-push'),
+        last_http_failed_at: minutesAgo(2),
+        last_http_error: 'HTTP 503',
+      },
+      {
+        ...healthyRow('old-failure'),
+        last_http_failed_at: minutesAgo(90),
+        last_http_error: 'HTTP 500',
+      },
+    ];
+    const ctx = setup({ data: rows, error: null });
+    const response = await ctx.handler(post({ 'x-cron-secret': SECRET }));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 2,
+      unhealthy: [{ jobname: 'dispatch-push', reason: 'http-failed' }],
+    });
+    expect(ctx.messages).toEqual([
+      {
+        message: `cron dispatch-push http-failed: HTTP 503 at ${minutesAgo(2)}`,
+        fingerprint: ['cron-unhealthy', 'dispatch-push', 'http-failed'],
+        tags: { 'cron.job': 'dispatch-push', 'cron.reason': 'http-failed' },
+      },
+    ]);
+  });
+
+  it('removes URLs from the HTTP error it reports', async () => {
+    const rows: CronHealthRow[] = [
+      {
+        ...healthyRow('purge'),
+        last_http_failed_at: minutesAgo(1),
+        last_http_error:
+          'Could not resolve https://abc.supabase.co/functions/v1/purge?key=s3cret now',
+      },
+    ];
+    const ctx = setup({ data: rows, error: null });
+    await ctx.handler(post({ 'x-cron-secret': SECRET }));
+
+    expect(ctx.messages.map((m) => m.message)).toEqual([
+      `cron purge http-failed: Could not resolve [url] now at ${minutesAgo(1)}`,
+    ]);
+  });
+
+  it('keeps the failed, overdue and unsupported-schedule reports unchanged', async () => {
+    const oldHttpFailure = {
+      last_http_failed_at: minutesAgo(60),
+      last_http_error: 'HTTP 500',
+    };
+    const rows: CronHealthRow[] = [
+      { ...healthyRow('a-failed'), ...oldHttpFailure, last_status: 'failed' },
+      {
+        ...healthyRow('b-late'),
+        ...oldHttpFailure,
+        last_start: minutesAgo(16),
+      },
+      { ...healthyRow('c-weekly'), ...oldHttpFailure, schedule: '0 9 * * 1' },
+    ];
+    const ctx = setup({ data: rows, error: null });
+    const response = await ctx.handler(post({ 'x-cron-secret': SECRET }));
+
+    expect(await response.json()).toEqual({
+      checked: 3,
+      unhealthy: [
+        { jobname: 'a-failed', reason: 'failed' },
+        { jobname: 'b-late', reason: 'overdue' },
+        { jobname: 'c-weekly', reason: 'unsupported-schedule' },
+      ],
+    });
+    expect(ctx.messages.map((m) => m.message)).toEqual([
+      'cron a-failed failed',
+      'cron b-late overdue',
+      'cron c-weekly unsupported-schedule',
+    ]);
+    expect(ctx.messages.map((m) => m.fingerprint)).toEqual([
+      ['cron-unhealthy', 'a-failed', 'failed'],
+      ['cron-unhealthy', 'b-late', 'overdue'],
+      ['cron-unhealthy', 'c-weekly', 'unsupported-schedule'],
     ]);
   });
 

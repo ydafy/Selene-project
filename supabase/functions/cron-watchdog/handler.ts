@@ -7,7 +7,11 @@ import {
   isAuthorizedCronRequest,
   reportCronSecretMismatch,
 } from '../_shared/auth/cron-auth.ts';
-import { evaluateCronHealth, type CronHealthRow } from './health.ts';
+import {
+  evaluateCronHealth,
+  type CronHealthRow,
+  type CronUnhealthyJob,
+} from './health.ts';
 
 export interface CronWatchdogDeps {
   getCronSecret: () => string | undefined;
@@ -29,6 +33,15 @@ const json = (body: unknown, status: number): Response =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+// pg_net error text is external; never forward a URL (it may carry a host or a query secret).
+const withoutUrls = (text: string): string =>
+  text.replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, '[url]');
+
+const sentryMessage = (job: CronUnhealthyJob): string =>
+  job.reason === 'http-failed'
+    ? `cron ${job.jobname} http-failed: ${withoutUrls(job.httpError ?? 'unknown error')} at ${job.httpFailedAt}`
+    : `cron ${job.jobname} ${job.reason}`;
+
 export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
   const check = async (): Promise<Response> => {
     const { data, error } = await deps.fetchCronHealth();
@@ -38,13 +51,24 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
     }
 
     const unhealthy = evaluateCronHealth(data, deps.now());
-    for (const { jobname, reason } of unhealthy) {
-      await deps.reportMessage(`cron ${jobname} ${reason}`, {
+    for (const job of unhealthy) {
+      const { jobname, reason } = job;
+      await deps.reportMessage(sentryMessage(job), {
         fingerprint: ['cron-unhealthy', jobname, reason],
         tags: { 'cron.job': jobname, 'cron.reason': reason },
       });
     }
-    return json({ checked: data.length, unhealthy }, 200);
+    // The response lists only names and reasons, never error text.
+    return json(
+      {
+        checked: data.length,
+        unhealthy: unhealthy.map(({ jobname, reason }) => ({
+          jobname,
+          reason,
+        })),
+      },
+      200,
+    );
   };
 
   return async (req: Request): Promise<Response> => {
