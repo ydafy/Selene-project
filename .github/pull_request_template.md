@@ -22,3 +22,5 @@ Tick what applies and paste the results.
 ## Risk
 
 Money, SQL, RLS, auth, or webhooks touched? Say which and how it was proven.
+
+New table, job, or money record? Say how it grows at the design target, which job deletes its rows or why they are kept forever, and whether any write overwrites history (`docs/conventions.md`, "Design target").

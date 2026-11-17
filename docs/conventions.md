@@ -2,6 +2,35 @@
 
 Reference for structure, naming, and test placement. Apply these rules to every new file, even where the current tree does not follow them yet. `AGENTS.md` wins if the two disagree.
 
+## Design target
+
+Design every table, job, and flow to carry this volume without a rewrite. It is roughly the whole volume of today's five largest Mexican Facebook groups for buying and selling PC hardware, with margin. The evidence is in `docs/decision-log.md`, "2026-11-16: Design for 50k Users and 5k Orders a Month".
+
+| Measure          | Target                |
+| ---------------- | --------------------- |
+| Registered users | 50,000                |
+| Orders           | 5,000 a month         |
+| Peak             | 500 orders in one day |
+| Active listings  | 100,000               |
+
+At this volume Postgres is not the limit. Manual work and data that can no longer be fixed break first. A design meets the target when:
+
+- No routine flow needs a person to reconcile, look up, or repair data by hand. Money is reconciled from one record of its movements, not by joining tables.
+- History is appended, never overwritten. A refund retry, a verification attempt, or an admin decision leaves its own row.
+- Every table that grows with use has a retention rule: a purge job, or a stated reason to keep its rows forever.
+- Stored data does not depend on its presentation. A notification stores its event and data, and the app renders the text in the user's language.
+- Changing the design later does not mean migrating live money data.
+
+Use this rule to decide when to build something:
+
+| Cost now | Cost later                                                    | Decision                                                              |
+| -------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Low      | High: migrating live data, lost history, money in flight      | Build it now, even if the first year barely needs it                  |
+| Low      | Low: purely additive (a column, table, index, job, or screen) | Build it when a feature needs it                                      |
+| High     | Any                                                           | Build it now only for money, security, or data that cannot be rebuilt |
+
+Do not build for more than the target. Sharding, read replicas, partitions, and caches need a measurement that shows the target requires them.
+
 ## Dependency direction
 
 Imports go one way: `shared -> features -> app`.

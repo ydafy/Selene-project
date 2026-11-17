@@ -94,3 +94,13 @@ Fix it at the highest level that works:
 5. A rule in `AGENTS.md` or a skill, only for judgment calls no check can make.
 
 Prove the new check fails on the real past mistake before you keep it. A new ESLint rule, Git hook, or CI step changes configuration, which needs the maintainer's approval first (`AGENTS.md`, "Ask first"). Once a check enforces a rule, remove the rule's text from `AGENTS.md`.
+
+## 11. Build for the design target
+
+Selene is designed for the volume in `docs/conventions.md`, "Design target", not for today's data. Before you add a table, a job, a money record, or a place that stores history, answer three questions:
+
+1. How does it grow at the target, and which job deletes its rows, or why are they kept forever?
+2. Does any write overwrite a fact someone will need later (a refund attempt, a verification decision, a status change)? Append a row instead.
+3. Would changing it later mean migrating live money data or losing history? Then decide it now, following the rule in "Design target".
+
+Say the answers in the PR's "Risk" section. Do not add capacity beyond the target without a measurement that needs it.
