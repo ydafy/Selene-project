@@ -14,7 +14,7 @@
 -- leaves a run that resumed and still holds other shipments untouched (L12).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(131);
+select plan(140);
 \ir ../fixtures/money.psql
 
 create function pg_temp.complete(p_shipment integer, p_ago interval, p_label_cost bigint default 15000)
@@ -539,6 +539,28 @@ select ok(public.fn_complete_shipment_transfer(pg_temp.mu(9324), pg_temp.mu(9125
   'the transfer of the other shipment of the run is still recorded');
 select is((select stripe_transfer_id from public.shipments where id = pg_temp.mu(9125)), 'tr_test_9125',
   'the other shipment keeps its transfer');
+
+-- 13b. The order loss without Stripe's actual fee (T10, L20, L21). -----------------
+-- 9120 (order 9220): the Edge Function froze the loss but could not save the
+-- order's actual fee, so it is still null; the loss is recorded uncapped.
+-- 9121 (order 9221): the fee is known and the cap applies.
+select is((select actual_stripe_fee_cents from public.orders where id = pg_temp.mu(9220)), null::bigint,
+  'the order of 9120 has no actual Stripe fee');
+create temporary table claim_9120 as select pg_temp.claim(9010, 9120) as value;
+select lives_ok(format('select pg_temp.start(9120, %L::jsonb)', (select value from claim_9120)), 'the refund of 9120 starts');
+select is(pg_temp.rec(9120, 're_test_9120', 'succeeded') ->> 'refund_status', 'succeeded', 'the refund of 9120 succeeded');
+select is(pg_temp.finish(9120) ->> 'shipment_status', 'refunded', 'the shipment of an order without its actual fee is refunded');
+select is((select cancellation_loss_cents from public.orders where id = pg_temp.mu(9220)), 300::bigint,
+  'the frozen Stripe fee loss is recorded on the order even when its actual fee is unknown');
+
+update public.orders set actual_stripe_fee_cents = 3500, stripe_fee_reconciled_at = now(), cancellation_loss_cents = 3400
+where id = pg_temp.mu(9221);
+create temporary table claim_9121 as select pg_temp.claim(9010, 9121) as value;
+select lives_ok(format('select pg_temp.start(9121, %L::jsonb)', (select value from claim_9121)), 'the refund of 9121 starts');
+select is(pg_temp.rec(9121, 're_test_9121', 'succeeded') ->> 'refund_status', 'succeeded', 'the refund of 9121 succeeded');
+select is(pg_temp.finish(9121) ->> 'shipment_status', 'refunded', 'the shipment of an order with its actual fee is refunded');
+select is((select cancellation_loss_cents from public.orders where id = pg_temp.mu(9221)), 3500::bigint,
+  'the order loss never exceeds the actual Stripe fee when it is known');
 
 -- 14. Grants. ----------------------------------------------------------------------
 select is(

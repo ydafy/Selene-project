@@ -49,6 +49,7 @@ describe('cron functions run without gateway JWT verification', () => {
       'complete-delivered-shipments',
       'cron-watchdog',
       'dispatch-push',
+      'purge-old-evidence',
       'reconcile-stripe-fees',
       'resume-pending-payouts',
       'track-shipments',

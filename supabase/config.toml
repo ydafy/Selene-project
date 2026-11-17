@@ -58,6 +58,11 @@ verify_jwt = false
 [functions.account-closure-cleanup]
 verify_jwt = false
 
+# Cron-invoked purge of evidence objects 120 days after their order closed; authenticated
+# by the `x-cron-secret` header.
+[functions.purge-old-evidence]
+verify_jwt = false
+
 # Cron-invoked delivery of queued push notifications through Expo; authenticated by the
 # `x-cron-secret` header.
 [functions.dispatch-push]

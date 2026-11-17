@@ -1,6 +1,6 @@
 ---
 name: selene-engineering-principles
-description: "Trigger: money flows, Stripe webhooks, cron, refunds, payouts, order/shipment state, external data parsing, bug fixes, new module design, repeated agent mistakes. Engineering principles for Selene code."
+description: "Trigger: money flows, Stripe webhooks, cron, refunds, payouts, order/shipment state, new tables, external data parsing, bug fixes, new module design, repeated agent mistakes. Engineering principles for Selene code."
 license: MIT
 metadata:
   author: "school-portal"
@@ -10,7 +10,7 @@ metadata:
 
 ## Activation Contract
 
-Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Load it as well when you write the specs of a feature that changes such state. Also load it when an agent repeats a mistake the maintainer already corrected.
+Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, a new table, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Load it as well when you write the specs of a feature with state. Also load it when an agent repeats a mistake the maintainer already corrected.
 
 Skip for copy changes, styling, and trivial edits.
 
@@ -33,18 +33,19 @@ Skip for copy changes, styling, and trivial edits.
 | --- | --- | --- |
 | Touching money, webhook, or cron | Idempotency | `references/principles.md` §1 |
 | Adding a state or status | Domain model | §2 |
-| Writing the specs of a feature with state | Name the other states | §11 |
+| Writing the specs of a feature with state | Name the other states | §12 |
 | Parsing external input | Boundary + types | §3, §4 |
 | Writing or keeping a test | Behavior tests | §5 |
 | Fixing a bug | Root cause + bug-fix sequence | §6, §8 |
 | Second fix failed the same check | Attack the premise | §7 |
 | New cross-module code | Sketch, then red flags | §9, `references/design-red-flags.md` |
 | An agent repeats a corrected mistake | Encode it in structure | §10 |
+| Adding a table, job, money record, or stored history | Design target | §11 |
 
 ## Execution Steps
 
 1. Match the task to the Decision Gates and read only the referenced sections.
-2. Before the specs of a feature with state are final, run the §11 pass and record in `## Log` the states it added or ruled out.
+2. Before the specs of a feature with state are final, run the §12 pass and record in `## Log` the states it added or ruled out.
 3. For state-mutating work, answer: what if this runs twice, and what if the previous run crashed here? Test both.
 4. For bugs, follow §8: reproduce on the matching surface, narrow with runtime evidence, failing test observed RED, fix, rerun the same repro.
 5. For cross-boundary code, write the caller's usage first, then types and signatures, screen them against the red flags, then implement. Treat deviations from the sketch as signal. Never commit sketches or `not implemented` stubs in production paths.
@@ -60,6 +61,6 @@ Report only what applies:
 
 ## References
 
-- `references/principles.md`: the ten adapted principles with Selene examples, and §11, our own pass for the states a spec forgets.
+- `references/principles.md`: the ten adapted principles with Selene examples, §11, building for the design target, and §12, our own pass for the states a spec forgets.
 - `references/design-red-flags.md`: design checklist for new cross-module code.
 - `LICENSE`: pstack MIT notice.

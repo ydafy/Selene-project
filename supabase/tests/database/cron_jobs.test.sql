@@ -144,9 +144,14 @@ select is_empty(
   'every HTTP job except track-shipments sends x-cron-secret'
 );
 
-select is_empty(
-  $$ select jobname from cron.job where jobname = 'purge-old-evidence' $$,
-  'purge-old-evidence is not scheduled (#29 recreates it through the Storage API)'
+-- #29: purge-old-evidence deletes evidence through the Storage API, so it is an
+-- HTTP job like the others (ops-cron-storage S5, S6), not the old SQL delete.
+select is(
+  (select j.schedule || ' ' || c.url || ' ' || (c.headers ->> 'x-cron-secret')
+   from cron.job j join captured c on c.jobname = j.jobname
+   where j.jobname = 'purge-old-evidence'),
+  '0 9 * * * vault:project_url/functions/v1/purge-old-evidence vault:purge_old_evidence_cron_secret',
+  'purge-old-evidence runs daily at 09:00 UTC and calls its Edge Function with its Vault cron secret (#29)'
 );
 
 -- Request tracking (S3) -------------------------------------------------------

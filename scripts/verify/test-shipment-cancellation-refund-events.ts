@@ -1,6 +1,6 @@
 import { SQL, type TransactionSQL } from 'bun';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const help =
@@ -705,7 +705,7 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
     },
   ],
   [
-    'V8 the notification catalogue is the one the latest migration defines and includes shipment.refund_failed',
+    'V8 the notification catalogue is the one the declarative schema defines and includes shipment.refund_failed',
     async (tx) => {
       const [row] =
         await tx`SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
@@ -752,22 +752,28 @@ const cases: Array<[string, (tx: Tx) => Promise<void>]> = [
 
 // The catalogue grows with every notification kind: read it from the newest migration (not
 // archive/) that adds the constraint, so this case does not need an edit per new kind.
+// The declarative schema is the source of truth for the catalogue. Reading the
+// newest migration broke twice (#20, #349) because each generator writes the
+// constraint in another shape.
 function latestCatalogueKinds(): string[] {
-  const dir = join(import.meta.dir, '..', '..', 'supabase', 'migrations');
-  const definition =
-    /ADD CONSTRAINT notifications_event_kind_catalogue_chk\s+CHECK \(event_kind IS NULL OR event_kind IN \(([^)]*)\)\)/;
-  const files = readdirSync(dir)
-    .filter((file) => file.endsWith('.sql'))
-    .sort()
-    .reverse();
-  for (const file of files) {
-    const match = definition.exec(readFileSync(join(dir, file), 'utf8'));
-    if (match)
-      return [...match[1].matchAll(/'([a-z_.]+)'/g)].map((kind) => kind[1]);
-  }
-  throw new Error(
-    'No migration defines notifications_event_kind_catalogue_chk',
+  const file = join(
+    import.meta.dir,
+    '..',
+    '..',
+    'supabase',
+    'schemas',
+    'public',
+    'tables',
+    'notifications.sql',
   );
+  const definition =
+    /CONSTRAINT "notifications_event_kind_catalogue_chk"([\s\S]*?)CONSTRAINT "/;
+  const match = definition.exec(readFileSync(file, 'utf8'));
+  if (!match)
+    throw new Error(
+      'supabase/schemas/public/tables/notifications.sql does not define notifications_event_kind_catalogue_chk',
+    );
+  return [...match[1].matchAll(/'([a-z_.]+)'::text/g)].map((kind) => kind[1]);
 }
 
 async function run() {

@@ -330,3 +330,21 @@ It is established as the standard procedure for structural inconsistencies.
 - Before merging, wait for CodeRabbit to post its review and read its comments (`gh api repos/ydafy/Selene-project/pulls/<N>/comments`, and `issues/<N>/comments` for the summary). Never set `gh pr merge --auto` before it reports. If it stalls or skipped a pull request, comment `@coderabbitai review`.
 
 **Consequence:** CodeRabbit reads `.coderabbit.yaml` from the pull request's branch, so a stacked branch created before this change skips every push until it is rebased onto a `main` that has it. Until then, comment `@coderabbitai review` after each push. If CodeRabbit is down, merges wait for it.
+
+## 2026-11-16: Design for 50k Users and 5k Orders a Month
+
+**Context:** Reviews kept judging the schema against today's data, which makes almost any design look fine, or against no stated volume, which makes almost any design look unscalable. The maintainer wants Selene built so that a year of organic growth needs no schema rewrite, without designing for millions. No number was written down, so we estimated what "it went well" means for Selene:
+
+- Mexico has about 72.6 million video game players ([The CIU, 2025](https://www.theciu.com/publicaciones-2/2025/9/1/dadelgamer2025-mercado-de-videojuegos-en-mxico)), and 40-50% of them play on a PC or laptop ([IFT, first half of 2025](https://somosaudiencias.ift.org.mx/archivos/1_Videojuegos_1S2025.pdf)). The Mexican gaming PC market was about USD 481 million in 2024 ([Grand View Research](https://www.grandviewresearch.com/horizon/outlook/gaming-pc-market/mexico)).
+- The five largest Mexican Facebook groups for buying and selling PC hardware, listed by the maintainer with Google's AI search, have about 187,000 members in total (60k, 76k, 22k, 9k, and 20k). Members overlap across groups, so we read this as 90,000-120,000 people. The same source estimated 130-245 closed sales a day, with low confidence (25-35%). Sales close in private messages and many posts are not sales, so we use 40-100 a day, about 1,200-3,000 a month.
+- Jawa ([jawa.gg/trust](https://www.jawa.gg/trust)), a US marketplace for used PC hardware that also holds the payment until delivery, reports 60,000+ completed orders and 60,000+ members since 2021, and its first USD 1 million month in December 2024.
+
+If Selene does well and grows organically, we expect 20,000-60,000 registered users and 150-3,000 orders a month in its second or third year.
+
+**Decision:**
+
+- Design for 50,000 registered users, 5,000 orders a month, peaks of 500 orders a day, and 100,000 active listings: about the whole volume of those five groups, with margin. `docs/conventions.md`, "Design target", holds the numbers, what meeting them means, and the rule for when to build something: cheap now and expensive later (live data migration, lost history, money in flight) is built now.
+- At this volume Postgres is not the limit. "Scalable" for Selene means operable without manual work and never migrating live money data.
+- The target is stated once, in `docs/conventions.md`, which CodeRabbit loads. `AGENTS.md`, `supabase/AGENTS.md`, the `selene-engineering-principles` skill (principle 11 and the design red flags), and the pull request template point to it.
+
+**Consequence:** The data model review of 2026-11-16 is judged against this target. A ledger of money movements, refund and verification history, notifications stored as events, and retention for every growing table become pre-launch work instead of later ideas. A seeded load test at the target volume replaces estimates for query and cron performance.

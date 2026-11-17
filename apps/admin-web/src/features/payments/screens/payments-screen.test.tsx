@@ -160,6 +160,9 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
   mock.module('../components/payout-runs-workbench', () => ({
     PayoutRunsWorkbench: () => null,
   }));
+  mock.module('../components/overdue-payouts-panel', () => ({
+    OverduePayoutsPanel: () => null,
+  }));
   const { PaymentsPage } = await import('./payments-screen');
   const { renderToStaticMarkup } = await import('react-dom/server');
   const { PayoutReleaseWorkbench } =
@@ -268,7 +271,7 @@ if (process.env.PAYOUT_PAGING_PAGE_CHILD !== '1') {
       'Contadores de la consulta actual, no totales globales:',
     );
     expect(markup).toContain(
-      'vendedores en Por liberar; ejecuciones en las demás pestañas.',
+      'vendedores en Por liberar y Pagos vencidos; ejecuciones en las demás pestañas.',
     );
     expect(releaseCalls).toEqual([]);
     expect(retryCalls).toEqual([]);

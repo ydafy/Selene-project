@@ -5,9 +5,9 @@ import {
   resolveShipmentRefund,
 } from '../lib/shipment-refunds-api';
 
-export const SHIPMENT_REFUND_PROBLEMS_KEY = [
-  'shipment-refund-problems',
-] as const;
+import { SHIPMENT_REFUND_PROBLEMS_KEY } from './payment-query-keys';
+
+export { SHIPMENT_REFUND_PROBLEMS_KEY };
 
 /** Unresolved buyer refund problems; `count` is null until the list is known. */
 export function useShipmentRefundProblems() {

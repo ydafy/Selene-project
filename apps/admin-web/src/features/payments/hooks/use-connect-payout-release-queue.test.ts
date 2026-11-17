@@ -265,6 +265,7 @@ if (process.env.A65_HOOK_CHILD !== '1') {
       useConnectPayoutReleaseQueue('  ');
       expect(await queryOptions.queryFn()).toEqual({
         releaseBatches: [],
+        overduePayouts: [],
         processingRuns: [],
         actionRequiredRuns: [],
         historyRuns: [],
