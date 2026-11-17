@@ -13,7 +13,7 @@ Branch `test/shipment-lifecycle-model` from `origin/main` (`392908b4`), worktree
 
 ## Tasks
 
-- [ ] T1 — S1, S2, S4. Harness `scripts/verify/test-shipment-lifecycle-model.ts`: commands for payment, cancellation claim and start, refund recorded (succeeded, failed), async refund events (duplicate, out of order), delivery and completion, payout run release (begin and complete transfer); invariants after each step; a RED proof that a broken guard is caught. Added to the `pr` group. Inline. Commit: pending.
+- [x] T1 — S1, S2, S4. Harness `scripts/verify/test-shipment-lifecycle-model.ts`: commands for payment, cancellation claim and start, refund recorded (succeeded, failed), async refund events (duplicate, out of order), delivery and completion, payout run release (begin and complete transfer); invariants after each step; a RED proof that a broken guard is caught (mutants M1 and M2, L5). Added to the `pr` group. Inline. Commit: pending.
 - [ ] T2 — S2. Overdue refund commands (claim, complete, failed refund, manual repayment) and their invariants. Inline. Commit: pending.
 - [ ] T3 — S3. Longer weekly run (run budget from an environment variable set by the weekly workflow). CI change approved in L3-L4. Inline. Commit: pending.
 - [ ] T4 — S1, S5. Formal README mapping (TLA+ invariant to harness check), `docs/` mention, Idea issue for the shared harness helper. Inline. Commit: pending.
@@ -34,3 +34,9 @@ Branch `test/shipment-lifecycle-model` from `origin/main` (`392908b4`), worktree
 - **L4** — Maintainer, 2026-11-16:
 
   > va me parece bien master, luz vrede. luz vrede para el woktree.
+
+- **L5** — Agent and parent session, 2026-11-16, while writing T1:
+  - `RefundBeforeCancel` as a state invariant failed on unmodified code with `[ClaimCancellation(s0), StartRefund(s0), RefundEvent(s0, succeeded), RefundEvent(s0, failed)]`: the documented `failed_after_cancellation` path (#606), which the TLA+ model does not include (it models only the overdue refund's failure). Decided: check it as a step property (a shipment becomes cancelled only with a succeeded or resolved refund), plus two state checks beyond the model: a cancelled shipment's refund is succeeded, failed or resolved, and `RefundFailureVisible` (a cancelled shipment with an unresolved failed refund has the buyer's `shipment.refund_failed` notice). T4 records the model gap.
+  - `RefundFailureVisible` then failed with `RecordRefund(s0, failed)` after the cancellation: `fn_record_shipment_cancellation_refund` accepts a silent succeeded → failed on a cancelled shipment. No caller reaches it today (the cancel Edge Functions record after their own claim, which a cancelled shipment refuses), so `RecordRefund` has that model precondition and the hardening is Finding #659.
+  - Mutants: the event function completing on `failed` alone is masked by `fn_cancel_shipment`'s `REFUND_NOT_SUCCEEDED` guard, so M1 breaks both; M2 lets `fn_complete_shipment_transfer` overwrite a recorded transfer id. Other transfer fences are only reachable concurrently (TLC and the coordination harnesses).
+  - Budget: with at most 20 commands a run averages 10 and only about 4.5% of runs complete the transfer path, so 50 runs missed it 1 time in 10; the default is 30 commands (about 13% of runs, a batch miss near 0.1%). A 0.1% red PR run with no bug is still a flaky check (maintainer, 2026-11-16), so a passing batch that misses an outcome runs up to 3 more batches with new random seeds and accumulated counters, and fails only if the outcome is still unreached; each batch prints its seed for replay. A fast-check commands replay needs `SELENE_MODEL_REPLAY_PATH` besides the seed and path.
