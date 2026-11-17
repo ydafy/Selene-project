@@ -179,6 +179,8 @@ module.exports = [
       // AÑADE ESTAS LÍNEAS:
       // Vendor skills installed with the skills CLI are not linted.
       '.agents/',
+      // Gitignored local probe scripts kept as verification evidence (#663).
+      'verification-evidence/',
       'eslint.config.js',
       '.prettierrc.js',
     ],
