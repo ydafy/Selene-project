@@ -1,7 +1,7 @@
 # Connect account prefill (#550)
 
 Roadmap #548, item 2. `create-connect-account` creates the Stripe v2 account with the seller already identified as an individual, with a Selene URL and a product description, so the hosted form stops asking business questions.
-Branch `feat/connect-account-prefill` from `origin/main`, worktree `bruno-money-functions`.
+Branch `feat/connect-account-prefill` from `origin/main`, worktree `bruno-money-functions`. Merged in #643 and deployed (L13).
 
 ## Specs
 
@@ -31,3 +31,4 @@ Branch `feat/connect-account-prefill` from `origin/main`, worktree `bruno-money-
 - L10 (2026-11-16): after `supabase db reset`, Bruno created `acct_1UcJMeACloJvncJ6` with T2 (`SELENE_CONNECT_BUSINESS_URL=https://github.com/ydafy` locally); `functions/create-connect-account-invalid-link` passes again (400). Stripe stored `business_type: individual` and `business_profile.url`. `requirements.currently_due`: `external_account`, `individual.first_name`, `individual.last_name`, `tos_acceptance.date`, `tos_acceptance.ip`; `eventually_due` adds `individual.address.*` (city, line1-3, postal_code, state, town) and `individual.dob.*`. Compared with L7, `business_type` and `business_profile.url` are gone. Stripe also derived `settings.dashboard.display_name` ("Github") and `settings.payments.statement_descriptor` ("GITHUB.COM") from the URL: with the real domain every seller's Express dashboard will show Selene's name.
 - L11 (maintainer, 2026-11-16): manual pass of the hosted form: "todo bien master me gusto, ya es mas simple". It showed in English because the form auto-detects the browser language (its language picker lists "Español (América Latina)"). Decision: no `defaults.locales`; the device language is enough ("no master dejalo asi").
 - L12 (maintainer, 2026-11-16): keep "Selene" as the derived account name ("me gusta que diga 'selene' la evrdad. Dejemoslo para depues"). Sending the seller's username as `display_name` is recorded as Idea #635.
+- L13 (2026-11-17): PR #643 merged (`6dcb2eaa`). The maintainer set `SELENE_CONNECT_BUSINESS_URL` in the project's Edge Function settings and deployed `create-connect-account` v49 from the main checkout. Readback: the deployed code sends `entity_type: 'individual'` and `defaults.profile` (Supabase MCP). The maintainer's emulator run got two 200 responses and created `acct_1UcbYhAClox3VxDn` with `business_type: individual` and the configured URL (Stripe MCP), which proves the setting is in place. Feature closed; next roadmap item #551.
