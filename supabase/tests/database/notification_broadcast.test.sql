@@ -7,7 +7,7 @@
 -- Realtime sets realtime.topic before it checks the policy, as this file does.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(26);
+select plan(28);
 \ir ../fixtures/money.psql
 
 -- Users: 42001 user A, 42002 user B.
@@ -145,6 +145,21 @@ set local role anon;
 select is((select count(*)::integer from realtime.messages
     where topic in (pg_temp.topic(42001), pg_temp.topic(42002))), 0,
   'policy: anon on user A''s topic reads nothing');
+reset role;
+
+select pg_temp.act_as('authenticated', 42001, 'realtime:' || pg_temp.topic(42001));
+set local role authenticated;
+select is((select count(*)::integer from realtime.messages), 0,
+  'policy: user A on a prefixed copy of their topic reads nothing');
+reset role;
+
+select pg_temp.act_as('authenticated', 42002, pg_temp.topic(42002));
+set local role authenticated;
+select throws_ok(
+  format($$insert into realtime.messages (topic, extension, payload, event, private)
+    values (%L, 'broadcast', '{}'::jsonb, 'changed', true)$$, pg_temp.topic(42001)),
+  '42501', null,
+  'policy: user B cannot send on user A''s notification topic');
 reset role;
 
 -- 6. The trigger function ---------------------------------------------------------
