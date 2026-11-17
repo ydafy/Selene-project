@@ -1,6 +1,6 @@
 ---
 name: selene-engineering-principles
-description: "Trigger: money flows, Stripe webhooks, cron, refunds, payouts, order/shipment state, external data parsing, bug fixes, new module design, repeated agent mistakes. Engineering principles for Selene code."
+description: "Trigger: money flows, Stripe webhooks, cron, refunds, payouts, order/shipment state, new tables, external data parsing, bug fixes, new module design, repeated agent mistakes. Engineering principles for Selene code."
 license: MIT
 metadata:
   author: "school-portal"
@@ -10,7 +10,7 @@ metadata:
 
 ## Activation Contract
 
-Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Also load it when an agent repeats a mistake the maintainer already corrected.
+Load when the task touches money movement, Stripe webhooks, pg_cron jobs, refunds, payouts, order or shipment state, a new table, parsing of external data (Stripe, Envia, request bodies, env vars), a bug fix, or new code that crosses a module or function boundary. Also load it when an agent repeats a mistake the maintainer already corrected.
 
 Skip for copy changes, styling, and trivial edits.
 
@@ -39,6 +39,7 @@ Skip for copy changes, styling, and trivial edits.
 | Second fix failed the same check | Attack the premise | §7 |
 | New cross-module code | Sketch, then red flags | §9, `references/design-red-flags.md` |
 | An agent repeats a corrected mistake | Encode it in structure | §10 |
+| Adding a table, job, money record, or stored history | Design target | §11 |
 
 ## Execution Steps
 
