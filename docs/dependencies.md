@@ -76,6 +76,28 @@ To change an action version:
 
 3. Replace the SHA and the comment in every workflow that uses the action, and run `bun test scripts/ci/workflow-actions.test.ts`. CI on the pull request runs `.github/workflows/ci.yml`. Start `.github/workflows/dependency-audit.yml` on the branch with `gh workflow run dependency-audit.yml --ref <branch>`. `.github/workflows/dependency-report.yml` also edits the report issue, and `.github/workflows/issue-labels.yml` runs only from `main`, so check those two after the merge.
 
+## Keep the workflow linters current
+
+The CI job `repo-checks` runs two linters on `.github/workflows/`:
+
+- actionlint checks workflow syntax, expressions and job references, and runs shellcheck on every `run:` script.
+- zizmor checks workflow security: token permissions, credentials left in the checkout, template injection, unpinned actions and other risky patterns.
+
+Both are release binaries, not npm packages, so `bun outdated` never lists them, and the weekly report does not track them yet (#687). Their version and sha256 live in the `env:` of the `repo-checks` job in `.github/workflows/ci.yml`. The job checks each download with `sha256sum -c` before it runs it.
+
+To change a version:
+
+1. Read the release notes. Pick a release at least 3 days old, as `bunfig.toml` does for packages.
+2. Take the sha256 of the linux amd64 archive. For actionlint it is the `actionlint_<version>_linux_amd64.tar.gz` line of `actionlint_<version>_checksums.txt` in the release. For zizmor it is the release asset digest:
+
+   ```bash
+   gh api repos/zizmorcore/zizmor/releases/tags/v<version> --jq '.assets[] | select(.name=="zizmor-x86_64-unknown-linux-gnu.tar.gz") | .digest'
+   ```
+
+3. Change the version and the sha256 in `.github/workflows/ci.yml`, run both tools locally on `.github/workflows/` (`actionlint`, and `zizmor .github/workflows` with `GH_TOKEN` set), and fix what they report before you push.
+
+When either tool reports a finding, fix the workflow. A finding stays only with the maintainer's decision, as an inline `# zizmor: ignore[<audit>]` comment on the flagged line, with the reason in a comment on the line above it.
+
 ## Keep the Supabase CLI and Docker current
 
 The Supabase CLI and Docker Desktop run the local stack that every SQL, Edge Function and webhook check uses (`supabase/AGENTS.md`, "Local stack"). Neither is an npm dependency, so `bun outdated` never lists them.

@@ -1,5 +1,6 @@
 # CI: lint, format check, typecheck and the bun test suite, the pgTAP database tests
-# against a local Supabase stack started inside the job, and the admin-web Playwright specs.
+# against a local Supabase stack started inside the job, the admin-web Playwright specs,
+# and actionlint and zizmor on the workflows.
 name: CI
 
 on:
@@ -45,6 +46,46 @@ jobs:
         working-directory: supabase/functions
         run: deno check --frozen ./*/index.ts
       - run: bun test
+
+  # actionlint and zizmor on .github/workflows/. Both are release binaries pinned by
+  # version and sha256 (docs/dependencies.md, "Keep the workflow linters current").
+  repo-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+      ZIZMOR_VERSION: 1.32.0
+      ZIZMOR_SHA256: bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install actionlint and zizmor
+        shell: bash
+        run: |
+          set -euo pipefail
+          actionlint_tar="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          zizmor_tar=zizmor-x86_64-unknown-linux-gnu.tar.gz
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o "$actionlint_tar" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${actionlint_tar}"
+          curl -fsSL --retry 3 -o "$zizmor_tar" \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/${zizmor_tar}"
+          echo "${ACTIONLINT_SHA256}  ${actionlint_tar}" | sha256sum -c -
+          echo "${ZIZMOR_SHA256}  ${zizmor_tar}" | sha256sum -c -
+          mkdir -p bin
+          tar -xzf "$actionlint_tar" -C bin actionlint
+          tar -xzf "$zizmor_tar" -C bin zizmor
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # shellcheck is preinstalled on ubuntu-latest; actionlint runs it on every run: script.
+      - run: actionlint
+      # Also runs after an actionlint failure, so one push shows both results.
+      - name: zizmor
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --no-progress --format github .github/workflows
 
   # Every commit of the pull request goes through scripts/ci/check-commit-msg.ts,
   # so a commit made with --no-verify or in a clone without hooks still fails.
