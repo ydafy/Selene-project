@@ -11,8 +11,8 @@ const USAGE =
   'Usage: bun scripts/ci/lint-migrations.ts [--base <commit>] [file.sql ...]';
 
 // Squawk reads an ignore in any comment: a line comment, a trailing one, or a
-// block comment.
-const IGNORE = /(--|\/\*).*\bsquawk-ignore(-file)?\b/;
+// line of a block comment, so any line that names it counts.
+const IGNORE = /\bsquawk-ignore(-file)?\b/;
 const REASON = /^\s*--\s*reason:\s*\S/;
 const MIGRATION = /^supabase\/migrations\/[^/]+\.sql$/;
 
@@ -79,10 +79,14 @@ function main(): number {
     console.error(USAGE);
     return 2;
   }
-  const files = [
-    ...parsed.files,
-    ...(parsed.base ? addedMigrations(parsed.base) : []),
-  ];
+  let added: string[] = [];
+  try {
+    added = parsed.base ? addedMigrations(parsed.base) : [];
+  } catch (error) {
+    console.error((error as Error).message);
+    return 2;
+  }
+  const files = [...parsed.files, ...added];
   if (files.length === 0) {
     console.log('lint-migrations: no new migrations to lint.');
     return 0;

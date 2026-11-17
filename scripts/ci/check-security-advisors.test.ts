@@ -179,6 +179,18 @@ describe('check-security-advisors CLI', () => {
     ).toHaveLength(1);
   });
 
+  it('exits 2 with a message when the supabase CLI cannot run', () => {
+    const run = Bun.spawnSync([process.execPath, SCRIPT], {
+      env: { ...process.env, PATH: tmpdir(), Path: tmpdir() },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    expect(run.exitCode).toBe(2);
+    expect(run.stderr.toString()).toContain(
+      'check-security-advisors: could not run supabase db advisors:',
+    );
+  });
+
   it('rejects an unknown flag', () => {
     const run = Bun.spawnSync(['bun', SCRIPT, '--bogus'], {
       stdout: 'pipe',

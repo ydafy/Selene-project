@@ -69,9 +69,14 @@ describe('findIgnoresWithoutReason in other comment forms', () => {
   it.each([
     ['a block-comment ignore', '/* squawk-ignore ban-drop-column */'],
     ['a trailing ignore', 'SELECT 1; -- squawk-ignore ban-drop-column'],
-  ])('rejects %s without a reason', (_case, line) => {
-    expect(findIgnoresWithoutReason('a.sql', line)).toEqual([
-      'a.sql:1: squawk-ignore needs a "-- reason: <why>" comment on the line above it.',
+    [
+      'an ignore on a continuation line of a block comment',
+      '/*\n  squawk-ignore ban-drop-column\n*/',
+    ],
+  ])('rejects %s without a reason', (_case, sql) => {
+    const line = sql.split('\n').findIndex((l) => l.includes('squawk-ignore'));
+    expect(findIgnoresWithoutReason('a.sql', sql)).toEqual([
+      `a.sql:${line + 1}: squawk-ignore needs a "-- reason: <why>" comment on the line above it.`,
     ]);
   });
 });

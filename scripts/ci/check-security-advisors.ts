@@ -62,7 +62,7 @@ function runAdvisors(): string {
   // With JSON output the CLI writes its own errors to stdout.
   if (run.exitCode !== 0)
     throw new Error(
-      `check-security-advisors: supabase db advisors failed (exit ${run.exitCode}): ${run.stderr.toString().trim()} ${run.stdout.toString().trim()}`.trim(),
+      `exit ${run.exitCode}: ${run.stderr.toString().trim()} ${run.stdout.toString().trim()}`.trim(),
     );
   return run.stdout.toString();
 }
@@ -76,7 +76,15 @@ function main(): number {
     return 2;
   }
 
-  const text = input ? readFileSync(input, 'utf8') : runAdvisors();
+  let text: string;
+  try {
+    text = input ? readFileSync(input, 'utf8') : runAdvisors();
+  } catch (error) {
+    console.error(
+      `check-security-advisors: could not run supabase db advisors: ${(error as Error).message}`,
+    );
+    return 2;
+  }
   let output: unknown;
   try {
     output = JSON.parse(text);
