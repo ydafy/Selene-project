@@ -27,6 +27,7 @@
     "test:db": "supabase test db",
     "db:schema:check": "bun scripts/verify/declarative-schema-check.ts",
     "db:lint:migrations": "bun scripts/ci/lint-migrations.ts",
+    "db:advisors:check": "bun scripts/ci/check-security-advisors.ts",
     "verify:harnesses": "bun scripts/verify/run-harnesses.ts",
     "test:e2e": "playwright test",
     "test:e2e:local": "playwright test -c playwright.local.config.ts",
