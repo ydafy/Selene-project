@@ -36,6 +36,16 @@ export interface ConnectOnboardingUiState {
   ctaDisabled: boolean;
 }
 
+/** Stripe sends the seller to refresh_url when the account link expired, so it wins. */
+export function resolveConnectOnboardingStripeReturn(params: {
+  return?: string;
+  refresh?: string;
+}): ConnectOnboardingStripeReturn {
+  if (params.refresh === '1') return 'refresh';
+  if (params.return === '1') return 'return';
+  return null;
+}
+
 export function resolveConnectOnboardingUiState({
   userId,
   status,

@@ -21,7 +21,7 @@ import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
-  type ConnectOnboardingStripeReturn,
+  resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
 } from '@/features/payments/logic/connect-onboarding-ui';
@@ -52,13 +52,7 @@ export default function SellerOnboardingScreen() {
     statusError,
     startOnboarding,
   } = useConnectOnboarding(userId);
-  // Stripe sends the seller to refresh_url when the account link expired.
-  const stripeReturn: ConnectOnboardingStripeReturn =
-    params.refresh === '1'
-      ? 'refresh'
-      : params.return === '1'
-        ? 'return'
-        : null;
+  const stripeReturn = resolveConnectOnboardingStripeReturn(params);
   const onboardingUi = resolveConnectOnboardingUiState({
     userId,
     status,

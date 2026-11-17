@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
+  resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
   type ResolveConnectOnboardingUiInput,
@@ -125,6 +126,30 @@ describe('resolveConnectOnboardingUiState', () => {
       resolveUi({ stripeReturn: null, isRefreshingFromStripe: true })
         .showStripeReturnRefreshMessage,
     ).toBe(false);
+  });
+});
+
+describe('resolveConnectOnboardingStripeReturn', () => {
+  it('maps the Stripe return_url and refresh_url params', () => {
+    expect(resolveConnectOnboardingStripeReturn({ return: '1' })).toBe(
+      'return',
+    );
+    expect(resolveConnectOnboardingStripeReturn({ refresh: '1' })).toBe(
+      'refresh',
+    );
+  });
+
+  it('treats an expired link as refresh even when return is also set', () => {
+    expect(
+      resolveConnectOnboardingStripeReturn({ return: '1', refresh: '1' }),
+    ).toBe('refresh');
+  });
+
+  it('ignores missing or unexpected values', () => {
+    expect(resolveConnectOnboardingStripeReturn({})).toBeNull();
+    expect(
+      resolveConnectOnboardingStripeReturn({ return: '0', refresh: 'yes' }),
+    ).toBeNull();
   });
 });
 
