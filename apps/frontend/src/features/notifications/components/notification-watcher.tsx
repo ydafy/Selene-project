@@ -106,43 +106,37 @@ export const NotificationWatcher = () => {
       })();
     }
 
+    // A database trigger sends `changed` on this private topic; RLS on
+    // realtime.messages lets only the owner join it.
     const channel = supabase
-      .channel(`notifications_realtime_watcher_${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          if (!active || currentOwner.current !== userId) return;
-          try {
-            if (
-              payload.eventType === 'INSERT' ||
-              payload.eventType === 'UPDATE'
-            ) {
-              invalidateNotificationKeys(queryClient, userId);
-            }
-          } catch (error) {
-            console.error(
-              '[NotificationWatcher] Payload handler error:',
-              error,
-            );
-            showErrorToast();
-          }
-        },
-      )
-      .subscribe((status, error) => {
+      .channel(`user:${userId}:notifications`, { config: { private: true } })
+      .on('broadcast', { event: 'changed' }, () => {
         if (!active || currentOwner.current !== userId) return;
-        if (error || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error(
-            '[NotificationWatcher] Subscription error:',
-            error ?? status,
-          );
+        try {
+          invalidateNotificationKeys(queryClient, userId);
+        } catch (error) {
+          console.error('[NotificationWatcher] Payload handler error:', error);
           showErrorToast();
         }
+      });
+    // A private channel needs the user's JWT on the socket before it joins.
+    void supabase.realtime
+      .setAuth()
+      .catch((error) => {
+        console.warn('[NotificationWatcher] Realtime auth', error);
+      })
+      .then(() => {
+        if (!active || currentOwner.current !== userId) return;
+        channel.subscribe((status, error) => {
+          if (!active || currentOwner.current !== userId) return;
+          // supabase-js rejoins by itself; a transient drop is not a user error.
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+            console.warn(
+              '[NotificationWatcher] Realtime channel',
+              status,
+              error,
+            );
+        });
       });
     return () => {
       active = false;

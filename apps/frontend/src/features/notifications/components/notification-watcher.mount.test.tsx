@@ -62,7 +62,31 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
   });
   const queryClient = { invalidateQueries: mock(() => {}) };
   const t = (key: string) => key;
-  const channel = { on: () => channel, subscribe: () => channel };
+  type Handler = (payload: unknown) => void;
+  type StatusCallback = (status: string, error?: Error) => void;
+  const channelCalls: unknown[][] = [];
+  const onCalls: { type: string; filter: unknown; handler: Handler }[] = [];
+  const subscribeCallbacks: StatusCallback[] = [];
+  const channel = {
+    on: (type: string, filter: unknown, handler: Handler) => {
+      onCalls.push({ type, filter, handler });
+      return channel;
+    },
+    subscribe: (callback: StatusCallback) => {
+      subscribeCallbacks.push(callback);
+      return channel;
+    },
+  };
+  let pendingAuth: (() => void) | null = null;
+  let holdAuth = false;
+  const setAuth = mock(
+    () =>
+      new Promise<void>((resolve) => {
+        if (holdAuth) pendingAuth = resolve;
+        else resolve();
+      }),
+  );
+  const toastShow = mock(() => {});
   let launchTap = false;
   const consumeLaunchTap = mock(() => {
     const wasTap = launchTap;
@@ -83,7 +107,7 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     StyleSheet: { flatten: (style: unknown) => style },
   }));
   mock.module('react-native-toast-message', () => ({
-    default: { show: mock(() => {}) },
+    default: { show: toastShow },
   }));
   mock.module('@tanstack/react-query', () => ({
     useQueryClient: () => queryClient,
@@ -92,10 +116,20 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     useAuthContext: () => ({ session: { user: { id: 'owner-1' } } }),
   }));
   mock.module('@/shared/lib/supabase', () => ({
-    supabase: { from, channel: () => channel, removeChannel },
+    supabase: {
+      from,
+      channel: (...args: unknown[]) => {
+        channelCalls.push(args);
+        return channel;
+      },
+      removeChannel,
+      realtime: { setAuth },
+    },
   }));
+  const { invalidateNotificationKeys } =
+    await import('../logic/notification-mutations.logic');
   mock.module('../hooks/use-notification-mutations', () => ({
-    invalidateNotificationKeys: mock(() => {}),
+    invalidateNotificationKeys,
   }));
   mock.module('../lib/notification-linking', () => ({
     NotificationLinking: { navigate },
@@ -172,5 +206,88 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
       'notifications:digestTitle',
     );
     await view.unmount();
+  });
+
+  test('listens on the private per-user broadcast channel after setting auth', async () => {
+    channelCalls.length = 0;
+    onCalls.length = 0;
+    subscribeCallbacks.length = 0;
+    setAuth.mockClear();
+    removeChannel.mockClear();
+    queryClient.invalidateQueries.mockClear();
+    const view = await render(<NotificationWatcher />);
+    await act(async () => {});
+    expect(channelCalls).toEqual([
+      ['user:owner-1:notifications', { config: { private: true } }],
+    ]);
+    expect(setAuth).toHaveBeenCalledTimes(1);
+    expect(onCalls).toHaveLength(1);
+    expect(onCalls[0].type).toBe('broadcast');
+    expect(onCalls[0].filter).toEqual({ event: 'changed' });
+    expect(subscribeCallbacks).toHaveLength(1);
+
+    await act(async () => {
+      onCalls[0].handler({ event: 'changed', payload: {} });
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['notifications', 'owner-1'],
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['unread-notifications', 'owner-1'],
+    });
+
+    await view.unmount();
+    expect(removeChannel).toHaveBeenCalledTimes(1);
+    expect(removeChannel).toHaveBeenCalledWith(channel);
+  });
+
+  test('a channel error or timeout warns without a toast or console.error', async () => {
+    subscribeCallbacks.length = 0;
+    const view = await render(<NotificationWatcher />);
+    await act(async () => {});
+    toastShow.mockClear();
+    const errorSpy = mock(() => {});
+    const warnSpy = mock(() => {});
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    console.error = errorSpy;
+    console.warn = warnSpy;
+    try {
+      const failure = new Error('join failed');
+      await act(async () => {
+        subscribeCallbacks[0]('CHANNEL_ERROR', failure);
+        subscribeCallbacks[0]('TIMED_OUT');
+      });
+      expect(toastShow).not.toHaveBeenCalled();
+      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[NotificationWatcher] Realtime channel',
+        'CHANNEL_ERROR',
+        failure,
+      );
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[NotificationWatcher] Realtime channel',
+        'TIMED_OUT',
+        undefined,
+      );
+    } finally {
+      console.error = originalError;
+      console.warn = originalWarn;
+    }
+    await view.unmount();
+  });
+
+  test('unmounting before setAuth resolves never subscribes and removes the channel', async () => {
+    subscribeCallbacks.length = 0;
+    removeChannel.mockClear();
+    holdAuth = true;
+    const view = await render(<NotificationWatcher />);
+    await view.unmount();
+    expect(removeChannel).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pendingAuth?.();
+    });
+    expect(subscribeCallbacks).toHaveLength(0);
+    holdAuth = false;
   });
 }
