@@ -4,18 +4,20 @@ import type { StripeOnboardingStatus } from '@selene/types';
 export type PaymentSetupNeed = 'setup' | 'rejected' | null;
 
 /**
- * A loading or failed status needs nothing, so every screen behaves as before
+ * A loading, failed or not-yet-requested status needs nothing, so every screen behaves as before
  * and the seller is never blocked on an unknown state.
  */
 export const resolvePaymentSetupNeed = ({
+  hasUser,
   status,
   isLoading,
   isError,
 }: {
+  hasUser: boolean;
   status: StripeOnboardingStatus | null;
   isLoading: boolean;
   isError: boolean;
 }): PaymentSetupNeed => {
-  if (isLoading || isError || status === 'complete') return null;
+  if (!hasUser || isLoading || isError || status === 'complete') return null;
   return status === 'rejected' ? 'rejected' : 'setup';
 };

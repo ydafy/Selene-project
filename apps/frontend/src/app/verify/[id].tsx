@@ -26,9 +26,7 @@ import {
 } from '@/features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
-import { useAuthContext } from '@/shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
-import { resolvePaymentSetupNeed } from '@/shared/utils/payment-setup-need';
+import { usePaymentSetupNeed } from '@/shared/hooks/use-payment-setup-need';
 import { resolveVerifySuccessRoute } from '@/features/payments/logic/first-listing-payment-flow';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
@@ -59,17 +57,7 @@ export default function VerifyProductScreen() {
   } = useVerificationLogic(id);
 
   // Missing payments are the next step after the evidence (S2).
-  const { session } = useAuthContext();
-  const {
-    status: paymentStatus,
-    isLoading: isPaymentStatusLoading,
-    statusError: paymentStatusError,
-  } = useConnectOnboarding(session?.user.id);
-  const paymentNeed = resolvePaymentSetupNeed({
-    status: paymentStatus,
-    isLoading: isPaymentStatusLoading,
-    isError: paymentStatusError !== null,
-  });
+  const paymentNeed = usePaymentSetupNeed();
 
   // Estado para Diálogos
   const [dialogConfig, setDialogConfig] = useState({

@@ -23,9 +23,7 @@ import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { Theme } from '@/shared/theme';
 import { Product } from '@selene/types';
 import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
-import { useAuthContext } from '@/shared/lib/auth/auth-provider';
-import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
-import { resolvePaymentSetupNeed } from '@/shared/utils/payment-setup-need';
+import { usePaymentSetupNeed } from '@/shared/hooks/use-payment-setup-need';
 
 export default function MyListingsScreen() {
   const theme = useTheme<Theme>();
@@ -42,17 +40,7 @@ export default function MyListingsScreen() {
   const { loadProductForEdit, resetDraft } = useSellStore();
 
   // Read once per list: the chips of verified listings depend on it (S4).
-  const { session } = useAuthContext();
-  const {
-    status: paymentStatus,
-    isLoading: isPaymentStatusLoading,
-    statusError: paymentStatusError,
-  } = useConnectOnboarding(session?.user.id);
-  const paymentNeed = resolvePaymentSetupNeed({
-    status: paymentStatus,
-    isLoading: isPaymentStatusLoading,
-    isError: paymentStatusError !== null,
-  });
+  const paymentNeed = usePaymentSetupNeed();
 
   // Local state
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);

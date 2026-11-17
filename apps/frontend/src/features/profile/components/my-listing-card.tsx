@@ -170,7 +170,9 @@ export const MyListingCard = ({
           {/* STATUS BADGE */}
           <TouchableOpacity
             disabled={!opensPayments}
-            onPress={() => router.push('/sell/onboarding')}
+            onPress={
+              opensPayments ? () => router.push('/sell/onboarding') : undefined
+            }
             activeOpacity={0.7}
             accessibilityRole={opensPayments ? 'button' : undefined}
           >

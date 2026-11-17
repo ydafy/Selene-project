@@ -34,6 +34,10 @@ import {
 import { useAnnounceOnboardingNotice } from '@/features/payments/hooks/use-announce-onboarding-notice';
 import { Theme } from '@/shared/theme';
 
+// Room under the guide for the fixed footer: the main button, plus the "later" link when shown.
+const FOOTER_SPACE = 120;
+const LATER_LINK_SPACE = 50;
+
 export default function SellerOnboardingScreen() {
   const { t } = useTranslation(['sellerOnboarding']);
   const router = useRouter();
@@ -215,7 +219,10 @@ export default function SellerOnboardingScreen() {
         contentContainerStyle={{
           padding: 20,
           paddingTop: insets.top + 80,
-          paddingBottom: insets.bottom + (exit.showLater ? 170 : 120),
+          paddingBottom:
+            insets.bottom +
+            FOOTER_SPACE +
+            (exit.showLater ? LATER_LINK_SPACE : 0),
           gap: 16,
         }}
       >

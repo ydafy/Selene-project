@@ -104,10 +104,29 @@ describe('screens wire the flow', () => {
 
   it('my listings reads the payment status once and passes it to every card (S4)', () => {
     const listings = flat('src/app/profile/listings.tsx');
-    expect(listings.match(/useConnectOnboarding\(/g)).toHaveLength(1);
+    expect(listings.match(/usePaymentSetupNeed\(/g)).toHaveLength(1);
     expect(listings).toContain('paymentNeed={paymentNeed}');
     expect(
       flat('src/features/profile/components/my-listing-card.tsx'),
     ).toContain('resolveListingStatusKey(product, paymentNeed)');
+  });
+
+  it('only a payments chip opens the guide; every other chip stays inert (S4)', () => {
+    const card = flat('src/features/profile/components/my-listing-card.tsx');
+    expect(card).toContain(
+      "disabled={!opensPayments} onPress={ opensPayments ? () => router.push('/sell/onboarding') : undefined }",
+    );
+  });
+
+  it('success, verify and listings read the need through the same hook (S5)', () => {
+    for (const screen of [
+      'src/app/sell/success.tsx',
+      'src/app/verify/[id].tsx',
+      'src/app/profile/listings.tsx',
+    ]) {
+      expect(flat(screen)).toContain(
+        'const paymentNeed = usePaymentSetupNeed();',
+      );
+    }
   });
 });
