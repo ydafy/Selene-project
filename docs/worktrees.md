@@ -72,6 +72,17 @@ Run it from the main checkout. It reads `supabase stack list` and treats a stack
 
 It keeps stacks without a recorded branch and prints the reason for every stack it keeps. With `--yes` it runs `supabase stack destroy --stack-id <id> --yes` for each stale stack. Stacks written by an older CLI that `supabase stack list` cannot decode get their own section: their branch comes from `state.json`, the same rules apply, a stack with running Docker containers is kept, and a stale one is deleted as a folder, because the CLI cannot read it. A stack that fails to go is named, and the command exits with code 1.
 
+## Merge while other sessions work in parallel
+
+`main` requires a branch to be up to date before it merges (`docs/decision-log.md`, "2026-11-17: Merge With Auto-Merge After CodeRabbit Reports"), so every merge puts the other open pull requests behind and their CI runs again. GitHub's merge queue would do this for us, but it only exists for repositories owned by an organization. Each session does it by hand, in this order:
+
+1. Push and open the pull request. Wait for CI and for CodeRabbit's review of your last commit, read its comments (`gh api repos/ydafy/Selene-project/pulls/<N>/comments`), and fix or answer each one.
+2. Turn on auto-merge: `gh pr merge <N> --auto --merge`. The pull request merges by itself when every required check is green. Never before CodeRabbit has reported: a skipped or pending review counts as passing.
+3. When another pull request merges first, yours shows `BEHIND`. Run `gh pr update-branch <N>` once; CI runs again and auto-merge finishes. CodeRabbit may skip that merge commit, which is fine because it adds none of your changes.
+4. After yours merges, message the sessions that have open pull requests, so they run step 3.
+
+If a new push of yours lands after step 2, go back to step 1 for it.
+
 ## Is any context lost?
 
 No. The history of a feature lives in its merged PR, its commits, its `odd/tasks/<feature>.md` document, its GitHub issues and Engram. The folder, the local branch and the stack data are working copies: the branch is in `main`, and the stack data is local test data that `supabase db reset` rebuilds. The one exception is `verification-evidence/` (gitignored): the plan warns when it has files, so copy it first if a PR or audit needs it.
