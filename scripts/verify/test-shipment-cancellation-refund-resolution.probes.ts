@@ -171,7 +171,7 @@ const cases: Array<
     },
   ],
   [
-    'P2 only fn_resolve_shipment_cancellation_refund writes refund_resolved_*; fn_cancel_shipment, the B2.4a list, the refund event RPC, fn_close_account (blocks closure on an unresolved refund) and the participant cancellation summary only read it',
+    'P2 only fn_resolve_shipment_cancellation_refund writes refund_resolved_*; fn_cancel_shipment, the B2.4a list, the refund event RPC, fn_close_account (blocks closure on an unresolved refund), the participant cancellation summary and the overdue payout refund pair (fn_complete_overdue_payout_refund, fn_lease_overdue_refund_replay) only read it',
     async (tx) => {
       await asOwner(tx);
       const rows =
@@ -183,7 +183,9 @@ const cases: Array<
           'fn_apply_shipment_cancellation_refund_event',
           'fn_cancel_shipment',
           'fn_close_account',
+          'fn_complete_overdue_payout_refund',
           'fn_get_shipment_cancellation_summary',
+          'fn_lease_overdue_refund_replay',
           'fn_list_shipment_refund_problems',
           'fn_resolve_shipment_cancellation_refund',
         ],
@@ -293,7 +295,7 @@ const cases: Array<
     'preparing',
   ],
   [
-    'P6 ADMIN_REQUIRED for a banned admin and an unknown uuid; a NULL-status admin is accepted (is_admin rule)',
+    'P6 ADMIN_REQUIRED for a banned admin and an unknown uuid; the same admin back to active is accepted (is_admin rule; status is NOT NULL since #600)',
     async (tx) => {
       await start(tx);
       await apply(tx, 're_p6', 'failed');
@@ -307,7 +309,7 @@ const cases: Array<
       await asService(tx);
       await rejects(tx, (sp) => resolve(sp), 'ADMIN_REQUIRED');
       await asOwner(tx);
-      await tx`UPDATE public.profiles_private SET status = NULL WHERE id = ${ids.admin}`;
+      await tx`UPDATE public.profiles_private SET status = 'active' WHERE id = ${ids.admin}`;
       await asService(tx);
       assert.equal((await resolve(tx)).resolved, true);
     },
