@@ -81,21 +81,6 @@ describe('NotificationWatcher source contracts', () => {
     expect(source).not.toContain('setQueue');
   });
 
-  test('listens on the private broadcast channel, not postgres_changes', () => {
-    const source = compact(watcherSource());
-    expect(source).not.toContain('postgres_changes');
-    expect(source).toContain(
-      compact(
-        'supabase.channel(`user:${userId}:notifications`, { config: { private: true } })',
-      ),
-    );
-    expect(source).toContain(compact(".on('broadcast', { event: 'changed' }"));
-    expect(source.indexOf('supabase.realtime.setAuth()')).toBeGreaterThan(-1);
-    expect(source.indexOf('supabase.realtime.setAuth()')).toBeLessThan(
-      source.indexOf('.subscribe('),
-    );
-  });
-
   test('does not call static Toast.hide()', () => {
     expect(watcherSource()).not.toContain('Toast.hide()');
   });

@@ -241,6 +241,29 @@ if (process.env.SELENE_NOTIFICATION_MOUNT_CHILD !== 'watcher') {
     expect(removeChannel).toHaveBeenCalledWith(channel);
   });
 
+  test('each successful join refetches the list and unread count', async () => {
+    subscribeCallbacks.length = 0;
+    const view = await render(<NotificationWatcher />);
+    await act(async () => {});
+    queryClient.invalidateQueries.mockClear();
+    // Broadcasts sent before the join or during a drop are not replayed.
+    await act(async () => {
+      subscribeCallbacks[0]('SUBSCRIBED');
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['notifications', 'owner-1'],
+    });
+    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['unread-notifications', 'owner-1'],
+    });
+    queryClient.invalidateQueries.mockClear();
+    await act(async () => {
+      subscribeCallbacks[0]('CHANNEL_ERROR', new Error('drop'));
+    });
+    expect(queryClient.invalidateQueries).not.toHaveBeenCalled();
+    await view.unmount();
+  });
+
   test('a channel error or timeout warns without a toast or console.error', async () => {
     subscribeCallbacks.length = 0;
     const view = await render(<NotificationWatcher />);

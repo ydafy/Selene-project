@@ -129,6 +129,10 @@ export const NotificationWatcher = () => {
         if (!active || currentOwner.current !== userId) return;
         channel.subscribe((status, error) => {
           if (!active || currentOwner.current !== userId) return;
+          // Broadcasts sent before a join or during a drop are not replayed,
+          // so every successful (re)join refetches.
+          if (status === 'SUBSCRIBED')
+            invalidateNotificationKeys(queryClient, userId);
           // supabase-js rejoins by itself; a transient drop is not a user error.
           if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
             console.warn(
