@@ -12,7 +12,10 @@ import { dirname, join } from 'node:path';
 
 import {
   ENV_FILES,
+  checkEnvNames,
   copyWorktreeEnv,
+  envNameDrift,
+  formatEnvNameDrift,
   mainWorktreeFromPorcelain,
 } from './worktree-env';
 
@@ -142,5 +145,63 @@ describe('copyWorktreeEnv', () => {
     const main = makeRoot({ 'apps/frontend/.env': 'FRONTEND=1\n' });
 
     expect(copyWorktreeEnv({ mainRoot: main, targetRoot: main })).toEqual([]);
+  });
+});
+
+describe('envNameDrift', () => {
+  it('reports names the example has and the env file lacks, and the reverse', () => {
+    const env =
+      'EXPO_PUBLIC_SUPABASE_URL=https://x\nEXPO_PUBLIC_SUPABASE_ANON_KEY=old\n';
+    const example = [
+      '# Supabase',
+      'EXPO_PUBLIC_SUPABASE_URL=',
+      'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...',
+      '',
+    ].join('\n');
+
+    expect(envNameDrift(env, example)).toEqual({
+      missing: ['EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+      extra: ['EXPO_PUBLIC_SUPABASE_ANON_KEY'],
+    });
+  });
+
+  it('ignores comments, blank lines, export prefixes, spaces and CRLF', () => {
+    const env = 'export A=1\r\n  B = 2\r\n# C=3\r\n\r\n';
+    expect(envNameDrift(env, 'A=\nB=\n')).toEqual({ missing: [], extra: [] });
+  });
+});
+
+describe('checkEnvNames', () => {
+  it('checks each env file that has an example next to it', () => {
+    const root = makeRoot({
+      'apps/frontend/.env': 'OLD_KEY=secret-value\n',
+      'apps/frontend/.env.example': 'NEW_KEY=\n',
+      'apps/admin-web/.env': 'SAME=1\n',
+      'apps/admin-web/.env.example': 'SAME=\n',
+      'supabase/functions/.env': 'NO_EXAMPLE=1\n',
+    });
+
+    expect(checkEnvNames(root)).toEqual([
+      {
+        file: 'apps/frontend/.env',
+        missing: ['NEW_KEY'],
+        extra: ['OLD_KEY'],
+      },
+      { file: 'apps/admin-web/.env', missing: [], extra: [] },
+    ]);
+  });
+});
+
+describe('formatEnvNameDrift', () => {
+  it('prints only variable names, never values, and nothing when names match', () => {
+    const lines = formatEnvNameDrift([
+      { file: 'apps/frontend/.env', missing: ['NEW_KEY'], extra: ['OLD_KEY'] },
+      { file: 'apps/admin-web/.env', missing: [], extra: [] },
+    ]);
+
+    expect(lines).toEqual([
+      '[worktree-env] apps/frontend/.env lacks NEW_KEY from apps/frontend/.env.example',
+      '[worktree-env] apps/frontend/.env has OLD_KEY, which apps/frontend/.env.example does not list',
+    ]);
   });
 });
