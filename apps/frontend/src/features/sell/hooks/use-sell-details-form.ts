@@ -13,11 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { useShippingQuote } from '@/features/sell/hooks/use-shipping-quote';
 import { useSystemConfig } from '@/shared/hooks/use-system-config';
-import {
-  calculateSellerProceedsEstimate,
-  formatCentsAsMx,
-  resolveCommissionPercent,
-} from '@/features/sell/logic/seller-proceeds-estimate';
+import { buildSellerEarnings } from '@/features/sell/logic/seller-proceeds-estimate';
 import { getCategoryResetFields } from '@/features/sell/logic/sell-category-reset';
 import { tryPesosToCents } from '@/shared/utils/money/pesos-to-cents';
 import {
@@ -120,35 +116,17 @@ export const useSellDetailsForm = () => {
     }
   }, [origin_zip, package_preset, price, getQuote, updateDraft]);
 
-  // Calculadora de Ganancias
-  const earnings = useMemo(() => {
-    const commissionPct = resolveCommissionPercent(
-      systemConfig?.service_fee_pct,
-    );
-    const priceCents = tryPesosToCents(price) ?? 0;
-    if (priceCents === 0 || !systemConfig) {
-      return {
-        commission: '0.00',
-        shipping: '0.00',
-        final: '0.00',
-        commissionPct,
-      };
-    }
-
-    // shippingCost is the Envia quote in pesos (the external boundary).
-    const estimate = calculateSellerProceedsEstimate({
-      priceCents,
-      quoteCents: tryPesosToCents(shippingCost) ?? 0,
-      settings: systemConfig,
-    });
-
-    return {
-      commission: formatCentsAsMx(estimate.commissionCents),
-      shipping: formatCentsAsMx(estimate.shippingCents),
-      final: formatCentsAsMx(estimate.finalCents),
-      commissionPct,
-    };
-  }, [price, shippingCost, systemConfig]);
+  // Calculadora de Ganancias: sin configuración no hay monto (no defaults).
+  // shippingCost is the Envia quote in pesos (the external boundary).
+  const earnings = useMemo(
+    () =>
+      buildSellerEarnings({
+        priceCents: tryPesosToCents(price) ?? 0,
+        quoteCents: tryPesosToCents(shippingCost) ?? 0,
+        settings: systemConfig,
+      }),
+    [price, shippingCost, systemConfig],
+  );
 
   const onSubmit = (data: SellDetailsInput) => {
     updateDraft(data);
