@@ -189,6 +189,7 @@
   "success": {
     "title": "¡Publicación Creada!",
     "subtitle": "Tu producto ya está publicado, pero los usuarios no podrán comprarlo hasta que verifiques tu producto.",
+    "subtitleWithPayments": "Para que alguien pueda comprarla faltan 2 pasos: verificar tu producto y activar tus cobros. Empecemos por el primero.",
     "verifyNow": "Verificar Ahora",
     "later": "Ir a Mis Publicaciones"
   },

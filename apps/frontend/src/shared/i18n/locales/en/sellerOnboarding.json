@@ -45,7 +45,8 @@
     "start": "Fill out the form",
     "continue": "Continue the form",
     "review": "Fix my details",
-    "checking": "Checking status..."
+    "checking": "Checking status...",
+    "later": "Later"
   },
   "loading": {
     "title": "Checking your Stripe status",

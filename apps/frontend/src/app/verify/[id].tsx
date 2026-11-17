@@ -26,6 +26,10 @@ import {
 } from '@/features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
+import { resolvePaymentSetupNeed } from '@/shared/utils/payment-setup-need';
+import { resolveVerifySuccessRoute } from '@/features/payments/logic/first-listing-payment-flow';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 export default function VerifyProductScreen() {
@@ -53,6 +57,19 @@ export default function VerifyProductScreen() {
     status,
     rejectionReason,
   } = useVerificationLogic(id);
+
+  // Missing payments are the next step after the evidence (S2).
+  const { session } = useAuthContext();
+  const {
+    status: paymentStatus,
+    isLoading: isPaymentStatusLoading,
+    statusError: paymentStatusError,
+  } = useConnectOnboarding(session?.user.id);
+  const paymentNeed = resolvePaymentSetupNeed({
+    status: paymentStatus,
+    isLoading: isPaymentStatusLoading,
+    isError: paymentStatusError !== null,
+  });
 
   // Estado para Diálogos
   const [dialogConfig, setDialogConfig] = useState({
@@ -111,7 +128,7 @@ export default function VerifyProductScreen() {
         isError: false,
         onConfirm: () => {
           closeDialog();
-          router.replace('/(tabs)/profile');
+          router.replace(resolveVerifySuccessRoute(paymentNeed));
           // Evidence sent: a moment to offer push, after the success dialog (L6).
           void offerPushPermission('listing');
         },

@@ -1,0 +1,28 @@
+# First listing payment setup
+
+Roadmap #548 item 4, issue #552. Branch `feat/first-listing-payment-setup` from `origin/main` bc7b24d0, worktree bruno-money-functions.
+Frontend only. The buyer side already blocks purchases from sellers without payments (L2); this feature fixes what the seller is told.
+
+## Specs
+
+- S1. Success screen after publishing (`app/sell/success.tsx`). When the seller's payment status is known and not `complete`, the screen says two steps are missing ("verificar tu producto y activar tus cobros") and keeps one primary button that starts step 1 (verify). When the status is `complete`, loading or unknown, the screen stays as today. The "later" exit stays: "siempre ponerle o habilitar que cirre esa pantalla o 'mas tarde'" (L5).
+- S2. Linear flow, only while payments are not `complete`: "Éxito → Verificar → Cobros, solo la primera vez" (L4). After a successful evidence submit, the verify screen goes to `/sell/onboarding` instead of the profile. With payments `complete`, loading or unknown, it goes to the profile as today. "Guardar y salir" keeps going to the profile.
+- S3. `/sell/onboarding` opened from that flow always has a visible "later" exit that lands on the profile, and its success button also lands on the profile. Opened from anywhere else, it behaves as today.
+- S4. My listings chip. A `verified` listing of a seller whose payment status is known and not `complete` shows "Falta activar cobros" (`rejected`: "Revisa tus cobros") in a warning color instead of "Activo", and pressing it opens `/sell/onboarding`. Loading or unknown status shows the chip as today.
+- S5. Neither step is mandatory: "siempre el usario puede publicar y no hacre nuinguno de los dos pasos [...] no querremos hacerlo obligatorio esos dos pasos" (L5). Publishing never waits for the payment status, and no screen in this flow blocks the seller.
+- S6. No inbox of pending items (L4): account-level pending stays in the profile banner, per-listing pending in the listing chip.
+
+## Tasks
+
+- [ ] T1 (S1, S5) success screen copy and state.
+- [ ] T2 (S2, S3, S5) verify → onboarding route and the onboarding "later" exit.
+- [ ] T3 (S4) my listings chip.
+- [ ] T4 Findings and ideas: seller not notified when a buyer is blocked (Idea); untyped readiness RPC cast in `use-seller-payment-readiness.ts` (Finding). PR, `Closes #552`.
+
+## Log
+
+- L1 (2026-11-17, maintainer): "Continuá con #552 (roadmap #548, ítem 4) en el worktree bruno-money-functions. Creá una rama nueva desde origin/main [...] Lo que más me importa es que sea fácil y amigable para vendedores casuales que no saben qué es Stripe. [...] El issue dice que yo elijo entre pedir la configuración de cobros al publicar el primer anuncio o marcar el anuncio como "todavía no se puede comprar". Antes de escribir código, investigá cómo funciona hoy el flujo de publicar, proponeme las dos opciones con pros y contras, tu recomendación y los textos, y esperá mi OK."
+- L2 (2026-11-17, evidence): publish inserts `pending_verification` with no payment check (`features/sell/hooks/use-publish-product.ts`). Buyers already see "Casi listo para comprar" (`features/product/logic/product-purchase-gate.ts`), and checkout plus `create-connect-payment` block a seller without payments. The profile banner (`features/profile/logic/connect-banner.ts`) shows for any non-`complete` status once the seller has a listing. My listings shows "Activo" for a verified listing nobody can buy. The verify screen goes to the profile after submit (`app/verify/[id].tsx:114`).
+- L3 (2026-11-17, maintainer): "hasta dodne sabia yo, el vendedor siempre podia ver cuando no tenia su cuenta activada de stripe, segun yo aparecia un tipo baner en profile.tsx". Answer: the banner exists; the problem is timing and the contradiction between "Activo" and "Activa tus pagos".
+- L4 (2026-11-17, decision): the maintainer worried that two steps on the success screen break the linear 1→2→3 flow and about piling up messages ("se me ocurre algo como una bandeja de entrada en profile"). Agreed: put payments in the sequence after verify, only while not `complete`; no inbox (overengineering with two pending types); keep the chip. Maintainer: "me encanta master me encanta todo, dale."
+- L5 (2026-11-17, maintainer): "Nomas que recuera, siempre el usario puede publicar y no hacre nuinguno de los dos pasos, me refiero, no tenemos qeu decirle textualmente, pero siempre ponerle o habilitar que cirre esa pantalla o 'mas tarde', ya que podemos entender y sobre todo al principio, que usarios no conifan y nomas publicaran, y ahi es onde entra nuesrti sistema de notificaiones, pero no querremos hacerlo obligatorio esos dos pasos. Furea de eso luz vrede"

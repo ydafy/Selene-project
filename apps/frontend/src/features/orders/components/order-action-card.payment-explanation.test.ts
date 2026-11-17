@@ -25,7 +25,9 @@ describe('shared seller payment explanation', () => {
       '<PaymentsExplanationToggle> <SellerPaymentExplanation /> </PaymentsExplanationToggle>',
     );
     expect(onboarding.match(/<SellerPaymentExplanation/g)).toHaveLength(1);
-    expect(success).toContain('CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE');
+    // The route falls back to CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE outside the publish flow
+    // (first-listing-payment-flow.test.ts).
+    expect(success).toContain('router.replace(exit.successRoute)');
   });
 
   it('gates help and visibility on the selected delivered or completed, dispute-free seller shipment', () => {

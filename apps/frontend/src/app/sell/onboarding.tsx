@@ -3,7 +3,7 @@
  * @description Stripe Connect onboarding guide for sellers.
  */
 import { useCallback } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, TouchableOpacity } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
@@ -20,8 +20,8 @@ import { LabelWithHelp } from '@/shared/ui/form/label-with-help';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
+import { resolveFirstListingOnboardingExit } from '@/features/payments/logic/first-listing-payment-flow';
 import {
-  CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
   resolveConnectOnboardingHeaderKeys,
   resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
@@ -37,7 +37,11 @@ import { Theme } from '@/shared/theme';
 export default function SellerOnboardingScreen() {
   const { t } = useTranslation(['sellerOnboarding']);
   const router = useRouter();
-  const params = useLocalSearchParams<{ return?: string; refresh?: string }>();
+  const params = useLocalSearchParams<{
+    return?: string;
+    refresh?: string;
+    from?: string;
+  }>();
   const theme = useTheme<Theme>();
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
@@ -55,6 +59,8 @@ export default function SellerOnboardingScreen() {
     startOnboarding,
   } = useConnectOnboarding(userId);
   const stripeReturn = resolveConnectOnboardingStripeReturn(params);
+  // Step 2 after publishing is optional: "later" always leaves (S3, S5).
+  const exit = resolveFirstListingOnboardingExit(params);
   const onboardingUi = resolveConnectOnboardingUiState({
     userId,
     status,
@@ -184,9 +190,7 @@ export default function SellerOnboardingScreen() {
 
           <Box width="100%">
             <PrimaryButton
-              onPress={() =>
-                router.replace(CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE)
-              }
+              onPress={() => router.replace(exit.successRoute)}
               icon="check"
             >
               {t('sellerOnboarding:success.cta')}
@@ -211,7 +215,7 @@ export default function SellerOnboardingScreen() {
         contentContainerStyle={{
           padding: 20,
           paddingTop: insets.top + 80,
-          paddingBottom: insets.bottom + 120,
+          paddingBottom: insets.bottom + (exit.showLater ? 170 : 120),
           gap: 16,
         }}
       >
@@ -264,6 +268,24 @@ export default function SellerOnboardingScreen() {
           >
             {t(`sellerOnboarding:actions.${onboardingUi.ctaKey}`)}
           </PrimaryButton>
+
+          {exit.showLater && (
+            <TouchableOpacity
+              onPress={() => router.replace(exit.successRoute)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Box padding="m" alignItems="center">
+                <Text
+                  variant="body-md"
+                  color="textSecondary"
+                  textDecorationLine="underline"
+                >
+                  {t('sellerOnboarding:actions.later')}
+                </Text>
+              </Box>
+            </TouchableOpacity>
+          )}
         </Box>
       )}
     </Box>

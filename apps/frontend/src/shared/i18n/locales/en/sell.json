@@ -189,6 +189,7 @@
   "success": {
     "title": "Listing Created!",
     "subtitle": "Your product is already published, but users won't be able to buy it until you verify it.",
+    "subtitleWithPayments": "Before anyone can buy it, two steps are left: verify your product and turn on payments. Let's start with the first one.",
     "verifyNow": "Verify Now",
     "later": "Go to My Listings"
   },
