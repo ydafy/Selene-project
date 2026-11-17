@@ -31,6 +31,7 @@ import {
   OnboardingGuideCards,
   PaymentsExplanationToggle,
 } from '@/features/payments/components/onboarding-guide';
+import { useAnnounceOnboardingNotice } from '@/features/payments/hooks/use-announce-onboarding-notice';
 import { Theme } from '@/shared/theme';
 
 export default function SellerOnboardingScreen() {
@@ -66,6 +67,11 @@ export default function SellerOnboardingScreen() {
 
   const header = resolveConnectOnboardingHeaderKeys(
     onboardingUi.statusNoticeKey,
+  );
+  const headerTitle = t(header.titleKey);
+  const headerSubtitle = t(header.subtitleKey);
+  useAnnounceOnboardingNotice(
+    onboardingUi.statusNoticeKey ? `${headerTitle}. ${headerSubtitle}` : null,
   );
 
   const handleStart = useCallback(async () => {
@@ -209,10 +215,7 @@ export default function SellerOnboardingScreen() {
           gap: 16,
         }}
       >
-        <ScreenHeader
-          title={t(header.titleKey)}
-          subtitle={t(header.subtitleKey)}
-        />
+        <ScreenHeader title={headerTitle} subtitle={headerSubtitle} />
 
         <LabelWithHelp
           label={t('sellerOnboarding:whatIsStripe.label')}
