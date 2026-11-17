@@ -185,6 +185,14 @@ describe('lint-migrations CLI', () => {
     });
   });
 
+  it('exits 2 with a message when the base cannot be diffed', () => {
+    const result = lint('--base', 'no-such-ref');
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain(
+      'lint-migrations: git diff against no-such-ref failed:',
+    );
+  });
+
   it('rejects an unknown flag', () => {
     const result = lint('--bogus');
     expect(result.exitCode).toBe(2);

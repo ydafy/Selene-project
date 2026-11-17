@@ -191,6 +191,18 @@ describe('check-security-advisors CLI', () => {
     );
   });
 
+  it('names the input file when it cannot be read', () => {
+    const missing = join(tmpdir(), 'no-such-advisors.json');
+    const run = Bun.spawnSync(['bun', SCRIPT, '--input', missing], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    expect(run.exitCode).toBe(2);
+    expect(run.stderr.toString()).toContain(
+      `check-security-advisors: could not read ${missing}:`,
+    );
+  });
+
   it('rejects an unknown flag', () => {
     const run = Bun.spawnSync(['bun', SCRIPT, '--bogus'], {
       stdout: 'pipe',

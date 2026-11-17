@@ -80,8 +80,11 @@ function main(): number {
   try {
     text = input ? readFileSync(input, 'utf8') : runAdvisors();
   } catch (error) {
+    const source = input
+      ? `could not read ${input}`
+      : 'could not run supabase db advisors';
     console.error(
-      `check-security-advisors: could not run supabase db advisors: ${(error as Error).message}`,
+      `check-security-advisors: ${source}: ${(error as Error).message}`,
     );
     return 2;
   }
