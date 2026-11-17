@@ -390,7 +390,7 @@ export const SellDetailsForm: React.FC<SellDetailsFormProps> = ({
                         : 'textSecondary'
                     }
                   >
-                    ${earnings.final}
+                    {earnings.final === null ? '$ --' : `$${earnings.final}`}
                   </Text>
                   {/* AVISO DE CP FALTANTE */}
                   {originZipValue?.length !== 5 && (

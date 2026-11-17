@@ -1,42 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 
-import {
-  calculateEstimatedSellerShippingDeductionCents,
-  resolvePublicationEconomics,
-  validatePublicationEconomicsSnapshot,
-} from './publication-economics.ts';
+import { validatePublicationEconomicsSnapshot } from './publication-economics.ts';
 
 describe('publication economics', () => {
-  it('calculates the reserve as quote plus buffer plus ceiling insurance', () => {
-    expect(
-      calculateEstimatedSellerShippingDeductionCents({
-        priceCents: 100_001,
-        quotedShippingCents: 15_000,
-        shippingBufferCents: 2_000,
-        insuranceRate: 0.012,
-      }),
-    ).toBe(18_201);
-  });
-
-  it('rejects non-integer money and invalid normalized rates', () => {
-    expect(() =>
-      calculateEstimatedSellerShippingDeductionCents({
-        priceCents: 100.5,
-        quotedShippingCents: 15_000,
-        shippingBufferCents: 2_000,
-        insuranceRate: 0.012,
-      }),
-    ).toThrow('INVALID_PUBLICATION_ECONOMICS');
-    expect(() =>
-      calculateEstimatedSellerShippingDeductionCents({
-        priceCents: 100_000,
-        quotedShippingCents: 15_000,
-        shippingBufferCents: 2_000,
-        insuranceRate: 1.2,
-      }),
-    ).toThrow('INVALID_PUBLICATION_ECONOMICS');
-  });
-
   it('accepts only all-present valid snapshots', () => {
     expect(
       validatePublicationEconomicsSnapshot({
@@ -58,36 +24,30 @@ describe('publication economics', () => {
     ).toThrow('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT');
   });
 
-  it('uses a legacy resolver only when every snapshot field is absent', () => {
-    const legacy = {
-      shippingReserveCents: 20_000,
-      commissionRate: 0.06,
-      insuranceRate: 0.012,
-    };
+  it('rejects an all-null snapshot instead of resolving current settings', () => {
+    expect(() =>
+      validatePublicationEconomicsSnapshot({
+        publication_shipping_reserve_cents: null,
+        publication_commission_rate: null,
+        publication_insurance_rate: null,
+      }),
+    ).toThrow(new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT'));
+  });
 
-    expect(
-      resolvePublicationEconomics(
-        {
+  it('rejects percent or basis-point rates: rates are fractions in 0..1', () => {
+    for (const [commission, insurance] of [
+      [6, 0.012],
+      [0.06, 1.2],
+      [0.06, 120],
+      [-0.01, 0.012],
+    ]) {
+      expect(() =>
+        validatePublicationEconomicsSnapshot({
           publication_shipping_reserve_cents: 18_200,
-          publication_commission_rate: 0.08,
-          publication_insurance_rate: 0.012,
-        },
-        () => legacy,
-      ),
-    ).toEqual({
-      shippingReserveCents: 18_200,
-      commissionRate: 0.08,
-      insuranceRate: 0.012,
-    });
-    expect(
-      resolvePublicationEconomics(
-        {
-          publication_shipping_reserve_cents: null,
-          publication_commission_rate: null,
-          publication_insurance_rate: null,
-        },
-        () => legacy,
-      ),
-    ).toEqual(legacy);
+          publication_commission_rate: commission,
+          publication_insurance_rate: insurance,
+        }),
+      ).toThrow(new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT'));
+    }
   });
 });
