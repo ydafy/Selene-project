@@ -71,8 +71,10 @@ jobs:
           exit 1
       - run: bun run verify:harnesses --group weekly
       # The pr group runs this harness with 50 random sequences per batch; here it
-      # explores ten times as many (about a minute).
+      # explores ten times as many (about a minute). It calls the SQL RPCs only, so
+      # it still runs when a harness of the weekly group failed.
       - name: Lifecycle model harness, deep run
+        if: ${{ !cancelled() }}
         run: bun scripts/verify/test-shipment-lifecycle-model.ts
         env:
           SELENE_MODEL_RUNS: '500'
