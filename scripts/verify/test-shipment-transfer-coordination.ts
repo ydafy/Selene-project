@@ -561,8 +561,6 @@ async function run() {
         );
       }
       await a`UPDATE public.orders SET stripe_transfer_group = NULL`;
-      await a`UPDATE public.connect_payout_run_shipments SET net_payout_cents = 9900`;
-      await a`UPDATE public.connect_payout_runs SET amount_cents = 19800`;
       await rejects(() => begin(), 'MISSING_SETTLEMENT_CONTEXT');
       // Existing legacy payout fence remains valid, without a Transfer step.
       const [legacyFence] =

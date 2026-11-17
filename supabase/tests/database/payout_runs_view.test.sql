@@ -7,11 +7,15 @@ begin;
 select plan(70);
 \ir ../fixtures/money.psql
 
--- A completed shipment: completed p_ago ago with p_shipping_cost cents of label.
-create function pg_temp.complete(p_shipment integer, p_shipping_cost integer, p_ago interval default '1 day')
+-- A completed shipment: completed p_ago ago.
+create function pg_temp.complete(p_shipment integer, p_ago interval default '1 day')
 returns void language sql as $$
-  update public.shipments set status = 'completed', completed_at = now() - p_ago, shipping_cost_cents = p_shipping_cost
+  update public.shipments set status = 'completed', completed_at = now() - p_ago
   where id = pg_temp.mu(p_shipment)
+$$;
+-- A separate-charges order: the transfer group fn_begin_shipment_transfer requires.
+create function pg_temp.transfer_group(p_order integer) returns void language sql as $$
+  update public.orders set stripe_transfer_group = 'tg_test_' || p_order where id = pg_temp.mu(p_order)
 $$;
 create function pg_temp.connect_seller(p_seller integer, p_status public.stripe_onboarding_status default 'complete')
 returns void language sql as $$
@@ -43,16 +47,18 @@ select pg_temp.money_shipment(n + 100, n, 11, 19) from generate_series(101, 115)
 select pg_temp.money_shipment(216, 116, 12, 19);
 select pg_temp.money_shipment(217, 117, 13, 19);
 select pg_temp.money_shipment(n + 100, n, 11, 19) from generate_series(118, 119) as n;
+-- Every order has a transfer group except 202 and 203, so each case below
+-- tests the gate it names.
+select pg_temp.transfer_group(n + 100) from generate_series(101, 119) as n where n not in (102, 103);
 update public.order_items set net_payout_cents = 470000 where shipment_id in (pg_temp.mu(101), pg_temp.mu(102), pg_temp.mu(103));
-update public.order_items set net_payout_cents = 10000 where shipment_id = pg_temp.mu(104);
-select pg_temp.complete(101, 28700);
-select pg_temp.complete(102, 0);
-select pg_temp.complete(103, 0);
-select pg_temp.complete(104, 12000);
+update public.order_items set net_payout_cents = 0 where shipment_id = pg_temp.mu(104);
+select pg_temp.complete(n) from generate_series(101, 104) as n;
+-- 101 and 102 record a label cost; the release never deducts it.
+update public.shipments set shipping_cost_cents = 28700 where id in (pg_temp.mu(101), pg_temp.mu(102));
 -- 105 stays delivered.
-select pg_temp.complete(106, 1000);
+select pg_temp.complete(106);
 update public.shipments set completed_at = null where id = pg_temp.mu(106);
-select pg_temp.complete(n, 1000) from generate_series(107, 117) as n;
+select pg_temp.complete(n) from generate_series(107, 117) as n;
 update public.shipments set stripe_payment_intent_id = null where id = pg_temp.mu(107);
 select pg_temp.money_dispute(401, 108);
 select pg_temp.money_payout_run(301, 11, 10, array[109]);
@@ -67,35 +73,35 @@ update public.connect_payout_runs set paid_at = '2026-11-01 12:00+00' where id =
 -- 115: its run is still open but the mapping failed, so nothing protects it.
 select pg_temp.money_payout_run(308, 11, 10, array[115], 'reconciliation_needed');
 update public.connect_payout_run_shipments set status = 'failed' where run_id = pg_temp.mu(308);
--- 118 and 119: separate-charges orders (transfer group), with no label cost
--- recorded (the default 0) and with one.
-select pg_temp.complete(118, 0);
-select pg_temp.complete(119, 1000);
-update public.orders set stripe_transfer_group = 'tg_test_' || right(id::text, 3) where id in (pg_temp.mu(218), pg_temp.mu(219));
+-- 118 and 119: separate-charges orders, with no label cost recorded (the
+-- default 0) and with one.
+select pg_temp.complete(118);
+select pg_temp.complete(119);
+update public.shipments set shipping_cost_cents = 1000 where id = pg_temp.mu(119);
 
 -- Eligibility gates, in the order the view reports them.
-select is(pg_temp.gate(101), 'true:-:441300', 'a completed, paid, undisputed shipment of a ready seller is releasable for its net payout minus the label');
-select is(pg_temp.gate(102), 'false:missing_shipping_cost:470000', 'a zero label cost blocks release');
-select is(pg_temp.gate(103), 'false:missing_shipping_cost:470000', 'a missing label cost blocks release');
-select is(pg_temp.gate(104), 'false:missing_release_amount:0', 'a label that eats the whole payout leaves nothing to release');
+select is(pg_temp.gate(101), 'true:-:470000', 'a completed, paid, undisputed shipment of a ready seller is releasable for its full net payout, label not deducted');
+select is(pg_temp.gate(102), 'false:missing_transfer_group:470000', 'a recorded label cost does not make an order without a transfer group releasable');
+select is(pg_temp.gate(103), 'false:missing_transfer_group:470000', 'an order without a transfer group is not releasable');
+select is(pg_temp.gate(104), 'false:missing_release_amount:0', 'a shipment without a net payout leaves nothing to release');
 select is(pg_temp.gate(105), 'false:shipment_not_completed:90000', 'a shipment that is not completed is not releasable');
-select is(pg_temp.gate(106), 'false:missing_completed_at:89000', 'a completed shipment without completed_at is not releasable');
-select is(pg_temp.gate(107), 'false:missing_connect_payment_intent:89000', 'a shipment without a Connect payment intent is not releasable');
-select is(pg_temp.gate(108), 'false:active_dispute:89000', 'an open dispute blocks release');
-select is(pg_temp.gate(109), 'false:already_released:89000', 'a shipment pending in a run is not released twice');
-select is(pg_temp.gate(110), 'false:already_released:89000', 'a shipment awaiting reconciliation is not released twice');
-select is(pg_temp.gate(114), 'false:already_released:89000', 'a paid shipment is not released twice');
-select is(pg_temp.gate(111), 'false:payout_failed_retry_required:89000', 'a failed run sends its shipment to retry');
-select is(pg_temp.gate(113), 'false:payout_canceled_manual_review:89000', 'a canceled run sends its shipment to manual review');
-select is(pg_temp.gate(115), 'false:payout_run_history_requires_review:89000', 'any other run history blocks release until reviewed');
-select is(pg_temp.gate(116), 'false:missing_stripe_account:89000', 'a seller without a Stripe account cannot be paid');
-select is(pg_temp.gate(117), 'false:seller_not_payout_ready:89000', 'a seller who has not finished onboarding cannot be paid');
+select is(pg_temp.gate(106), 'false:missing_completed_at:90000', 'a completed shipment without completed_at is not releasable');
+select is(pg_temp.gate(107), 'false:missing_connect_payment_intent:90000', 'a shipment without a Connect payment intent is not releasable');
+select is(pg_temp.gate(108), 'false:active_dispute:90000', 'an open dispute blocks release');
+select is(pg_temp.gate(109), 'false:already_released:90000', 'a shipment pending in a run is not released twice');
+select is(pg_temp.gate(110), 'false:already_released:90000', 'a shipment awaiting reconciliation is not released twice');
+select is(pg_temp.gate(114), 'false:already_released:90000', 'a paid shipment is not released twice');
+select is(pg_temp.gate(111), 'false:payout_failed_retry_required:90000', 'a failed run sends its shipment to retry');
+select is(pg_temp.gate(113), 'false:payout_canceled_manual_review:90000', 'a canceled run sends its shipment to manual review');
+select is(pg_temp.gate(115), 'false:payout_run_history_requires_review:90000', 'any other run history blocks release until reviewed');
+select is(pg_temp.gate(116), 'false:missing_stripe_account:90000', 'a seller without a Stripe account cannot be paid');
+select is(pg_temp.gate(117), 'false:seller_not_payout_ready:90000', 'a seller who has not finished onboarding cannot be paid');
 select is(pg_temp.gate(118), 'true:-:90000', 'a transfer-group order needs no label cost');
 select is(pg_temp.gate(119), 'true:-:90000', 'a transfer-group order releases the full net payout, label not deducted');
 update public.disputes set status = 'rejected' where id = pg_temp.mu(401);
-select is(pg_temp.gate(108), 'true:-:89000', 'a rejected dispute no longer blocks release');
+select is(pg_temp.gate(108), 'true:-:90000', 'a rejected dispute no longer blocks release');
 update public.shipments set status = 'delivered', stripe_payment_intent_id = null where id = pg_temp.mu(116);
-select is(pg_temp.gate(116), 'false:shipment_not_completed:89000', 'the first failing gate is the one reported');
+select is(pg_temp.gate(116), 'false:shipment_not_completed:90000', 'the first failing gate is the one reported');
 
 -- Why the seller's account cannot be paid (#549), and how long the shipment
 -- has been held. Seller 14 was rejected; 15, 16 and 17 finished onboarding
@@ -120,13 +126,14 @@ select pg_temp.money_shipment(221, 121, 15, 19);
 select pg_temp.money_shipment(222, 122, 16, 19);
 select pg_temp.money_shipment(223, 123, 17, 19);
 select pg_temp.money_shipment(224, 124, 15, 19);
-select pg_temp.complete(120, 1000, '10 days 3 hours');
-select pg_temp.complete(n, 1000) from generate_series(121, 123) as n;
+select pg_temp.transfer_group(n + 100) from generate_series(120, 124) as n;
+select pg_temp.complete(120, '10 days 3 hours');
+select pg_temp.complete(n) from generate_series(121, 123) as n;
 -- 124 stays delivered.
 select is(pg_temp.block(117), 'onboarding_pending', 'a seller who has not finished onboarding is blocked by pending onboarding');
 select is(pg_temp.block(120), 'onboarding_rejected', 'a seller Stripe rejected is blocked by the rejection');
 select is(pg_temp.block(121), 'payouts_disabled', 'a seller whose payouts Stripe disabled shows that reason');
-select is(pg_temp.gate(121), 'true:-:89000', 'the block reason leaves eligibility as it was');
+select is(pg_temp.gate(121), 'true:-:90000', 'the block reason leaves eligibility as it was');
 select is(pg_temp.block(122), 'errored', 'a seller whose bank account errored shows the bank status');
 select is(pg_temp.block(123), 'account_refresh_pending', 'an open account refresh shows as pending');
 select is(pg_temp.block(101), '-', 'a payout-ready seller has no block reason');
@@ -175,8 +182,9 @@ update public.connect_payout_runs
 set paid_at = '2026-11-01'::timestamptz + (right(id::text, 4)::integer - 7300) * interval '1 hour'
 where seller_id = pg_temp.mu(7001) and id <> pg_temp.mu(7321);
 select pg_temp.money_shipment(n + 100, n, 7002, 19) from generate_series(7131, 7132) as n;
-select pg_temp.complete(7131, 1000, '1 hour');
-select pg_temp.complete(7132, 1000, '2 hours');
+select pg_temp.transfer_group(n + 100) from generate_series(7131, 7132) as n;
+select pg_temp.complete(7131, '1 hour');
+select pg_temp.complete(7132, '2 hours');
 select pg_temp.money_shipment(n + 100, n, 7003, 19, 'shipped') from generate_series(7141, 7146) as n;
 select pg_temp.money_payout_run(7342, 7003, 10, array[7142, 7143]);
 select pg_temp.money_payout_run(7344, 7003, 10, array[7144], 'failed');
@@ -238,7 +246,7 @@ select throws_ok($$select public.fn_get_admin_payout_queue('', 'ready', 0, 'page
 reset role;
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
-select is(pg_temp.gate(101), 'true:-:441300', 'service_role reads the release view');
+select is(pg_temp.gate(101), 'true:-:470000', 'service_role reads the release view');
 select is(pg_temp.q('ready') -> 'counts' -> 'ready', '2'::jsonb, 'service_role runs the payout queue');
 reset role;
 select isnt_definer('public', 'fn_get_admin_payout_queue', array['text', 'text', 'integer', 'text'],

@@ -106,9 +106,9 @@ end $$;
 
 -- A payout run of p_seller started by admin p_actor over p_shipments, each
 -- mapped with its order_items net_payout_cents. amount_cents is the sum.
--- release-connect-payout maps release_amount_cents instead (the view's amount
--- after the label deduction); pass a shipment whose net_payout_cents already is the
--- amount a test needs.
+-- release-connect-payout maps release_amount_cents instead (the view's amount,
+-- the same sum of net_payout_cents, never reduced by the label cost); pass a
+-- shipment whose net_payout_cents already is the amount a test needs.
 create function pg_temp.money_payout_run(
   p_run integer, p_seller integer, p_actor integer, p_shipments integer[],
   p_status text default 'pending_reconciliation', p_stage text default 'ready'

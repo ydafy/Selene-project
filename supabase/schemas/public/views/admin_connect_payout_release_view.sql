@@ -6,19 +6,13 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             s.completed_at,
             s.stripe_payment_intent_id,
             s.stripe_payout_id,
-            s.shipping_cost_cents,
             pp.stripe_account_id,
             pp.stripe_onboarding_status,
             p.username AS seller_name,
             (s.status = 'completed'::public.order_status) AS is_completed,
             (s.completed_at IS NOT NULL) AS has_completed_at,
             (s.stripe_payment_intent_id IS NOT NULL) AS has_connect_payment_intent,
-            GREATEST(
-                CASE
-                    WHEN (o.stripe_transfer_group IS NOT NULL) THEN (COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer
-                    ELSE ((COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer - (COALESCE(s.shipping_cost_cents, (0)::bigint))::integer)
-                END, 0) AS release_amount_cents,
-            ((s.shipping_cost_cents IS NOT NULL) AND (s.shipping_cost_cents > 0)) AS has_shipping_cost_cents,
+            GREATEST((COALESCE(sum(oi.net_payout_cents), (0)::numeric))::integer, 0) AS release_amount_cents,
             (EXISTS ( SELECT 1
                    FROM public.disputes d
                   WHERE ((d.shipment_id = s.id) AND (d.status = ANY (ARRAY['open'::public.dispute_status, 'under_review'::public.dispute_status, 'waiting_return'::public.dispute_status, 'return_shipped'::public.dispute_status, 'return_delivered'::public.dispute_status]))))) AS has_active_dispute,
@@ -35,7 +29,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
              LEFT JOIN public.order_items oi ON ((oi.shipment_id = s.id)))
              LEFT JOIN public.profiles_private pp ON ((pp.id = s.seller_id)))
              LEFT JOIN public.profiles p ON ((p.id = s.seller_id)))
-          GROUP BY s.id, s.seller_id, s.order_id, s.status, s.completed_at, s.stripe_payment_intent_id, s.stripe_payout_id, s.shipping_cost_cents, pp.stripe_account_id, pp.stripe_onboarding_status, p.username, o.stripe_transfer_group, s.stripe_transfer_id
+          GROUP BY s.id, s.seller_id, s.order_id, s.status, s.completed_at, s.stripe_payment_intent_id, s.stripe_payout_id, pp.stripe_account_id, pp.stripe_onboarding_status, p.username, o.stripe_transfer_group, s.stripe_transfer_id
         )
  SELECT sa.shipment_id,
     sa.seller_id,
@@ -47,7 +41,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
     sa.stripe_account_id,
     sa.stripe_onboarding_status,
     sa.release_amount_cents,
-    (sa.is_completed AND sa.has_completed_at AND sa.has_connect_payment_intent AND (NOT sa.has_active_dispute) AND (NOT sa.has_active_release) AND (payout_run.id IS NULL) AND ((sa.transfer_group IS NOT NULL) OR sa.has_shipping_cost_cents) AND (sa.stripe_account_id IS NOT NULL) AND (sa.stripe_onboarding_status = 'complete'::public.stripe_onboarding_status) AND (sa.release_amount_cents > 0)) AS is_eligible,
+    (sa.is_completed AND sa.has_completed_at AND sa.has_connect_payment_intent AND (NOT sa.has_active_dispute) AND (NOT sa.has_active_release) AND (payout_run.id IS NULL) AND (sa.transfer_group IS NOT NULL) AND (sa.stripe_account_id IS NOT NULL) AND (sa.stripe_onboarding_status = 'complete'::public.stripe_onboarding_status) AND (sa.release_amount_cents > 0)) AS is_eligible,
         CASE
             WHEN (NOT sa.is_completed) THEN 'shipment_not_completed'::text
             WHEN (NOT sa.has_completed_at) THEN 'missing_completed_at'::text
@@ -57,7 +51,7 @@ CREATE VIEW "public"."admin_connect_payout_release_view" WITH (security_invoker=
             WHEN (payout_run.status = 'canceled'::text) THEN 'payout_canceled_manual_review'::text
             WHEN (payout_run.status = 'failed'::text) THEN 'payout_failed_retry_required'::text
             WHEN (payout_run.id IS NOT NULL) THEN 'payout_run_history_requires_review'::text
-            WHEN ((sa.transfer_group IS NULL) AND (NOT sa.has_shipping_cost_cents)) THEN 'missing_shipping_cost'::text
+            WHEN (sa.transfer_group IS NULL) THEN 'missing_transfer_group'::text
             WHEN (sa.stripe_account_id IS NULL) THEN 'missing_stripe_account'::text
             WHEN ((sa.stripe_onboarding_status <> 'complete'::public.stripe_onboarding_status) OR (sa.stripe_onboarding_status IS NULL)) THEN 'seller_not_payout_ready'::text
             WHEN (sa.release_amount_cents <= 0) THEN 'missing_release_amount'::text

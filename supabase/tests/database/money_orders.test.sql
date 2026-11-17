@@ -116,9 +116,9 @@ select throws_ok($$update public.order_items set net_payout_cents = -1 where pro
   '23514', null, 'a negative order_items.net_payout_cents is rejected');
 
 -- admin_connect_payout_release_view ----------------------------------------------
--- With a transfer group (single-modal checkout), release_amount_cents is the plain
--- sum of net_payout_cents; without one (legacy order), the shipment's cents
--- shipping_cost_cents is subtracted. Both floor at 0.
+-- release_amount_cents is the plain sum of net_payout_cents, floored at 0. The
+-- view never deducts the shipment's shipping_cost_cents, with or without a
+-- transfer group.
 select is(
   (select string_agg(right(shipment_id::text, 2) || ':' || release_amount_cents, ',' order by shipment_id)
    from public.admin_connect_payout_release_view where order_id = pg_temp.mu(41)),
@@ -126,18 +126,18 @@ select is(
 
 select pg_temp.money_product(14, 2, 100000);
 insert into public.orders (id, buyer_id, total_amount_cents, shipping_address, status, stripe_payment_intent_id)
-values (pg_temp.mu(42), pg_temp.mu(1), 100000, '{}'::jsonb, 'completed', 'pi_mo_legacy');
+values (pg_temp.mu(42), pg_temp.mu(1), 100000, '{}'::jsonb, 'completed', 'pi_mo_no_tg');
 insert into public.shipments (id, order_id, seller_id, status, stripe_payment_intent_id, shipping_cost_cents)
-values (pg_temp.mu(24), pg_temp.mu(42), pg_temp.mu(2), 'completed', 'pi_mo_legacy', 15000);
+values (pg_temp.mu(24), pg_temp.mu(42), pg_temp.mu(2), 'completed', 'pi_mo_no_tg', 15000);
 insert into public.order_items (order_id, product_id, seller_id, price_at_purchase_cents, net_payout_cents, shipment_id)
 values (pg_temp.mu(42), pg_temp.mu(14), pg_temp.mu(2), 100000, 90001, pg_temp.mu(24));
 select is(
   (select release_amount_cents from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(24)),
-  75001, 'release view: a legacy shipment releases sum(net_payout_cents) - shipping_cost_cents');
+  90001, 'release view: the label cost is never deducted from sum(net_payout_cents)');
 update public.shipments set shipping_cost_cents = 95000 where id = pg_temp.mu(24);
 select is(
   (select release_amount_cents from public.admin_connect_payout_release_view where shipment_id = pg_temp.mu(24)),
-  0, 'release view: a legacy shipment whose shipping cost exceeds the payout releases 0');
+  90001, 'release view: a label cost above the payout is never deducted either');
 select col_type_is('public', 'admin_connect_payout_release_view', 'release_amount_cents', 'integer',
   'release view: release_amount_cents keeps its integer type');
 
