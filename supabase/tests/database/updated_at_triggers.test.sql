@@ -73,7 +73,9 @@ select is(
   'internal.fn_set_updated_at() pins an empty search_path and is SECURITY INVOKER');
 
 -- (c) Behavior on system_settings, which nothing updated before.
-insert into public.system_settings (id) values (1) on conflict (id) do nothing;
+insert into public.system_settings (
+  id, service_fee_pct, insurance_rate, shipping_buffer_cents, return_label_fee_cents
+) values (1, 0.06, 0.012, 3000, 30000) on conflict (id) do nothing;
 update public.system_settings set updated_at = timestamptz '2026-01-01 00:00:00+00' where id = 1;
 select is(
   (select updated_at from public.system_settings where id = 1),
