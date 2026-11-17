@@ -26,6 +26,8 @@
     "api:test": "cd bruno && bunx @usebruno/cli@4.2.1 run -r --env local",
     "test:db": "supabase test db",
     "db:schema:check": "bun scripts/verify/declarative-schema-check.ts",
+    "db:lint:migrations": "bun scripts/ci/lint-migrations.ts",
+    "db:advisors:check": "bun scripts/ci/check-security-advisors.ts",
     "verify:harnesses": "bun scripts/verify/run-harnesses.ts",
     "test:e2e": "playwright test",
     "test:e2e:local": "playwright test -c playwright.local.config.ts",
@@ -67,6 +69,7 @@
     "knip": "^6.44.2",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
+    "squawk-cli": "2.72.0",
     "stripe": "23.1.0",
     "typescript": "~6.0.3",
     "zod": "4.6.7"

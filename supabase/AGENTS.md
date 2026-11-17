@@ -49,6 +49,20 @@ The schema files cannot hold some changes. Write those by hand with `supabase mi
 
 When a hand-written migration changes the schema, run `supabase db reset` and then `supabase db schema declarative generate --overwrite` so `schemas/` matches it, and run `bun run db:schema:check`.
 
+## Migration lint
+
+Squawk lints every migration a pull request adds (`db-test` runs `bun run db:lint:migrations --base <base commit>`); run `bun run db:lint:migrations <file.sql>` on a new migration before you commit it. The rules are in `.squawk.toml`. It excludes the lock-duration rules (tables stay small at the design target) and the drop rules that `declarative sync` triggers on every function, view, type or constraint change. The rules that stay blocking catch what fails a deploy against rows that already exist or breaks a client that still reads the old shape, among them: dropping or renaming a column or table, renaming a type or enum value, changing a column type, adding a `NOT NULL` column without a default, dropping a default or a `NOT NULL`, moving an object to another schema, and `BEGIN`/`COMMIT` inside a migration (the CLI already wraps each file in a transaction).
+
+Each finding names its rule; `https://squawkhq.com/docs/<rule>` explains it and the safe alternative. Before go-live there is no installed app to protect, so a deliberate drop or rename is fine, but it is visible: silence the rule for that statement with Squawk's comment and a reason on the line right above it. `bun run db:lint:migrations` fails an ignore without one.
+
+```sql
+-- reason: pre-launch, no installed app reads shipments.label_url (#644)
+-- squawk-ignore ban-drop-column
+ALTER TABLE public.shipments DROP COLUMN label_url;
+```
+
+`-- squawk-ignore <rule>` covers the next statement only; to silence several rules there, list them in one comment (`-- squawk-ignore ban-drop-column, renaming-column`). `-- squawk-ignore-file <rule>` covers the whole file. Every ignore, in any comment form, needs the reason line. Never add a rule to `excluded_rules` to pass one migration.
+
 ## Local stack
 
 `supabase start` runs the full stack in Docker (Docker Desktop must be running). The experimental stack mode is on (`[experimental] stack = true` in `supabase/config.toml`): every worktree and branch gets its own local project with its own ports and data, so worktrees run in parallel. Ports are assigned automatically and stay stable; read them with `supabase status --env` (JSON), never assume `54321`. Every service except the database is lazy: it sleeps after its last request (about 60 s, measured on REST and Edge Functions) and starts on the next one. `supabase db reset` rebuilds the local database from `supabase/migrations/`: the schema baseline plus every later migration. Test data-mutating SQL here, never on the remote project.
