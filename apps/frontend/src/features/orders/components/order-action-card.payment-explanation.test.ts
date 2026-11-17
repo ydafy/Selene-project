@@ -19,9 +19,11 @@ describe('shared seller payment explanation', () => {
     const onboarding = read('src/app/sell/onboarding.tsx');
     const success = onboarding.slice(
       onboarding.indexOf("if (onboardingUi.viewState === 'success')"),
-      onboarding.indexOf('ref={scrollViewRef}'),
+      onboarding.indexOf('<OnboardingGuideCards />'),
     );
-    expect(success).toContain('<SellerPaymentExplanation />');
+    expect(success).toContain(
+      '<PaymentsExplanationToggle> <SellerPaymentExplanation /> </PaymentsExplanationToggle>',
+    );
     expect(onboarding.match(/<SellerPaymentExplanation/g)).toHaveLength(1);
     expect(success).toContain('CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE');
   });
