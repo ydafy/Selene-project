@@ -12,9 +12,9 @@ Roadmap #623, item 6: #629. actionlint and zizmor check `.github/workflows/` on 
 
 ## Tasks
 
-- [x] T1 (S1, S2): workflow fixes. Route: `gentle-ai-worker`. Commit: 2d21353c
-- [x] T2 (S3, S4): `repo-checks` job and docs. Route: `gentle-ai-worker`. Commit: see L5
-- [ ] T3: independent verification (Risk: item 5, CI). Route: `gentle-ai-verify`, no workspace copy. Evidence: pending
+- [x] T1 (S1, S2): workflow fixes. Route: `gentle-ai-worker`. Commit: da6e5947
+- [x] T2 (S3, S4): `repo-checks` job and docs. Route: `gentle-ai-worker`. Commit: 55d54554
+- [x] T3: independent verification (Risk: item 5, CI). Route: `gentle-ai-verify`, no workspace copy. Evidence: L6
 
 ## Log
 
@@ -23,3 +23,4 @@ Roadmap #623, item 6: #629. actionlint and zizmor check `.github/workflows/` on 
 - L3. Maintainer decision (2026-11-17): drop gitleaks. Research: zizmor runs in CI at vercel/vercel, supabase/supabase, astral-sh/uv and ruff, python/cpython and grafana; none of 18 reference repositories runs gitleaks (grafana runs trufflehog); the rest rely on GitHub secret scanning, free on public repositories over the whole history. In a public repository CI runs after the push already published a secret, so only push protection prevents exposure, and it is on. The maintainer will check whether "Generic patterns" can be enabled in Settings > Advanced Security.
 - L4. Idea #687 (maintainer's request): the weekly dependency report tracks pinned tool binaries; revisit in the routine of Monday 2026-11-23.
 - L5. T1 and T2 checks (worker, 2026-11-17): actionlint with shellcheck 0.11.0 exit 0; zizmor online "No findings to report" (15 suppressed, pedantic persona only); `bun test scripts/ci/workflow-actions.test.ts scripts/ci/dependency-report.test.ts scripts/guards` 233 pass; prettier clean; `deno check --frozen ./*/index.ts` checks the same 44 files. RED: a scratch workflow with `run: echo ${{ github.event.issue.title }}` fails actionlint (exit 1) and zizmor `template-injection` (exit 14); `sha256sum -c` with a wrong hash fails. The install step ran under git-bash with a simulated `RUNNER_TEMP`. Not yet proven: the job on a real `ubuntu-latest` runner.
+- L6. Independent verification (gentle-ai-verify, 2026-11-17, in place): S1-S4 PASS, S5 out of scope. Independent sha256 match for both binaries; a wrong hash stops the install before extraction; zizmor 1.32.0 with `--format github` exits 14 on an error and 12 on a warning; zizmor on the base workflows still reports the 11 calibration findings; `bun test scripts/ci/workflow-actions.test.ts scripts/guards` 144 pass. Advisories, not fixed: the actionlint release is not immutable (the sha pin covers it); after a failed install the zizmor step adds one "command not found" line. Not verified: the job on a real runner (the pull request run proves it).
