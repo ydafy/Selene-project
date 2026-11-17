@@ -16,7 +16,7 @@ Scope reviewed against the code and the live project on 2026-11-16 (L2): leases,
 
 ## Tasks
 
-- [ ] T1 (S1, #636) dead objects. Inline. Commit SQL + types, then TS.
+- [ ] T1 (S1, #636) dead objects. Inline. Settings and enum 4d24cf17, Seguro constants 5ed82cff; the payout view legacy branch is next, in its own commit (money, L7).
 - [ ] T2 (S2, #637) one source per money value. Own commit (money).
 - [ ] T3 (S3, #638) superseded by #648 (roadmap #644, L6); not done here.
 - [ ] T4 (S4, #639) shipments column grants for clients. Own commit (RLS/grants).
@@ -33,3 +33,4 @@ Scope reviewed against the code and the live project on 2026-11-16 (L2): leases,
 - L4 (2026-11-16, agent recommendation): #64 stays a separate payments feature (open product decisions: who qualifies, N sales or a date, whether refunds count, what the seller sees). S2 keeps `service_fee_pct` as the single default rate #64 builds on.
 - L5 (2026-11-16, maintainer): "master , como metemos mas cosas, acttualiza los sub issues o issues paarq ue qeuden como que anotados como evidencia, no lo hagamos nomas aqui, y un dia si alguien lee el rodamp se quede con lo que estaba hi y no los cambios". Done: #309 split into sub-issues #636-#642 (attached to #309), #309 body rewritten with the reviewed scope, evidence comments on #309, #299 and #64.
 - L6 (2026-11-16, decisions): whole-schema review against the design target (50k users, 5k orders a month; `docs/conventions.md`, "Design target", branch `docs/design-target` commit ed31c863, #645) produced roadmap #644. #638 is superseded by #648; #639 moved to #644 item 7. Order: #636 and #637 first, then #644's money core design (#646). Maintainer: next session starts with T1.
+- L7 (2026-11-17, maintainer): "Seguimos #309 en supabase-health: leé en Engram odd/table-cleanup/tasks y roadmap/data-model-design-target, rebaseá chore/table-cleanup sobre origin/main y arrancá T1 (#636). De paso revisá por MCP la primera corrida de purge-old-evidence. Cuando lleguemos a #646, aplicá el principio 12 de selene-engineering-principles." Evidence: `purge-old-evidence` is active (`0 9 * * *`) and has not run yet at 01:00 UTC. `calculateSeguroSeleneCents` had no callers and ignored its rate arguments, so it went with the constants. The payout view's legacy branch is not just dead text: it reports a shipment without a transfer group as eligible when it has a label cost, while `fn_begin_shipment_transfer` refuses any order without one; `payout_runs_view.test.sql` and `shipment_funds_release.test.sql` build most fixtures on that legacy path and must move to transfer-group orders. Dropping `isr_withholding_pct` and `iva_withholding_pct` leaves the tax withholding question without an owner: #658 (Go-live).
