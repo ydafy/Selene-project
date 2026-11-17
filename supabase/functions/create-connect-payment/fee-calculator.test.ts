@@ -4,16 +4,35 @@ import {
   assertValidCheckoutAllocation,
   assertValidConnectMoneyFlow,
   calculateCheckoutAllocation,
-  calculateEstimatedSellerShippingDeductionCents,
   calculateConnectMoneyFlow,
-  normalizeEnviaInsuranceRate,
+  type SellerAllocationInput,
 } from './fee-calculator.ts';
+
+const RATE = 0.06;
+
+// Every allocation row carries the economics frozen at publication; the
+// reserve is the row's shipping deduction.
+const withSnapshot = (
+  row: Omit<SellerAllocationInput, 'publicationSnapshot'>,
+  commissionRate = RATE,
+): SellerAllocationInput => ({
+  ...row,
+  publicationSnapshot: {
+    publication_shipping_reserve_cents: row.shippingCents,
+    publication_commission_rate: commissionRate,
+    publication_insurance_rate: 0.012,
+  },
+});
+const allocate = (
+  sellers: Omit<SellerAllocationInput, 'publicationSnapshot'>[],
+) => calculateCheckoutAllocation(sellers.map((seller) => withSnapshot(seller)));
 
 describe('create-connect-payment fee calculator', () => {
   it('charges the buyer only subtotal plus Seguro Selene', () => {
     const flow = calculateConnectMoneyFlow({
       subtotalCents: 100_000,
       shippingCents: 20_000,
+      commissionRate: RATE,
     });
 
     expect(flow).toEqual({
@@ -31,43 +50,45 @@ describe('create-connect-payment fee calculator', () => {
     const flow = calculateConnectMoneyFlow({
       subtotalCents: 100_000,
       shippingCents: 50_000,
+      commissionRate: RATE,
     });
 
     expect(flow.seguroCents).toBe(4_722);
     expect(flow.buyerChargeCents).toBe(104_722);
   });
 
-  it('calculates estimate-first seller shipping deduction from quote, buffer, and Envia insurance', () => {
-    expect(
-      calculateEstimatedSellerShippingDeductionCents({
-        priceCents: 800_000,
-        quotedShippingCents: 18_600,
-        shippingBufferCents: 3_000,
-        insuranceRate: 0.012,
-      }),
-    ).toBe(31_200);
-  });
-
-  it('keeps missing quoted shipping at zero so payout release can block it', () => {
-    expect(
-      calculateEstimatedSellerShippingDeductionCents({
-        priceCents: 800_000,
-        quotedShippingCents: 0,
-      }),
-    ).toBe(0);
-  });
-
-  it('normalizes Envia insurance settings defensively', () => {
-    expect(normalizeEnviaInsuranceRate(0.012)).toBe(0.012);
-    expect(normalizeEnviaInsuranceRate(1.2)).toBe(0.012);
-    expect(normalizeEnviaInsuranceRate(120)).toBe(0.012);
-    expect(normalizeEnviaInsuranceRate(null)).toBe(0);
+  it('requires an explicit commission rate, a fraction in 0..1', () => {
+    for (const commissionRate of [
+      undefined,
+      Number.NaN,
+      -0.01,
+      1.01,
+      6,
+    ] as unknown as number[]) {
+      expect(() =>
+        calculateConnectMoneyFlow({
+          subtotalCents: 100_000,
+          shippingCents: 20_000,
+          commissionRate,
+        }),
+      ).toThrow(new Error('INVALID_MONEY_FLOW_INPUT:commissionRate'));
+    }
+    for (const commissionRate of [0, 1]) {
+      expect(
+        calculateConnectMoneyFlow({
+          subtotalCents: 100_000,
+          shippingCents: 0,
+          commissionRate,
+        }).commissionCents,
+      ).toBe(100_000 * commissionRate);
+    }
   });
 
   it('rejects negative seller economics before creating a PaymentIntent', () => {
     const flow = calculateConnectMoneyFlow({
       subtotalCents: 10_000,
       shippingCents: 20_000,
+      commissionRate: RATE,
     });
 
     expect(() => assertValidConnectMoneyFlow(flow)).toThrow(
@@ -78,7 +99,7 @@ describe('create-connect-payment fee calculator', () => {
 
 describe('create-connect-payment checkout allocation (single-modal)', () => {
   it('produces one AllocationRow per seller with gross, commission, shipping, seguro, net, and the durable shipment id', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -103,8 +124,9 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     const legacy = calculateConnectMoneyFlow({
       subtotalCents: 100_000,
       shippingCents: 20_000,
+      commissionRate: RATE,
     });
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -123,7 +145,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('reconciles buyer total and seller release across multiple sellers', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -158,7 +180,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('verifies the buyer total equals gross plus seguro across all sellers', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -179,7 +201,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('rounds commission down and seguro up without breaking the per-row reconciliation', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       // 1_005 * 0.06 = 60.3 -> round to 60 (commission)
       // Gross-up formula returns 407 cents of buyer fee for a 1_005-cent subtotal.
       // net = 1_005 - 60 - 0 = 945
@@ -204,39 +226,36 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('applies a custom platform commission rate per row', () => {
-    const allocation = calculateCheckoutAllocation(
-      [
+    const allocation = calculateCheckoutAllocation([
+      withSnapshot(
         {
           sellerId: 'seller-x',
           shipmentId: 'ship-x',
           subtotalCents: 100_000,
           shippingCents: 0,
         },
-      ],
-      { commissionRate: 0.1 },
-    );
+        0.1,
+      ),
+    ]);
 
     expect(allocation.rows[0].commissionCents).toBe(10_000);
     expect(allocation.rows[0].netCents).toBe(90_000);
   });
 
-  it('uses the publication snapshot reserve and commission before current settings', () => {
-    const allocation = calculateCheckoutAllocation(
-      [
-        {
-          sellerId: 'seller-snapshot',
-          shipmentId: '018f8b5e-89b5-7cc7-9c89-5d4df4b79e1f',
-          subtotalCents: 100_000,
-          shippingCents: 99_999,
-          publicationSnapshot: {
-            publication_shipping_reserve_cents: 18_200,
-            publication_commission_rate: 0.08,
-            publication_insurance_rate: 0.012,
-          },
+  it('prices the row from its publication snapshot reserve and commission', () => {
+    const allocation = calculateCheckoutAllocation([
+      {
+        sellerId: 'seller-snapshot',
+        shipmentId: '018f8b5e-89b5-7cc7-9c89-5d4df4b79e1f',
+        subtotalCents: 100_000,
+        shippingCents: 99_999,
+        publicationSnapshot: {
+          publication_shipping_reserve_cents: 18_200,
+          publication_commission_rate: 0.08,
+          publication_insurance_rate: 0.012,
         },
-      ],
-      { commissionRate: 0.06 },
-    );
+      },
+    ]);
 
     expect(allocation.rows[0]).toMatchObject({
       commissionCents: 8_000,
@@ -245,41 +264,43 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     });
   });
 
-  it('uses trusted legacy economics only when every snapshot field is absent', () => {
-    const allocation = calculateCheckoutAllocation([
-      {
-        sellerId: 'seller-legacy',
-        shipmentId: '018f8b5e-89b5-5cc7-9c89-5d4df4b79e1f',
-        subtotalCents: 100_000,
-        shippingCents: 0,
-        publicationSnapshot: {
-          publication_shipping_reserve_cents: null,
-          publication_commission_rate: null,
-          publication_insurance_rate: null,
+  it('rejects an all-null publication snapshot instead of pricing it from settings', () => {
+    expect(() =>
+      calculateCheckoutAllocation([
+        {
+          sellerId: 'seller-legacy',
+          shipmentId: '018f8b5e-89b5-5cc7-9c89-5d4df4b79e1f',
+          subtotalCents: 100_000,
+          shippingCents: 0,
+          publicationSnapshot: {
+            publication_shipping_reserve_cents: null,
+            publication_commission_rate: null,
+            publication_insurance_rate: null,
+          },
         },
-        legacyEconomics: {
-          shippingReserveCents: 20_000,
-          commissionRate: 0.07,
-          insuranceRate: 0.012,
-        },
-      },
-    ]);
+      ]),
+    ).toThrow(new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT'));
+  });
 
-    expect(allocation.rows[0]).toMatchObject({
-      commissionCents: 7_000,
-      shippingCents: 20_000,
-      netCents: 73_000,
-    });
+  it('rejects a row without a publication snapshot', () => {
+    expect(() =>
+      calculateCheckoutAllocation([
+        {
+          sellerId: 'seller-a',
+          shipmentId: 'ship-a',
+          subtotalCents: 100_000,
+          shippingCents: 20_000,
+        } as SellerAllocationInput,
+      ]),
+    ).toThrow(new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT'));
   });
 
   it('rejects an empty seller set as an invalid checkout input', () => {
-    expect(() => calculateCheckoutAllocation([])).toThrow(
-      'INVALID_CHECKOUT_INPUT',
-    );
+    expect(() => allocate([])).toThrow('INVALID_CHECKOUT_INPUT');
   });
 
   it('allocates independent shipments and cent-exact seguro to two products from one seller', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-product-a',
@@ -312,7 +333,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     };
 
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         positive,
         {
           sellerId: 'seller-b',
@@ -325,7 +346,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     ).toThrow(new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'));
 
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         {
           sellerId: 'seller-a',
           shipmentId: 'ship-negative',
@@ -337,15 +358,15 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
 
     // A non-integer subtotal keeps the money-flow code it had before #294.
     for (const subtotalCents of [1.5, Number.NaN]) {
-      expect(() =>
-        calculateCheckoutAllocation([{ ...positive, subtotalCents }]),
-      ).toThrow(new Error('INVALID_MONEY_FLOW_INPUT:subtotalCents'));
+      expect(() => allocate([{ ...positive, subtotalCents }])).toThrow(
+        new Error('INVALID_MONEY_FLOW_INPUT:subtotalCents'),
+      );
     }
   });
 
   it('rejects negative seller nets during allocation', () => {
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         // subtotal 10_000, commission 600, shipping 20_000 -> net = -10_600
         {
           sellerId: 'seller-negative',
@@ -358,7 +379,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('validates reconciliation invariants on a built allocation', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -377,7 +398,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('fails validation when the buyer total does not reconcile with gross plus seguro', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -396,7 +417,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('fails validation when a per-row reconciliation is broken', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -427,7 +448,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('preserves each shipment id on its allocation row across multiple sellers', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -460,7 +481,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
 
   it('rejects an allocation input with a missing or empty shipment id', () => {
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         {
           sellerId: 'seller-a',
           shipmentId: '',
@@ -473,7 +494,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
     // Triangulate: absent shipment id (runtime undefined) is also rejected so
     // correlation can never silently fall back to seller id alone.
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         {
           sellerId: 'seller-a',
           shipmentId: undefined as unknown as string,
@@ -486,7 +507,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
 
   it('rejects duplicate shipment ids in the allocation input to prevent ambiguous correlation', () => {
     expect(() =>
-      calculateCheckoutAllocation([
+      allocate([
         {
           sellerId: 'seller-a',
           shipmentId: 'ship-shared',
@@ -504,7 +525,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('fails reconciliation validation when a row is missing a shipment id', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',
@@ -521,7 +542,7 @@ describe('create-connect-payment checkout allocation (single-modal)', () => {
   });
 
   it('fails reconciliation validation when shipment ids are duplicated across rows', () => {
-    const allocation = calculateCheckoutAllocation([
+    const allocation = allocate([
       {
         sellerId: 'seller-a',
         shipmentId: 'ship-a',

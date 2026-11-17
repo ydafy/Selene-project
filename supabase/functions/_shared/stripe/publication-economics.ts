@@ -10,13 +10,6 @@ export type PublicationEconomicsSnapshot = {
   publication_insurance_rate: unknown;
 };
 
-export type SellerShippingReserveInput = {
-  priceCents: number;
-  quotedShippingCents: number;
-  shippingBufferCents: number;
-  insuranceRate: number;
-};
-
 const isCents = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
@@ -26,46 +19,18 @@ const isRate = (value: unknown): value is number =>
   value >= 0 &&
   value <= 1;
 
-/** Calculates the publication-time seller reserve from trusted quote inputs. */
-export function calculateEstimatedSellerShippingDeductionCents({
-  priceCents,
-  quotedShippingCents,
-  shippingBufferCents,
-  insuranceRate,
-}: SellerShippingReserveInput): number {
-  if (
-    !isCents(priceCents) ||
-    !isCents(quotedShippingCents) ||
-    !isCents(shippingBufferCents) ||
-    !isRate(insuranceRate)
-  ) {
-    throw new Error('INVALID_PUBLICATION_ECONOMICS');
-  }
-
-  const insuranceCents = Math.ceil(priceCents * insuranceRate);
-  const reserveCents =
-    quotedShippingCents + shippingBufferCents + insuranceCents;
-  if (!Number.isSafeInteger(reserveCents)) {
-    throw new Error('INVALID_PUBLICATION_ECONOMICS');
-  }
-
-  return reserveCents;
-}
-
 /**
- * Returns null exclusively for an all-null legacy row. Partial snapshots fail
- * closed so callers cannot combine historical and current financial inputs.
+ * Parses the economics frozen into a product at publication. Every field is
+ * required and rates are fractions in 0..1; a missing, partial, or invalid
+ * snapshot fails closed so checkout never prices a product from current
+ * settings or code defaults.
  */
 export function validatePublicationEconomicsSnapshot(
   snapshot: PublicationEconomicsSnapshot,
-): PublicationEconomics | null {
+): PublicationEconomics {
   const reserve = snapshot.publication_shipping_reserve_cents;
   const commission = snapshot.publication_commission_rate;
   const insurance = snapshot.publication_insurance_rate;
-  if (reserve === null && commission === null && insurance === null) {
-    return null;
-  }
-
   if (!isCents(reserve) || !isRate(commission) || !isRate(insurance)) {
     throw new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT');
   }
@@ -75,13 +40,4 @@ export function validatePublicationEconomicsSnapshot(
     commissionRate: commission,
     insuranceRate: insurance,
   };
-}
-
-export function resolvePublicationEconomics(
-  snapshot: PublicationEconomicsSnapshot,
-  resolveLegacyEconomics: () => PublicationEconomics,
-): PublicationEconomics {
-  return (
-    validatePublicationEconomicsSnapshot(snapshot) ?? resolveLegacyEconomics()
-  );
 }

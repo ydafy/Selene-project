@@ -48,6 +48,13 @@ import { calculateOrderCalculations } from '../../../apps/frontend/src/features/
  *    — never a per-seller paymentIntents[] array.
  */
 
+// The economics frozen at publication: 6% commission, the row's reserve.
+const snapshotFor = (shippingReserveCents: number) => ({
+  publication_shipping_reserve_cents: shippingReserveCents,
+  publication_commission_rate: 0.06,
+  publication_insurance_rate: 0.012,
+});
+
 const buildAllocation = (
   rows: Array<{
     shipmentId: string;
@@ -61,6 +68,7 @@ const buildAllocation = (
       shipmentId: r.shipmentId,
       subtotalCents: r.subtotalCents,
       shippingCents: r.shippingCents,
+      publicationSnapshot: snapshotFor(r.shippingCents),
     })),
   );
   assertValidCheckoutAllocation(allocation);
@@ -450,6 +458,7 @@ describe('single-payment-builder > buildSinglePaymentIntentParams', () => {
           shipmentId: r.shipmentId,
           subtotalCents: r.subtotalCents,
           shippingCents: r.shippingCents,
+          publicationSnapshot: snapshotFor(r.shippingCents),
         })),
       );
       assertValidCheckoutAllocation(allocation);

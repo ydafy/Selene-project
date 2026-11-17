@@ -161,7 +161,6 @@ describe('create-connect-payment handler: successful checkout', () => {
       'auth.getUser',
       'rpc:fn_reserve_products',
       'from:products',
-      'from:system_settings',
       'from:profiles_private',
       'from:profiles_private',
       'stripe.ephemeralKeys.create',
@@ -174,14 +173,6 @@ describe('create-connect-payment handler: successful checkout', () => {
         ops: [
           ['select', PRODUCTS_SELECT],
           ['in', 'id', [PRODUCT_1]],
-        ],
-      },
-      {
-        table: 'system_settings',
-        ops: [
-          ['select', 'shipping_buffer_cents, insurance_rate, service_fee_pct'],
-          ['eq', 'id', 1],
-          ['maybeSingle'],
         ],
       },
       {
@@ -305,7 +296,7 @@ describe('create-connect-payment handler: successful checkout', () => {
         args: { p_product_ids: [PRODUCT_1, PRODUCT_2], p_buyer_id: BUYER_ID },
       },
     ]);
-    expect(result.queries[2].ops).toEqual([
+    expect(result.queries[1].ops).toEqual([
       ['select', 'id, stripe_account_id, stripe_onboarding_status'],
       ['in', 'id', [SELLER_A, SELLER_B]],
     ]);
@@ -320,75 +311,33 @@ describe('create-connect-payment handler: successful checkout', () => {
       ['uuid-3', [PRODUCT_2]],
     ]);
   });
-
-  it('still charges when system settings cannot be read', async () => {
-    const result = await runCreateConnectPayment({ settingsError: 'boom' });
-
-    expect(result.status).toBe(200);
-    expect(result.paymentIntentsCreate).toHaveLength(1);
-  });
 });
 
-describe('create-connect-payment handler: legacy publication economics', () => {
-  const legacy = productRow({
-    publication_shipping_reserve_cents: null,
-    publication_commission_rate: null,
-    publication_insurance_rate: null,
-  });
-
-  it('backfills an all-null snapshot and prices the shipment from the backfill', async () => {
-    const result = await runCreateConnectPayment({ products: [legacy] });
-    const expected = expectedPaymentIntentParams({
-      orderId: 'uuid-1',
-      customerId: CUSTOMER_ID,
-      products: [
-        {
-          productId: PRODUCT_1,
-          sellerId: SELLER_A,
-          shipmentId: 'uuid-2',
-          subtotalCents: 123_450,
-          snapshot: {
-            publication_shipping_reserve_cents: 9_000,
-            publication_commission_rate: 0.06,
-            publication_insurance_rate: 0.012,
-          },
-        },
-      ],
-    });
-
-    expect(result.status).toBe(200);
-    expect(result.rpcs).toEqual([
-      RESERVE_RPC,
+describe('create-connect-payment handler: publication economics snapshot', () => {
+  for (const [label, snapshot] of [
+    [
+      'missing',
       {
-        name: 'backfill_product_publication_economics',
-        args: { p_product_id: PRODUCT_1 },
+        publication_shipping_reserve_cents: null,
+        publication_commission_rate: null,
+        publication_insurance_rate: null,
       },
-    ]);
-    expect(result.paymentIntentsCreate).toEqual([[expected, {}]]);
-  });
-
-  for (const [label, backfill] of [
-    ['an error', { data: null, error: { message: 'boom' } }],
-    ['no row', { data: [], error: null }],
+    ],
+    ['partial', { publication_commission_rate: null }],
+    ['a percent commission rate', { publication_commission_rate: 6 }],
   ] as const) {
-    it(`releases the reservation when the backfill returns ${label}`, async () => {
+    it(`answers 500 INVALID_PUBLICATION_ECONOMICS_SNAPSHOT when the snapshot is ${label}, after releasing, without reading settings`, async () => {
       const result = await runCreateConnectPayment({
-        products: [legacy],
-        backfill,
+        products: [productRow(snapshot)],
       });
 
-      expect(result.status).toBe(400);
+      expect(result.status).toBe(500);
       expect(result.body).toEqual({
-        error: 'LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE',
+        error: 'INVALID_PUBLICATION_ECONOMICS_SNAPSHOT',
       });
-      expect(result.rpcs).toEqual([
-        RESERVE_RPC,
-        {
-          name: 'backfill_product_publication_economics',
-          args: { p_product_id: PRODUCT_1 },
-        },
-        RELEASE_RPC,
-      ]);
+      expect(result.rpcs).toEqual([RESERVE_RPC, RELEASE_RPC]);
+      expect(result.calls.at(-1)).toBe('rpc:fn_release_products');
+      expect(result.queries.map((query) => query.table)).toEqual(['products']);
       expect(moneyEffects(result)).toEqual(NO_MONEY_EFFECTS);
     });
   }

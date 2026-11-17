@@ -33,10 +33,12 @@ import { z } from '../_shared/zod-runtime.ts';
 import {
   assertValidCheckoutAllocation,
   calculateCheckoutAllocation,
-  calculateEstimatedSellerShippingDeductionCents,
-  normalizeEnviaInsuranceRate,
   type SellerAllocationInput,
 } from './fee-calculator.ts';
+import {
+  validatePublicationEconomicsSnapshot,
+  type PublicationEconomicsSnapshot,
+} from '../_shared/stripe/publication-economics.ts';
 import {
   assertReservationSucceeded,
   assertValidAllocationRows,
@@ -53,17 +55,6 @@ import {
 } from './seller-payment-readiness.ts';
 
 const APP_NAME = 'selene';
-
-type ProductPublicationEconomicsRow = {
-  publication_shipping_reserve_cents: number | null;
-  publication_commission_rate: number | null;
-  publication_insurance_rate: number | null;
-};
-
-const hasNoPublicationEconomics = (row: ProductPublicationEconomicsRow) =>
-  row.publication_shipping_reserve_cents === null &&
-  row.publication_commission_rate === null &&
-  row.publication_insurance_rate === null;
 
 const ItemSchema = z.object({
   productId: z.string().uuid(),
@@ -257,7 +248,7 @@ export function createCreateConnectPaymentHandler(
       const { data: products, error: productsError } = await supabaseAdmin
         .from('products')
         .select(
-          'id, seller_id, price_cents, name, shipping_cost_cents, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate',
+          'id, seller_id, price_cents, name, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate',
         )
         .in('id', productIds);
       if (productsError || !products?.length) {
@@ -265,106 +256,47 @@ export function createCreateConnectPaymentHandler(
         throw new Error('PRODUCTS_NOT_FOUND');
       }
 
-      const { data: systemSettings, error: settingsError } = await supabaseAdmin
-        .from('system_settings')
-        .select('shipping_buffer_cents, insurance_rate, service_fee_pct')
-        .eq('id', 1)
-        .maybeSingle();
-
-      if (settingsError) {
-        log(
-          'warn',
-          'System settings unavailable; using shipping estimate defaults',
-          { error: settingsError.message },
-        );
-      }
-
       // 6. Build one allocation for every purchased listing. A seller can own
       // multiple listings in an order, but each keeps an independent shipment,
-      // label, tracking, and payout boundary.
+      // label, tracking, and payout boundary. Each listing is priced only from
+      // the economics frozen into it at publication; a listing without a valid
+      // snapshot fails checkout instead of falling back to current settings.
       const productAllocations: Array<{
         productId: string;
         sellerId: string;
         subtotalCents: number;
         shippingCents: number;
-        publicationSnapshot: ProductPublicationEconomicsRow;
-        legacyEconomics?: {
-          shippingReserveCents: number;
-          commissionRate: number;
-          insuranceRate: number;
-        };
+        publicationSnapshot: PublicationEconomicsSnapshot;
       }> = [];
 
       for (const product of products) {
         const item = items.find((i) => i.productId === product.id);
         if (!item) continue;
 
-        const productEconomics = product as typeof product &
-          ProductPublicationEconomicsRow;
-        const subtotalCents = product.price_cents * item.quantity;
-        const shippingBufferCents =
-          systemSettings?.shipping_buffer_cents == null
-            ? undefined
-            : systemSettings.shipping_buffer_cents * item.quantity;
-        let publicationSnapshot: ProductPublicationEconomicsRow = {
+        const publicationSnapshot: PublicationEconomicsSnapshot = {
           publication_shipping_reserve_cents:
-            productEconomics.publication_shipping_reserve_cents,
-          publication_commission_rate:
-            productEconomics.publication_commission_rate,
-          publication_insurance_rate:
-            productEconomics.publication_insurance_rate,
+            product.publication_shipping_reserve_cents,
+          publication_commission_rate: product.publication_commission_rate,
+          publication_insurance_rate: product.publication_insurance_rate,
         };
-        let legacyEconomics:
-          | {
-              shippingReserveCents: number;
-              commissionRate: number;
-              insuranceRate: number;
-            }
-          | undefined;
-
-        if (hasNoPublicationEconomics(publicationSnapshot)) {
-          const insuranceRate = normalizeEnviaInsuranceRate(
-            systemSettings?.insurance_rate ?? null,
-          );
-          legacyEconomics = {
-            shippingReserveCents:
-              calculateEstimatedSellerShippingDeductionCents({
-                priceCents: subtotalCents,
-                quotedShippingCents:
-                  product.shipping_cost_cents * item.quantity,
-                shippingBufferCents,
-                insuranceRate,
-              }),
-            commissionRate: normalizeEnviaInsuranceRate(
-              systemSettings?.service_fee_pct ?? null,
-            ),
-            insuranceRate,
-          };
-
-          const { data: backfilledSnapshot, error: backfillError } =
-            await supabaseAdmin.rpc('backfill_product_publication_economics', {
-              p_product_id: product.id,
-            });
-          const backfilled = Array.isArray(backfilledSnapshot)
-            ? backfilledSnapshot[0]
-            : backfilledSnapshot;
-          if (backfillError || !backfilled || typeof backfilled !== 'object') {
-            await releaseReserved('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
-            throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
-          }
-
-          publicationSnapshot = backfilled as ProductPublicationEconomicsRow;
-          legacyEconomics = undefined;
+        let shippingReserveCents: number;
+        try {
+          ({ shippingReserveCents } =
+            validatePublicationEconomicsSnapshot(publicationSnapshot));
+        } catch {
+          log('error', 'Product has no valid publication economics snapshot', {
+            productIdPreview: summarizeProductIds([product.id]),
+          });
+          await releaseReserved('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT');
+          throw new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT');
         }
 
         productAllocations.push({
           productId: product.id,
           sellerId: product.seller_id,
-          subtotalCents,
-          shippingCents:
-            publicationSnapshot.publication_shipping_reserve_cents ?? 0,
+          subtotalCents: product.price_cents * item.quantity,
+          shippingCents: shippingReserveCents,
           publicationSnapshot,
-          legacyEconomics,
         });
       }
 
@@ -444,7 +376,6 @@ export function createCreateConnectPaymentHandler(
           subtotalCents: product.subtotalCents,
           shippingCents: product.shippingCents,
           publicationSnapshot: product.publicationSnapshot,
-          legacyEconomics: product.legacyEconomics,
         });
         shipmentProductIds[shipmentId] = [product.productId];
       }
@@ -557,6 +488,7 @@ export function createCreateConnectPaymentHandler(
         EPHEMERAL_KEY_FAILED: 500,
         MISSING_SERVER_CONFIG: 500,
         INVALID_CONNECT_ECONOMICS: 422,
+        INVALID_PUBLICATION_ECONOMICS_SNAPSHOT: 500,
         ONE_PRODUCT_PER_SHIPMENT_REQUIRED: 422,
         PRODUCT_ID_NOT_FOUND_OR_NOT_OWNED: 422,
         'INVALID_CHECKOUT_INPUT:missing_shipment_id': 422,
