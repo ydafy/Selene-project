@@ -104,3 +104,22 @@ Selene is designed for the volume in `docs/conventions.md`, "Design target", not
 3. Would changing it later mean migrating live money data or losing history? Then decide it now, following the rule in "Design target".
 
 Say the answers in the PR's "Risk" section. Do not add capacity beyond the target without a measurement that needs it.
+
+## 12. Name the other states before the specs are final
+
+This section is ours, not adapted from pstack.
+
+Tests prove what the specs say. A state that no spec names gets no test, so nothing fails when the code mishandles it. In the escape analysis of roadmap #623, 7 of the 10 code bugs that review found after every test passed were states or inputs that no spec named.
+
+Before you mark the `## Specs` of a feature with state final, list the states and inputs the feature can meet. For each one, name the `S#` that covers it, add a spec, or write in `## Log` why it cannot happen. Ask at least:
+
+1. A related row or account does not exist yet: the seller has no Stripe account, the shipment has no label (PR #603).
+2. A step failed after an earlier step succeeded: the refund succeeded and the next step failed, or Stripe reversed something already recorded (PR #606).
+3. The rule covers one shipment: what happens to the other shipments of the same order, payout run, or batch (PR #604)?
+4. The webhook or cron run arrives twice, late, out of order, or while another run holds the lease.
+5. The external API paginates or truncates a list, a file exceeds a limit, or a field is missing (PR #607, PR #615).
+6. The input comes in another letter case, with extra spaces, or as an id of another kind (PR #607).
+7. The platform loses state: a sequence or queue resets, or an unlogged table is empty after a crash (PR #615).
+8. Every screen and query that lists the entity shows the new state as itself, not as a neighbor state (PR #610).
+
+Skip the questions that clearly do not apply, and do not write an answer to each one in the feature document. Record in `## Log` only the states you added or ruled out.
