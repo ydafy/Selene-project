@@ -1,6 +1,7 @@
 # Weekly run of the scripts/verify/ harnesses that need more than the db-test
 # stack: the served Edge Functions or the docker-compose Postgres of db:test:up
-# (the `weekly` group in scripts/verify/run-harnesses.ts). It needs no repository
+# (the `weekly` group in scripts/verify/run-harnesses.ts), plus a deep run of the
+# lifecycle model harness. It needs no repository
 # secret: the cron secret is generated per run and no harness reaches Stripe or Envia.
 name: Verify harnesses (weekly)
 
@@ -69,6 +70,12 @@ jobs:
           cat "$RUNNER_TEMP/functions-serve.log"
           exit 1
       - run: bun run verify:harnesses --group weekly
+      # The pr group runs this harness with 50 random sequences per batch; here it
+      # explores ten times as many (about a minute).
+      - name: Lifecycle model harness, deep run
+        run: bun scripts/verify/test-shipment-lifecycle-model.ts
+        env:
+          SELENE_MODEL_RUNS: '500'
       - name: Functions serve log
         if: failure()
         run: cat "$RUNNER_TEMP/functions-serve.log" || true

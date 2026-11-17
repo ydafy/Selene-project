@@ -16,7 +16,7 @@ Delivery: one commit per task (T1 is one unit over the 400-line slice).
 
 - [x] T1 — S1, S2, S4. Harness `scripts/verify/test-shipment-lifecycle-model.ts`: commands for payment, cancellation claim and start, refund recorded (succeeded, failed), async refund events (duplicate, out of order), delivery and completion, payout run release (begin and complete transfer); invariants after each step; a RED proof that a broken guard is caught (mutants M1 and M2, L5). Added to the `pr` group. Inline. Commit: the `test(verify): add a model-based harness for the shipment lifecycle` commit.
 - [x] T2 — S2. Overdue refund commands (claim, complete, failed refund, manual repayment) and their invariants, plus the seller account toggle and the month that makes a completion overdue; a third of the runs follow the overdue path as a skeleton (L6). Mutants M3 and M4. Inline. Commit: the `test(verify): model the overdue payout refund in the lifecycle harness` commit.
-- [ ] T3 — S3. Longer weekly run (run budget from an environment variable set by the weekly workflow). CI change approved in L3-L4. Inline. Commit: pending.
+- [x] T3 — S3. Longer weekly run (run budget from an environment variable set by the weekly workflow). CI change approved in L3-L4. Inline. Measured locally: 500 runs in 42 s, all four mutants caught. Commit: the `ci(verify): run the lifecycle model harness deeper every week` commit.
 - [ ] T4 — S1, S5. Formal README mapping (TLA+ invariant to harness check), `docs/` mention, Idea issue for the shared harness helper. Inline. Commit: pending.
 
 ## Log
