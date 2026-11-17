@@ -348,3 +348,11 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 - The target is stated once, in `docs/conventions.md`, which CodeRabbit loads. `AGENTS.md`, `supabase/AGENTS.md`, the `selene-engineering-principles` skill (principle 11 and the design red flags), and the pull request template point to it.
 
 **Consequence:** The data model review of 2026-11-16 is judged against this target. A ledger of money movements, refund and verification history, notifications stored as events, and retention for every growing table become pre-launch work instead of later ideas. A seeded load test at the target volume replaces estimates for query and cron performance.
+
+## 2026-11-17: Unresolved Review Threads Block the Merge
+
+**Context:** The 2026-11-15 rule says to read CodeRabbit's comments before setting `gh pr merge --auto`, but nothing enforced it. On #681 an agent set `--auto` before CodeRabbit reported (#601, second occurrence). The required `CodeRabbit` check then passed with a valid finding, because the check means the review finished, not that it found nothing. The pull request would have merged with that bug if another session had not pointed out the rule.
+
+**Decision:** The `main` ruleset requires conversation resolution before merging (`required_review_thread_resolution: true`). Every unresolved review thread, from CodeRabbit or a person, blocks the merge, auto-merge included. Resolve a thread after fixing it or after replying with the reason it does not apply.
+
+**Consequence:** Auto-merge can no longer land a pull request over an unread finding. It still does not cover a rate-limited or skipped review, which posts no threads, so the 2026-11-15 rule to confirm that CodeRabbit reviewed the head commit stays.
