@@ -1,6 +1,6 @@
 # First listing payment setup
 
-Roadmap #548 item 4, issue #552. Branch `feat/first-listing-payment-setup` from `origin/main` bc7b24d0, worktree bruno-money-functions.
+Roadmap #548 item 4, issue #552. Branch `feat/first-listing-payment-setup` from `origin/main` (rebased on a50f218b), worktree bruno-money-functions.
 Frontend only. The buyer side already blocks purchases from sellers without payments (L2); this feature fixes what the seller is told.
 
 ## Specs
@@ -14,10 +14,10 @@ Frontend only. The buyer side already blocks purchases from sellers without paym
 
 ## Tasks
 
-- [ ] T1 (S1, S5) success screen copy and state.
-- [ ] T2 (S2, S3, S5) verify → onboarding route and the onboarding "later" exit.
-- [ ] T3 (S4) my listings chip.
-- [ ] T4 Findings and ideas: seller not notified when a buyer is blocked (Idea); untyped readiness RPC cast in `use-seller-payment-readiness.ts` (Finding). PR, `Closes #552`.
+- [x] T1 (S1, S5) success screen copy and state. 25a04a95, wiring test 7c317d19.
+- [x] T2 (S2, S3, S5) verify → onboarding route and the onboarding "later" exit. 25a04a95, wiring test 7c317d19.
+- [x] T3 (S4) my listings chip. 3ed6ee0d.
+- [ ] T4 Findings and ideas: #689 (Idea, notify the seller when a buyer is blocked), #688 (Finding, untyped readiness RPC cast). Native review, PR `Closes #552`, merge.
 
 ## Log
 
@@ -26,3 +26,4 @@ Frontend only. The buyer side already blocks purchases from sellers without paym
 - L3 (2026-11-17, maintainer): "hasta dodne sabia yo, el vendedor siempre podia ver cuando no tenia su cuenta activada de stripe, segun yo aparecia un tipo baner en profile.tsx". Answer: the banner exists; the problem is timing and the contradiction between "Activo" and "Activa tus pagos".
 - L4 (2026-11-17, decision): the maintainer worried that two steps on the success screen break the linear 1→2→3 flow and about piling up messages ("se me ocurre algo como una bandeja de entrada en profile"). Agreed: put payments in the sequence after verify, only while not `complete`; no inbox (overengineering with two pending types); keep the chip. Maintainer: "me encanta master me encanta todo, dale."
 - L5 (2026-11-17, maintainer): "Nomas que recuera, siempre el usario puede publicar y no hacre nuinguno de los dos pasos, me refiero, no tenemos qeu decirle textualmente, pero siempre ponerle o habilitar que cirre esa pantalla o 'mas tarde', ya que podemos entender y sobre todo al principio, que usarios no conifan y nomas publicaran, y ahi es onde entra nuesrti sistema de notificaiones, pero no querremos hacerlo obligatorio esos dos pasos. Furea de eso luz vrede"
+- L6 (2026-11-17, evidence): `resolvePaymentSetupNeed` lives in `shared/utils` because `features/profile` may not import `features/payments` (lint `import-x/no-restricted-paths`). Two source-text tests changed with the intended routes: `order-action-card.payment-explanation.test.ts` (onboarding success CTA) and `push-permission.moments.test.ts` (verify success route). Checks: frontend `bun test apps/frontend/src` 1549 pass, `bun run typecheck`, `bun run lint` (0 errors), `bun run knip`, Prettier. Not a Go-live blocker: #688, #689.
