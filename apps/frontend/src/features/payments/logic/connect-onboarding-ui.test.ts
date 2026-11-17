@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
+  resolveConnectOnboardingHeaderKeys,
   resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
@@ -126,6 +127,24 @@ describe('resolveConnectOnboardingUiState', () => {
       resolveUi({ stripeReturn: null, isRefreshingFromStripe: true })
         .showStripeReturnRefreshMessage,
     ).toBe(false);
+  });
+});
+
+describe('resolveConnectOnboardingHeaderKeys', () => {
+  it('uses the guide header when there is no notice', () => {
+    expect(resolveConnectOnboardingHeaderKeys(null)).toEqual({
+      titleKey: 'sellerOnboarding:header.title',
+      subtitleKey: 'sellerOnboarding:header.subtitle',
+    });
+  });
+
+  it('puts each notice in the header instead of a separate card', () => {
+    for (const notice of ['pending', 'rejected', 'expired'] as const) {
+      expect(resolveConnectOnboardingHeaderKeys(notice)).toEqual({
+        titleKey: `sellerOnboarding:statusNotice.${notice}Title`,
+        subtitleKey: `sellerOnboarding:statusNotice.${notice}Desc`,
+      });
+    }
   });
 });
 

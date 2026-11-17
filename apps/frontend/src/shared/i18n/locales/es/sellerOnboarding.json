@@ -1,7 +1,14 @@
 {
   "header": {
+    "navTitle": "Pagos",
     "title": "Activa tus cobros",
-    "subtitle": "Para depositarte tus ventas, Stripe (quien procesa los pagos en Selene) necesita verificar quién eres. Es gratis y toma unos 5 minutos."
+    "subtitle": "Llena un formulario corto para cobrar tus ventas. Lo procesa Stripe, nuestra plataforma de pagos, y toma unos 5 minutos."
+  },
+  "whatIsStripe": {
+    "label": "¿Qué es Stripe?",
+    "title": "¿Qué es Stripe?",
+    "desc": "Stripe es la empresa que procesa los pagos de Selene y de miles de tiendas en línea. Verifica que eres tú y deposita tus ventas en tu banco.",
+    "confirm": "Entendido"
   },
   "guidance": {
     "cardLabel": "Paso {{index}} de {{total}}: {{title}}. {{description}}",
@@ -14,12 +21,12 @@
     "termsNote": "Al final aceptas los términos de Stripe y regresas solo a Selene."
   },
   "statusNotice": {
-    "pendingTitle": "Te faltan unos datos en Stripe",
-    "pendingDesc": "Lo que ya llenaste se guardó. Toca Continuar en Stripe para terminar. Si ya terminaste, Stripe está revisando tus datos y te avisamos aquí.",
-    "rejectedTitle": "Stripe necesita que corrijas algo",
-    "rejectedDesc": "Abre Stripe para ver qué dato falta o hay que corregir.",
-    "expiredTitle": "El enlace de Stripe venció",
-    "expiredDesc": "Pasa si tardaste o saliste a medias. Lo que ya llenaste se guardó: toca Continuar en Stripe para seguir."
+    "pendingTitle": "Te falta terminar el formulario",
+    "pendingDesc": "Stripe todavía necesita unos datos para depositarte. Si ya terminaste, los está revisando y te avisamos aquí.",
+    "rejectedTitle": "Stripe necesita que corrijas un dato",
+    "rejectedDesc": "Abre el formulario para ver qué dato falta o hay que corregir.",
+    "expiredTitle": "El formulario se cerró",
+    "expiredDesc": "Pasa si tardas o sales a medias. Ábrelo otra vez y sigue donde te quedaste."
   },
   "paymentExplanation": {
     "title": "Cómo funcionan los pagos al vendedor",
@@ -35,9 +42,9 @@
     "cta": "Ir a mis ventas"
   },
   "actions": {
-    "start": "Comenzar registro en Stripe",
-    "continue": "Continuar en Stripe",
-    "review": "Revisar en Stripe",
+    "start": "Llenar formulario",
+    "continue": "Continuar formulario",
+    "review": "Corregir datos",
     "checking": "Verificando estado..."
   },
   "loading": {

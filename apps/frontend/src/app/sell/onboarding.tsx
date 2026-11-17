@@ -16,18 +16,19 @@ import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
+import { LabelWithHelp } from '@/shared/ui/form/label-with-help';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
+  resolveConnectOnboardingHeaderKeys,
   resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
 } from '@/features/payments/logic/connect-onboarding-ui';
 import {
   OnboardingGuideCards,
-  OnboardingStatusNotice,
   PaymentsExplanationToggle,
 } from '@/features/payments/components/onboarding-guide';
 import { Theme } from '@/shared/theme';
@@ -63,6 +64,10 @@ export default function SellerOnboardingScreen() {
     stripeReturn,
   });
 
+  const header = resolveConnectOnboardingHeaderKeys(
+    onboardingUi.statusNoticeKey,
+  );
+
   const handleStart = useCallback(async () => {
     try {
       await startOnboarding();
@@ -84,7 +89,7 @@ export default function SellerOnboardingScreen() {
   if (onboardingUi.viewState === 'auth-required') {
     return (
       <Box flex={1} backgroundColor="background">
-        <GlobalHeader showBack />
+        <GlobalHeader title={t('sellerOnboarding:header.navTitle')} showBack />
         <ErrorState title={t('sellerOnboarding:errors.authRequired')} />
       </Box>
     );
@@ -94,7 +99,11 @@ export default function SellerOnboardingScreen() {
     return (
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
-        <GlobalHeader showBack backgroundColor="cardBackground" />
+        <GlobalHeader
+          title={t('sellerOnboarding:header.navTitle')}
+          showBack
+          backgroundColor="cardBackground"
+        />
 
         <ScrollView
           contentContainerStyle={{
@@ -119,7 +128,11 @@ export default function SellerOnboardingScreen() {
     return (
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
-        <GlobalHeader showBack backgroundColor="cardBackground" />
+        <GlobalHeader
+          title={t('sellerOnboarding:header.navTitle')}
+          showBack
+          backgroundColor="cardBackground"
+        />
 
         <ScrollView
           contentContainerStyle={{
@@ -181,7 +194,11 @@ export default function SellerOnboardingScreen() {
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader showBack backgroundColor="cardBackground" />
+      <GlobalHeader
+        title={t('sellerOnboarding:header.navTitle')}
+        showBack
+        backgroundColor="cardBackground"
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -193,13 +210,17 @@ export default function SellerOnboardingScreen() {
         }}
       >
         <ScreenHeader
-          title={t('sellerOnboarding:header.title')}
-          subtitle={t('sellerOnboarding:header.subtitle')}
+          title={t(header.titleKey)}
+          subtitle={t(header.subtitleKey)}
         />
 
-        {onboardingUi.statusNoticeKey && (
-          <OnboardingStatusNotice noticeKey={onboardingUi.statusNoticeKey} />
-        )}
+        <LabelWithHelp
+          label={t('sellerOnboarding:whatIsStripe.label')}
+          helpTitle={t('sellerOnboarding:whatIsStripe.title')}
+          helpDescription={t('sellerOnboarding:whatIsStripe.desc')}
+          confirmLabel={t('sellerOnboarding:whatIsStripe.confirm')}
+          color="primary"
+        />
 
         {onboardingUi.showStripeReturnRefreshMessage && (
           <Text variant="body-sm" color="textSecondary">

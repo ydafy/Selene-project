@@ -1,7 +1,14 @@
 {
   "header": {
+    "navTitle": "Payouts",
     "title": "Turn on your payouts",
-    "subtitle": "To deposit your sales, Stripe (the company that processes payments on Selene) needs to verify who you are. It is free and takes about 5 minutes."
+    "subtitle": "Fill out a short form to get paid for your sales. Stripe, our payments platform, processes it, and it takes about 5 minutes."
+  },
+  "whatIsStripe": {
+    "label": "What is Stripe?",
+    "title": "What is Stripe?",
+    "desc": "Stripe is the company that processes payments for Selene and thousands of online stores. It verifies who you are and deposits your sales into your bank account.",
+    "confirm": "Got it"
   },
   "guidance": {
     "cardLabel": "Step {{index}} of {{total}}: {{title}}. {{description}}",
@@ -14,12 +21,12 @@
     "termsNote": "At the end you accept Stripe's terms and return to Selene automatically."
   },
   "statusNotice": {
-    "pendingTitle": "Stripe still needs some details",
-    "pendingDesc": "What you already entered is saved. Tap Continue on Stripe to finish. If you already finished, Stripe is reviewing your details and we will let you know here.",
-    "rejectedTitle": "Stripe needs you to fix something",
-    "rejectedDesc": "Open Stripe to see which detail is missing or needs a correction.",
-    "expiredTitle": "The Stripe link expired",
-    "expiredDesc": "This happens if you took a while or left halfway. What you already entered is saved: tap Continue on Stripe to pick up where you left off."
+    "pendingTitle": "Finish the form",
+    "pendingDesc": "Stripe still needs a few details to pay you. If you already finished, Stripe is reviewing them and we will let you know here.",
+    "rejectedTitle": "Stripe needs you to fix a detail",
+    "rejectedDesc": "Open the form to see which detail is missing or needs a correction.",
+    "expiredTitle": "The form closed",
+    "expiredDesc": "This happens if you take a while or leave halfway. Open it again and pick up where you left off."
   },
   "paymentExplanation": {
     "title": "How seller payments work",
@@ -35,9 +42,9 @@
     "cta": "Go to my sales"
   },
   "actions": {
-    "start": "Start registration on Stripe",
-    "continue": "Continue on Stripe",
-    "review": "Review in Stripe",
+    "start": "Fill out the form",
+    "continue": "Continue the form",
+    "review": "Fix my details",
     "checking": "Checking status..."
   },
   "loading": {

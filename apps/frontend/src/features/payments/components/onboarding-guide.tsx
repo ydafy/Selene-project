@@ -12,7 +12,6 @@ import MaterialCommunityIcons, {
 
 import { Box, Text } from '@/shared/ui/base';
 import { Theme } from '@/shared/theme';
-import type { ConnectOnboardingStatusNoticeKey } from '../logic/connect-onboarding-ui';
 
 const GUIDE_CARDS = [
   { key: 'phone', icon: 'cellphone-message' },
@@ -69,7 +68,13 @@ const GuideCard = ({ cardKey, icon, index }: GuideCardProps) => {
             <Trans
               i18nKey={descriptionKey}
               components={{
-                resaltar: <Text color="textPrimary" fontWeight="bold" />,
+                resaltar: (
+                  <Text
+                    variant="body-sm"
+                    color="textPrimary"
+                    fontWeight="bold"
+                  />
+                ),
               }}
             />
           </Text>
@@ -94,62 +99,6 @@ export const OnboardingGuideCards = () => {
       <Text variant="body-sm" color="textSecondary">
         {t('sellerOnboarding:guidance.termsNote')}
       </Text>
-    </Box>
-  );
-};
-
-const STATUS_NOTICE_ICON = {
-  pending: 'progress-clock',
-  rejected: 'alert-circle-outline',
-  expired: 'link-variant-off',
-} as const satisfies Record<
-  ConnectOnboardingStatusNoticeKey,
-  MaterialDesignIconsIconName
->;
-
-interface OnboardingStatusNoticeProps {
-  noticeKey: ConnectOnboardingStatusNoticeKey;
-}
-
-export const OnboardingStatusNotice = ({
-  noticeKey,
-}: OnboardingStatusNoticeProps) => {
-  const { t } = useTranslation(['sellerOnboarding']);
-  const theme = useTheme<Theme>();
-  const isRejected = noticeKey === 'rejected';
-
-  return (
-    <Box
-      backgroundColor={isRejected ? 'errorSubtle' : 'cardBackground'}
-      padding="m"
-      borderRadius="m"
-      borderWidth={1}
-      borderColor={isRejected ? 'error' : 'separator'}
-      flexDirection="row"
-      alignItems="flex-start"
-      gap="s"
-      accessible={true}
-      accessibilityRole="alert"
-    >
-      <MaterialCommunityIcons
-        name={STATUS_NOTICE_ICON[noticeKey]}
-        size={22}
-        color={isRejected ? theme.colors.error : theme.colors.primary}
-        style={{ marginTop: 2 }}
-      />
-      <Box flex={1}>
-        <Text
-          variant="body-md"
-          fontWeight="bold"
-          color={isRejected ? 'error' : 'textPrimary'}
-          marginBottom="xs"
-        >
-          {t(`sellerOnboarding:statusNotice.${noticeKey}Title`)}
-        </Text>
-        <Text variant="body-sm" color={isRejected ? 'error' : 'textSecondary'}>
-          {t(`sellerOnboarding:statusNotice.${noticeKey}Desc`)}
-        </Text>
-      </Box>
     </Box>
   );
 };

@@ -91,6 +91,17 @@ describe('seller onboarding locale parity', () => {
     }
   });
 
+  it('explains Stripe behind a help dialog in English and Spanish', () => {
+    for (const copy of [enSellerOnboarding, esSellerOnboarding]) {
+      const help = (copy as Record<string, Record<string, string>>)
+        .whatIsStripe;
+      for (const key of ['label', 'title', 'desc', 'confirm']) {
+        expect(help?.[key]).toBeString();
+      }
+      expect(help.desc).toContain('Stripe');
+    }
+  });
+
   it('uses one time estimate in the guide and the prepare-shipment notice', () => {
     expect(esSellerOnboarding.header.subtitle).toContain('unos 5 minutos');
     expect(esOrders.prepare.connectBody).toContain('unos 5 minutos');

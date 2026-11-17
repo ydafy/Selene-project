@@ -36,6 +36,22 @@ export interface ConnectOnboardingUiState {
   ctaDisabled: boolean;
 }
 
+/** A notice replaces the guide header, so the cards below are only the steps. */
+export function resolveConnectOnboardingHeaderKeys(
+  statusNoticeKey: ConnectOnboardingStatusNoticeKey | null,
+) {
+  if (statusNoticeKey === null) {
+    return {
+      titleKey: 'sellerOnboarding:header.title',
+      subtitleKey: 'sellerOnboarding:header.subtitle',
+    } as const;
+  }
+  return {
+    titleKey: `sellerOnboarding:statusNotice.${statusNoticeKey}Title`,
+    subtitleKey: `sellerOnboarding:statusNotice.${statusNoticeKey}Desc`,
+  } as const;
+}
+
 /** Stripe sends the seller to refresh_url when the account link expired, so it wins. */
 export function resolveConnectOnboardingStripeReturn(params: {
   return?: string;
