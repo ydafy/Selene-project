@@ -63,7 +63,8 @@ select pg_temp.money_shipment(n + 100, n, 8011, 8019) from generate_series(8101,
 select pg_temp.money_shipment(8203, 8103, 8012, 8019);
 select pg_temp.money_shipment(8204, 8104, 8013, 8019);
 select pg_temp.money_shipment(n + 100, n, 8011, 8019) from generate_series(8105, 8108) as n;
--- 8201 is a separate-charges order, so 8101 is eligible apart from the overdue flag.
+-- 8201 and 8203 are separate-charges orders, so 8101 is eligible apart from the overdue flag
+-- and 8103 reaches its seller_not_payout_ready gate.
 update public.orders set stripe_transfer_group = 'tg_test_' || right(id::text, 4)
 where id in (pg_temp.mu(8201), pg_temp.mu(8203));
 select pg_temp.complete(8101, '30 days');
