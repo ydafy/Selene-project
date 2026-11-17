@@ -1,8 +1,11 @@
 // Copies the maintainer-owned env files (gitignored, so git never brings them)
 // from the main checkout into a worktree. Runs automatically from the
 // post-checkout hook when `git worktree add` creates a worktree, and by hand with
-// `bun run worktree:env` (add `--force` to overwrite). Never prints file contents.
-import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+// `bun run worktree:env` (add `--force` to overwrite). Then compares the variable
+// names of each env file with its `.example` and prints what differs, so a copy
+// made before a variable was renamed does not fail silently (#667). Never prints
+// file contents or values.
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 export const ENV_FILES = [
@@ -44,6 +47,67 @@ export function copyWorktreeEnv(options: {
   });
 }
 
+export interface EnvNameDrift {
+  missing: string[];
+  extra: string[];
+}
+
+export interface EnvNameCheck extends EnvNameDrift {
+  file: string;
+}
+
+const ENV_NAME = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/;
+
+function envNames(text: string): Set<string> {
+  const names = new Set<string>();
+  for (const line of text.split(/\r?\n/)) {
+    const match = ENV_NAME.exec(line);
+    if (match) names.add(match[1]);
+  }
+  return names;
+}
+
+export function envNameDrift(
+  envText: string,
+  exampleText: string,
+): EnvNameDrift {
+  const env = envNames(envText);
+  const example = envNames(exampleText);
+  return {
+    missing: [...example].filter((name) => !env.has(name)),
+    extra: [...env].filter((name) => !example.has(name)),
+  };
+}
+
+export function checkEnvNames(root: string): EnvNameCheck[] {
+  return ENV_FILES.flatMap((file) => {
+    const envPath = join(root, file);
+    const examplePath = `${envPath}.example`;
+    if (!existsSync(envPath) || !existsSync(examplePath)) return [];
+    return [
+      {
+        file,
+        ...envNameDrift(
+          readFileSync(envPath, 'utf8'),
+          readFileSync(examplePath, 'utf8'),
+        ),
+      },
+    ];
+  });
+}
+
+export function formatEnvNameDrift(checks: EnvNameCheck[]): string[] {
+  return checks.flatMap(({ file, missing, extra }) => [
+    ...missing.map(
+      (name) => `[worktree-env] ${file} lacks ${name} from ${file}.example`,
+    ),
+    ...extra.map(
+      (name) =>
+        `[worktree-env] ${file} has ${name}, which ${file}.example does not list`,
+    ),
+  ]);
+}
+
 function git(args: string[]): string {
   const result = Bun.spawnSync(['git', ...args], {
     stdout: 'pipe',
@@ -70,6 +134,8 @@ if (import.meta.main) {
       console.log('[worktree-env] main checkout: nothing to copy');
     for (const { file, outcome } of results)
       console.log(`[worktree-env] ${outcome}: ${file}`);
+    for (const line of formatEnvNameDrift(checkEnvNames(targetRoot)))
+      console.warn(line);
   } catch (error) {
     // Never block a checkout because of this helper.
     console.error(

@@ -200,6 +200,11 @@ describe('single-modal-settlement > reassembleAllocationMetadata', () => {
         shipmentId,
         subtotalCents: 100_000,
         shippingCents: 20_000,
+        publicationSnapshot: {
+          publication_shipping_reserve_cents: 20_000,
+          publication_commission_rate: 0.06,
+          publication_insurance_rate: 0.012,
+        },
       },
     ]);
     const params = buildSinglePaymentIntentParams({
@@ -368,6 +373,11 @@ describe('single-modal-settlement > parseSingleModalPayload', () => {
         shipmentId,
         subtotalCents: 100_000,
         shippingCents: 20_000,
+        publicationSnapshot: {
+          publication_shipping_reserve_cents: 20_000,
+          publication_commission_rate: 0.06,
+          publication_insurance_rate: 0.012,
+        },
       },
     ]);
     const params = buildSinglePaymentIntentParams({

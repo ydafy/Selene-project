@@ -3,7 +3,7 @@
 -- settings; every other update, status changes included, keeps the stored snapshot.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(24);
+select plan(31);
 
 -- Snapshot reserve for a price and shipping cost (cents) under the current settings.
 create function pg_temp.fresh_reserve(p_price_cents bigint, p_shipping_cents bigint)
@@ -27,6 +27,21 @@ returns void language sql as $$
     s.service_fee_pct,
     s.insurance_rate
   from public.system_settings s where s.id = 1
+$$;
+
+-- A listing with an explicit snapshot, priced like make_listing.
+create function pg_temp.make_listing_with(
+  p_id uuid, p_reserve bigint, p_commission numeric, p_insurance numeric)
+returns void language sql as $$
+  insert into public.products (
+    id, name, description, price_cents, category, condition, usage, images, status,
+    specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
+    publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate
+  )
+  values (p_id, 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
+    array['https://example.test/p.png'], 'pending_verification', '{}'::jsonb,
+    'd0000000-0000-4000-8000-000000000002', 10000, '06600', 'gpu_1',
+    p_reserve, p_commission, p_insurance)
 $$;
 
 insert into auth.users (
@@ -149,19 +164,56 @@ select throws_ok(
   $$update public.products set price_cents = 120000, publication_shipping_reserve_cents = null,
       publication_commission_rate = null, publication_insurance_rate = null
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
-  'P0001', 'PUBLICATION_SNAPSHOT_REQUIRED',
+  '23502', null,
   'a price change cannot clear the snapshot');
 select throws_ok(
   $$update public.products set price_cents = 120000, publication_commission_rate = null,
       publication_shipping_reserve_cents = pg_temp.fresh_reserve(120000, 10000)
     where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
-  'P0001', 'INVALID_OR_STALE_PUBLICATION_ECONOMICS',
+  '23502', null,
   'a price change with a partial snapshot is rejected');
+
+-- Every listing holds a snapshot: no value of it can be cleared (S2a, #637) -------
+select throws_ok(
+  $$update public.products set publication_shipping_reserve_cents = null
+    where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  '23502', null, 'the shipping reserve cannot be cleared');
+select throws_ok(
+  $$update public.products set publication_commission_rate = null
+    where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  '23502', null, 'the commission rate cannot be cleared');
+select throws_ok(
+  $$update public.products set publication_insurance_rate = null
+    where id = 'd0000000-0000-4000-8000-0000000000a1'$$,
+  '23502', null, 'the insurance rate cannot be cleared');
 select is(
-  (select price_cents::text || ':' || publication_shipping_reserve_cents::text
+  (select price_cents::text || ':' || publication_shipping_reserve_cents::text || ':'
+     || publication_commission_rate::text || ':' || publication_insurance_rate::text
    from public.products where id = 'd0000000-0000-4000-8000-0000000000a1'),
-  '100000:' || (pg_temp.fresh_reserve(100000, 10000) - 500)::text,
+  (select '100000:' || (pg_temp.fresh_reserve(100000, 10000) - 500)::text || ':'
+     || s.service_fee_pct::text || ':' || s.insurance_rate::text
+   from public.system_settings s where s.id = 1),
   'the rejected updates left price and snapshot unchanged');
+
+-- A new listing without a full snapshot is rejected -----------------------------
+select throws_ok(
+  $$select pg_temp.make_listing_with('d0000000-0000-4000-8000-0000000000c1',
+      null, s.service_fee_pct, s.insurance_rate)
+    from public.system_settings s where s.id = 1$$,
+  '23502', null, 'a listing without a shipping reserve is rejected');
+select throws_ok(
+  $$select pg_temp.make_listing_with('d0000000-0000-4000-8000-0000000000c1',
+      pg_temp.fresh_reserve(100000, 10000), null, s.insurance_rate)
+    from public.system_settings s where s.id = 1$$,
+  '23502', null, 'a listing without a commission rate is rejected');
+select throws_ok(
+  $$select pg_temp.make_listing_with('d0000000-0000-4000-8000-0000000000c1',
+      pg_temp.fresh_reserve(100000, 10000), s.service_fee_pct, null)
+    from public.system_settings s where s.id = 1$$,
+  '23502', null, 'a listing without an insurance rate is rejected');
+select is(
+  (select count(*) from public.products where id = 'd0000000-0000-4000-8000-0000000000c1'),
+  0::bigint, 'no rejected listing was stored');
 
 -- The owner re-prices through RLS with a fresh snapshot and the listing goes to review.
 select set_config('request.jwt.claims',

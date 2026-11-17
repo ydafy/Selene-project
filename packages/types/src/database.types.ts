@@ -1360,9 +1360,9 @@ export type Database = {
           origin_zip: string | null;
           package_preset: string | null;
           price_cents: number;
-          publication_commission_rate: number | null;
-          publication_insurance_rate: number | null;
-          publication_shipping_reserve_cents: number | null;
+          publication_commission_rate: number;
+          publication_insurance_rate: number;
+          publication_shipping_reserve_cents: number;
           rejection_reason: string | null;
           reserved_at: string | null;
           seller_id: string;
@@ -1395,9 +1395,9 @@ export type Database = {
           origin_zip?: string | null;
           package_preset?: string | null;
           price_cents: number;
-          publication_commission_rate?: number | null;
-          publication_insurance_rate?: number | null;
-          publication_shipping_reserve_cents?: number | null;
+          publication_commission_rate: number;
+          publication_insurance_rate: number;
+          publication_shipping_reserve_cents: number;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id: string;
@@ -1429,9 +1429,9 @@ export type Database = {
           origin_zip?: string | null;
           package_preset?: string | null;
           price_cents?: number;
-          publication_commission_rate?: number | null;
-          publication_insurance_rate?: number | null;
-          publication_shipping_reserve_cents?: number | null;
+          publication_commission_rate?: number;
+          publication_insurance_rate?: number;
+          publication_shipping_reserve_cents?: number;
           rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id?: string;
@@ -2730,7 +2730,7 @@ export type Database = {
           envia_print_size?: string | null;
           envia_service?: string | null;
           id: number;
-          insurance_rate?: number;
+          insurance_rate: number;
           is_maintenance?: boolean;
           listing_quote_reference_destination?: Json | null;
           min_version_android?: string;
@@ -2740,9 +2740,9 @@ export type Database = {
           order_expiration_hours?: number;
           package_presets?: NonNullable<Json>;
           preparing_expiration_hours?: number;
-          return_label_fee_cents?: number;
-          service_fee_pct?: number;
-          shipping_buffer_cents?: number;
+          return_label_fee_cents: number;
+          service_fee_pct: number;
+          shipping_buffer_cents: number;
           trusted_active_limit?: number;
           updated_at?: string;
         };
@@ -3328,14 +3328,6 @@ export type Database = {
       };
     };
     Functions: {
-      backfill_product_publication_economics: {
-        Args: { p_product_id: string };
-        Returns: {
-          publication_commission_rate: number;
-          publication_insurance_rate: number;
-          publication_shipping_reserve_cents: number;
-        }[];
-      };
       fn_abort_payout_create_to_action_required: {
         Args: {
           p_claim_token?: string;

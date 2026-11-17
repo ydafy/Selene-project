@@ -4,7 +4,6 @@ import fc from 'fast-check';
 import {
   assertValidCheckoutAllocation,
   calculateCheckoutAllocation,
-  CONNECT_COMMISSION_RATE,
   type SellerAllocationInput,
 } from './fee-calculator.ts';
 
@@ -26,7 +25,7 @@ const coversStripeFee = (buyerTotalCents: number, subtotalCents: number) => {
 // Publication economics accept commission rates in [0, 1].
 const commissionRateArbitrary = fc.oneof(
   fc.double({ min: 0, max: 1, noNaN: true }),
-  fc.constantFrom(0, CONNECT_COMMISSION_RATE, 0.1, 1),
+  fc.constantFrom(0, 0.06, 0.1, 1),
 );
 
 // Below the $10 MXN product minimum on purpose, so the math is exercised there too.
@@ -45,10 +44,7 @@ const idsArbitrary = (minLength: number) =>
 // Shipping is drawn as a fraction of what is left after the largest possible
 // rounded commission, so every generated shipment has a non-negative net.
 const economicCheckoutArbitrary = fc
-  .tuple(
-    fc.option(commissionRateArbitrary, { nil: undefined }),
-    idsArbitrary(1),
-  )
+  .tuple(commissionRateArbitrary, idsArbitrary(1))
   .chain(([commissionRate, shipmentIds]) =>
     fc.record({
       commissionRate: fc.constant(commissionRate),
@@ -68,17 +64,30 @@ const economicCheckoutArbitrary = fc
                   subtotalCents,
                   shippingCents: Math.floor(
                     (subtotalCents -
-                      Math.ceil(
-                        subtotalCents *
-                          (commissionRate ?? CONNECT_COMMISSION_RATE),
-                      )) *
+                      Math.ceil(subtotalCents * commissionRate)) *
                       shippingShare,
                   ),
-                }) satisfies SellerAllocationInput,
+                }) satisfies Omit<SellerAllocationInput, 'publicationSnapshot'>,
             ),
         ),
       ),
     }),
+  );
+
+// Every row carries its publication snapshot: the shared rate and its reserve.
+const allocate = (
+  sellers: Omit<SellerAllocationInput, 'publicationSnapshot'>[],
+  commissionRate: number,
+) =>
+  calculateCheckoutAllocation(
+    sellers.map((seller) => ({
+      ...seller,
+      publicationSnapshot: {
+        publication_shipping_reserve_cents: seller.shippingCents,
+        publication_commission_rate: commissionRate,
+        publication_insurance_rate: 0.012,
+      },
+    })),
   );
 
 const sumOf = (values: number[]) =>
@@ -88,10 +97,8 @@ describe('calculateCheckoutAllocation properties', () => {
   it('pays each seller exactly subtotal minus commission minus shipping, never negative', () => {
     fc.assert(
       fc.property(economicCheckoutArbitrary, ({ commissionRate, sellers }) => {
-        const allocation = calculateCheckoutAllocation(sellers, {
-          commissionRate,
-        });
-        const rate = commissionRate ?? CONNECT_COMMISSION_RATE;
+        const allocation = allocate(sellers, commissionRate);
+        const rate = commissionRate;
 
         expect(allocation.rows.map((row) => row.shipmentId)).toEqual(
           sellers.map((seller) => seller.shipmentId),
@@ -117,9 +124,7 @@ describe('calculateCheckoutAllocation properties', () => {
   it('splits the buyer total exactly into seller nets, commissions, shipping, and seguro', () => {
     fc.assert(
       fc.property(economicCheckoutArbitrary, ({ commissionRate, sellers }) => {
-        const allocation = calculateCheckoutAllocation(sellers, {
-          commissionRate,
-        });
+        const allocation = allocate(sellers, commissionRate);
         const { rows } = allocation;
 
         for (const row of rows) {
@@ -172,9 +177,7 @@ describe('calculateCheckoutAllocation properties', () => {
   it('charges a seguro that covers the Stripe fee on the whole checkout, split by subtotal', () => {
     fc.assert(
       fc.property(economicCheckoutArbitrary, ({ commissionRate, sellers }) => {
-        const allocation = calculateCheckoutAllocation(sellers, {
-          commissionRate,
-        });
+        const allocation = allocate(sellers, commissionRate);
         const totalGross = BigInt(allocation.totalGrossCents);
         const totalSeguro = BigInt(allocation.totalSeguroCents);
 
@@ -205,7 +208,7 @@ describe('calculateCheckoutAllocation properties', () => {
   it('rejects a checkout where every subtotal is zero', () => {
     fc.assert(
       fc.property(
-        fc.option(commissionRateArbitrary, { nil: undefined }),
+        commissionRateArbitrary,
         idsArbitrary(1),
         (commissionRate, shipmentIds) => {
           const sellers = shipmentIds.map(
@@ -215,12 +218,12 @@ describe('calculateCheckoutAllocation properties', () => {
                 shipmentId,
                 subtotalCents: 0,
                 shippingCents: 0,
-              }) satisfies SellerAllocationInput,
+              }) satisfies Omit<SellerAllocationInput, 'publicationSnapshot'>,
           );
 
-          expect(() =>
-            calculateCheckoutAllocation(sellers, { commissionRate }),
-          ).toThrow(new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'));
+          expect(() => allocate(sellers, commissionRate)).toThrow(
+            new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal'),
+          );
         },
       ),
       { numRuns: 200 },
@@ -244,9 +247,9 @@ describe('calculateCheckoutAllocation properties', () => {
               : seller,
           );
 
-          expect(() =>
-            calculateCheckoutAllocation(broken, { commissionRate }),
-          ).toThrow(new Error('INVALID_CONNECT_ECONOMICS'));
+          expect(() => allocate(broken, commissionRate)).toThrow(
+            new Error('INVALID_CONNECT_ECONOMICS'),
+          );
         },
       ),
       { numRuns: 500 },
@@ -257,12 +260,9 @@ describe('calculateCheckoutAllocation properties', () => {
     fc.assert(
       fc.property(
         economicCheckoutArbitrary
-          .filter(
-            ({ commissionRate }) =>
-              (commissionRate ?? CONNECT_COMMISSION_RATE) * 100_000_000 >= 1,
-          )
+          .filter(({ commissionRate }) => commissionRate * 100_000_000 >= 1)
           .chain(({ commissionRate, sellers }) => {
-            const rate = commissionRate ?? CONNECT_COMMISSION_RATE;
+            const rate = commissionRate;
             return fc.record({
               commissionRate: fc.constant(commissionRate),
               sellers: fc.constant(sellers),
@@ -279,7 +279,7 @@ describe('calculateCheckoutAllocation properties', () => {
             });
           }),
         ({ commissionRate, sellers, subtotalCents, pick }) => {
-          const rate = commissionRate ?? CONNECT_COMMISSION_RATE;
+          const rate = commissionRate;
           const commissionCents = Math.round(subtotalCents * rate);
           const shippingCents = subtotalCents - commissionCents + 1;
           expect(shippingCents).toBeLessThanOrEqual(subtotalCents);
@@ -292,9 +292,9 @@ describe('calculateCheckoutAllocation properties', () => {
               : seller,
           );
 
-          expect(() =>
-            calculateCheckoutAllocation(broken, { commissionRate }),
-          ).toThrow(new Error('INVALID_CONNECT_ECONOMICS'));
+          expect(() => allocate(broken, commissionRate)).toThrow(
+            new Error('INVALID_CONNECT_ECONOMICS'),
+          );
         },
       ),
       { numRuns: 500 },

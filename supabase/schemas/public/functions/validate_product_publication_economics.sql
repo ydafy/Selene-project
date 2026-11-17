@@ -9,40 +9,24 @@ DECLARE
   v_commission_rate NUMERIC;
   v_insurance_rate NUMERIC;
   v_expected_reserve_cents BIGINT;
-  v_old_empty BOOLEAN;
-  v_new_empty BOOLEAN;
 BEGIN
-  v_new_empty := NEW.publication_shipping_reserve_cents IS NULL
-    AND NEW.publication_commission_rate IS NULL
-    AND NEW.publication_insurance_rate IS NULL;
+  -- Every listing carries a full snapshot. A missing value is left to the
+  -- columns' NOT NULL constraints, which reject it with 23502.
+  IF NEW.publication_shipping_reserve_cents IS NULL
+    OR NEW.publication_commission_rate IS NULL
+    OR NEW.publication_insurance_rate IS NULL THEN
+    RETURN NEW;
+  END IF;
 
-  IF TG_OP = 'INSERT' THEN
-    IF v_new_empty THEN
-      RAISE EXCEPTION 'PUBLICATION_SNAPSHOT_REQUIRED';
+  IF TG_OP = 'UPDATE'
+    AND NEW.price_cents IS NOT DISTINCT FROM OLD.price_cents
+    AND NEW.shipping_cost_cents IS NOT DISTINCT FROM OLD.shipping_cost_cents THEN
+    IF NEW.publication_shipping_reserve_cents IS NOT DISTINCT FROM OLD.publication_shipping_reserve_cents
+      AND NEW.publication_commission_rate IS NOT DISTINCT FROM OLD.publication_commission_rate
+      AND NEW.publication_insurance_rate IS NOT DISTINCT FROM OLD.publication_insurance_rate THEN
+      RETURN NEW;
     END IF;
-  ELSE
-    v_old_empty := OLD.publication_shipping_reserve_cents IS NULL
-      AND OLD.publication_commission_rate IS NULL
-      AND OLD.publication_insurance_rate IS NULL;
-
-    IF NEW.price_cents IS NOT DISTINCT FROM OLD.price_cents
-      AND NEW.shipping_cost_cents IS NOT DISTINCT FROM OLD.shipping_cost_cents THEN
-      IF NEW.publication_shipping_reserve_cents IS NOT DISTINCT FROM OLD.publication_shipping_reserve_cents
-        AND NEW.publication_commission_rate IS NOT DISTINCT FROM OLD.publication_commission_rate
-        AND NEW.publication_insurance_rate IS NOT DISTINCT FROM OLD.publication_insurance_rate THEN
-        RETURN NEW;
-      END IF;
-      IF NOT v_old_empty THEN
-        RAISE EXCEPTION 'PUBLICATION_ECONOMICS_IMMUTABLE';
-      END IF;
-    ELSE
-      IF NOT v_old_empty AND v_new_empty THEN
-        RAISE EXCEPTION 'PUBLICATION_SNAPSHOT_REQUIRED';
-      END IF;
-      IF v_new_empty THEN
-        RETURN NEW;
-      END IF;
-    END IF;
+    RAISE EXCEPTION 'PUBLICATION_ECONOMICS_IMMUTABLE';
   END IF;
 
   SELECT

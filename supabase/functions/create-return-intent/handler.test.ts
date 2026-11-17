@@ -50,7 +50,9 @@ function harness(
   const users = input.users ?? { [TOKEN]: { id: SELLER_ID } };
   const tables: Record<string, Row[]> = {
     disputes: input.disputes ?? [DISPUTE],
-    system_settings: input.settings ?? [{ return_label_fee_cents: 45_000 }],
+    system_settings: input.settings ?? [
+      { id: 1, return_label_fee_cents: 45_000 },
+    ],
     profiles_private: input.profiles ?? [SELLER_PROFILE],
   };
   const calls: string[] = [];
@@ -302,7 +304,7 @@ describe('create-return-intent handler', () => {
       {
         table: 'system_settings',
         columns: 'return_label_fee_cents',
-        filters: {},
+        filters: { id: 1 },
       },
     ]);
     // The Stripe customer charged is the dispute's seller, not the caller.
@@ -426,14 +428,62 @@ describe('create-return-intent handler', () => {
     ]);
   });
 
-  it('falls back to 30000 cents when the settings row has no fee', async () => {
-    const h = harness({ settings: [{ return_label_fee_cents: null }] });
+  it.each([
+    ['no settings row', []],
+    ['a second row instead of id 1', [{ id: 2, return_label_fee_cents: 0 }]],
+    ['a null fee', [{ id: 1, return_label_fee_cents: null }]],
+    ['a negative fee', [{ id: 1, return_label_fee_cents: -1 }]],
+    ['a fractional fee', [{ id: 1, return_label_fee_cents: 300.5 }]],
+    ['a text fee', [{ id: 1, return_label_fee_cents: '30000' }]],
+  ])(
+    'answers 500 and logs when the return fee cannot be read (%s), before the RPC or Stripe',
+    async (_label, settings) => {
+      const h = harness({ settings });
+      const logSpy = console.log as unknown as {
+        mock: { calls: unknown[][] };
+      };
 
-    const response = await result(await h.handler(request()));
+      expect(await result(await h.handler(request()))).toEqual({
+        status: 500,
+        body: { error: 'Error cargando configuración del sistema' },
+      });
+      expect(h.reads.find((read) => read.table === 'system_settings')).toEqual({
+        table: 'system_settings',
+        columns: 'return_label_fee_cents',
+        filters: { id: 1 },
+      });
+      expect(h.rpcCalls).toEqual([]);
+      expect(h.reads.map((read) => read.table)).not.toContain(
+        'profiles_private',
+      );
+      expect(h.stripeCalls).toEqual([]);
+      const logs = logSpy.mock.calls.map(([line]) => JSON.parse(String(line)));
+      expect(logs).toContainEqual(
+        expect.objectContaining({
+          level: 'ERROR',
+          msg: 'Error cargando configuración del sistema',
+        }),
+      );
+    },
+  );
 
-    expect(response.body.amount).toBe(300);
-    expect(h.stripeCalls[1]?.params.amount).toBe(30_000);
-  });
+  it.each([
+    [0, 0],
+    [30_000, 300],
+  ])(
+    'charges a configured return fee of %d cents as is',
+    async (feeCents, pesos) => {
+      const h = harness({
+        settings: [{ id: 1, return_label_fee_cents: feeCents }],
+      });
+
+      const response = await result(await h.handler(request()));
+
+      expect(response.status).toBe(200);
+      expect(response.body.amount).toBe(pesos);
+      expect(h.stripeCalls[1]?.params.amount).toBe(feeCents);
+    },
+  );
 
   it('answers 400 with the Stripe message when the PaymentIntent cannot be created', async () => {
     const handler = createCreateReturnIntentHandler({

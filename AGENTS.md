@@ -121,7 +121,7 @@ When you find a bug, gap, or idea that is not part of the task, do not fix it: o
 
 For money, webhook, cron, or order and shipment state work, also load the `selene-engineering-principles` skill. These rules protect real money and user data and hold for every change:
 
-- The buyer pays the product price plus "Seguro Selene", which covers the Stripe processing fee. The seller absorbs shipping and the Selene marketplace fee. Rates live in `supabase/functions/create-connect-payment/fee-calculator.ts`; do not hardcode them elsewhere.
+- The buyer pays the product price plus "Seguro Selene", which covers the Stripe processing fee. The seller absorbs shipping and the Selene marketplace fee. The commission, insurance rate, shipping buffer, and return label fee live only in `system_settings`, and each product freezes its rates at publication (`publication_*`); never add a code default for them. The Seguro Selene gross-up lives in `supabase/functions/_shared/stripe/stripe-fee-gross-up.ts`.
 - Payments go through Stripe Connect with manual payouts. Selene holds the seller's funds until the shipment is completed, then an admin releases them. Never enable automatic payouts: they would pay sellers before delivery or before disputes and refunds are resolved.
 - A payout releases the full shipment amount or nothing. Partial payouts would make the database ledger diverge from Stripe.
 - Refunds and disputes are only possible before a shipment is completed, and they always target one `shipment_id`, never a whole multi-seller order.

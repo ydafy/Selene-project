@@ -69,13 +69,13 @@ ALTER TABLE "public"."products"
   ADD COLUMN "deleted_at" timestamp WITH time zone;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "publication_shipping_reserve_cents" bigint;
+  ADD COLUMN "publication_shipping_reserve_cents" bigint NOT NULL;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "publication_commission_rate" numeric(5,4);
+  ADD COLUMN "publication_commission_rate" numeric(5,4) NOT NULL;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "publication_insurance_rate" numeric(5,4);
+  ADD COLUMN "publication_insurance_rate" numeric(5,4) NOT NULL;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "status_before_account_hold" public.product_status;
@@ -83,9 +83,8 @@ ALTER TABLE "public"."products"
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "product_publication_economics_snapshot_check"
     CHECK
-    ((((publication_shipping_reserve_cents IS NULL) AND (publication_commission_rate IS NULL) AND (publication_insurance_rate IS NULL)) OR ((publication_shipping_reserve_cents >=
-    0) AND (publication_commission_rate >= (0)::numeric) AND (publication_commission_rate <= (1)::numeric) AND (publication_insurance_rate >= (0)::numeric) AND
-    (publication_insurance_rate <= (1)::numeric))));
+    (((publication_shipping_reserve_cents >= 0) AND (publication_commission_rate >= (0)::numeric) AND (publication_commission_rate <= (1)::numeric) AND
+    (publication_insurance_rate >= (0)::numeric) AND (publication_insurance_rate <= (1)::numeric)));
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_price_cents_check" CHECK (((price_cents >= 1000) AND (price_cents <= 50000000)));

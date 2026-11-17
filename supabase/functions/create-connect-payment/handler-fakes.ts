@@ -24,7 +24,7 @@ export const STRIPE_SECRET = 'sk_test_fake';
 export const CUSTOMER_ID = 'cus_existing';
 
 export const PRODUCTS_SELECT =
-  'id, seller_id, price_cents, name, shipping_cost_cents, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate';
+  'id, seller_id, price_cents, name, publication_shipping_reserve_cents, publication_commission_rate, publication_insurance_rate';
 
 type Row = Record<string, unknown>;
 type DbResult = {
@@ -37,7 +37,6 @@ export const productRow = (overrides: Row = {}): Row => ({
   seller_id: SELLER_A,
   price_cents: 123_450,
   name: 'GPU',
-  shipping_cost_cents: 15_000,
   publication_shipping_reserve_cents: 15_000,
   publication_commission_rate: 0.06,
   publication_insurance_rate: 0.012,
@@ -68,9 +67,6 @@ export interface RunOptions {
   releaseThrows?: string;
   products?: Row[] | null;
   productsError?: string;
-  settings?: Row | null;
-  settingsError?: string;
-  backfill?: DbResult;
   sellerProfiles?: Row[] | null;
   profilesError?: string;
   buyerProfile?: Row | null;
@@ -121,22 +117,6 @@ export async function runCreateConnectPayment(options: RunOptions = {}) {
       return {
         data:
           options.products === undefined ? [productRow()] : options.products,
-        error: null,
-      };
-    }
-    if (table === 'system_settings') {
-      if (options.settingsError) {
-        return { data: null, error: { message: options.settingsError } };
-      }
-      return {
-        data:
-          options.settings === undefined
-            ? {
-                shipping_buffer_cents: 3000,
-                insurance_rate: 1.2,
-                service_fee_pct: 6,
-              }
-            : options.settings,
         error: null,
       };
     }
@@ -204,20 +184,6 @@ export async function runCreateConnectPayment(options: RunOptions = {}) {
     if (name === 'fn_release_products') {
       if (options.releaseThrows) throw new Error(options.releaseThrows);
       return options.release ?? { data: null, error: null };
-    }
-    if (name === 'backfill_product_publication_economics') {
-      return (
-        options.backfill ?? {
-          data: [
-            {
-              publication_shipping_reserve_cents: 9_000,
-              publication_commission_rate: 0.06,
-              publication_insurance_rate: 0.012,
-            },
-          ],
-          error: null,
-        }
-      );
     }
     throw new Error(`unexpected rpc ${name}`);
   };

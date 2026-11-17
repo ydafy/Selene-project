@@ -56,10 +56,12 @@ export const buildPreviewProduct = (
   shipping_payer: draft.shipping_payer || 'buyer',
   verification_data: null,
   verified_at: null,
-  // Frozen by usePublishProduct at publish time; a draft has none yet.
-  publication_commission_rate: null,
-  publication_insurance_rate: null,
-  publication_shipping_reserve_cents: null,
+  // Frozen by usePublishProduct at publish time. The preview card never reads
+  // them; a draft without accepted economics shows 0.
+  publication_commission_rate: draft.publicationEconomics?.commissionRate ?? 0,
+  publication_insurance_rate: draft.publicationEconomics?.insuranceRate ?? 0,
+  publication_shipping_reserve_cents:
+    draft.publicationEconomics?.shippingReserveCents ?? 0,
   status_before_account_hold: null,
 
   // Seller mock required by ProductWithSeller

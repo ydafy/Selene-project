@@ -3,28 +3,15 @@ import {
   grossUpDomesticMx,
 } from '../_shared/stripe/stripe-fee-gross-up.ts';
 import {
-  resolvePublicationEconomics,
-  type PublicationEconomics,
+  validatePublicationEconomicsSnapshot,
   type PublicationEconomicsSnapshot,
 } from '../_shared/stripe/publication-economics.ts';
-
-export const CONNECT_COMMISSION_RATE = 0.06;
-export const ENVIA_INSURANCE_RATE = 0.012;
-export const DEFAULT_SHIPPING_BUFFER_CENTS = 3_000;
-
-export interface EstimatedSellerShippingDeductionInput {
-  priceCents: number;
-  quotedShippingCents: number;
-  shippingBufferCents?: number | null;
-  insuranceRate?: number | null;
-}
 
 export interface ConnectMoneyFlowInput {
   subtotalCents: number;
   shippingCents: number;
-  commissionRate?: number;
-  seguroRate?: number;
-  seguroFixedCents?: number;
+  /** Fraction in 0..1, frozen into the product at publication. No default. */
+  commissionRate: number;
 }
 
 export interface ConnectMoneyFlow {
@@ -66,54 +53,19 @@ const assertUniqueShipmentId = (
   seen.add(shipmentId);
 };
 
-export function normalizeEnviaInsuranceRate(value: number | null): number {
-  if (value === null || !Number.isFinite(value) || value <= 0) {
-    return 0;
-  }
-
-  if (value <= 1) {
-    return value;
-  }
-
-  if (value <= 100) {
-    return value / 100;
-  }
-
-  return value / 10_000;
-}
-
-export function calculateEstimatedSellerShippingDeductionCents({
-  priceCents,
-  quotedShippingCents,
-  shippingBufferCents = DEFAULT_SHIPPING_BUFFER_CENTS,
-  insuranceRate = ENVIA_INSURANCE_RATE,
-}: EstimatedSellerShippingDeductionInput): number {
-  assertCents('priceCents', priceCents);
-  assertCents('quotedShippingCents', quotedShippingCents);
-
-  const safeBufferCents = shippingBufferCents ?? DEFAULT_SHIPPING_BUFFER_CENTS;
-  assertCents('shippingBufferCents', safeBufferCents);
-
-  if (quotedShippingCents === 0) {
-    return 0;
-  }
-
-  const insuranceCents = Math.round(
-    priceCents * normalizeEnviaInsuranceRate(insuranceRate),
-  );
-
-  return quotedShippingCents + safeBufferCents + insuranceCents;
-}
-
 export function calculateConnectMoneyFlow({
   subtotalCents,
   shippingCents,
-  commissionRate = CONNECT_COMMISSION_RATE,
+  commissionRate,
 }: ConnectMoneyFlowInput): ConnectMoneyFlow {
   assertCents('subtotalCents', subtotalCents);
   assertCents('shippingCents', shippingCents);
 
-  if (!Number.isFinite(commissionRate) || commissionRate < 0) {
+  if (
+    !Number.isFinite(commissionRate) ||
+    commissionRate < 0 ||
+    commissionRate > 1
+  ) {
     throw new Error('INVALID_MONEY_FLOW_INPUT:commissionRate');
   }
 
@@ -175,16 +127,12 @@ export interface SellerAllocationInput {
   subtotalCents: number;
   /** Seller-paid shipping deduction. Free-to-buyer: never added to buyerTotal. */
   shippingCents: number;
-  /** Immutable publication inputs. Partial snapshots are rejected. */
-  publicationSnapshot?: PublicationEconomicsSnapshot;
-  /** Trusted server-side settings resolved only for an all-null legacy snapshot. */
-  legacyEconomics?: PublicationEconomics;
-}
-
-export interface CheckoutAllocationOptions {
-  commissionRate?: number;
-  seguroRate?: number;
-  seguroFixedCents?: number;
+  /**
+   * Immutable publication inputs, the only source of the row's commission
+   * rate and shipping reserve. A missing, partial, or invalid snapshot is
+   * rejected.
+   */
+  publicationSnapshot: PublicationEconomicsSnapshot;
 }
 
 export interface CheckoutAllocation {
@@ -208,7 +156,6 @@ export interface CheckoutAllocation {
  */
 export function calculateCheckoutAllocation(
   sellers: SellerAllocationInput[],
-  options: CheckoutAllocationOptions = {},
 ): CheckoutAllocation {
   if (!Array.isArray(sellers) || sellers.length === 0) {
     throw new Error('INVALID_CHECKOUT_INPUT:empty_sellers');
@@ -233,19 +180,19 @@ export function calculateCheckoutAllocation(
       throw new Error('INVALID_CHECKOUT_INPUT:non_positive_subtotal');
     }
 
-    const economics = input.publicationSnapshot
-      ? resolvePublicationEconomics(input.publicationSnapshot, () => {
-          if (!input.legacyEconomics) {
-            throw new Error('LEGACY_PUBLICATION_ECONOMICS_UNAVAILABLE');
-          }
-          return input.legacyEconomics;
-        })
-      : null;
+    // The row is priced only from its publication snapshot; there is no
+    // default rate and no fallback to current settings.
+    if (!input.publicationSnapshot) {
+      throw new Error('INVALID_PUBLICATION_ECONOMICS_SNAPSHOT');
+    }
+    const economics = validatePublicationEconomicsSnapshot(
+      input.publicationSnapshot,
+    );
 
     const moneyFlow = calculateConnectMoneyFlow({
       subtotalCents: input.subtotalCents,
-      shippingCents: economics?.shippingReserveCents ?? input.shippingCents,
-      commissionRate: economics?.commissionRate ?? options.commissionRate,
+      shippingCents: economics.shippingReserveCents,
+      commissionRate: economics.commissionRate,
     });
 
     // Reuse the legacy validator so a seller with shipping larger than gross

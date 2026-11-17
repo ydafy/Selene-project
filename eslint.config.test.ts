@@ -85,3 +85,16 @@ describe('max-lines warning (#135)', () => {
     ).not.toContain(SIZE_WARNING);
   });
 });
+
+describe('ignored local folders (#663)', () => {
+  test('skips the gitignored verification-evidence probes', async () => {
+    expect(
+      await eslint.isPathIgnored(
+        'verification-evidence/held-payout-overdue-refund/probe/t8-probes.ts',
+      ),
+    ).toBe(true);
+    expect(await eslint.isPathIgnored('scripts/dev/worktree-env.ts')).toBe(
+      false,
+    );
+  });
+});

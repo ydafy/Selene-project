@@ -115,7 +115,7 @@ describe('create-connect-payment seller readiness gate', () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.queries[2]).toEqual({
+    expect(result.queries[1]).toEqual({
       table: 'profiles_private',
       ops: [
         ['select', 'id, stripe_account_id, stripe_onboarding_status'],

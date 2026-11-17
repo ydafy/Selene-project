@@ -56,13 +56,31 @@ describe('buildPreviewProduct', () => {
     expect(preview.seller_id).toBe('user-1');
   });
 
-  it('leaves the publication economics unset until the product is published', () => {
+  it('shows zero publication economics before the seller accepts them', () => {
     const preview = buildPreviewProduct(baseDraft, seller);
 
-    expect(preview.publication_commission_rate).toBeNull();
-    expect(preview.publication_insurance_rate).toBeNull();
-    expect(preview.publication_shipping_reserve_cents).toBeNull();
+    expect(preview.publication_commission_rate).toBe(0);
+    expect(preview.publication_insurance_rate).toBe(0);
+    expect(preview.publication_shipping_reserve_cents).toBe(0);
     expect(preview.status_before_account_hold).toBeNull();
+  });
+
+  it('uses the accepted publication economics of the draft', () => {
+    const preview = buildPreviewProduct(
+      {
+        ...baseDraft,
+        publicationEconomics: {
+          commissionRate: 0.06,
+          insuranceRate: 0.012,
+          shippingReserveCents: 27_240,
+        },
+      },
+      seller,
+    );
+
+    expect(preview.publication_commission_rate).toBe(0.06);
+    expect(preview.publication_insurance_rate).toBe(0.012);
+    expect(preview.publication_shipping_reserve_cents).toBe(27_240);
   });
 
   it('converts odd pesos strings to exact cents', () => {

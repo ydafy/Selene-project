@@ -92,10 +92,18 @@ describe('sell "you receive" help copy', () => {
     }
   });
 
-  it('reads the commission from system settings, not a hardcoded rate', () => {
+  it('shows no amount when the estimate has none, instead of a default', () => {
     expect(hook).toContain(
-      compact('resolveCommissionPercent(systemConfig?.service_fee_pct)'),
+      compact(
+        'buildSellerEarnings({ priceCents: tryPesosToCents(price) ?? 0, quoteCents: tryPesosToCents(shippingCost) ?? 0, settings: systemConfig, })',
+      ),
     );
+    expect(form).toContain(
+      compact("earnings.final === null ? '$ --' : `$${earnings.final}`"),
+    );
+  });
+
+  it('reads the commission from system settings, not a hardcoded rate', () => {
     expect(form).toContain(
       compact(
         "earnings.commissionPct === null ? t('fields.youReceiveHelpDescriptionNoRate') : t('fields.youReceiveHelpDescription', { commissionPct: earnings.commissionPct, })",
