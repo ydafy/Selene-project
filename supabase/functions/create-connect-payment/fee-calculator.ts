@@ -9,8 +9,6 @@ import {
 } from '../_shared/stripe/publication-economics.ts';
 
 export const CONNECT_COMMISSION_RATE = 0.06;
-export const SEGURO_SELENE_RATE = 0.036;
-export const SEGURO_SELENE_FIXED_CENTS = 300;
 export const ENVIA_INSURANCE_RATE = 0.012;
 export const DEFAULT_SHIPPING_BUFFER_CENTS = 3_000;
 
@@ -67,21 +65,6 @@ const assertUniqueShipmentId = (
   }
   seen.add(shipmentId);
 };
-
-export function calculateSeguroSeleneCents(
-  subtotalCents: number,
-  rate = SEGURO_SELENE_RATE,
-  fixedCents = SEGURO_SELENE_FIXED_CENTS,
-): number {
-  assertCents('subtotalCents', subtotalCents);
-  assertCents('fixedCents', fixedCents);
-
-  if (!Number.isFinite(rate) || rate < 0) {
-    throw new Error('INVALID_MONEY_FLOW_INPUT:seguroRate');
-  }
-
-  return grossUpDomesticMx(subtotalCents).seguroCents;
-}
 
 export function normalizeEnviaInsuranceRate(value: number | null): number {
   if (value === null || !Number.isFinite(value) || value <= 0) {
