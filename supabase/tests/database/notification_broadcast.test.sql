@@ -7,7 +7,7 @@
 -- Realtime sets realtime.topic before it checks the policy, as this file does.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(24);
+select plan(26);
 \ir ../fixtures/money.psql
 
 -- Users: 42001 user A, 42002 user B.
@@ -105,6 +105,11 @@ select is((select count(*)::integer from realtime.messages
 select is((select count(*)::integer from realtime.messages
     where topic = pg_temp.topic(42001) and extension = 'presence'), 0,
   'policy: user A on their own topic reads no presence message');
+select is((select count(*)::integer from realtime.messages
+    where topic = pg_temp.topic(42002)), 0,
+  'policy: user A on their own topic reads no row whose topic column is user B''s topic');
+select is((select count(*)::integer from realtime.messages), 4,
+  'policy: user A on their own topic reads only their own broadcast rows');
 reset role;
 
 select pg_temp.act_as('authenticated', 42001, pg_temp.topic(42002));

@@ -37,7 +37,7 @@ CREATE TRIGGER trg_notifications_broadcast_update
 CREATE POLICY "notifications_owner_read_broadcast" ON "realtime"."messages"
   FOR SELECT
   TO "authenticated"
-  USING (((EXTENSION = 'broadcast'::text) AND (( SELECT realtime.topic() AS topic) = (('user:'::text || (( SELECT auth.uid() AS uid))::text) || ':notifications'::text))));
+  USING (((EXTENSION = 'broadcast'::text) AND (topic = ( SELECT realtime.topic() AS topic)) AND (( SELECT realtime.topic() AS topic) = (('user:'::text || (( SELECT auth.uid() AS uid))::text) || ':notifications'::text))));
 
 COMMENT ON FUNCTION "public"."fn_broadcast_notification_changes"() IS 'Statement-level trigger on public.notifications: one private Realtime Broadcast message (event changed, no notification text) per distinct user to user:<user_id>:notifications. realtime.send catches its own errors and raises a warning, so a failed send never fails the notification write.';
 
