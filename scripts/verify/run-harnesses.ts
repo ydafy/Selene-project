@@ -26,6 +26,7 @@ export const HARNESS_GROUPS = {
     'test-cron-health.ts',
     'test-auto-cancel-lease.ts',
     'test-checkout-recovery-lease.ts',
+    'test-shipment-lifecycle-model.ts',
   ],
   weekly: [
     'test-auto-cancel-paid-timeout.ts',
