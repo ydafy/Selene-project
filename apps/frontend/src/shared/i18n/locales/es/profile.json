@@ -54,7 +54,9 @@
       "rejected": "Rechazado",
       "hidden": "Oculto",
       "in_dispute": "En Disputa",
-      "ACCOUNT_HOLD": "En pausa (cuenta suspendida)"
+      "ACCOUNT_HOLD": "En pausa (cuenta suspendida)",
+      "PAYMENTS_SETUP": "Falta activar cobros",
+      "PAYMENTS_REJECTED": "Revisa tus cobros"
     },
     "actions": {
       "edit": "Editar",

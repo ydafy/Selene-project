@@ -56,7 +56,9 @@
       "rejected": "Rejected",
       "hidden": "Hidden",
       "in_dispute": "In Dispute",
-      "ACCOUNT_HOLD": "Paused (account suspended)"
+      "ACCOUNT_HOLD": "Paused (account suspended)",
+      "PAYMENTS_SETUP": "Payments not set up",
+      "PAYMENTS_REJECTED": "Check your payments"
     },
     "actions": {
       "edit": "Edit",
