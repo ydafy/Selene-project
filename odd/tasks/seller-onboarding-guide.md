@@ -15,8 +15,8 @@ Branch `feat/seller-onboarding-guide` from `origin/main`, worktree `bruno-money-
 
 ## Tasks
 
-- [ ] T1 (S5, S7): `connect-onboarding-ui.ts` resolves a single guide screen with a status notice (`pending`, `rejected`, `expired`) and the CTA key. Test first. Route: inline. Commit: pending.
-- [ ] T2 (S1-S4, S6, S7): screen, components and es/en copy; remove the sandbox screenshots; same time estimate in `orders.json`; locale tests. Route: inline. Commit: pending.
+- [x] T1 (S5, S7): `connect-onboarding-ui.ts` resolves a single guide screen with a status notice (`pending`, `rejected`, `expired`) and the CTA key. Test first. Route: inline. Commit: 17fd54c9.
+- [ ] T2 (S1-S4, S6, S7): screen, components and es/en copy; remove the sandbox screenshots; same time estimate in `orders.json`; locale tests. Route: inline. Commit: 17fd54c9 (one commit with T1: T1 alone breaks the screen's typecheck).
 
 ## Log
 
@@ -24,3 +24,5 @@ Branch `feat/seller-onboarding-guide` from `origin/main`, worktree `bruno-money-
 - L2 (2026-11-16): sandbox account `acct_1UcJMeACloJvncJ6` (prefill, completed) has empty `requirements` and `future_requirements` and `payouts_enabled: true`; no identity document was requested. Proposed copy: header "Activa tus cobros" / "Para depositarte tus ventas, Stripe (quien procesa los pagos en Selene) necesita verificar quién eres. Es gratis y toma unos 5 minutos."; cards "Ten tu celular a la mano. Stripe te manda un código por SMS para crear tu cuenta.", "Ten tu INE a la mano. Escribe tu nombre, fecha de nacimiento y domicilio tal como aparecen en tu INE.", "Ten tu CLABE a la mano. Stripe deposita tus ventas en tu banco con tu CLABE de 18 dígitos."; note "Al final aceptas los términos de Stripe y regresas solo a Selene."; notices pending "Te faltan unos datos en Stripe", rejected "Stripe necesita que corrijas algo", expired "El enlace de Stripe venció"; success "Listo, ya puedes vender" / "Stripe ya puede depositarte. Ya puedes imprimir tus guías de envío." with a "¿Cómo funcionan los pagos?" expander.
 - L3 (maintainer, 2026-11-16): "me gusta master me gusta, tu hazlo, soy de los que les gusta ver primero y luego mejkoarrlo despues, pero primero ocupo ver algo, asi que haz lo que tu recomiendas, que ojo, suena bien y me gusta, solo aclaro que cunado acabes me dejs cehcarlo y analizarlo antes de darlo por cerrado."
 - L4 (2026-11-16): the feature stays open until the maintainer reviews it on a device.
+- L5 (2026-11-16): T1 RED (8 of 13 tests failed on the old wizard state) then GREEN; T2 locale tests RED (3 failed) then GREEN. `bun test apps/frontend`: 1526 pass. `bun run --filter @selene/frontend typecheck`, `bun run format:check` and `bun run knip`: clean. `bun run lint` fails only on the gitignored `verification-evidence/` probe scripts (0 errors with them excluded), recorded as Finding #663. `image-viewer-migration.test.ts` no longer lists the onboarding screen, which has no viewer after S4. 17fd54c9 is about 1,270 changed lines, mostly deletions (the wizard, the two screenshots and the old copy).
+- L6 (2026-11-16): native review assess on the branch: `reviewDue: true` (payments path signal), no independent verifier. The native review runs on the final commit after the maintainer's device check (L4), because changes from that check would replace the candidate.
