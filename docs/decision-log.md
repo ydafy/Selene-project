@@ -349,6 +349,17 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 
 **Consequence:** The data model review of 2026-11-16 is judged against this target. A ledger of money movements, refund and verification history, notifications stored as events, and retention for every growing table become pre-launch work instead of later ideas. A seeded load test at the target volume replaces estimates for query and cron performance.
 
+## 2026-11-17: Merge With Auto-Merge After CodeRabbit Reports
+
+**Context:** On 2026-11-17 three sessions had pull requests open at once (#673, #675, #676). Because `main` requires branches to be up to date, each merge put the others behind, and every pull request waited for someone to update and merge it by hand. GitHub's merge queue, which batches and orders merges, exists only for repositories owned by an organization; this repository belongs to a personal account. A workflow that updates open pull requests by itself would need a personal token or a GitHub App, because an update pushed with the default Actions token starts no CI.
+
+**Decision (maintainer, 2026-11-17):**
+
+- Keep the up-to-date requirement: with several sessions adding migrations in parallel, two pull requests that pass alone can break `main` together.
+- Each session turns on auto-merge (`gh pr merge <N> --auto --merge`) once CodeRabbit has reviewed its last commit and the comments are handled, updates its pull request once with `gh pr update-branch <N>` when it falls behind, and tells the other sessions when it merges. Steps: `docs/worktrees.md`, "Merge while other sessions work in parallel".
+
+**Consequence:** CI runs again on each pull request after every merge (about 2 minutes; free for a public repository), but no merge waits for a person. "Merge one pull request at a time" from 2026-11-09 still holds; auto-merge only removes the wait.
+
 ## 2026-11-17: Unresolved Review Threads Block the Merge
 
 **Context:** The 2026-11-15 rule says to read CodeRabbit's comments before setting `gh pr merge --auto`, but nothing enforced it. On #681 an agent set `--auto` before CodeRabbit reported (#601, second occurrence). The required `CodeRabbit` check then passed with a valid finding, because the check means the review finished, not that it found nothing. The pull request would have merged with that bug if another session had not pointed out the rule.
