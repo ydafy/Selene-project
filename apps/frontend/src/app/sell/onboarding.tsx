@@ -1,22 +1,14 @@
 /**
  * @file app/sell/onboarding.tsx
- * @description Stripe Connect onboarding wizard for sellers.
+ * @description Stripe Connect onboarding guide for sellers.
  */
-import {
-  type ReactNode,
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect,
-} from 'react';
-import { ScrollView, type ScrollViewInstance } from 'react-native';
+import { useCallback } from 'react';
+import { ScrollView } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@shopify/restyle';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Box, Text } from '@/shared/ui/base';
 import { GlobalHeader } from '@/shared/ui/layout/global-header';
@@ -24,88 +16,23 @@ import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { ErrorState } from '@/shared/ui/feedback/error-state';
 import { Skeleton } from '@/shared/ui/feedback/skeleton';
-import { WizardSteps } from '@/features/sell/components/wizard-steps';
+import { LabelWithHelp } from '@/shared/ui/form/label-with-help';
 import { SellerPaymentExplanation } from '@/shared/ui/seller-payment-explanation';
-import { AppImageViewer } from '@/shared/ui/media/app-image-viewer';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { useConnectOnboarding } from '@/shared/hooks/use-connect-onboarding';
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
+  resolveConnectOnboardingHeaderKeys,
+  resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
 } from '@/features/payments/logic/connect-onboarding-ui';
-import type { StripeOnboardingStatus } from '@selene/types';
-import type { ConnectOnboardingStatusGuidanceKey } from '@/features/payments/logic/connect-onboarding-ui';
-import { Theme } from '@/shared/theme';
-
 import {
-  ONBOARDING_GUIDE_IMAGE_INDEX,
-  ONBOARDING_GUIDE_IMAGES,
-  OnboardingStep0,
-  OnboardingStep1,
-  OnboardingStep2,
-  OnboardingStep3,
-} from '@/features/payments/components/onboarding-steps';
-
-type OnboardingStepRenderContext = {
-  openViewer: (index: number) => void;
-  status: StripeOnboardingStatus | null;
-  statusGuidanceKey: ConnectOnboardingStatusGuidanceKey | null;
-};
-
-const ONBOARDING_STEP_DEFINITIONS = [
-  {
-    key: 'intro',
-    labelKey: 'sellerOnboarding:steps.intro',
-    titleKey: 'sellerOnboarding:header.title',
-    subtitleKey: 'sellerOnboarding:header.subtitle',
-    renderContent: () => <OnboardingStep0 />,
-  },
-  {
-    key: 'type',
-    labelKey: 'sellerOnboarding:steps.type',
-    titleKey: 'sellerOnboarding:steps.typeTitle',
-    subtitleKey: 'sellerOnboarding:steps.typeDesc',
-    renderContent: ({ openViewer }: OnboardingStepRenderContext) => (
-      <OnboardingStep1
-        onImagePress={() =>
-          openViewer(ONBOARDING_GUIDE_IMAGE_INDEX.accountType)
-        }
-      />
-    ),
-  },
-  {
-    key: 'details',
-    labelKey: 'sellerOnboarding:steps.details',
-    titleKey: 'sellerOnboarding:steps.detailsTitle',
-    subtitleKey: 'sellerOnboarding:steps.detailsDesc',
-    renderContent: ({ openViewer }: OnboardingStepRenderContext) => (
-      <OnboardingStep2
-        onImagePress={() =>
-          openViewer(ONBOARDING_GUIDE_IMAGE_INDEX.businessDetails)
-        }
-      />
-    ),
-  },
-  {
-    key: 'done',
-    labelKey: 'sellerOnboarding:steps.done',
-    titleKey: 'sellerOnboarding:steps.doneTitle',
-    subtitleKey: 'sellerOnboarding:steps.doneDesc',
-    renderContent: ({ status, statusGuidanceKey }) => (
-      <OnboardingStep3 status={status} statusGuidanceKey={statusGuidanceKey} />
-    ),
-  },
-] as const satisfies ReadonlyArray<{
-  key: string;
-  labelKey: string;
-  titleKey: string;
-  subtitleKey: string;
-  renderContent: (context: OnboardingStepRenderContext) => ReactNode;
-}>;
-
-const LAST_ONBOARDING_STEP_INDEX = ONBOARDING_STEP_DEFINITIONS.length - 1;
-const DEFAULT_ONBOARDING_STEP = ONBOARDING_STEP_DEFINITIONS[0];
+  OnboardingGuideCards,
+  PaymentsExplanationToggle,
+} from '@/features/payments/components/onboarding-guide';
+import { useAnnounceOnboardingNotice } from '@/features/payments/hooks/use-announce-onboarding-notice';
+import { Theme } from '@/shared/theme';
 
 export default function SellerOnboardingScreen() {
   const { t } = useTranslation(['sellerOnboarding']);
@@ -115,12 +42,6 @@ export default function SellerOnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthContext();
   const userId = session?.user.id;
-
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isViewerVisible, setIsViewerVisible] = useState(false);
-  const [viewerIndex, setViewerIndex] = useState(0);
-
-  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const {
     status,
@@ -133,28 +54,25 @@ export default function SellerOnboardingScreen() {
     statusError,
     startOnboarding,
   } = useConnectOnboarding(userId);
-  const isStripeReturn = params.return === '1' || params.refresh === '1';
+  const stripeReturn = resolveConnectOnboardingStripeReturn(params);
   const onboardingUi = resolveConnectOnboardingUiState({
     userId,
-    currentStep,
-    lastStepIndex: LAST_ONBOARDING_STEP_INDEX,
     status,
     isComplete,
     isLoading,
     isStarting,
     isRefreshingFromStripe,
-    isStripeReturn,
+    stripeReturn,
   });
 
-  useEffect(() => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  }, [currentStep]);
-
-  useEffect(() => {
-    if (isStripeReturn && !isComplete) {
-      setCurrentStep(LAST_ONBOARDING_STEP_INDEX);
-    }
-  }, [isComplete, isStripeReturn]);
+  const header = resolveConnectOnboardingHeaderKeys(
+    onboardingUi.statusNoticeKey,
+  );
+  const headerTitle = t(header.titleKey);
+  const headerSubtitle = t(header.subtitleKey);
+  useAnnounceOnboardingNotice(
+    onboardingUi.statusNoticeKey ? `${headerTitle}. ${headerSubtitle}` : null,
+  );
 
   const handleStart = useCallback(async () => {
     try {
@@ -163,45 +81,6 @@ export default function SellerOnboardingScreen() {
       return;
     }
   }, [startOnboarding]);
-
-  const handleOpenViewer = useCallback((index: number) => {
-    setViewerIndex(index);
-    setIsViewerVisible(true);
-  }, []);
-
-  const steps = useMemo(
-    () => ONBOARDING_STEP_DEFINITIONS.map((step) => t(step.labelKey)),
-    [t],
-  );
-
-  const currentStepDefinition =
-    ONBOARDING_STEP_DEFINITIONS[onboardingUi.effectiveStep] ??
-    DEFAULT_ONBOARDING_STEP;
-
-  const { title, subtitle } = useMemo(() => {
-    return {
-      title: t(currentStepDefinition.titleKey),
-      subtitle: t(currentStepDefinition.subtitleKey),
-    };
-  }, [currentStepDefinition, t]);
-
-  const currentStepContent = useMemo(() => {
-    return currentStepDefinition.renderContent({
-      openViewer: handleOpenViewer,
-      status,
-      statusGuidanceKey: onboardingUi.statusGuidanceKey,
-    });
-  }, [
-    currentStepDefinition,
-    handleOpenViewer,
-    onboardingUi.statusGuidanceKey,
-    status,
-  ]);
-
-  const activeViewerImages = useMemo(
-    () => [ONBOARDING_GUIDE_IMAGES[viewerIndex]],
-    [viewerIndex],
-  );
 
   const visibleErrorKey = resolveConnectOnboardingVisibleError({
     status,
@@ -216,7 +95,7 @@ export default function SellerOnboardingScreen() {
   if (onboardingUi.viewState === 'auth-required') {
     return (
       <Box flex={1} backgroundColor="background">
-        <GlobalHeader showBack />
+        <GlobalHeader title={t('sellerOnboarding:header.navTitle')} showBack />
         <ErrorState title={t('sellerOnboarding:errors.authRequired')} />
       </Box>
     );
@@ -226,7 +105,11 @@ export default function SellerOnboardingScreen() {
     return (
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
-        <GlobalHeader showBack backgroundColor="cardBackground" />
+        <GlobalHeader
+          title={t('sellerOnboarding:header.navTitle')}
+          showBack
+          backgroundColor="cardBackground"
+        />
 
         <ScrollView
           contentContainerStyle={{
@@ -251,7 +134,11 @@ export default function SellerOnboardingScreen() {
     return (
       <Box flex={1} backgroundColor="background">
         <Stack.Screen options={{ headerShown: false }} />
-        <GlobalHeader showBack backgroundColor="cardBackground" />
+        <GlobalHeader
+          title={t('sellerOnboarding:header.navTitle')}
+          showBack
+          backgroundColor="cardBackground"
+        />
 
         <ScrollView
           contentContainerStyle={{
@@ -289,18 +176,10 @@ export default function SellerOnboardingScreen() {
             {t('sellerOnboarding:success.subtitle')}
           </Text>
 
-          <Box
-            width="100%"
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="m"
-            marginBottom="l"
-            gap="m"
-          >
-            <Text variant="subheader-md" color="textPrimary">
-              {t('sellerOnboarding:paymentExplanation.title')}
-            </Text>
-            <SellerPaymentExplanation />
+          <Box width="100%" marginBottom="l">
+            <PaymentsExplanationToggle>
+              <SellerPaymentExplanation />
+            </PaymentsExplanationToggle>
           </Box>
 
           <Box width="100%">
@@ -321,73 +200,44 @@ export default function SellerOnboardingScreen() {
   return (
     <Box flex={1} backgroundColor="background">
       <Stack.Screen options={{ headerShown: false }} />
-      <GlobalHeader showBack backgroundColor="cardBackground" />
+      <GlobalHeader
+        title={t('sellerOnboarding:header.navTitle')}
+        showBack
+        backgroundColor="cardBackground"
+      />
 
       <ScrollView
-        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           padding: 20,
           paddingTop: insets.top + 80,
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: insets.bottom + 120,
+          gap: 16,
         }}
       >
-        <Animated.View
-          key={onboardingUi.effectiveStep}
-          entering={FadeIn.duration(250)}
-        >
-          <ScreenHeader title={title} subtitle={subtitle} />
-        </Animated.View>
+        <ScreenHeader title={headerTitle} subtitle={headerSubtitle} />
 
-        <WizardSteps currentStep={onboardingUi.effectiveStep} steps={steps} />
-
-        {onboardingUi.showRejectedBanner && (
-          <Box
-            backgroundColor="errorSubtle"
-            padding="m"
-            borderRadius="m"
-            marginBottom="m"
-            borderWidth={1}
-            borderColor="error"
-          >
-            <Text color="error" variant="body-md" fontWeight="bold">
-              {t('sellerOnboarding:status.rejectedTitle')}
-            </Text>
-            <Text color="error" variant="body-sm" marginTop="xs">
-              {t('sellerOnboarding:status.rejectedDesc')}
-            </Text>
-          </Box>
-        )}
+        <LabelWithHelp
+          label={t('sellerOnboarding:whatIsStripe.label')}
+          helpTitle={t('sellerOnboarding:whatIsStripe.title')}
+          helpDescription={t('sellerOnboarding:whatIsStripe.desc')}
+          confirmLabel={t('sellerOnboarding:whatIsStripe.confirm')}
+          color="primary"
+        />
 
         {onboardingUi.showStripeReturnRefreshMessage && (
-          <Box
-            backgroundColor="cardBackground"
-            padding="m"
-            borderRadius="m"
-            marginBottom="m"
-            borderWidth={1}
-            borderColor="separator"
-          >
-            <Text variant="body-sm" color="textSecondary">
-              {t('sellerOnboarding:actions.checking')}
-            </Text>
-          </Box>
+          <Text variant="body-sm" color="textSecondary">
+            {t('sellerOnboarding:actions.checking')}
+          </Text>
         )}
 
-        <Animated.View
-          key={`content_${onboardingUi.effectiveStep}`}
-          entering={FadeIn.duration(250)}
-          style={{ minHeight: 280, marginVertical: 12 }}
-        >
-          {currentStepContent}
-        </Animated.View>
+        <OnboardingGuideCards />
 
         {visibleErrorMessage && (
           <Box
             backgroundColor="errorSubtle"
             padding="m"
             borderRadius="m"
-            marginBottom="m"
             borderWidth={1}
             borderColor="error"
           >
@@ -397,63 +247,25 @@ export default function SellerOnboardingScreen() {
           </Box>
         )}
       </ScrollView>
-      <Box
-        position="absolute"
-        bottom={insets.bottom}
-        left={0}
-        right={0}
-        padding="m"
-      >
-        <Box flexDirection="row" gap="s" marginTop="m">
-          {onboardingUi.showBack && (
-            <Box flex={1}>
-              <PrimaryButton
-                onPress={() => setCurrentStep((prev) => prev - 1)}
-                disabled={onboardingUi.backDisabled}
-                variant="outline"
-                icon="arrow-left"
-              >
-                {t('sellerOnboarding:actions.back')}
-              </PrimaryButton>
-            </Box>
-          )}
 
-          <Box flex={2}>
-            {onboardingUi.showNext ? (
-              <PrimaryButton
-                onPress={() => setCurrentStep((prev) => prev + 1)}
-                disabled={onboardingUi.nextDisabled}
-                loading={onboardingUi.nextLoading}
-                icon="arrow-right"
-              >
-                {t('sellerOnboarding:actions.next')}
-              </PrimaryButton>
-            ) : onboardingUi.showStartCta ? (
-              <PrimaryButton
-                onPress={handleStart}
-                loading={onboardingUi.ctaLoading}
-                disabled={onboardingUi.ctaDisabled}
-                icon="bank-outline"
-              >
-                {t(`sellerOnboarding:actions.${onboardingUi.ctaKey}`)}
-              </PrimaryButton>
-            ) : (
-              <Skeleton height={48} borderRadius="m" />
-            )}
-          </Box>
+      {onboardingUi.showStartCta && (
+        <Box
+          position="absolute"
+          bottom={insets.bottom}
+          left={0}
+          right={0}
+          padding="m"
+        >
+          <PrimaryButton
+            onPress={handleStart}
+            loading={onboardingUi.ctaLoading}
+            disabled={onboardingUi.ctaDisabled}
+            icon="bank-outline"
+          >
+            {t(`sellerOnboarding:actions.${onboardingUi.ctaKey}`)}
+          </PrimaryButton>
         </Box>
-      </Box>
-
-      <AppImageViewer
-        images={activeViewerImages}
-        initialIndex={0}
-        visible={isViewerVisible}
-        onClose={() => setIsViewerVisible(false)}
-        closeAccessibilityLabel={t('sellerOnboarding:image.closeLabel')}
-        counterAccessibilityLabel={({ current, total }) =>
-          t('sellerOnboarding:image.counterLabel', { current, total })
-        }
-      />
+      )}
     </Box>
   );
 }

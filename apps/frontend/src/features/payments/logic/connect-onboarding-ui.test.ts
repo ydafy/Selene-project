@@ -2,6 +2,8 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE,
+  resolveConnectOnboardingHeaderKeys,
+  resolveConnectOnboardingStripeReturn,
   resolveConnectOnboardingUiState,
   resolveConnectOnboardingVisibleError,
   type ResolveConnectOnboardingUiInput,
@@ -9,14 +11,12 @@ import {
 
 const baseInput: ResolveConnectOnboardingUiInput = {
   userId: 'user-1',
-  currentStep: 0,
-  lastStepIndex: 3,
   status: null,
   isComplete: false,
   isLoading: false,
   isStarting: false,
   isRefreshingFromStripe: false,
-  isStripeReturn: false,
+  stripeReturn: null,
 };
 
 const resolveUi = (overrides: Partial<ResolveConnectOnboardingUiInput> = {}) =>
@@ -27,123 +27,148 @@ describe('resolveConnectOnboardingUiState', () => {
     expect(CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE).toBe('/sell');
   });
 
-  it('returns the auth-required state before enabling the wizard', () => {
+  it('returns the auth-required state without the Stripe CTA', () => {
     const state = resolveUi({ userId: undefined });
 
     expect(state.viewState).toBe('auth-required');
-    expect(state.showNext).toBe(false);
     expect(state.showStartCta).toBe(false);
-    expect(state.showBack).toBe(false);
+    expect(state.statusNoticeKey).toBeNull();
   });
 
   it('keeps initial loading non-interactive', () => {
     const state = resolveUi({ isLoading: true });
 
     expect(state.viewState).toBe('loading');
-    expect(state.isNavigationDisabled).toBe(true);
-    expect(state.nextDisabled).toBe(true);
     expect(state.ctaDisabled).toBe(true);
-    expect(state.nextLoading).toBe(true);
+    expect(state.ctaLoading).toBe(true);
   });
 
-  it('shows success when complete status is known during loading or Stripe return', () => {
-    const state = resolveUi({
-      status: 'complete',
-      isComplete: true,
-      isLoading: true,
-      isStripeReturn: true,
-    });
+  it('shows success when complete status is known during loading or a Stripe return', () => {
+    for (const stripeReturn of ['return', 'refresh'] as const) {
+      const state = resolveUi({
+        status: 'complete',
+        isComplete: true,
+        isLoading: true,
+        stripeReturn,
+      });
 
-    expect(state.viewState).toBe('success');
-    expect(state.showNext).toBe(false);
-    expect(state.showStartCta).toBe(false);
-    expect(state.effectiveStep).toBe(0);
+      expect(state.viewState).toBe('success');
+      expect(state.showStartCta).toBe(false);
+      expect(state.statusNoticeKey).toBeNull();
+    }
   });
 
-  it('returns the complete success state without wizard actions', () => {
-    const state = resolveUi({ status: 'complete', isComplete: true });
-
-    expect(state.viewState).toBe('success');
-    expect(state.showNext).toBe(false);
-    expect(state.showStartCta).toBe(false);
-    expect(state.showRejectedBanner).toBe(false);
-  });
-
-  it('shows rejected banner and review CTA on the final step', () => {
-    const state = resolveUi({ currentStep: 3, status: 'rejected' });
-
-    expect(state.viewState).toBe('wizard');
-    expect(state.showRejectedBanner).toBe(true);
-    expect(state.showStartCta).toBe(true);
-    expect(state.ctaKey).toBe('review');
-  });
-
-  it('maps pending and null statuses to the expected final CTA', () => {
-    expect(resolveUi({ currentStep: 3, status: 'pending' }).ctaKey).toBe(
-      'continue',
-    );
-    expect(resolveUi({ currentStep: 3, status: null }).ctaKey).toBe('start');
-  });
-
-  it('forces non-complete Stripe returns to the final step', () => {
-    const state = resolveUi({
-      currentStep: 1,
-      status: 'pending',
-      isStripeReturn: true,
-    });
-
-    expect(state.viewState).toBe('wizard');
-    expect(state.effectiveStep).toBe(3);
-    expect(state.isFinalStep).toBe(true);
-    expect(state.showStartCta).toBe(true);
-    expect(state.ctaKey).toBe('continue');
-  });
-
-  it('maps final-step status guidance for not-started, pending, and rejected states', () => {
-    expect(resolveUi({ currentStep: 3, status: null })).toMatchObject({
-      showStatusGuidance: true,
-      statusGuidanceKey: 'new',
+  it('shows the guide with the start CTA and no notice for a new seller', () => {
+    expect(resolveUi()).toMatchObject({
+      viewState: 'guide',
+      showStartCta: true,
+      statusNoticeKey: null,
       ctaKey: 'start',
     });
-    expect(resolveUi({ currentStep: 3, status: 'pending' })).toMatchObject({
-      showStatusGuidance: true,
-      statusGuidanceKey: 'pending',
+  });
+
+  it('maps pending and rejected statuses to their notice and CTA', () => {
+    expect(resolveUi({ status: 'pending' })).toMatchObject({
+      viewState: 'guide',
+      statusNoticeKey: 'pending',
       ctaKey: 'continue',
     });
-    expect(resolveUi({ currentStep: 3, status: 'rejected' })).toMatchObject({
-      showStatusGuidance: true,
-      statusGuidanceKey: 'rejected',
+    expect(resolveUi({ status: 'rejected' })).toMatchObject({
+      viewState: 'guide',
+      statusNoticeKey: 'rejected',
       ctaKey: 'review',
     });
   });
 
-  it('gates Stripe start behind the final step', () => {
-    expect(resolveUi({ currentStep: 2 }).showNext).toBe(true);
-    expect(resolveUi({ currentStep: 2 }).showStartCta).toBe(false);
-    expect(resolveUi({ currentStep: 3 }).showNext).toBe(false);
-    expect(resolveUi({ currentStep: 3 }).showStartCta).toBe(true);
-  });
-
-  it('tracks next and back availability from the current step', () => {
-    expect(resolveUi({ currentStep: 0 }).showBack).toBe(false);
-    expect(resolveUi({ currentStep: 0 }).showNext).toBe(true);
-    expect(resolveUi({ currentStep: 1 }).showBack).toBe(true);
-    expect(resolveUi({ currentStep: 1 }).showNext).toBe(true);
-  });
-
-  it('shows the Stripe return refresh message only while refreshing after return', () => {
+  it('shows the expired-link notice and continue CTA on a refresh return', () => {
+    expect(resolveUi({ stripeReturn: 'refresh' })).toMatchObject({
+      viewState: 'guide',
+      statusNoticeKey: 'expired',
+      ctaKey: 'continue',
+    });
     expect(
-      resolveUi({ isStripeReturn: true, isRefreshingFromStripe: true })
+      resolveUi({ stripeReturn: 'refresh', status: 'pending' }),
+    ).toMatchObject({ statusNoticeKey: 'expired', ctaKey: 'continue' });
+  });
+
+  it('keeps the rejected notice over an expired link', () => {
+    expect(
+      resolveUi({ stripeReturn: 'refresh', status: 'rejected' }),
+    ).toMatchObject({ statusNoticeKey: 'rejected', ctaKey: 'review' });
+  });
+
+  it('does not show the expired notice on a normal return', () => {
+    expect(resolveUi({ stripeReturn: 'return' }).statusNoticeKey).toBeNull();
+    expect(
+      resolveUi({ stripeReturn: 'return', status: 'pending' }).statusNoticeKey,
+    ).toBe('pending');
+  });
+
+  it('disables the CTA while starting or refreshing', () => {
+    expect(resolveUi({ isStarting: true }).ctaDisabled).toBe(true);
+    expect(resolveUi({ isRefreshingFromStripe: true }).ctaLoading).toBe(true);
+    expect(resolveUi().ctaDisabled).toBe(false);
+  });
+
+  it('shows the Stripe return refresh message only while refreshing after a return', () => {
+    expect(
+      resolveUi({ stripeReturn: 'return', isRefreshingFromStripe: true })
         .showStripeReturnRefreshMessage,
     ).toBe(true);
     expect(
-      resolveUi({ isStripeReturn: true, isRefreshingFromStripe: false })
+      resolveUi({ stripeReturn: 'refresh', isRefreshingFromStripe: true })
+        .showStripeReturnRefreshMessage,
+    ).toBe(true);
+    expect(
+      resolveUi({ stripeReturn: 'return', isRefreshingFromStripe: false })
         .showStripeReturnRefreshMessage,
     ).toBe(false);
     expect(
-      resolveUi({ isStripeReturn: false, isRefreshingFromStripe: true })
+      resolveUi({ stripeReturn: null, isRefreshingFromStripe: true })
         .showStripeReturnRefreshMessage,
     ).toBe(false);
+  });
+});
+
+describe('resolveConnectOnboardingHeaderKeys', () => {
+  it('uses the guide header when there is no notice', () => {
+    expect(resolveConnectOnboardingHeaderKeys(null)).toEqual({
+      titleKey: 'sellerOnboarding:header.title',
+      subtitleKey: 'sellerOnboarding:header.subtitle',
+    });
+  });
+
+  it('puts each notice in the header instead of a separate card', () => {
+    for (const notice of ['pending', 'rejected', 'expired'] as const) {
+      expect(resolveConnectOnboardingHeaderKeys(notice)).toEqual({
+        titleKey: `sellerOnboarding:statusNotice.${notice}Title`,
+        subtitleKey: `sellerOnboarding:statusNotice.${notice}Desc`,
+      });
+    }
+  });
+});
+
+describe('resolveConnectOnboardingStripeReturn', () => {
+  it('maps the Stripe return_url and refresh_url params', () => {
+    expect(resolveConnectOnboardingStripeReturn({ return: '1' })).toBe(
+      'return',
+    );
+    expect(resolveConnectOnboardingStripeReturn({ refresh: '1' })).toBe(
+      'refresh',
+    );
+  });
+
+  it('treats an expired link as refresh even when return is also set', () => {
+    expect(
+      resolveConnectOnboardingStripeReturn({ return: '1', refresh: '1' }),
+    ).toBe('refresh');
+  });
+
+  it('ignores missing or unexpected values', () => {
+    expect(resolveConnectOnboardingStripeReturn({})).toBeNull();
+    expect(
+      resolveConnectOnboardingStripeReturn({ return: '0', refresh: 'yes' }),
+    ).toBeNull();
   });
 });
 

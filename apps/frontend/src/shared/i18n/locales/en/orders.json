@@ -334,7 +334,7 @@
     "statusBoxUnavailable": "No box is configured for this shipment. Contact support to continue.",
     "generateWarning": "This creates a real shipping label. It costs money and cannot be undone.",
     "connectTitle": "Complete your payment setup",
-    "connectBody": "To receive payments from your sales, you need to finish your Stripe Connect registration. It is free and takes 5 minutes.",
+    "connectBody": "To receive payments from your sales, you need to finish your Stripe Connect registration. It is free and takes about 5 minutes.",
     "connectCta": "Register with Stripe",
     "securityReason": "Authorize to generate the shipping label",
     "evidenceTitle": "Packaging Proof",
