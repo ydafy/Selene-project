@@ -7,8 +7,8 @@ import { join } from 'node:path';
 const help =
   'Usage: bun scripts/verify/test-shipment-lifecycle-model.ts [--help]\n' +
   'Model-based test (fast-check): random sequences of shipment cancellation, refund (recorded, webhook\n' +
-  'events, admin resolution), delivery confirmation and payout transfer RPCs on two shipments of one\n' +
-  'order. After every step it checks the money invariants of\n' +
+  'events, admin resolution), delivery confirmation, overdue payout refund (#549) and payout transfer\n' +
+  'RPCs on two shipments of one order. After every step it checks the money invariants of\n' +
   'docs/formal/shipment-transfer-cancellation/ShipmentTransferCancel.tla on the database rows, then\n' +
   'checks that each mutant (a production function with one guard broken) makes the property fail.\n' +
   "Runs against this worktree's local Supabase stack (`supabase start`); every run rolls back.\n" +
@@ -83,7 +83,7 @@ async function asOwnerFor<T>(tx: Tx, body: () => Promise<T>): Promise<T> {
   return result;
 }
 
-function request(s: Ship, callerRole: string) {
+function request(s: Ship, callerRole: string, operationReason: string) {
   return {
     payment_intent: paymentIntent,
     amount: refundAmounts[s],
@@ -92,7 +92,7 @@ function request(s: Ship, callerRole: string) {
       shipment_id: ids[s],
       order_id: ids.order,
       caller_role: callerRole,
-      reason,
+      reason: operationReason,
       seguro_share_cents: 500,
     },
   };
@@ -123,6 +123,7 @@ type Row = {
   stripe_transfer_id: string | null;
   items_net: number;
   op_started: boolean;
+  op_source: string | null;
   refund_status: string | null;
   refund_id: string | null;
   refund_failed_notice: boolean;
@@ -131,16 +132,20 @@ type Row = {
   released_notice_amounts: number[];
 };
 
+// The invariants read tables service_role cannot, so the query runs as the table
+// owner. Every command leaves the transaction as service_role (asOwnerFor
+// restores it), so one round trip resets the role, reads and sets it back; the
+// ids are code constants, inlined because a multi-statement query takes no
+// parameters.
 async function rows(tx: Tx): Promise<Record<Ship, Row>> {
-  const list: Row[] = await asOwnerFor(
-    tx,
-    () => tx`SELECT s.id::text AS id, s.status::text AS status, s.stripe_transfer_id,
+  const [, list] =
+    (await tx.unsafe(`RESET ROLE; SELECT s.id::text AS id, s.status::text AS status, s.stripe_transfer_id,
       (SELECT COALESCE(sum(oi.net_payout_cents), 0)::int FROM public.order_items oi
         WHERE oi.shipment_id = s.id) AS items_net,
       COALESCE(op.external_started_at IS NOT NULL, false) AS op_started,
-      op.refund_status, op.refund_id,
+      op.source AS op_source, op.refund_status, op.refund_id,
       EXISTS (SELECT 1 FROM public.notifications n
-        WHERE n.event_kind = 'shipment.refund_failed' AND n.user_id = ${ids.buyer}
+        WHERE n.event_kind = 'shipment.refund_failed' AND n.user_id = '${ids.buyer}'
           AND n.source_event_key = 'shipment.refund_failed:' || s.id::text || ':' || op.refund_id
       ) AS refund_failed_notice,
       COALESCE(op.refund_resolved_at IS NOT NULL, false) AS resolved,
@@ -153,13 +158,21 @@ async function rows(tx: Tx): Promise<Record<Ship, Row>> {
           AND n.event_payload->>'shipment_id' = s.id::text) AS released_notice_amounts
     FROM public.shipments s
     LEFT JOIN public.shipment_cancellation_operations op ON op.shipment_id = s.id
-    WHERE s.order_id = ${ids.order}`,
-  );
+    WHERE s.order_id = '${ids.order}'; SET LOCAL ROLE service_role`)) as [
+      unknown,
+      Row[],
+      unknown,
+    ];
   const byId = Object.fromEntries(list.map((row) => [row.id, row]));
   return { s0: byId[ids.s0], s1: byId[ids.s1] };
 }
 
-const allowedTransitions = new Set(['paid->cancelled', 'delivered->completed']);
+const allowedTransitions = new Set([
+  'paid->cancelled',
+  'delivered->completed',
+  'completed->refunded',
+]);
+const overdueSource = 'admin_overdue_payout';
 
 class InvariantViolation extends Error {}
 
@@ -167,11 +180,14 @@ function violated(invariant: string, s: Ship, detail: string): never {
   throw new InvariantViolation(`${invariant} violated on ${s}: ${detail}`);
 }
 
-/** Checks the database rows after a command on `target`; updates the observed state in the model. */
+/**
+ * Checks the database rows after a command on `target` (null: a command that may
+ * move no shipment status); updates the observed state in the model.
+ */
 async function checkInvariants(
   tx: Tx,
   model: Model,
-  target: Ship,
+  target: Ship | null,
   stats: Stats,
 ) {
   const now = await rows(tx);
@@ -212,6 +228,18 @@ async function checkInvariants(
         s,
         `stripe_transfer_id changed from ${seen.transferId} to ${row.stripe_transfer_id}`,
       );
+    // Checked before NoTransferAfterCancel, which also covers it (any started
+    // operation), so a broken overdue fence is reported under its own name.
+    if (
+      row.op_source === overdueSource &&
+      row.op_started &&
+      (started.length > 0 || transferred)
+    )
+      violated(
+        'NoTransferAfterOverdueStart',
+        s,
+        `overdue refund started with ${started.length} started transfers, transfer id ${row.stripe_transfer_id}`,
+      );
     if (
       (row.status === 'cancelled' || row.op_started) &&
       (started.length > 0 || transferred)
@@ -247,9 +275,44 @@ async function checkInvariants(
         s,
         `cancelled with refund_status ${row.refund_status} and no resolution`,
       );
+    // RefundedHadRefund: the same split. A succeeded overdue refund that Stripe
+    // fails after the shipment is refunded (T5b of #549) keeps it refunded until an
+    // admin records the manual repayment.
+    if (
+      row.status === 'refunded' &&
+      seen.status !== 'refunded' &&
+      !(
+        row.op_source === overdueSource &&
+        row.op_started &&
+        (row.refund_status === 'succeeded' ||
+          (row.resolved &&
+            (row.refund_status === 'failed' ||
+              row.refund_status === 'canceled')))
+      )
+    )
+      violated(
+        'RefundedHadRefund (step)',
+        s,
+        `became refunded with operation ${row.op_source} (started ${row.op_started}), refund_status ${row.refund_status}, resolved ${row.resolved}`,
+      );
+    if (
+      row.status === 'refunded' &&
+      !(
+        row.op_source === overdueSource &&
+        row.op_started &&
+        (row.refund_status === 'succeeded' ||
+          row.refund_status === 'failed' ||
+          row.resolved)
+      )
+    )
+      violated(
+        'RefundedHadRefund (state)',
+        s,
+        `refunded with operation ${row.op_source} (started ${row.op_started}), refund_status ${row.refund_status}, resolved ${row.resolved}`,
+      );
     // Money owed to the buyer is never silent.
     if (
-      row.status === 'cancelled' &&
+      (row.status === 'cancelled' || row.status === 'refunded') &&
       row.refund_status === 'failed' &&
       !row.resolved &&
       !row.refund_failed_notice
@@ -257,10 +320,12 @@ async function checkInvariants(
       violated(
         'RefundFailureVisible',
         s,
-        `cancelled with refund ${row.refund_id} failed and no shipment.refund_failed notice to the buyer`,
+        `${row.status} with refund ${row.refund_id} failed and no shipment.refund_failed notice to the buyer`,
       );
     if (
-      (row.refund_status === 'succeeded' || row.resolved) &&
+      (row.status === 'refunded' ||
+        row.refund_status === 'succeeded' ||
+        row.resolved) &&
       (started.length > 0 || transferred)
     )
       violated(
@@ -282,6 +347,7 @@ async function checkInvariants(
           `${seen.status} -> ${row.status} is not allowed`,
         );
       if (row.status === 'cancelled') stats.cancellationsCompleted++;
+      if (row.status === 'refunded') stats.overdueRefundsCompleted++;
     }
     if (
       (row.refund_status === 'failed' || row.refund_status === 'canceled') &&
@@ -304,6 +370,7 @@ type ShipModel = {
   transferId: string | null;
   claimToken: string | null;
   claimSource: string | null;
+  claimReason: string | null;
   runId: string | null;
   transferToken: string | null;
 };
@@ -314,6 +381,7 @@ type Stats = {
   transfersCompleted: number;
   cancellationsCompleted: number;
   refundFailuresRecorded: number;
+  overdueRefundsCompleted: number;
   outcomes: Map<string, number>;
 };
 
@@ -322,6 +390,7 @@ function newStats(): Stats {
     transfersCompleted: 0,
     cancellationsCompleted: 0,
     refundFailuresRecorded: 0,
+    overdueRefundsCompleted: 0,
     outcomes: new Map(),
   };
 }
@@ -333,6 +402,7 @@ function initialModel(): Model {
     transferId: null,
     claimToken: null,
     claimSource: null,
+    claimReason: null,
     runId: null,
     transferToken: null,
   });
@@ -348,10 +418,16 @@ abstract class Step implements fc.AsyncCommand<Model, Real> {
   abstract readonly name: string;
   /** Runs the RPC; returns the outcome name (a rejection may also throw). */
   abstract call(sp: Tx, model: Model): Promise<string>;
-  /** False when no real caller reaches this RPC once the shipment is cancelled. */
+  /** False when no real caller reaches this RPC once the shipment is cancelled or refunded. */
   readonly afterCancellation: boolean = true;
+  /** False for a command that must not move any shipment status. */
+  readonly movesStatus: boolean = true;
   check(model: Readonly<Model>): boolean {
-    return this.afterCancellation || model[this.s].status !== 'cancelled';
+    const status = model[this.s].status;
+    return (
+      this.afterCancellation ||
+      (status !== 'cancelled' && status !== 'refunded')
+    );
   }
   async run(model: Model, real: Real) {
     let outcome: string;
@@ -363,9 +439,14 @@ abstract class Step implements fc.AsyncCommand<Model, Real> {
       if (!code) throw error;
       outcome = `rejected ${code}`;
     }
-    const key = `${this.name} ${this.s}: ${outcome}`;
+    const key = `${this.name}${this.movesStatus ? ` ${this.s}` : ''}: ${outcome}`;
     real.stats.outcomes.set(key, (real.stats.outcomes.get(key) ?? 0) + 1);
-    await checkInvariants(real.tx, model, this.s, real.stats);
+    await checkInvariants(
+      real.tx,
+      model,
+      this.movesStatus ? this.s : null,
+      real.stats,
+    );
   }
   toString() {
     return `${this.name}(${this.s}${this.args()})`;
@@ -390,19 +471,54 @@ class ClaimCancellation extends Step {
     const actor = this.source === 'buyer' ? ids.buyer : ids.seller;
     const [{ claim }] = await sp`SELECT public.fn_claim_shipment_cancellation(
       ${ids[this.s]}::uuid, ${ids.order}::uuid, ${actor}::uuid, ${this.source}, ${reason}) AS claim`;
-    if (claim.status === 'claimed') {
-      model[this.s].claimToken = claim.claim_token;
-      model[this.s].claimSource = claim.source;
-    }
-    return claim.status as string;
+    return keepClaim(model[this.s], claim);
   }
 }
+
+function keepClaim(
+  seen: ShipModel,
+  claim: {
+    status: string;
+    claim_token?: string;
+    source?: string;
+    reason?: string;
+  },
+) {
+  if (claim.status === 'claimed') {
+    seen.claimToken = claim.claim_token ?? null;
+    seen.claimSource = claim.source ?? null;
+    seen.claimReason = claim.reason ?? null;
+  }
+  return claim.status;
+}
+
+/** The overdue payout refund claim (#549) an admin makes for a rejected seller. */
+class ClaimOverdueRefund extends Step {
+  name = 'ClaimOverdueRefund';
+  async call(sp: Tx, model: Model) {
+    const [{ claim }] = await sp`SELECT public.fn_claim_overdue_payout_refund(
+      ${ids.admin}::uuid, ${ids[this.s]}::uuid) AS claim`;
+    return keepClaim(model[this.s], claim);
+  }
+}
+
+const callerRoles: Record<string, string> = {
+  buyer: 'buyer',
+  seller: 'seller',
+  [overdueSource]: 'admin',
+};
 
 class StartRefund extends Step {
   name = 'StartRefund';
   async call(sp: Tx, model: Model) {
     const seen = model[this.s];
-    const body = JSON.stringify(request(this.s, seen.claimSource ?? 'buyer'));
+    const body = JSON.stringify(
+      request(
+        this.s,
+        callerRoles[seen.claimSource ?? 'buyer'] ?? 'system',
+        seen.claimReason ?? reason,
+      ),
+    );
     await sp`SELECT public.fn_start_shipment_cancellation_refund(
       ${ids[this.s]}::uuid, ${seen.claimToken ?? nilToken}::uuid, ${body}::text::jsonb, 0::bigint)`;
     return 'started';
@@ -473,6 +589,60 @@ class ResolveRefund extends Step {
       await sp`SELECT public.fn_resolve_shipment_cancellation_refund(
       ${ids[this.s]}::uuid, ${ids.admin}::uuid, ${`manual-repayment-${this.s}`}) AS result`;
     return result.resolved ? 'resolved' : 'already resolved';
+  }
+}
+
+class CompleteOverdueRefund extends Step {
+  name = 'CompleteOverdueRefund';
+  async call(sp: Tx) {
+    const [{ result }] =
+      await sp`SELECT public.fn_complete_overdue_payout_refund(${ids[this.s]}::uuid) AS result`;
+    return `completed ${result.shipment_status}`;
+  }
+}
+
+/**
+ * 31 days pass after the buyer confirmed delivery: only an RPC-completed
+ * shipment's completion time moves back (shipment and its completion event), never
+ * its status, so the overdue view sees an honest completion that got old.
+ */
+class MonthPasses extends Step {
+  name = 'MonthPasses';
+  override readonly movesStatus: boolean = false;
+  async call(sp: Tx) {
+    return await asOwnerFor(sp, async () => {
+      const moved = await sp`UPDATE public.shipments
+        SET completed_at = completed_at - interval '31 days'
+        WHERE id = ${ids[this.s]} AND status = 'completed'
+          AND completed_at > now() - interval '30 days'
+        RETURNING id`;
+      if (moved.length === 0) return 'not a fresh completion';
+      await sp`UPDATE public.shipment_completion_events
+        SET completed_at = completed_at - interval '31 days'
+        WHERE shipment_id = ${ids[this.s]}`;
+      return 'aged';
+    });
+  }
+}
+
+/** Simulates the Stripe account webhook: the seller's account becomes complete or rejected. */
+class SetOnboarding extends Step {
+  name = 'SetOnboarding';
+  override readonly movesStatus: boolean = false;
+  constructor(readonly onboarding: 'complete' | 'rejected') {
+    super('s1');
+  }
+  override toString() {
+    return `SetOnboarding(${this.onboarding})`;
+  }
+  async call(sp: Tx) {
+    await asOwnerFor(
+      sp,
+      () => sp`UPDATE public.profiles_private
+        SET stripe_onboarding_status = ${this.onboarding}::public.stripe_onboarding_status
+        WHERE id = ${ids.seller}`,
+    );
+    return this.onboarding;
   }
 }
 
@@ -574,68 +744,186 @@ const rarely = fc.oneof(
   { weight: 1, arbitrary: fc.constant(true) },
 );
 
-function commandsArbitrary(maxCommands: number, replayPath?: string) {
-  // Weights favour the commands that move a path forward, so most runs reach a
-  // completed cancellation or transfer within the budget.
-  const command = (weight: number, arbitrary: fc.Arbitrary<Step>) => ({
-    weight,
-    arbitrary,
-  });
-  return fc.commands<Model, Real, false>(
-    [
-      fc.oneof(
-        command(
-          2,
-          fc
-            .tuple(
-              shipFor('s0'),
-              fc.constantFrom('buyer' as const, 'seller' as const),
-            )
-            .map(([s, source]) => new ClaimCancellation(s, source)),
-        ),
-        command(
-          3,
-          shipFor('s0').map((s) => new StartRefund(s)),
-        ),
-        command(
-          1,
-          fc
-            .tuple(shipFor('s0'), refundStatus, rarely)
-            .map(
-              ([s, status, foreign]) => new RecordRefund(s, status, foreign),
-            ),
-        ),
-        command(
-          3,
-          fc
-            .tuple(shipFor('s0'), refundStatus, rarely)
-            .map(([s, status, foreign]) => new RefundEvent(s, status, foreign)),
-        ),
-        command(
-          1,
-          shipFor('s0').map((s) => new ResolveRefund(s)),
-        ),
-        command(
-          2,
-          shipFor('s1').map((s) => new ConfirmDelivery(s)),
-        ),
-        command(
-          3,
-          shipFor('s1').map((s) => new CreatePayoutRun(s)),
-        ),
-        command(
-          3,
-          shipFor('s1').map((s) => new BeginTransfer(s)),
-        ),
-        command(
-          3,
-          fc
-            .tuple(shipFor('s1'), rarely)
-            .map(([s, retry]) => new CompleteTransfer(s, retry)),
-        ),
+const command = (weight: number, arbitrary: fc.Arbitrary<Step>) => ({
+  weight,
+  arbitrary,
+});
+
+/**
+ * Any one command. Weights favour the commands that move a path forward, so
+ * most runs reach a completed cancellation or transfer within the budget.
+ */
+const anyStep: fc.Arbitrary<Step> = fc.oneof(
+  command(
+    2,
+    fc
+      .tuple(
+        shipFor('s0'),
+        fc.constantFrom('buyer' as const, 'seller' as const),
+      )
+      .map(([s, source]) => new ClaimCancellation(s, source)),
+  ),
+  command(
+    3,
+    shipFor('s0').map((s) => new StartRefund(s)),
+  ),
+  command(
+    1,
+    fc
+      .tuple(shipFor('s0'), refundStatus, rarely)
+      .map(([s, status, foreign]) => new RecordRefund(s, status, foreign)),
+  ),
+  command(
+    3,
+    fc
+      .tuple(shipFor('s0'), refundStatus, rarely)
+      .map(([s, status, foreign]) => new RefundEvent(s, status, foreign)),
+  ),
+  command(
+    1,
+    shipFor('s0').map((s) => new ResolveRefund(s)),
+  ),
+  command(
+    2,
+    shipFor('s1').map((s) => new ConfirmDelivery(s)),
+  ),
+  command(
+    3,
+    shipFor('s1').map((s) => new CreatePayoutRun(s)),
+  ),
+  command(
+    3,
+    shipFor('s1').map((s) => new BeginTransfer(s)),
+  ),
+  command(
+    3,
+    fc
+      .tuple(shipFor('s1'), rarely)
+      .map(([s, retry]) => new CompleteTransfer(s, retry)),
+  ),
+  command(
+    1,
+    fc
+      .constantFrom('complete' as const, 'rejected' as const)
+      .map((onboarding) => new SetOnboarding(onboarding)),
+  ),
+  command(
+    1,
+    shipFor('s1').map((s) => new MonthPasses(s)),
+  ),
+  command(
+    1,
+    shipFor('s1').map((s) => new ClaimOverdueRefund(s)),
+  ),
+  command(
+    1,
+    shipFor('s1').map((s) => new CompleteOverdueRefund(s)),
+  ),
+);
+
+/**
+ * A path as a skeleton: each step is kept 9 times in 10 with its random
+ * arguments, and up to two random commands of any kind come before each step
+ * and after the last one.
+ */
+function guided(path: fc.Arbitrary<Step>[]): fc.Arbitrary<Step[]> {
+  const noise = fc.array(anyStep, { maxLength: 2 });
+  return fc
+    .tuple(
+      fc.tuple(
+        ...path.map((step) => fc.tuple(noise, fc.option(step, { freq: 10 }))),
       ),
-    ],
-    { maxCommands, size: 'max', replayPath },
+      noise,
+    )
+    .map(([parts, tail]) => [
+      ...parts.flatMap(([before, step]) =>
+        step === null ? before : [...before, step],
+      ),
+      ...tail,
+    ]);
+}
+
+const refundOutcome = (s: Ship) =>
+  fc.oneof(
+    fc
+      .tuple(refundStatus, rarely)
+      .map(([status, foreign]): Step => new RefundEvent(s, status, foreign)),
+    fc
+      .tuple(refundStatus, rarely)
+      .map(([status, foreign]): Step => new RecordRefund(s, status, foreign)),
+  );
+const step = (make: () => Step) => fc.constant(null).map(make);
+const transfer = (s: Ship) =>
+  rarely.map((retry): Step => new CompleteTransfer(s, retry));
+
+/**
+ * The overdue refund path (#549) needs about six steps in order (confirm, a month,
+ * a rejected account, claim, start, a refund outcome), which uniform random
+ * commands almost never produce. Its tail turns the account complete again and
+ * tries a payout release and transfer, the order in which the transfer fences of
+ * an overdue refund become reachable.
+ */
+const guidedOverdue = guided([
+  step(() => new ConfirmDelivery('s1')),
+  step(() => new MonthPasses('s1')),
+  step(() => new SetOnboarding('rejected')),
+  step(() => new ClaimOverdueRefund('s1')),
+  step(() => new StartRefund('s1')),
+  refundOutcome('s1'),
+  fc.oneof(
+    step(() => new CompleteOverdueRefund('s1')),
+    refundOutcome('s1'),
+  ),
+  step(() => new ResolveRefund('s1')),
+  step(() => new SetOnboarding('complete')),
+  step(() => new CreatePayoutRun('s1')),
+  step(() => new BeginTransfer('s1')),
+  transfer('s1'),
+]);
+
+/** The cancellation path, with duplicate and late refund outcomes. */
+const guidedCancellation = guided([
+  fc
+    .constantFrom('buyer' as const, 'seller' as const)
+    .map((source): Step => new ClaimCancellation('s0', source)),
+  step(() => new StartRefund('s0')),
+  refundOutcome('s0'),
+  refundOutcome('s0'),
+  step(() => new ResolveRefund('s0')),
+  refundOutcome('s0'),
+]);
+
+/** The release path, with a second completion that may carry another transfer id. */
+const guidedTransfer = guided([
+  step(() => new ConfirmDelivery('s1')),
+  step(() => new CreatePayoutRun('s1')),
+  step(() => new BeginTransfer('s1')),
+  transfer('s1'),
+  fc.boolean().map((retry): Step => new CompleteTransfer('s1', retry)),
+]);
+
+/**
+ * Most runs are plain random command sequences; the rest follow one of the
+ * paths above, so every outcome and mutant is reached within a small budget.
+ */
+function commandsArbitrary(
+  maxCommands: number,
+  replayPath?: string,
+  guidedOnly = false,
+): fc.Arbitrary<Iterable<Step>> {
+  const plain = {
+    weight: 3,
+    arbitrary: fc.commands<Model, Real, false>([anyStep], {
+      maxCommands,
+      size: 'max',
+      replayPath,
+    }) as fc.Arbitrary<Iterable<Step>>,
+  };
+  return fc.oneof(
+    ...(guidedOnly ? [] : [plain]),
+    { weight: 2, arbitrary: guidedOverdue },
+    { weight: 1, arbitrary: guidedCancellation },
+    { weight: 1, arbitrary: guidedTransfer },
   );
 }
 
@@ -652,9 +940,12 @@ type Mutant = {
 // M1: fn_cancel_shipment refuses a cancellation without a succeeded or resolved
 // refund (REFUND_NOT_SUCCEEDED), so the event function completing on `failed`
 // alone is masked by it (defense in depth): both guards must break for the harm.
-// Most transfer fences (a claimed or cancelled shipment never reaches completed)
-// are only reachable concurrently, where TLC and the coordination harnesses
-// cover them; M2 is a transfer guard these sequential commands do reach.
+// A claimed or cancelled shipment never reaches completed, so the transfer fences
+// are reachable sequentially only through the overdue refund of a completed
+// shipment (M3); M2 is a transfer guard the plain lifecycle reaches. The overdue
+// claim ignoring transfer_started_at is not a mutant: the view's
+// has_transfer_started (PAYOUT_NOT_OVERDUE) and fn_start_shipment_cancellation
+// (SHIPMENT_TRANSFER_OPERATION_ACTIVE) mask it, so only a race could reach it.
 const mutants: Mutant[] = [
   {
     name: 'M1',
@@ -682,6 +973,30 @@ const mutants: Mutant[] = [
         fn: 'fn_complete_shipment_transfer',
         from: 'IF v_shipment.stripe_transfer_id IS NOT NULL THEN',
         to: 'IF false THEN',
+      },
+    ],
+  },
+  {
+    name: 'M3',
+    why: 'a transfer begins although a cancellation or overdue refund operation started',
+    caughtBy: 'NoTransferAfterOverdueStart',
+    edits: [
+      {
+        fn: 'fn_begin_shipment_transfer',
+        from: 'AND (external_started_at IS NOT NULL OR claim_expires_at > clock_timestamp())) THEN',
+        to: 'AND false) THEN',
+      },
+    ],
+  },
+  {
+    name: 'M4',
+    why: 'an overdue refund completes without a succeeded or repaid refund',
+    caughtBy: 'RefundedHadRefund',
+    edits: [
+      {
+        fn: 'fn_complete_overdue_payout_refund',
+        from: "RAISE EXCEPTION 'REFUND_NOT_SUCCEEDED';",
+        to: 'NULL;',
       },
     ],
   },
@@ -738,9 +1053,10 @@ async function property(
   mutant: Mutant | null,
   maxCommands: number,
   replayPath?: string,
+  guidedOnly = false,
 ) {
   const statements = mutant ? mutantStatements(mutant) : [];
-  const arbitrary = commandsArbitrary(maxCommands, replayPath);
+  const arbitrary = commandsArbitrary(maxCommands, replayPath, guidedOnly);
   return fc.asyncProperty(arbitrary, async (cmds) => {
     try {
       await sql.begin(async (tx) => {
@@ -792,6 +1108,8 @@ async function run() {
     );
 
   const started = performance.now();
+  const seconds = (since: number) =>
+    `${((performance.now() - since) / 1000).toFixed(1)}s`;
   const sql = new SQL(databaseUrl(), { max: 1, connectionTimeout: 5 });
   let failed = 0;
   try {
@@ -800,6 +1118,7 @@ async function run() {
     const label = mainMutant ? ` with mutant ${mainMutant.name}` : '';
     // Each batch prints its own seed, so the Replay line of a failing batch replays it alone.
     const batch = async (batchSeed: number | undefined, n: number) => {
+      const batchStarted = performance.now();
       const result = await fc.check(
         await property(sql, stats, mainMutant ?? null, maxCommands, replayPath),
         { numRuns, seed: batchSeed, path },
@@ -817,7 +1136,7 @@ async function run() {
         );
       } else {
         console.log(
-          `PASS lifecycle property${label} (batch ${n}): ${result.numRuns} runs of up to ${maxCommands} commands (seed ${result.seed})`,
+          `PASS lifecycle property${label} (batch ${n}): ${result.numRuns} runs of up to ${maxCommands} commands (seed ${result.seed}) in ${seconds(batchStarted)}`,
         );
       }
       return result;
@@ -828,6 +1147,7 @@ async function run() {
           ['a completed transfer', stats.transfersCompleted],
           ['a completed cancellation', stats.cancellationsCompleted],
           ['a recorded refund failure', stats.refundFailuresRecorded],
+          ['a completed overdue refund', stats.overdueRefundsCompleted],
         ] as const
       )
         .filter(([, n]) => n === 0)
@@ -854,7 +1174,7 @@ async function run() {
     }
     if (anyFailed) failed++;
     console.log(
-      `${batches} batch${batches === 1 ? '' : 'es'} ran; outcomes: ${stats.transfersCompleted} transfers completed, ${stats.cancellationsCompleted} cancellations completed, ${stats.refundFailuresRecorded} refund failures recorded`,
+      `${batches} batch${batches === 1 ? '' : 'es'} ran; outcomes: ${stats.transfersCompleted} transfers completed, ${stats.cancellationsCompleted} cancellations completed, ${stats.refundFailuresRecorded} refund failures recorded, ${stats.overdueRefundsCompleted} overdue refunds completed`,
     );
     for (const [key, n] of [...stats.outcomes].sort())
       console.log(`  ${String(n).padStart(4)} ${key}`);
@@ -868,12 +1188,17 @@ async function run() {
 
       // Each mutant must make the property fail on the invariant it breaks. It
       // stops at the first failure (no shrinking), so the larger budget only
-      // costs time when a mutant survives.
+      // costs time when a mutant survives. The slowest mutant (M3) needs about 30
+      // runs on average, so 1000 runs miss it with a negligible probability
+      // (200 still did about 1 time in 1000, a flaky check).
       for (const mutant of mutants) {
+        const mutantStarted = performance.now();
         const mutantDetails = await fc.check(
-          await property(sql, newStats(), mutant, maxCommands),
+          // Guided runs only: a mutant needs a path, and the plain runs rarely
+          // follow one, so they would only make this check slower.
+          await property(sql, newStats(), mutant, maxCommands, undefined, true),
           {
-            numRuns: Math.max(numRuns, 200),
+            numRuns: Math.max(numRuns, 1000),
             seed: details.seed,
             endOnFailure: true,
           },
@@ -885,7 +1210,7 @@ async function run() {
           error.message.startsWith(mutant.caughtBy)
         ) {
           console.log(
-            `PASS mutant ${mutant.name} (${mutant.why}) is caught: ${error.message}`,
+            `PASS mutant ${mutant.name} (${mutant.why}) is caught after ${mutantDetails.numRuns} runs in ${seconds(mutantStarted)}: ${error.message}`,
           );
         } else {
           failed++;
