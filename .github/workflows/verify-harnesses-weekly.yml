@@ -1,0 +1,74 @@
+# Weekly run of the scripts/verify/ harnesses that need more than the db-test
+# stack: the served Edge Functions or the docker-compose Postgres of db:test:up
+# (the `weekly` group in scripts/verify/run-harnesses.ts). It needs no repository
+# secret: the cron secret is generated per run and no harness reaches Stripe or Envia.
+name: Verify harnesses (weekly)
+
+on:
+  schedule:
+    # Off the top of the hour: GitHub delays or drops scheduled runs under load,
+    # most often at minute 0.
+    - cron: '37 13 * * 1' # Mondays 13:37 UTC (07:37 in Mexico City)
+  workflow_dispatch:
+  # A pull request that changes a harness or this workflow runs the group too.
+  pull_request:
+    paths:
+      - .github/workflows/verify-harnesses-weekly.yml
+      - scripts/verify/**
+
+permissions:
+  contents: read
+
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Same CLI version as db-test in ci.yml and the maintainer's machine.
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.1.0
+      # A per-run cron secret, masked in the logs. supabase/functions/.env is what
+      # `functions serve` and test-auto-cancel-paid-timeout read; bruno:env copies
+      # it into bruno/.env for the other two function harnesses. The Stripe key is a
+      # placeholder: reconcile-stripe-fees refuses to start without one, and the
+      # harness fixtures have no charge or payment, so Stripe is never called.
+      - name: Write the functions env file
+        run: |
+          cron_secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$cron_secret"
+          printf 'CRON_SECRET=%s\nSTRIPE_SECRET_KEY=%s\n' \
+            "$cron_secret" sk_test_ci_placeholder_never_called \
+            > supabase/functions/.env
+      - run: supabase start
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - run: bun install --frozen-lockfile
+      - run: bun run bruno:env
+      # The compose project name is fixed (#366); a CI runner has no other user of it.
+      - run: bun run db:test:up
+      # Served in the background; it exits by itself about 60 s after the last
+      # request. Ready when a cron function answers 401 to a call without the
+      # secret, which proves the function code ran.
+      - name: Serve the Edge Functions
+        # pipefail: a failing `supabase status` stops here with its own error
+        # instead of surfacing later as a functions readiness timeout.
+        shell: bash -eo pipefail {0}
+        run: |
+          nohup bun run functions:serve > "$RUNNER_TEMP/functions-serve.log" 2>&1 &
+          api_url="$(supabase status --env --output-format json | jq -r '.env.API_URL // .API_URL')"
+          for attempt in $(seq 1 60); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$api_url/functions/v1/account-closure-cleanup" || true)"
+            if [ "$code" = 401 ]; then
+              echo "Functions ready after $attempt attempts"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Functions did not answer 401 within 120 s (last status: $code)"
+          cat "$RUNNER_TEMP/functions-serve.log"
+          exit 1
+      - run: bun run verify:harnesses --group weekly
+      - name: Functions serve log
+        if: failure()
+        run: cat "$RUNNER_TEMP/functions-serve.log" || true

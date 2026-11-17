@@ -1,6 +1,6 @@
 import { SQL } from 'bun';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -18,6 +18,12 @@ const ids = {
   other: '40000000-0000-4000-8000-000000000002',
 };
 const source = (path: string) => readFileSync(`${root}${path}`, 'utf8');
+// Current tables, view and function bodies come from the declarative schema,
+// the source of truth, so this harness follows every later rename.
+const schema = (path: string) => source(`supabase/schemas/${path}`);
+// Pre-transfer B1.1 claim/start bodies, for the preservation differential only.
+const preTransferCancellation =
+  'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql';
 function definition(path: string, name: string) {
   const match = source(path).match(
     new RegExp(
@@ -56,7 +62,8 @@ async function run() {
     assert.ok(server.version >= 170000 && server.version < 180000);
     // Same role-stub ownership serialization as the cancellation harness.
     await admin`SELECT pg_advisory_lock(11110001)`;
-    for (const role of ['anon', 'authenticated', 'service_role']) {
+    // The schema files also grant to and revoke from the postgres role.
+    for (const role of ['anon', 'authenticated', 'service_role', 'postgres']) {
       if (
         (await admin`SELECT 1 FROM pg_roles WHERE rolname = ${role}`).length ===
         0
@@ -76,74 +83,69 @@ async function run() {
         await connection`SET idle_in_transaction_session_timeout = '15s'`;
         await connection`SELECT set_config('request.jwt.claim.role', 'service_role', false)`;
       }
-      // Minimal synthetic schema, using deployed column contracts; no application data.
+      // Minimal synthetic stubs for the tables the functions only read or update,
+      // using the declarative schema's column names and types; no application data.
       await a.unsafe(`
         CREATE SCHEMA auth;
         CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql AS $$
           SELECT current_setting('request.jwt.claim.role', true)
         $$;
-        CREATE TYPE public.order_status AS ENUM ('pending','paid','preparing','shipped','delivered','completed','cancelled','dispute','refunded');
+        ${schema('public/types/order_status.sql')}
+        ${schema('public/types/stripe_onboarding_status.sql')}
+        ${schema('public/types/dispute_status.sql')}
+        ${schema('public/types/shipment_tracking_event_type.sql')}
+        ${schema('internal/schema.sql')}
+        ${schema('internal/functions/fn_set_updated_at.sql')}
+        ${schema('internal/tables/connect_account_actionability.sql')}
         CREATE TABLE public.profiles (id uuid PRIMARY KEY, username text);
-        CREATE TABLE public.profiles_private (id uuid PRIMARY KEY, stripe_account_id text, stripe_onboarding_status text);
-        CREATE TABLE public.orders (id uuid PRIMARY KEY, buyer_id uuid, stripe_payment_intent_id text, stripe_charge_id text, stripe_transfer_group text);
-        CREATE TABLE public.shipments (id uuid PRIMARY KEY, order_id uuid REFERENCES public.orders(id), seller_id uuid,
-          status public.order_status, completed_at timestamptz, stripe_payment_intent_id text,
-          stripe_transfer_id text, stripe_payout_id text, shipping_cost_cents bigint,
-          label_generation_state text DEFAULT 'unclaimed', updated_at timestamptz);
-        CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, net_payout_cents numeric);
+        CREATE TABLE public.profiles_private (id uuid PRIMARY KEY, stripe_account_id text,
+          stripe_onboarding_status public.stripe_onboarding_status NOT NULL DEFAULT 'pending');
+        CREATE TABLE public.orders (id uuid PRIMARY KEY, buyer_id uuid NOT NULL, stripe_payment_intent_id text, stripe_charge_id text, stripe_transfer_group text);
+        CREATE TABLE public.shipments (id uuid PRIMARY KEY, order_id uuid NOT NULL REFERENCES public.orders(id), seller_id uuid NOT NULL,
+          status public.order_status NOT NULL, completed_at timestamptz, stripe_payment_intent_id text,
+          stripe_transfer_id text, stripe_payout_id text, shipping_cost_cents bigint NOT NULL DEFAULT 0,
+          label_generation_state text NOT NULL DEFAULT 'unclaimed', updated_at timestamptz NOT NULL DEFAULT now());
+        CREATE TABLE public.order_items (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid NOT NULL,
+          net_payout_cents bigint NOT NULL DEFAULT 0);
         CREATE TABLE public.notifications (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL,
           event_kind text, source_event_key text, event_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
-          type text, title text NOT NULL, message text, action_path text);
+          type text NOT NULL, title text NOT NULL, message text, action_path text);
         CREATE UNIQUE INDEX notifications_source_event_key_user_idx ON public.notifications (source_event_key, user_id)
           WHERE source_event_key IS NOT NULL;
         CREATE TABLE public.system_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), level text, message text NOT NULL,
           metadata jsonb, created_at timestamptz DEFAULT now());
-        CREATE TABLE public.disputes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid, status text);
-        CREATE TABLE public.connect_account_actionability (stripe_account_id text PRIMARY KEY, is_actionable boolean, blocked_reason text);
+        CREATE TABLE public.disputes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid,
+          status public.dispute_status DEFAULT 'open');
+        ${schema('public/tables/connect_payout_runs.sql')}
+        ${schema('public/tables/connect_payout_run_shipments.sql')}
+        ${schema('public/tables/shipment_cancellation_operations.sql')}
+        ${schema('public/tables/shipment_payout_hold_notes.sql')}
+        ${schema('public/functions/fn_get_connect_account_actionability.sql')}
+        ${schema('public/views/admin_connect_payout_release_view.sql')}
+        ${schema('public/functions/fn_begin_manual_payout_create_fence.sql')}
+        ${schema('public/functions/fn_atomic_payout_resume_mapping.sql')}
+        ${schema('public/functions/fn_start_shipment_cancellation_refund.sql')}
         INSERT INTO public.profiles VALUES ('${ids.buyer}', 'buyer'), ('${ids.seller}', 'seller');
         INSERT INTO public.profiles_private VALUES ('${ids.seller}', 'acct_seller', 'complete');
         INSERT INTO public.orders VALUES ('${ids.order}', '${ids.buyer}', 'pi_order', 'ch_order', 'group_order');
         INSERT INTO public.shipments (id,order_id,seller_id,status,completed_at,stripe_payment_intent_id,shipping_cost_cents) VALUES
           ('${ids.shipment}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100),
           ('${ids.sibling}', '${ids.order}', '${ids.seller}', 'completed', now(), 'pi_order', 100);
-        INSERT INTO public.order_items (shipment_id,net_payout_cents) VALUES ('${ids.shipment}', 100), ('${ids.sibling}', 100);
+        INSERT INTO public.order_items (shipment_id,net_payout_cents) VALUES ('${ids.shipment}', 10000), ('${ids.sibling}', 10000);
       `);
-      await a.unsafe(
-        source(
-          'supabase/migrations/archive/20260621000000_connect_manual_payout_release.sql',
-        ),
-      );
-      // The retry column and index, then the current release view (with paid_at).
-      await a.unsafe(
-        source(
-          'supabase/migrations/archive/20260917032655_add_connect_payout_failed_retry_contract.sql',
-        ),
-      );
-      await a.unsafe(
-        source(
-          'supabase/migrations/archive/20261015022449_expose_payout_history_paid_at.sql',
-        ),
-      );
-      await a.unsafe(`ALTER TABLE public.connect_payout_runs
-        ADD COLUMN release_stage text, ADD COLUMN release_stage_version integer NOT NULL DEFAULT 1,
-        ADD COLUMN payout_claim_token text, ADD COLUMN payout_claim_expires_at timestamptz,
-        ADD COLUMN payout_create_attempted_at timestamptz, ADD COLUMN action_required_reason text;
-        ${definition('supabase/migrations/archive/20260919100000_connect_account_actionability.sql', 'fn_get_connect_account_actionability')}
-        ${definition('supabase/migrations/archive/20260919090000_connect_payout_stage_fencing.sql', 'fn_begin_manual_payout_create_fence')}
-      `);
-      const resumeSql = source(
-        'supabase/migrations/archive/20261008090000_atomic_payout_resume_mapping.sql',
-      );
-      await a.unsafe(resumeSql);
-      const cancellationSql = source(
-        'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql',
-      );
-      await a.unsafe(cancellationSql);
-      await a.unsafe(
-        source(
-          'supabase/migrations/archive/20261016051001_shipment_cancellation_refund_request.sql',
-        ),
-      );
+      // Baseline: the B1.1 claim/start bodies before the transfer fences existed.
+      for (const name of [
+        'fn_claim_shipment_cancellation',
+        'fn_start_shipment_cancellation',
+      ])
+        await a.unsafe(definition(preTransferCancellation, name));
+      // Current transfer and cancellation bodies, with their grants.
+      const currentTransferSql = [
+        schema('public/functions/fn_begin_shipment_transfer.sql'),
+        schema('public/functions/fn_complete_shipment_transfer.sql'),
+        schema('public/functions/fn_claim_shipment_cancellation.sql'),
+        schema('public/functions/fn_start_shipment_cancellation.sql'),
+      ].join('\n');
       const claim = async (connection = a, shipment = ids.shipment) => {
         const [row] =
           await connection`SELECT public.fn_claim_shipment_cancellation(${shipment}::uuid, ${ids.order}::uuid, ${ids.buyer}::uuid, 'buyer', 'reason') AS result`;
@@ -194,7 +196,7 @@ async function run() {
         'profiles_private',
         'order_items',
         'disputes',
-        'connect_account_actionability',
+        'internal.connect_account_actionability',
         'connect_payout_runs',
         'connect_payout_run_shipments',
         'shipment_cancellation_operations',
@@ -203,7 +205,7 @@ async function run() {
         const values: Record<string, unknown> = {};
         for (const table of tables) {
           const [row] = await a.unsafe(
-            `SELECT jsonb_agg(data ORDER BY data::text) AS data FROM (SELECT to_jsonb(t) AS data FROM public.${table} t) rows`,
+            `SELECT jsonb_agg(data ORDER BY data::text) AS data FROM (SELECT to_jsonb(t) AS data FROM ${table.includes('.') ? table : `public.${table}`} t) rows`,
           );
           values[table] = row.data;
         }
@@ -237,12 +239,12 @@ async function run() {
         await a`TRUNCATE public.shipment_cancellation_operations, public.connect_payout_run_shipments, public.connect_payout_runs CASCADE`;
         await a`UPDATE public.shipments SET status = 'completed', completed_at = '2026-01-01', stripe_transfer_id = NULL, stripe_payout_id = NULL, label_generation_state = 'unclaimed'`;
         await a`UPDATE public.profiles_private SET stripe_onboarding_status = 'complete'`;
-        await a`DELETE FROM public.connect_account_actionability`;
+        await a`DELETE FROM internal.connect_account_actionability`;
         await a`DELETE FROM public.disputes`;
         await a`INSERT INTO public.connect_payout_runs (id,idempotency_key,seller_id,actor_id,amount_cents,release_stage) VALUES (${ids.run}::uuid,'release-key',${ids.seller}::uuid,${ids.buyer}::uuid,20000,'release_accepted')`;
         await a`INSERT INTO public.connect_payout_run_shipments (run_id,shipment_id,net_payout_cents) VALUES (${ids.run}::uuid,${ids.shipment}::uuid,10000), (${ids.run}::uuid,${ids.sibling}::uuid,10000)`;
       };
-      // Same public inputs against migration-defined previous and new cancellation
+      // Same public inputs against the pre-transfer and current cancellation
       // bodies. Existing mappings alone are deliberately NOT transfer-start proof.
       const preservation = async () => {
         await reset();
@@ -280,24 +282,7 @@ async function run() {
         ];
       };
       const baseline = await preservation();
-      const transferMigrations = readdirSync(
-        `${root}supabase/migrations/archive`,
-      ).filter((name) => name.endsWith('_shipment_transfer_coordination.sql'));
-      assert.equal(transferMigrations.length, 1);
-      const transferMigration = `supabase/migrations/archive/${transferMigrations[0]}`;
-      // Later migrations redefine fn_complete_shipment_transfer (seller notice, then
-      // its shipment link in T13); the newest body replaces the archived one.
-      const redefinitions = readdirSync(`${root}supabase/migrations`).filter(
-        (name) => name.endsWith('_shipment_funds_released_notice_link.sql'),
-      );
-      assert.equal(redefinitions.length, 1);
-      await a.unsafe(source(transferMigration));
-      await a.unsafe(
-        definition(
-          `supabase/migrations/${redefinitions[0]}`,
-          'fn_complete_shipment_transfer',
-        ),
-      );
+      await a.unsafe(currentTransferSql);
       assert.deepEqual(await preservation(), baseline);
       console.log(
         'PASS differential: previous/current cancellation, refund start, resume and payout fence public contracts',
@@ -397,7 +382,7 @@ async function run() {
         "UPDATE public.profiles_private SET stripe_onboarding_status = 'pending'",
         'UPDATE public.connect_payout_run_shipments SET net_payout_cents = 9999',
         `INSERT INTO public.disputes (shipment_id,status) VALUES ('${ids.shipment}','open')`,
-        "INSERT INTO public.connect_account_actionability VALUES ('acct_seller',false,'payouts_disabled')",
+        "INSERT INTO internal.connect_account_actionability (stripe_account_id,is_actionable,blocked_reason,stripe_created) VALUES ('acct_seller',false,'payouts_disabled',now())",
       ]) {
         await reset();
         await a.unsafe(mutation);
@@ -538,17 +523,11 @@ async function run() {
       await reset();
       await begin();
       await a`UPDATE public.shipments SET status = 'paid' WHERE id = ${ids.shipment}::uuid`;
-      const replacements = source(transferMigration);
       for (const name of [
         'fn_claim_shipment_cancellation',
         'fn_start_shipment_cancellation',
       ])
-        await a.unsafe(
-          definition(
-            'supabase/migrations/archive/20261016011954_shipment_cancellation_coordination.sql',
-            name,
-          ),
-        );
+        await a.unsafe(definition(preTransferCancellation, name));
       await a`BEGIN`;
       try {
         const priorOwner = await claim();
@@ -561,19 +540,7 @@ async function run() {
         await a`ROLLBACK`;
       }
       const oldClaim = await claim();
-      for (const name of [
-        'fn_claim_shipment_cancellation',
-        'fn_start_shipment_cancellation',
-      ]) {
-        const match = replacements.match(
-          new RegExp(
-            `CREATE OR REPLACE FUNCTION public\\.${name}\\([\\s\\S]*?\\$\\$;`,
-            'i',
-          ),
-        );
-        assert.ok(match);
-        await a.unsafe(match[0]);
-      }
+      await a.unsafe(currentTransferSql);
       await rejects(() => claim(), 'SHIPMENT_TRANSFER_OPERATION_ACTIVE');
       await rejects(
         () => startCancellation(oldClaim.claim_token),
