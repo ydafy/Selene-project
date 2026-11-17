@@ -334,7 +334,7 @@
     "statusBoxUnavailable": "No hay una caja configurada para este envío. Contacta a soporte para continuar.",
     "generateWarning": "Se va a generar una guía real con costo y no se puede deshacer.",
     "connectTitle": "Completa tu registro de pagos",
-    "connectBody": "Para recibir los pagos de tus ventas, necesitas completar tu registro en Stripe Connect. Es gratis y toma 5 minutos.",
+    "connectBody": "Para recibir los pagos de tus ventas, necesitas completar tu registro en Stripe Connect. Es gratis y toma unos 5 minutos.",
     "connectCta": "Registrarme en Stripe",
     "securityReason": "Autoriza para generar la guía de envío",
     "evidenceTitle": "Prueba de empaque",

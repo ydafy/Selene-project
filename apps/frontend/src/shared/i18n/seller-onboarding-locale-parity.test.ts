@@ -2,15 +2,24 @@ import { describe, expect, it } from 'bun:test';
 
 import enSellerOnboarding from './locales/en/sellerOnboarding.json';
 import esSellerOnboarding from './locales/es/sellerOnboarding.json';
+import enOrders from './locales/en/orders.json';
+import esOrders from './locales/es/orders.json';
 
-const REQUIRED_STATUS_GUIDANCE_KEYS = [
-  'newTitle',
-  'newDesc',
+const REQUIRED_STATUS_NOTICE_KEYS = [
   'pendingTitle',
   'pendingDesc',
   'rejectedTitle',
   'rejectedDesc',
+  'expiredTitle',
+  'expiredDesc',
 ] as const;
+
+const GUIDE_CARD_KEYS = ['phone', 'ine', 'clabe'] as const;
+
+const BOLD_WORD = {
+  en: { phone: 'SMS code', ine: 'INE', clabe: 'CLABE' },
+  es: { phone: 'código por SMS', ine: 'INE', clabe: 'CLABE' },
+} as const;
 
 describe('seller onboarding locale parity', () => {
   it('keeps shared payment copy and interpolation tokens aligned without guaranteed dates', () => {
@@ -54,14 +63,49 @@ describe('seller onboarding locale parity', () => {
     expect(en.success.subtitle).not.toContain('deposit schedule');
     expect(es.success.subtitle).not.toContain('calendario de depósitos');
   });
-  it('keeps final-step status guidance keys in English and Spanish', () => {
-    for (const key of REQUIRED_STATUS_GUIDANCE_KEYS) {
-      expect(enSellerOnboarding.statusGuidance[key]).toBeString();
-      expect(esSellerOnboarding.statusGuidance[key]).toBeString();
+  it('keeps the status notice keys, including the expired link, in English and Spanish', () => {
+    for (const key of REQUIRED_STATUS_NOTICE_KEYS) {
+      expect(enSellerOnboarding.statusNotice[key]).toBeString();
+      expect(esSellerOnboarding.statusNotice[key]).toBeString();
     }
 
-    expect(Object.keys(enSellerOnboarding.statusGuidance).sort()).toEqual(
-      Object.keys(esSellerOnboarding.statusGuidance).sort(),
+    expect(Object.keys(enSellerOnboarding.statusNotice).sort()).toEqual(
+      Object.keys(esSellerOnboarding.statusNotice).sort(),
     );
+  });
+
+  it('gives each guide card one line with its key word in bold', () => {
+    for (const [locale, copy] of [
+      ['en', enSellerOnboarding],
+      ['es', esSellerOnboarding],
+    ] as const) {
+      for (const card of GUIDE_CARD_KEYS) {
+        const guidance = copy.guidance as Record<string, string>;
+        expect(guidance[`${card}Title`]).toBeString();
+        const description = guidance[`${card}Desc`];
+        expect(description.match(/<resaltar>(.*?)<\/resaltar>/g)).toEqual([
+          `<resaltar>${BOLD_WORD[locale][card]}</resaltar>`,
+        ]);
+        expect(description.trim().split(/[.!?]\s+/)).toHaveLength(1);
+      }
+    }
+  });
+
+  it('explains Stripe behind a help dialog in English and Spanish', () => {
+    for (const copy of [enSellerOnboarding, esSellerOnboarding]) {
+      const help = (copy as Record<string, Record<string, string>>)
+        .whatIsStripe;
+      for (const key of ['label', 'title', 'desc', 'confirm']) {
+        expect(help?.[key]).toBeString();
+      }
+      expect(help.desc).toContain('Stripe');
+    }
+  });
+
+  it('uses one time estimate in the guide and the prepare-shipment notice', () => {
+    expect(esSellerOnboarding.header.subtitle).toContain('unos 5 minutos');
+    expect(esOrders.prepare.connectBody).toContain('unos 5 minutos');
+    expect(enSellerOnboarding.header.subtitle).toContain('about 5 minutes');
+    expect(enOrders.prepare.connectBody).toContain('about 5 minutes');
   });
 });

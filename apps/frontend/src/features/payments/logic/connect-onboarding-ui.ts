@@ -1,10 +1,13 @@
 import type { StripeOnboardingStatus } from '@selene/types';
 
 type ConnectOnboardingViewState =
-  'auth-required' | 'loading' | 'success' | 'wizard';
+  'auth-required' | 'loading' | 'success' | 'guide';
 
 type ConnectOnboardingCtaKey = 'start' | 'continue' | 'review';
-export type ConnectOnboardingStatusGuidanceKey = 'new' | 'pending' | 'rejected';
+export type ConnectOnboardingStatusNoticeKey =
+  'pending' | 'rejected' | 'expired';
+/** How the seller came back from Stripe: `refresh` means the account link expired. */
+export type ConnectOnboardingStripeReturn = 'return' | 'refresh' | null;
 export type ConnectOnboardingVisibleErrorKey =
   | 'statusUnavailable'
   | 'refreshFailed'
@@ -15,95 +18,96 @@ export const CONNECT_ONBOARDING_SUCCESS_CTA_ROUTE = '/sell' as const;
 
 export interface ResolveConnectOnboardingUiInput {
   userId?: string | null;
-  currentStep: number;
-  lastStepIndex: number;
   status: StripeOnboardingStatus | null;
   isComplete: boolean;
   isLoading: boolean;
   isStarting: boolean;
   isRefreshingFromStripe: boolean;
-  isStripeReturn: boolean;
+  stripeReturn: ConnectOnboardingStripeReturn;
 }
 
 export interface ConnectOnboardingUiState {
   viewState: ConnectOnboardingViewState;
-  effectiveStep: number;
-  isFinalStep: boolean;
-  isNavigationDisabled: boolean;
-  showBack: boolean;
-  showNext: boolean;
   showStartCta: boolean;
-  showRejectedBanner: boolean;
-  showStatusGuidance: boolean;
-  statusGuidanceKey: ConnectOnboardingStatusGuidanceKey | null;
+  statusNoticeKey: ConnectOnboardingStatusNoticeKey | null;
   showStripeReturnRefreshMessage: boolean;
   ctaKey: ConnectOnboardingCtaKey;
   ctaLoading: boolean;
   ctaDisabled: boolean;
-  nextLoading: boolean;
-  nextDisabled: boolean;
-  backDisabled: boolean;
+}
+
+/** A notice replaces the guide header, so the cards below are only the steps. */
+export function resolveConnectOnboardingHeaderKeys(
+  statusNoticeKey: ConnectOnboardingStatusNoticeKey | null,
+) {
+  if (statusNoticeKey === null) {
+    return {
+      titleKey: 'sellerOnboarding:header.title',
+      subtitleKey: 'sellerOnboarding:header.subtitle',
+    } as const;
+  }
+  return {
+    titleKey: `sellerOnboarding:statusNotice.${statusNoticeKey}Title`,
+    subtitleKey: `sellerOnboarding:statusNotice.${statusNoticeKey}Desc`,
+  } as const;
+}
+
+/** Stripe sends the seller to refresh_url when the account link expired, so it wins. */
+export function resolveConnectOnboardingStripeReturn(params: {
+  return?: string;
+  refresh?: string;
+}): ConnectOnboardingStripeReturn {
+  if (params.refresh === '1') return 'refresh';
+  if (params.return === '1') return 'return';
+  return null;
 }
 
 export function resolveConnectOnboardingUiState({
   userId,
-  currentStep,
-  lastStepIndex,
   status,
   isComplete,
   isLoading,
   isStarting,
   isRefreshingFromStripe,
-  isStripeReturn,
+  stripeReturn,
 }: ResolveConnectOnboardingUiInput): ConnectOnboardingUiState {
   const hasCompleteStatus = isComplete || status === 'complete';
-  const effectiveStep =
-    isStripeReturn && !hasCompleteStatus ? lastStepIndex : currentStep;
-  const isFinalStep = effectiveStep >= lastStepIndex;
-  const isNavigationDisabled =
-    isStarting || isLoading || isRefreshingFromStripe;
+  const isBusy = isStarting || isLoading || isRefreshingFromStripe;
   const viewState: ConnectOnboardingViewState = !userId
     ? 'auth-required'
     : hasCompleteStatus
       ? 'success'
       : isLoading && status == null
         ? 'loading'
-        : 'wizard';
+        : 'guide';
+  const isGuide = viewState === 'guide';
 
+  // A rejection needs corrections, so it wins over an expired link.
+  const statusNoticeKey: ConnectOnboardingStatusNoticeKey | null = !isGuide
+    ? null
+    : status === 'rejected'
+      ? 'rejected'
+      : stripeReturn === 'refresh'
+        ? 'expired'
+        : status === 'pending'
+          ? 'pending'
+          : null;
   const ctaKey: ConnectOnboardingCtaKey =
-    status === 'rejected'
+    statusNoticeKey === 'rejected'
       ? 'review'
-      : status === 'pending'
+      : statusNoticeKey === 'expired' || statusNoticeKey === 'pending'
         ? 'continue'
         : 'start';
-  const statusGuidanceKey: ConnectOnboardingStatusGuidanceKey | null =
-    status === 'rejected'
-      ? 'rejected'
-      : status === 'pending'
-        ? 'pending'
-        : null;
-  const effectiveStatusGuidanceKey =
-    viewState === 'wizard' && isFinalStep ? (statusGuidanceKey ?? 'new') : null;
 
   return {
     viewState,
-    effectiveStep,
-    isFinalStep,
-    isNavigationDisabled,
-    showBack: viewState === 'wizard' && effectiveStep > 0,
-    showNext: viewState === 'wizard' && !isFinalStep,
-    showStartCta: viewState === 'wizard' && isFinalStep,
-    showRejectedBanner: viewState === 'wizard' && status === 'rejected',
-    showStatusGuidance: effectiveStatusGuidanceKey != null,
-    statusGuidanceKey: effectiveStatusGuidanceKey,
+    showStartCta: isGuide,
+    statusNoticeKey,
     showStripeReturnRefreshMessage:
-      viewState === 'wizard' && isStripeReturn && isRefreshingFromStripe,
+      isGuide && stripeReturn !== null && isRefreshingFromStripe,
     ctaKey,
-    ctaLoading: isNavigationDisabled,
-    ctaDisabled: isNavigationDisabled,
-    nextLoading: isNavigationDisabled,
-    nextDisabled: isNavigationDisabled,
-    backDisabled: isNavigationDisabled,
+    ctaLoading: isBusy,
+    ctaDisabled: isBusy,
   };
 }
 
