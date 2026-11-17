@@ -7,7 +7,7 @@
 -- undetermined destination stay in the admin queue.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(43);
+select plan(44);
 \ir ../fixtures/money.psql
 
 -- A completed shipment: completed p_ago ago with 1000 cents of label, which the
@@ -162,7 +162,7 @@ where stripe_account_id = 'acct_test_13';
 select pg_temp.complete(113, '4 days');
 select is(internal.fn_notify_held_payouts(), 0, 'a seller whose account was unblocked gets no reminder');
 
--- 5. A failing insert is logged and the run goes on ----------------------
+-- 5. A failing insert is recorded and the run goes on ---------------------
 select pg_temp.money_user(n) from generate_series(26, 27) as n;
 select pg_temp.connect_seller(n, 'rejected') from generate_series(26, 27) as n;
 select pg_temp.money_shipment(200 + n, 100 + n, n, 9) from generate_series(26, 27) as n;
@@ -176,12 +176,15 @@ end
 $$;
 select is(internal.fn_notify_held_payouts(), 1,
   'a shipment whose notice fails is skipped and the next one is still notified');
-select ok(
-  exists (select 1 from public.system_logs
-          where level = 'WARNING' and message = 'Held payout notice failed'
-            and metadata ->> 'shipment_id' = pg_temp.mu(126)::text
-            and metadata ->> 'sqlstate' = '23514'),
-  'the failed notice is logged as a warning with the shipment and SQLSTATE');
+select is(
+  (select string_agg(f.code || '|' || (f.context - 'error')::text || '|' || (f.context ? 'error')::text, ' / ')
+   from internal.ops_failures f
+   where f.source = 'fn_notify_held_payouts' and f.context ->> 'shipment_id' = pg_temp.mu(126)::text),
+  '23514|' || jsonb_build_object('shipment_id', pg_temp.mu(126), 'stage', 0)::text || '|true',
+  'the failed notice records one ops failure with its SQLSTATE, the shipment, the stage and the message');
+select is(
+  (select count(*) from public.system_logs where metadata ->> 'shipment_id' = pg_temp.mu(126)::text),
+  0::bigint, 'the failed notice writes no system_logs row');
 
 -- 6. Push policy, grants and the cron job --------------------------------
 select is(

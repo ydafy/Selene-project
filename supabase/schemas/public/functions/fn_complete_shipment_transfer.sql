@@ -65,8 +65,8 @@ BEGIN
     )
     ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
   EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata) VALUES ('WARNING', 'Funds released notice failed',
-      jsonb_build_object('shipment_id', p_shipment_id, 'sqlstate', SQLSTATE, 'error', SQLERRM));
+    INSERT INTO internal.ops_failures (source, code, context) VALUES ('fn_complete_shipment_transfer', SQLSTATE,
+      jsonb_build_object('run_id', p_run_id, 'shipment_id', p_shipment_id, 'error', SQLERRM));
   END;
   -- Never clear the possible-effect fence, including on idempotent completion.
   RETURN true;

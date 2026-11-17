@@ -25,9 +25,9 @@ BEGIN
   RETURN NEW;
 
 EXCEPTION WHEN OTHERS THEN
-  -- Caja Negra: Si el buscador falla, logueamos el error pero no bloqueamos la venta
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('ERROR', 'Fallo en fn_update_product_fts', 
+  -- Si el buscador falla, registramos el error pero no bloqueamos la venta
+  INSERT INTO internal.ops_failures (source, code, context)
+  VALUES ('fn_update_product_fts', SQLSTATE,
           jsonb_build_object('product_id', NEW.id, 'error', SQLERRM));
 
   RETURN NEW;

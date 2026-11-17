@@ -112,8 +112,7 @@ async function run() {
           type text NOT NULL, title text NOT NULL, message text, action_path text);
         CREATE UNIQUE INDEX notifications_source_event_key_user_idx ON public.notifications (source_event_key, user_id)
           WHERE source_event_key IS NOT NULL;
-        CREATE TABLE public.system_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), level text, message text NOT NULL,
-          metadata jsonb, created_at timestamptz DEFAULT now());
+        ${schema('internal/tables/ops_failures.sql')}
         CREATE TABLE public.disputes (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), shipment_id uuid,
           status public.dispute_status DEFAULT 'open');
         ${schema('public/tables/connect_payout_runs.sql')}

@@ -82,13 +82,7 @@ BEGIN
       admin_notes = COALESCE(admin_notes, '') || E'\n[SYSTEM]: Reembolso Stripe ' || COALESCE(p_stripe_refund_id, 'unknown') || ' registrado.',
       updated_at = now()
   WHERE id = p_dispute_id;
-
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('INFO', 'Dispute refund recorded',
-          jsonb_build_object(
-            'dispute_id', p_dispute_id,
-            'shipment_id', v_shipment_id,
-            'stripe_refund_id', p_stripe_refund_id));
+  -- The dispute notes above and the Stripe refund are the record; no log row.
 
   -- The buyer notice is best effort: a failing insert must never undo the
   -- recorded refund, so it runs in its own subtransaction.
@@ -112,12 +106,11 @@ BEGIN
     ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
   EXCEPTION WHEN OTHERS THEN
     BEGIN
-      INSERT INTO public.system_logs (level, message, metadata)
-      VALUES ('WARNING', 'Refund notice failed',
-              jsonb_build_object('dispute_id', p_dispute_id, 'shipment_id', v_shipment_id,
-                'sqlstate', SQLSTATE, 'error', SQLERRM));
+      INSERT INTO internal.ops_failures (source, code, context)
+      VALUES ('fn_record_dispute_refund', SQLSTATE,
+              jsonb_build_object('dispute_id', p_dispute_id, 'shipment_id', v_shipment_id, 'error', SQLERRM));
     EXCEPTION WHEN OTHERS THEN
-      RAISE WARNING 'Refund notice failed and could not be logged: %', SQLERRM;
+      RAISE WARNING 'Refund notice failed and could not be recorded: %', SQLERRM;
     END;
   END;
 

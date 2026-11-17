@@ -5,8 +5,8 @@
 -- fn_cron_return_delivery_timeout picks return_delivered disputes 48 hours
 -- after the return was delivered and returns its counts. The crons are driven
 -- through shipments without a Stripe payment intent, where a picked dispute
--- gets one ERROR log (refunds.test.sql asserts that branch) and a skipped one
--- gets nothing.
+-- gets one internal.ops_failures row (refunds.test.sql asserts that branch) and
+-- a skipped one gets nothing.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(14);
@@ -33,17 +33,17 @@ create function pg_temp.dispute_sig(p_n integer) returns text language sql as $$
   from public.disputes d where d.id = pg_temp.mu(p_n)
 $$;
 
--- Cron system_logs rows that name a dispute (opening a dispute logs an INFO row too).
+-- Cron failure rows that name a dispute.
 create function pg_temp.logs_of(p_n integer) returns bigint language sql as $$
-  select count(*) from public.system_logs
-  where metadata->>'dispute_id' = pg_temp.mu(p_n)::text and message like 'Cron %'
+  select count(*) from internal.ops_failures
+  where context->>'dispute_id' = pg_temp.mu(p_n)::text and source like 'fn_cron_%'
 $$;
 
--- level|message of the cron rows that name each dispute, '-' when none.
+-- source|code of the cron failure rows that name each dispute, '-' when none.
 create function pg_temp.picked(p_ns integer[]) returns text language sql as $$
   select string_agg(n::text || ':' || coalesce(
-    (select string_agg(l.level || '|' || l.message, ',') from public.system_logs l
-     where l.metadata->>'dispute_id' = pg_temp.mu(n)::text and l.message like 'Cron %'), '-'), ' ' order by n)
+    (select string_agg(f.source || '|' || f.code, ',' order by f.id) from internal.ops_failures f
+     where f.context->>'dispute_id' = pg_temp.mu(n)::text and f.source like 'fn_cron_%'), '-'), ' ' order by n)
   from unnest(p_ns) n
 $$;
 
@@ -124,7 +124,7 @@ create temp table return_cron on commit drop as select * from public.fn_cron_ret
 reset role;
 
 select is(pg_temp.picked(array[15301]),
-  '15301:ERROR|Cron payout timeout: shipment has no Stripe payment intent, manual intervention required',
+  '15301:fn_cron_dispute_payout_timeout|SHIPMENT_NOT_CONNECT',
   'payout cron: a waiting_return dispute with the label pending for over 48 hours is picked');
 select is(pg_temp.picked(array[15302, 15303]), '15302:- 15303:-',
   'payout cron: a dispute updated exactly 48 hours ago or 47 hours ago is skipped');
@@ -136,8 +136,7 @@ select is(pg_temp.logs_of(15321), 0::bigint,
   'payout cron: a dispute whose return payment was logged is skipped');
 
 select is(pg_temp.picked(array[15311, 15316]),
-  '15311:ERROR|Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required '
-    || '15316:ERROR|Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required',
+  '15311:fn_cron_return_delivery_timeout|SHIPMENT_NOT_CONNECT 15316:fn_cron_return_delivery_timeout|SHIPMENT_NOT_CONNECT',
   'return cron: a return_delivered dispute delivered over 48 hours ago is picked, whatever its last update');
 select is(pg_temp.picked(array[15312, 15313]), '15312:- 15313:-',
   'return cron: a return delivered exactly 48 hours ago or with no delivery time is skipped');
@@ -148,10 +147,9 @@ select is(
    from return_cron c, pg_temp.cron_baseline b),
   '2:0', 'return cron: returns the picked disputes as errors and none as processed');
 select is(
-  (select string_agg(l.metadata::text, ',') from public.system_logs l
-   where l.level = 'INFO' and l.message = 'Cron return-delivery-timeout completado' and l.created_at = now()),
-  (select jsonb_build_object('processed', c.total_processed, 'errors', c.total_errors)::text from return_cron c),
-  'return cron: logs one INFO summary with the counts it returns');
+  (select count(*) from public.system_logs l
+   where l.message like 'Cron return-delivery-timeout%' and l.created_at = now()),
+  0::bigint, 'return cron: writes no system_logs summary; cron.job_run_details records the run');
 
 select * from finish();
 rollback;

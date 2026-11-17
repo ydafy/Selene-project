@@ -6,8 +6,6 @@ CREATE OR REPLACE FUNCTION public.fn_cron_dispute_payout_timeout()
   AS $function$
 DECLARE
     v_dispute RECORD;
-    v_success BOOLEAN;
-    v_err TEXT;
     v_is_connect BOOLEAN;
 BEGIN
     -- Buscar disputas donde el vendedor no ha pagado la guía tras 48h de ser aprobada
@@ -43,18 +41,11 @@ BEGIN
                     VALUES
                         (v_dispute.buyer_id, 'success', 'Disputa Ganada', 'El vendedor no pagó la guía de retorno a tiempo. Se procesará tu reembolso.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, '')),
                         (v_dispute.seller_id, 'error', 'Disputa Perdida', 'No pagaste la guía de retorno a tiempo. El caso se cerró a favor del comprador.', '/profile/orders/' || v_dispute.order_id || COALESCE('?shipment_id=' || v_dispute.shipment_id::text, ''));
-
-                    v_success := true;
                 ELSE
-                    INSERT INTO public.system_logs (level, message, metadata)
-                    VALUES ('ERROR', 'Cron payout timeout: shipment has no Stripe payment intent, manual intervention required',
+                    -- No Stripe payment intent: needs manual intervention.
+                    INSERT INTO internal.ops_failures (source, code, context)
+                    VALUES ('fn_cron_dispute_payout_timeout', 'SHIPMENT_NOT_CONNECT',
                             jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id));
-                END IF;
-
-                IF NOT v_success THEN
-                    INSERT INTO public.system_logs (level, message, metadata)
-                    VALUES ('WARNING', 'Cron payout timeout: refund failed',
-                            jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', v_err));
                 END IF;
             ELSE
                 -- Pre-migration fallback: disputa sin shipment_id
@@ -73,9 +64,9 @@ BEGIN
             END IF;
         EXCEPTION WHEN OTHERS THEN
             -- Atrapar excepciones DB sin abortar el resto del lote
-            INSERT INTO public.system_logs (level, message, metadata)
-            VALUES ('ERROR', 'Cron payout timeout: DB exception',
-                    jsonb_build_object('dispute_id', v_dispute.id, 'error', SQLERRM));
+            INSERT INTO internal.ops_failures (source, code, context)
+            VALUES ('fn_cron_dispute_payout_timeout', SQLSTATE,
+                    jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', SQLERRM));
         END;
     END LOOP;
 END;

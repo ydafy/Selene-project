@@ -36,15 +36,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 4. Auditoría (idempotente — siempre loguea de forma informativa)
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('INFO', 'Return label initiated by seller',
-    jsonb_build_object(
-      'dispute_id', p_dispute_id,
-      'shipment_id', v_shipment_id,
-      'seller_id', v_seller_id
-    ));
-
+  -- 4. Authorized. create-return-intent creates the payment and
+  -- fn_log_return_payment records it on the dispute; no log row.
   RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN

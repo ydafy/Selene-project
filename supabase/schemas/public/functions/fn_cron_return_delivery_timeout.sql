@@ -48,23 +48,21 @@ BEGIN
 
         v_processed := v_processed + 1;
       ELSE
-        INSERT INTO public.system_logs (level, message, metadata)
-        VALUES ('ERROR', 'Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required',
+        -- No Stripe payment intent: needs manual intervention.
+        INSERT INTO internal.ops_failures (source, code, context)
+        VALUES ('fn_cron_return_delivery_timeout', 'SHIPMENT_NOT_CONNECT',
                 jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id));
         v_errors := v_errors + 1;
       END IF;
     EXCEPTION WHEN OTHERS THEN
-      INSERT INTO public.system_logs (level, message, metadata)
-      VALUES ('ERROR', 'Cron return-delivery-timeout: excepción física',
-              jsonb_build_object('dispute_id', v_dispute.id, 'error', SQLERRM));
+      INSERT INTO internal.ops_failures (source, code, context)
+      VALUES ('fn_cron_return_delivery_timeout', SQLSTATE,
+              jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', SQLERRM));
       v_errors := v_errors + 1;
     END;
   END LOOP;
 
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('INFO', 'Cron return-delivery-timeout completado',
-          jsonb_build_object('processed', v_processed, 'errors', v_errors));
-
+  -- cron.job_run_details records the run; the counts are returned, not logged.
   RETURN QUERY SELECT v_processed, v_errors;
 END;
 $function$;

@@ -17,12 +17,12 @@ headers {
 }
 
 tests {
-  test("the fixture log rows are removed", function () {
+  test("the run left no system_logs row to remove", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody().length).to.be.at.least(2);
+    expect(res.getBody()).to.deep.equal([]);
   });
 }
 
 docs {
-  Local stack only. Removes the ERROR rows of this run so nothing else reads them.
+  Local stack only. Opening the disputes and the cron failures no longer write system_logs (odd/tasks/table-cleanup.md S6a, S6c), so this delete finds nothing; it stays as a guard until system_logs is dropped (T6d).
 }

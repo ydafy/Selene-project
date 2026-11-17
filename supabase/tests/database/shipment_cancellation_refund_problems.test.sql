@@ -241,14 +241,14 @@ create trigger t3_fail_notice before insert on public.notifications
   for each row when (new.event_payload->>'shipment_id' in ('f0000000-0000-4000-8000-000000065204', 'f0000000-0000-4000-8000-000000065205'))
   execute function pg_temp.fail_notice();
 select is(pg_temp.dispute_refund(65304), 'true:-', 'dispute refund: a failing notice does not fail the refund record');
-create trigger t3_fail_log before insert on public.system_logs
-  for each row when (new.metadata->>'shipment_id' = 'f0000000-0000-4000-8000-000000065205' and new.level = 'WARNING')
+create trigger t3_fail_log before insert on internal.ops_failures
+  for each row when (new.context->>'shipment_id' = 'f0000000-0000-4000-8000-000000065205')
   execute function pg_temp.fail_notice();
 create table pg_temp.refund_65305 as select pg_temp.dispute_refund(65305) as r;
 select is(
   (select r from pg_temp.refund_65305) || ':' || (select status::text from public.shipments where id = pg_temp.mu(65205)),
-  'true:-:refunded', 'dispute refund: when the warning log fails too, the refund is still recorded');
-drop trigger t3_fail_log on public.system_logs;
+  'true:-:refunded', 'dispute refund: when recording the failure fails too, the refund is still recorded');
+drop trigger t3_fail_log on internal.ops_failures;
 drop trigger t3_fail_notice on public.notifications;
 select is(
   (select s.status::text || ':' || d.status::text || ':' || coalesce(d.resolution_type, '-')
@@ -256,10 +256,10 @@ select is(
   || ':' || pg_temp.refunded_notices(65204),
   'refunded:resolved:buyer:0', 'dispute refund: the refund stays recorded without the notice');
 select is(
-  (select count(*) from public.system_logs where level = 'WARNING' and message = 'Refund notice failed'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(65304), 'shipment_id', pg_temp.mu(65204),
-       'sqlstate', 'P0001', 'error', 'TEST_NOTICE_FAILURE')),
-  1::bigint, 'dispute refund: the failed notice is logged as a WARNING with the dispute, shipment and error');
+  (select count(*) from internal.ops_failures where source = 'fn_record_dispute_refund' and code = 'P0001'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(65304), 'shipment_id', pg_temp.mu(65204),
+       'error', 'TEST_NOTICE_FAILURE')),
+  1::bigint, 'dispute refund: the failed notice records one ops failure with the dispute, shipment and error');
 
 -- 5. Notice kinds and push policy ---------------------------------------------------
 select is(

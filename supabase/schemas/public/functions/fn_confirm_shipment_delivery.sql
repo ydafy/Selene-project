@@ -160,17 +160,6 @@ BEGIN
     v_is_connect
   );
 
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES (
-    'INFO',
-    'Connect shipment completion skipped deprecated wallet release',
-    jsonb_build_object(
-      'shipment_id', p_shipment_id,
-      'source', p_source,
-      'is_connect', true
-    )
-  );
-
   UPDATE public.shipments
   SET status = 'completed',
       completed_at = v_completed_at,

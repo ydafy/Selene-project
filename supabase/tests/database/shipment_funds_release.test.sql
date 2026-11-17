@@ -197,10 +197,10 @@ select is(pg_temp.ship_sig(2122), (select v from pg_temp.sig where n = 2122), 'c
 select is((select count(*) from public.notifications where source_event_key like 'dispute.verdict:' || pg_temp.mu(2322) || '%'),
   0::bigint, 'cron: a refused release sends no notice');
 select is(
-  (select count(*) from public.system_logs
-   where level = 'WARNING' and message = 'Cron shipping timeout: release failed'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(2322), 'shipment_id', pg_temp.mu(2122), 'error', 'GRACE_PERIOD_ACTIVE')),
-  1::bigint, 'cron: a refused release is logged as a warning with the refusal');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_cron_dispute_shipping_timeout' and code = 'RELEASE_REFUSED'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(2322), 'shipment_id', pg_temp.mu(2122), 'error', 'GRACE_PERIOD_ACTIVE')),
+  1::bigint, 'cron: a refused release records one RELEASE_REFUSED failure with the refusal');
 select is(
   (select string_agg(pg_temp.dispute_state(n), ',' order by n) from unnest(array[2323, 2324, 2325, 2327]) n),
   'waiting_return|-|-,waiting_return|-|-,waiting_return|-|-,under_review|-|-',
@@ -209,13 +209,13 @@ select is(
   (select count(*) from pg_temp.sig where n in (2123, 2124, 2125, 2127) and v is distinct from pg_temp.ship_sig(n)),
   0::bigint, 'cron: the shipments of unselected disputes are unchanged');
 select is(
-  (select count(*) from public.system_logs
-   where level = 'ERROR' and message = 'Cron shipping timeout: dispute without shipment_id — requires manual intervention'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(2326), 'order_id', pg_temp.mu(2226))),
-  1::bigint, 'cron: a due dispute without a shipment is logged for manual intervention');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_cron_dispute_shipping_timeout' and code = 'DISPUTE_WITHOUT_SHIPMENT'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(2326), 'order_id', pg_temp.mu(2226))),
+  1::bigint, 'cron: a due dispute without a shipment records one failure for manual intervention');
 select is(pg_temp.dispute_state(2326), 'waiting_return|-|-', 'cron: a due dispute without a shipment stays open');
 
--- A database error in one dispute is logged and does not stop the batch.
+-- A database error in one dispute is recorded and does not stop the batch.
 create function pg_temp.fail_notice() returns trigger language plpgsql as $$
 begin
   raise exception 'TEST_NOTICE_FAILURE';
@@ -229,10 +229,10 @@ select public.fn_cron_dispute_shipping_timeout();
 reset role;
 drop trigger t2_fail_notice on public.notifications;
 select is(
-  (select count(*) from public.system_logs
-   where level = 'ERROR' and message = 'Cron shipping timeout: DB exception'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(2322), 'error', 'TEST_NOTICE_FAILURE')),
-  1::bigint, 'cron: a database error is logged with the dispute');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_cron_dispute_shipping_timeout' and code = 'P0001'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(2322), 'shipment_id', pg_temp.mu(2122), 'error', 'TEST_NOTICE_FAILURE')),
+  1::bigint, 'cron: a database error records its SQLSTATE with the dispute, shipment and message');
 select is(pg_temp.dispute_state(2322) || ':' || (select status::text from public.shipments where id = pg_temp.mu(2122)),
   'waiting_return|-|-:delivered', 'cron: a database error rolls back the resolution and the release');
 select is((select count(*) from public.notifications where source_event_key like 'dispute.verdict:' || pg_temp.mu(2321) || '%'),
@@ -301,14 +301,14 @@ drop trigger t2_fail_funds_notice on public.notifications;
 select is((select stripe_transfer_id from public.shipments where id = pg_temp.mu(2133)), 'tr_test_2133',
   'notice: a failing notice does not roll back the recorded transfer');
 select is(
-  (select count(*) from public.system_logs
-   where level = 'WARNING' and message = 'Funds released notice failed'
-     and metadata = jsonb_build_object('shipment_id', pg_temp.mu(2133), 'sqlstate', 'P0001', 'error', 'TEST_NOTICE_FAILURE')),
-  1::bigint, 'notice: a failing notice is logged as a warning');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_complete_shipment_transfer' and code = 'P0001'
+     and context = jsonb_build_object('run_id', pg_temp.mu(2433), 'shipment_id', pg_temp.mu(2133), 'error', 'TEST_NOTICE_FAILURE')),
+  1::bigint, 'notice: a failing notice records one ops failure with the run, shipment and message');
 select is(
-  (select count(*) from public.system_logs
-   where message = 'Funds released notice failed' and metadata->>'shipment_id' in (pg_temp.mu(2131)::text, pg_temp.mu(2132)::text)),
-  0::bigint, 'notice: a written or already existing notice logs no warning');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_complete_shipment_transfer' and context->>'shipment_id' in (pg_temp.mu(2131)::text, pg_temp.mu(2132)::text)),
+  0::bigint, 'notice: a written or already existing notice records no failure');
 
 -- 5. Release amount of admin_connect_payout_release_view ------------------------------
 -- All completed Connect shipments of a payout-ready seller, net payout 470000 cents.

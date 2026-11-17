@@ -150,10 +150,8 @@ select is(pg_temp.sig(8120), 'completed|' || now() || '|' || now() || '|' || now
 select is(pg_temp.event(8120),
   pg_temp.mu(8220) || '|buyer|' || pg_temp.mu(8002) || '|confirm_shipment_' || pg_temp.mu(8120) || '|' || now() || '|true',
   'buyer: one completion event with the order, source buyer, the buyer as actor, the key, the time and is_connect');
-select is(pg_temp.logs(8120),
-  'INFO|Connect shipment completion skipped deprecated wallet release|'
-    || jsonb_build_object('source', 'buyer', 'is_connect', true, 'shipment_id', pg_temp.mu(8120))::text,
-  'buyer: one INFO system log with the shipment, source and is_connect');
+select is(pg_temp.logs(8120), '-',
+  'buyer: no system log; the completion event is the record');
 create table pg_temp.done as select pg_temp.sig(8120) as sig;
 select is(pg_temp.confirm(8120, 'buyer', 8002), 'true:-:buyer:true', 'replay with the same key answers success, idempotent');
 select is(pg_temp.confirm(8120, 'buyer', 8003) || ' ' || pg_temp.confirm(8120, 'auto', null),
@@ -161,7 +159,7 @@ select is(pg_temp.confirm(8120, 'buyer', 8003) || ' ' || pg_temp.confirm(8120, '
   'a completed shipment answers its stored source as idempotent before the actor or the 48-hour rule is checked');
 select is(pg_temp.sig(8120) || ' ' || (select count(*) from public.shipment_completion_events where shipment_id = pg_temp.mu(8120))
     || ' ' || (select count(*) from public.system_logs where metadata ->> 'shipment_id' = pg_temp.mu(8120)::text),
-  (select sig from pg_temp.done) || ' 1 1', 'a replay writes nothing');
+  (select sig from pg_temp.done) || ' 1 0', 'a replay writes nothing');
 
 -- 5. Automatic completion at exactly 48 hours ---------------------------------------------------
 select is(pg_temp.confirm(8113, 'auto', null), 'true:-:auto:false', 'auto: due at exactly 48 hours after delivery');
@@ -170,10 +168,8 @@ select is(pg_temp.sig(8113), 'completed|' || now() || '|-|' || now(),
 select is(pg_temp.event(8113),
   pg_temp.mu(8213) || '|auto|-|auto_completion_' || pg_temp.mu(8113) || '|' || now() || '|true',
   'auto: one completion event with source auto and no actor');
-select is(pg_temp.logs(8113),
-  'INFO|Connect shipment completion skipped deprecated wallet release|'
-    || jsonb_build_object('source', 'auto', 'is_connect', true, 'shipment_id', pg_temp.mu(8113))::text,
-  'auto: one INFO system log');
+select is(pg_temp.logs(8113), '-',
+  'auto: no system log');
 
 -- 6. Unexpected errors -----------------------------------------------------------------------------
 -- 8122 holds a completion event that took 8121's key: the insert fails on UNIQUE(idempotency_key).
