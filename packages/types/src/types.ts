@@ -52,7 +52,6 @@ export type ConnectPayoutReleaseQueueRow =
 
 export type OrderStatus = Enums<'order_status'>;
 export type AccountStatus = Enums<'account_status'>;
-export type PayoutStatus = Enums<'payout_status'>;
 export type StripeOnboardingStatus = Enums<'stripe_onboarding_status'>;
 
 export type ProductStatus = Enums<'product_status'>;

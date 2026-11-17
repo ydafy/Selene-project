@@ -2701,7 +2701,6 @@ export type Database = {
       system_settings: {
         Row: {
           checkout_recovery_enabled: boolean;
-          currency: string;
           envia_carrier: string | null;
           envia_print_format: string | null;
           envia_print_size: string | null;
@@ -2709,20 +2708,15 @@ export type Database = {
           id: number;
           insurance_rate: number;
           is_maintenance: boolean;
-          isr_withholding_pct: number;
-          iva_withholding_pct: number;
           listing_quote_reference_destination: Json | null;
-          min_payout_amount_cents: number;
           min_version_android: string;
           min_version_ios: string;
           novice_active_limit: number;
           novice_completed_threshold: number;
           order_expiration_hours: number;
           package_presets: NonNullable<Json>;
-          payout_fee_fixed_cents: number;
           preparing_expiration_hours: number;
           return_label_fee_cents: number;
-          service_fee_fixed_cents: number;
           service_fee_pct: number;
           shipping_buffer_cents: number;
           trusted_active_limit: number;
@@ -2731,7 +2725,6 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           checkout_recovery_enabled?: boolean;
-          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
@@ -2739,20 +2732,15 @@ export type Database = {
           id: number;
           insurance_rate?: number;
           is_maintenance?: boolean;
-          isr_withholding_pct?: number;
-          iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number;
           min_version_android?: string;
           min_version_ios?: string;
           novice_active_limit?: number;
           novice_completed_threshold?: number;
           order_expiration_hours?: number;
           package_presets?: NonNullable<Json>;
-          payout_fee_fixed_cents?: number;
           preparing_expiration_hours?: number;
           return_label_fee_cents?: number;
-          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
           shipping_buffer_cents?: number;
           trusted_active_limit?: number;
@@ -2760,7 +2748,6 @@ export type Database = {
         };
         Update: {
           checkout_recovery_enabled?: boolean;
-          currency?: string;
           envia_carrier?: string | null;
           envia_print_format?: string | null;
           envia_print_size?: string | null;
@@ -2768,20 +2755,15 @@ export type Database = {
           id?: number;
           insurance_rate?: number;
           is_maintenance?: boolean;
-          isr_withholding_pct?: number;
-          iva_withholding_pct?: number;
           listing_quote_reference_destination?: Json | null;
-          min_payout_amount_cents?: number;
           min_version_android?: string;
           min_version_ios?: string;
           novice_active_limit?: number;
           novice_completed_threshold?: number;
           order_expiration_hours?: number;
           package_presets?: NonNullable<Json>;
-          payout_fee_fixed_cents?: number;
           preparing_expiration_hours?: number;
           return_label_fee_cents?: number;
-          service_fee_fixed_cents?: number;
           service_fee_pct?: number;
           shipping_buffer_cents?: number;
           trusted_active_limit?: number;
@@ -4405,7 +4387,6 @@ export type Database = {
         | 'cancelled'
         | 'dispute'
         | 'refunded';
-      payout_status: 'pending' | 'processing' | 'completed' | 'rejected';
       product_status:
         | 'pending_verification'
         | 'in_review'
@@ -4579,7 +4560,6 @@ export const Constants = {
         'dispute',
         'refunded',
       ],
-      payout_status: ['pending', 'processing', 'completed', 'rejected'],
       product_status: [
         'pending_verification',
         'in_review',
