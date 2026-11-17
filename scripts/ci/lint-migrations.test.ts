@@ -65,6 +65,17 @@ describe('findIgnoresWithoutReason', () => {
   });
 });
 
+describe('findIgnoresWithoutReason in other comment forms', () => {
+  it.each([
+    ['a block-comment ignore', '/* squawk-ignore ban-drop-column */'],
+    ['a trailing ignore', 'SELECT 1; -- squawk-ignore ban-drop-column'],
+  ])('rejects %s without a reason', (_case, line) => {
+    expect(findIgnoresWithoutReason('a.sql', line)).toEqual([
+      'a.sql:1: squawk-ignore needs a "-- reason: <why>" comment on the line above it.',
+    ]);
+  });
+});
+
 describe('selectMigrations', () => {
   it('keeps only top-level SQL migrations', () => {
     expect(
@@ -132,6 +143,32 @@ describe('lint-migrations CLI', () => {
     expect(result.stderr).toContain(
       `${file}:1: squawk-ignore needs a "-- reason: <why>" comment on the line above it.`,
     );
+  });
+
+  it('fails a block-comment ignore without a reason', () => {
+    const file = migration(
+      'block.sql',
+      '/* squawk-ignore ban-drop-column */\nALTER TABLE public.shipments DROP COLUMN label_url;\n',
+    );
+    expect(lint(file).exitCode).toBe(1);
+  });
+
+  it.each([
+    [
+      'adding-required-field',
+      'ALTER TABLE public.t ADD COLUMN c text NOT NULL;',
+    ],
+    ['ban-drop-default', 'ALTER TABLE public.t ALTER COLUMN c DROP DEFAULT;'],
+    ['ban-set-schema', 'ALTER TABLE public.t SET SCHEMA internal;'],
+    ['renaming-object', "ALTER TYPE public.s RENAME VALUE 'a' TO 'b';"],
+    [
+      'transaction-nesting',
+      'BEGIN;\nALTER TABLE public.t ADD COLUMN c text;\nCOMMIT;',
+    ],
+  ])('blocks %s', (rule, sql) => {
+    const result = lint(migration('b.sql', `${sql}\n`));
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain(rule);
   });
 
   it('passes with nothing to lint', () => {

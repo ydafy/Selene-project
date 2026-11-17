@@ -51,7 +51,7 @@ When a hand-written migration changes the schema, run `supabase db reset` and th
 
 ## Migration lint
 
-Squawk lints every migration a pull request adds (`db-test` runs `bun run db:lint:migrations --base <base commit>`); run `bun run db:lint:migrations <file.sql>` on a new migration before you commit it. The rules are in `.squawk.toml`. It excludes the lock-duration rules (tables stay small at the design target) and the drop rules that `declarative sync` triggers on every function, view, type or constraint change. The rules that stay blocking catch what fails a deploy against rows that already exist or breaks a client that still reads the old shape, among them: dropping or renaming a column, table, type or enum value, changing a column type, adding a `NOT NULL` column without a default, dropping a default or a `NOT NULL`, moving an object to another schema, and `BEGIN`/`COMMIT` inside a migration (the CLI already wraps each file in a transaction).
+Squawk lints every migration a pull request adds (`db-test` runs `bun run db:lint:migrations --base <base commit>`); run `bun run db:lint:migrations <file.sql>` on a new migration before you commit it. The rules are in `.squawk.toml`. It excludes the lock-duration rules (tables stay small at the design target) and the drop rules that `declarative sync` triggers on every function, view, type or constraint change. The rules that stay blocking catch what fails a deploy against rows that already exist or breaks a client that still reads the old shape, among them: dropping or renaming a column or table, renaming a type or enum value, changing a column type, adding a `NOT NULL` column without a default, dropping a default or a `NOT NULL`, moving an object to another schema, and `BEGIN`/`COMMIT` inside a migration (the CLI already wraps each file in a transaction).
 
 Each finding names its rule; `https://squawkhq.com/docs/<rule>` explains it and the safe alternative. Before go-live there is no installed app to protect, so a deliberate drop or rename is fine, but it is visible: silence the rule for that statement with Squawk's comment and a reason on the line right above it. `bun run db:lint:migrations` fails an ignore without one.
 
@@ -61,7 +61,7 @@ Each finding names its rule; `https://squawkhq.com/docs/<rule>` explains it and 
 ALTER TABLE public.shipments DROP COLUMN label_url;
 ```
 
-`-- squawk-ignore <rule>` covers the next statement only; `-- squawk-ignore-file <rule>` covers the whole file and needs the same reason line. Never add a rule to `excluded_rules` to pass one migration.
+`-- squawk-ignore <rule>` covers the next statement only; to silence several rules there, list them in one comment (`-- squawk-ignore ban-drop-column, renaming-column`). `-- squawk-ignore-file <rule>` covers the whole file. Every ignore, in any comment form, needs the reason line. Never add a rule to `excluded_rules` to pass one migration.
 
 ## Local stack
 

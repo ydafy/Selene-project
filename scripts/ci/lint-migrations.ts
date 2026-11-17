@@ -10,7 +10,9 @@ const CONFIG = join(REPO_ROOT, '.squawk.toml');
 const USAGE =
   'Usage: bun scripts/ci/lint-migrations.ts [--base <commit>] [file.sql ...]';
 
-const IGNORE = /^\s*--\s*squawk-ignore(-file)?\b/;
+// Squawk reads an ignore in any comment: a line comment, a trailing one, or a
+// block comment.
+const IGNORE = /(--|\/\*).*\bsquawk-ignore(-file)?\b/;
 const REASON = /^\s*--\s*reason:\s*\S/;
 const MIGRATION = /^supabase\/migrations\/[^/]+\.sql$/;
 
@@ -30,8 +32,9 @@ export function selectMigrations(paths: string[]): string[] {
   return paths.filter((path) => MIGRATION.test(path));
 }
 
-// The pull request checkout is a merge commit whose first parent is the base,
-// so a two-dot diff against the base lists exactly the files the PR adds.
+// CI passes the first parent of the pull request's merge commit, so a two-dot
+// diff lists exactly the files the PR adds. --no-renames lists a migration that
+// git would pair with a deleted file as added, so it is linted too.
 function addedMigrations(base: string): string[] {
   const diff = Bun.spawnSync(
     [
@@ -39,6 +42,7 @@ function addedMigrations(base: string): string[] {
       'diff',
       '--name-only',
       '--diff-filter=A',
+      '--no-renames',
       base,
       'HEAD',
       '--',

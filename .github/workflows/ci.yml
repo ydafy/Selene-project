@@ -66,7 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Depth 2 keeps the first parent of the pull request's merge commit, the
+      # base the migration lint diffs against.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
       # Same CLI version as the maintainer's machine; bump them together.
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
@@ -85,14 +89,10 @@ jobs:
       - run: bun install --frozen-lockfile
       # Squawk on the migrations the pull request adds (.squawk.toml;
       # supabase/AGENTS.md, "Migration lint"). The checkout is the merge commit,
-      # so the base commit is fetched to diff against it.
+      # and its first parent is the base branch as it is now.
       - name: Lint new migrations
         if: github.event_name == 'pull_request'
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          git fetch --no-tags --depth=1 origin "$BASE_SHA"
-          bun run db:lint:migrations --base "$BASE_SHA"
+        run: bun run db:lint:migrations --base HEAD^1
       - run: bun run db:types:check
       # The scripts/verify/ harnesses that need only this stack, in sequence
       # (scripts/verify/run-harnesses.ts lists the groups; about 20 s).

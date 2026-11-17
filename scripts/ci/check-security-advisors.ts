@@ -25,7 +25,8 @@ export function compareFindings(
   const reported = new Set(findings.map((finding) => finding.cacheKey));
   return {
     unexpected: findings.filter(
-      (finding) => finding.level !== 'INFO' && !(finding.cacheKey in accepted),
+      (finding) =>
+        finding.level !== 'INFO' && !Object.hasOwn(accepted, finding.cacheKey),
     ),
     stale: Object.keys(accepted).filter((key) => !reported.has(key)),
   };
@@ -58,9 +59,10 @@ function runAdvisors(): string {
     ],
     { stdout: 'pipe', stderr: 'pipe' },
   );
+  // With JSON output the CLI writes its own errors to stdout.
   if (run.exitCode !== 0)
     throw new Error(
-      `check-security-advisors: supabase db advisors failed: ${run.stderr.toString().trim()}`,
+      `check-security-advisors: supabase db advisors failed (exit ${run.exitCode}): ${run.stderr.toString().trim()} ${run.stdout.toString().trim()}`.trim(),
     );
   return run.stdout.toString();
 }
@@ -74,9 +76,16 @@ function main(): number {
     return 2;
   }
 
-  const output: unknown = JSON.parse(
-    input ? readFileSync(input, 'utf8') : runAdvisors(),
-  );
+  const text = input ? readFileSync(input, 'utf8') : runAdvisors();
+  let output: unknown;
+  try {
+    output = JSON.parse(text);
+  } catch {
+    console.error(
+      `check-security-advisors: the advisor output is not JSON: ${text.slice(0, 500)}`,
+    );
+    return 2;
+  }
   const findings: unknown =
     typeof output === 'object' && output !== null
       ? (output as { results?: unknown }).results

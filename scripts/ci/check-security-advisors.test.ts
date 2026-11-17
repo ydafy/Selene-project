@@ -34,7 +34,10 @@ function check(output: unknown) {
   const root = mkdtempSync(join(tmpdir(), 'security-advisors-'));
   roots.push(root);
   const input = join(root, 'advisors.json');
-  writeFileSync(input, JSON.stringify(output));
+  writeFileSync(
+    input,
+    typeof output === 'string' ? output : JSON.stringify(output),
+  );
   const run = Bun.spawnSync(['bun', SCRIPT, '--input', input], {
     stdout: 'pipe',
     stderr: 'pipe',
@@ -145,6 +148,35 @@ describe('check-security-advisors CLI', () => {
     expect(result.stderr).toContain(
       'check-security-advisors: the advisor output is not a list of findings.',
     );
+  });
+
+  it('fails as stale when the advisor returns no findings', () => {
+    expect(check({ results: [] }).exitCode).toBe(1);
+  });
+
+  it('rejects the CLI error object', () => {
+    const result = check({
+      _tag: 'Error',
+      error: { code: 'LocalDbRunningError', message: 'x' },
+    });
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain(
+      'check-security-advisors: the advisor output is not a list of findings.',
+    );
+  });
+
+  it('rejects output that is not JSON with a clear message', () => {
+    const result = check('not json');
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain(
+      'check-security-advisors: the advisor output is not JSON: not json',
+    );
+  });
+
+  it('does not accept a key inherited from Object.prototype', () => {
+    expect(
+      compareFindings([finding('toString', 'WARN')], {}).unexpected,
+    ).toHaveLength(1);
   });
 
   it('rejects an unknown flag', () => {
