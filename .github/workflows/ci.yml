@@ -72,14 +72,27 @@ jobs:
         with:
           version: 3.1.0
       - run: supabase start
+      # Security advisor findings beyond scripts/ci/security-advisor-exceptions.ts.
+      # Its script imports nothing from node_modules, so it runs before the install.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - run: bun run db:advisors:check
       - run: supabase test db
       # supabase/schemas/ must describe the same database as supabase/migrations/.
       # The check script imports nothing from node_modules, so no install step.
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun run db:schema:check
       # packages/types/src/database.types.ts must be what the migrations generate.
       # The check formats with the repository's Prettier, so it needs the install.
       - run: bun install --frozen-lockfile
+      # Squawk on the migrations the pull request adds (.squawk.toml;
+      # supabase/AGENTS.md, "Migration lint"). The checkout is the merge commit,
+      # so the base commit is fetched to diff against it.
+      - name: Lint new migrations
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          bun run db:lint:migrations --base "$BASE_SHA"
       - run: bun run db:types:check
       # The scripts/verify/ harnesses that need only this stack, in sequence
       # (scripts/verify/run-harnesses.ts lists the groups; about 20 s).
