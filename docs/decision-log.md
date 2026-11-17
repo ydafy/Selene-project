@@ -366,4 +366,4 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 
 **Decision:** The `main` ruleset requires conversation resolution before merging (`required_review_thread_resolution: true`). Every unresolved review thread, from CodeRabbit or a person, blocks the merge, auto-merge included. Resolve a thread after fixing it or after replying with the reason it does not apply.
 
-**Consequence:** Auto-merge can no longer land a pull request over an unread finding. It still does not cover a rate-limited or skipped review, which posts no threads, so the 2026-11-15 rule to confirm that CodeRabbit reviewed the head commit stays.
+**Consequence:** Auto-merge can no longer land a pull request over an unresolved review thread. Findings that create no thread still pass: those in a review body (such as outside-diff findings), and a rate-limited or skipped review. So the 2026-11-15 rule to confirm that CodeRabbit reviewed the head commit and to read its review bodies stays.
