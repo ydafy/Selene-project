@@ -10,7 +10,8 @@ begin;
 select plan(43);
 \ir ../fixtures/money.psql
 
--- A completed shipment: completed p_ago ago with 1000 cents of label.
+-- A completed shipment: completed p_ago ago with 1000 cents of label, which the
+-- held amount never deducts.
 create function pg_temp.complete(p_shipment integer, p_ago interval default '1 hour')
 returns void language sql as $$
   update public.shipments set status = 'completed', completed_at = now() - p_ago, shipping_cost_cents = 1000
@@ -88,11 +89,11 @@ select is((pg_temp.notice(111, 0)).user_id, pg_temp.mu(11), 'the notice goes to 
 select is((pg_temp.notice(111, 0)).type, 'warning', 'the notice is a warning');
 select is((pg_temp.notice(111, 0)).title, 'No podemos enviarte el pago de una venta', 'the first notice title');
 select is((pg_temp.notice(111, 0)).message,
-  'Stripe rechazó tu cuenta de cobro. Revisa tu configuración de pagos para recibir $12,335.67 MXN.',
+  'Stripe rechazó tu cuenta de cobro. Revisa tu configuración de pagos para recibir $12,345.67 MXN.',
   'the first notice says why in plain Spanish and the amount held');
 select is((pg_temp.notice(111, 0)).action_path, '/sell/onboarding', 'the notice opens the onboarding screen');
 select is((pg_temp.notice(111, 0)).event_payload,
-  jsonb_build_object('order_id', pg_temp.mu(211), 'shipment_id', pg_temp.mu(111), 'amount_cents', 1233567,
+  jsonb_build_object('order_id', pg_temp.mu(211), 'shipment_id', pg_temp.mu(111), 'amount_cents', 1234567,
     'currency', 'mxn', 'recipient_role', 'seller', 'block_reason', 'onboarding_rejected',
     'reminder_stage', 0, 'is_reminder', false),
   'the payload carries the order, shipment, amount, reason and stage');
@@ -108,19 +109,19 @@ select is((pg_temp.notice(112, 7)).title, 'No podemos enviarte el pago de una ve
 select is((pg_temp.notice(112, 7)).event_payload ->> 'is_reminder', 'false',
   'a late first notice is not a reminder');
 select is((pg_temp.notice(112, 7)).message,
-  'Stripe necesita más datos de tu cuenta de cobro. Revisa tu configuración de pagos para recibir $890.00 MXN.',
+  'Stripe necesita más datos de tu cuenta de cobro. Revisa tu configuración de pagos para recibir $900.00 MXN.',
   'pending onboarding has its own sentence');
 select is((pg_temp.notice(113, 0)).message,
-  'Stripe pausó los pagos a tu cuenta. Revisa tu configuración de pagos para recibir $890.00 MXN.',
+  'Stripe pausó los pagos a tu cuenta. Revisa tu configuración de pagos para recibir $900.00 MXN.',
   'disabled payouts have their own sentence');
 select is((pg_temp.notice(114, 0)).message,
-  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $890.00 MXN.',
+  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $900.00 MXN.',
   'an errored bank account is a bank problem');
 select is((pg_temp.notice(115, 0)).message,
-  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $890.00 MXN.',
+  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $900.00 MXN.',
   'a bank account that failed verification is a bank problem');
 select is((pg_temp.notice(116, 0)).message,
-  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $890.00 MXN.',
+  'Tu cuenta bancaria tiene un problema. Revisa tu configuración de pagos para recibir $900.00 MXN.',
   'a deactivated tokenized bank account is a bank problem');
 select is((pg_temp.notice(116, 0)).event_payload ->> 'block_reason', 'tokenized_account_number_deactivated',
   'the payload keeps the gate''s reason code');

@@ -16,17 +16,16 @@
 
 INSERT INTO public.system_settings (
   id, is_maintenance, min_version_android, min_version_ios,
-  service_fee_pct, service_fee_fixed_cents, insurance_rate, payout_fee_fixed_cents,
-  currency, shipping_buffer_cents, package_presets, return_label_fee_cents,
-  order_expiration_hours, min_payout_amount_cents, preparing_expiration_hours,
-  isr_withholding_pct, iva_withholding_pct,
+  service_fee_pct, insurance_rate,
+  shipping_buffer_cents, package_presets, return_label_fee_cents,
+  order_expiration_hours, preparing_expiration_hours,
   novice_completed_threshold, novice_active_limit, trusted_active_limit,
   envia_carrier, envia_service, envia_print_format, envia_print_size,
   checkout_recovery_enabled
 ) VALUES (
   1, false, '1.0.0', '1.0.0',
-  0.06, 0, 0.012, 200,
-  'MXN', 3000,
+  0.06, 0.012,
+  3000,
   '{
     "cpu_1": {"label": "Con Disipador (Caja Original)", "width": 15, "height": 15, "length": 15, "weight": 1, "category": "CPU"},
     "cpu_2": {"label": "Solo Procesador (Sin Disipador)", "width": 15, "height": 8, "length": 20, "weight": 1, "category": "CPU"},
@@ -36,8 +35,7 @@ INSERT INTO public.system_settings (
     "mobo_1": {"label": "Caja Estándar (ATX / M-ATX)", "width": 30, "height": 10, "length": 38, "weight": 3, "category": "Motherboard"}
   }'::jsonb,
   30000,
-  48, 10000, 72,
-  0.00, 0.00,
+  48, 72,
   3, 3, 10,
   'paquetexpress', 'ground', 'PDF', 'STOCK_4X6',
   true

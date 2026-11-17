@@ -134,7 +134,7 @@ ConfirmDelivery(s) ==
                    refundAtStripe, refundStatus>>
     /\ UNCHANGED overdueVars
 
-\* Inputs of the release view change (order_items.net_payout_cents, shipments.shipping_cost_cents).
+\* Inputs of the release view change (order_items.net_payout_cents).
 \* Assumption: only before any transfer fence or Stripe transfer exists.
 Reprice(s) ==
     /\ viewAmt[s] = Amt

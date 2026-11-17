@@ -313,15 +313,16 @@ select is(
 -- 5. Release amount of admin_connect_payout_release_view ------------------------------
 -- All completed Connect shipments of a payout-ready seller, net payout 470000 cents.
 -- 2141 single-modal, no shipping cost, with a label cost. 2142 single-modal with a
--- shipping cost. 2143 legacy with a shipping cost. 2144 legacy without one.
--- 2145 legacy with a shipping cost above the net payout.
+-- shipping cost. 2143 without a transfer group, with a shipping cost. 2144 without
+-- a transfer group or a shipping cost. 2145 single-modal with a shipping cost
+-- above the net payout. The release never deducts the shipping cost.
 update public.profiles_private set stripe_account_id = 'acct_test_2001', stripe_onboarding_status = 'complete'
 where id = pg_temp.mu(2001);
 select pg_temp.money_shipment(2240 + n, 2140 + n, 2001, 2002, 'completed', interval '3 days', 470000)
 from generate_series(1, 5) n;
 update public.shipments set completed_at = now() - interval '1 day'
 where id in (select pg_temp.mu(n) from generate_series(2141, 2145) n);
-update public.orders set stripe_transfer_group = 'group_' || id where id in (pg_temp.mu(2241), pg_temp.mu(2242));
+update public.orders set stripe_transfer_group = 'group_' || id where id in (pg_temp.mu(2241), pg_temp.mu(2242), pg_temp.mu(2245));
 update public.shipments set label_provider_cost_cents = 50000 where id = pg_temp.mu(2141);
 update public.shipments set shipping_cost_cents = 28700 where id in (pg_temp.mu(2142), pg_temp.mu(2143));
 update public.shipments set shipping_cost_cents = 500000 where id = pg_temp.mu(2145);
@@ -334,9 +335,10 @@ $$;
 select is(pg_temp.view_row(2141), '470000:true:-',
   'view: a single-modal shipment releases its net payout, ignoring the label cost and the publication shipping reserve');
 select is(pg_temp.view_row(2142), '470000:true:-', 'view: a single-modal shipment does not deduct a shipping cost again');
-select is(pg_temp.view_row(2143), '441300:true:-', 'view: a legacy shipment deducts its shipping cost');
-select is(pg_temp.view_row(2144), '470000:false:missing_shipping_cost', 'view: a legacy shipment without a shipping cost is not eligible');
-select is(pg_temp.view_row(2145), '0:false:missing_release_amount', 'view: a legacy release amount never goes below zero and is not eligible');
+select is(pg_temp.view_row(2143), '470000:false:missing_transfer_group',
+  'view: a shipment without a transfer group is not eligible, even with a shipping cost, and its amount deducts nothing');
+select is(pg_temp.view_row(2144), '470000:false:missing_transfer_group', 'view: a shipment without a transfer group or a shipping cost is not eligible');
+select is(pg_temp.view_row(2145), '470000:true:-', 'view: a shipping cost above the net payout is never deducted');
 select is(
   (select array_agg(column_name::text order by ordinal_position) from information_schema.columns
    where table_schema = 'public' and table_name = 'admin_connect_payout_release_view'),

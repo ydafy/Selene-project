@@ -39,15 +39,15 @@ select throws_ok(
   $$update public.shipments set shipping_cost_cents = null where id = pg_temp.mu(7711)$$,
   '23502', null, 'a NULL shipments.shipping_cost_cents is rejected');
 
--- The release view keeps its integer contract and still subtracts the shipping
--- cost of a legacy shipment (no transfer group): 90000 - 28700.
+-- The release view keeps its integer contract and never deducts the shipping
+-- cost, even for a shipment without a transfer group: 90000, not 90000 - 28700.
 select col_type_is('public', 'admin_connect_payout_release_view', 'release_amount_cents',
   'integer', 'admin_connect_payout_release_view.release_amount_cents stays integer');
 update public.orders set stripe_transfer_group = null where id = pg_temp.mu(7710);
 select is(
   (select release_amount_cents from public.admin_connect_payout_release_view
     where shipment_id = pg_temp.mu(7711)),
-  61300, 'a legacy shipment releases its net payout minus shipping_cost_cents');
+  90000, 'a shipment without a transfer group releases its net payout; shipping_cost_cents is never deducted');
 
 -- T7b: connect_payout_run_shipments.net_payout_cents ------------------------------
 select hasnt_column('public', 'connect_payout_run_shipments', 'net_payout',

@@ -2,7 +2,7 @@
 -- each rule is a constraint, and a write that breaks it fails.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(80);
+select plan(78);
 \ir ../fixtures/money.psql
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -157,10 +157,9 @@ select throws_ok(
 -- system_settings
 select is_empty(
   $$select c from unnest(array[
-      'is_maintenance', 'min_version_android', 'min_version_ios', 'service_fee_fixed_cents',
-      'payout_fee_fixed_cents', 'currency', 'updated_at', 'shipping_buffer_cents',
-      'package_presets', 'return_label_fee_cents', 'order_expiration_hours',
-      'min_payout_amount_cents', 'preparing_expiration_hours', 'novice_completed_threshold',
+      'is_maintenance', 'min_version_android', 'min_version_ios', 'updated_at',
+      'shipping_buffer_cents', 'package_presets', 'return_label_fee_cents',
+      'order_expiration_hours', 'preparing_expiration_hours', 'novice_completed_threshold',
       'novice_active_limit', 'trusted_active_limit']) as c
     left join pg_attribute a on a.attrelid = 'public.system_settings'::regclass and a.attname = c
     where a.attnotnull is not true$$,
@@ -171,24 +170,12 @@ select throws_ok(
   '23502', null, 'a NULL system_settings.order_expiration_hours is rejected');
 
 select throws_ok(
-  $$update public.system_settings set service_fee_fixed_cents = -1 where id = 1$$,
-  '23514', null, 'a negative system_settings.service_fee_fixed_cents is rejected');
-
-select throws_ok(
-  $$update public.system_settings set payout_fee_fixed_cents = -1 where id = 1$$,
-  '23514', null, 'a negative system_settings.payout_fee_fixed_cents is rejected');
-
-select throws_ok(
   $$update public.system_settings set shipping_buffer_cents = -1 where id = 1$$,
   '23514', null, 'a negative system_settings.shipping_buffer_cents is rejected');
 
 select throws_ok(
   $$update public.system_settings set return_label_fee_cents = -1 where id = 1$$,
   '23514', null, 'a negative system_settings.return_label_fee_cents is rejected');
-
-select throws_ok(
-  $$update public.system_settings set min_payout_amount_cents = -1 where id = 1$$,
-  '23514', null, 'a negative system_settings.min_payout_amount_cents is rejected');
 
 select throws_ok(
   $$update public.system_settings set order_expiration_hours = 0 where id = 1$$,
@@ -210,9 +197,15 @@ select throws_ok(
   $$update public.system_settings set trusted_active_limit = novice_active_limit - 1 where id = 1$$,
   '23514', null, 'a trusted_active_limit below novice_active_limit is rejected');
 
-select throws_ok(
-  $$update public.system_settings set currency = 'USD' where id = 1$$,
-  '23514', null, 'a system_settings.currency other than MXN is rejected');
+-- The wallet-era settings no code reads are gone (#636).
+select is_empty(
+  $$select a.attname from pg_attribute a
+    where a.attrelid = 'public.system_settings'::regclass and not a.attisdropped
+      and a.attname in ('service_fee_fixed_cents', 'payout_fee_fixed_cents', 'min_payout_amount_cents',
+                        'isr_withholding_pct', 'iva_withholding_pct', 'currency')$$,
+  'system_settings has no wallet-era columns');
+
+select hasnt_type('public', 'payout_status', 'the wallet-era payout_status enum is gone');
 
 -- internal.checkout_recovery_shells
 select throws_ok(
