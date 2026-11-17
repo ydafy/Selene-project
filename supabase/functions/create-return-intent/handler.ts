@@ -84,12 +84,30 @@ export function createCreateReturnIntentHandler(
         supabaseAdmin
           .from('system_settings')
           .select('return_label_fee_cents')
+          .eq('id', 1)
           .single(),
       ]);
 
       if (disputeRes.error || !disputeRes.data)
         throw new ApiError(404, 'Disputa no encontrada');
       const dispute = disputeRes.data;
+
+      // The fee comes only from system_settings: a failed read or an invalid
+      // value stops the request instead of charging a code fallback (#489).
+      // A configured 0 stays 0.
+      const returnFeeCents: unknown = settingsRes.data?.return_label_fee_cents;
+      if (
+        settingsRes.error ||
+        typeof returnFeeCents !== 'number' ||
+        !Number.isSafeInteger(returnFeeCents) ||
+        returnFeeCents < 0
+      ) {
+        log('ERROR', 'Error cargando configuración del sistema', {
+          disputeId,
+          error: settingsRes.error?.message ?? 'invalid return_label_fee_cents',
+        });
+        throw new ApiError(500, 'Error cargando configuración del sistema');
+      }
 
       // 3. Validación centralizada via RPC (evita duplicar lógica)
       const { data: initResult, error: initError } = await supabaseAdmin.rpc(
@@ -107,8 +125,6 @@ export function createCreateReturnIntentHandler(
           'Operación no permitida';
         throw new ApiError(400, errMsg);
       }
-
-      const returnFeeCents = settingsRes.data?.return_label_fee_cents || 30000; // Fallback $300
 
       if (!dispute.shipment_id) {
         throw new ApiError(400, 'Dispute is not linked to a shipment');
