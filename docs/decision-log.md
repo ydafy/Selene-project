@@ -359,3 +359,11 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 - Each session turns on auto-merge (`gh pr merge <N> --auto --merge`) once CodeRabbit has reviewed its last commit and the comments are handled, updates its pull request once with `gh pr update-branch <N>` when it falls behind, and tells the other sessions when it merges. Steps: `docs/worktrees.md`, "Merge while other sessions work in parallel".
 
 **Consequence:** CI runs again on each pull request after every merge (about 2 minutes; free for a public repository), but no merge waits for a person. "Merge one pull request at a time" from 2026-11-09 still holds; auto-merge only removes the wait.
+
+## 2026-11-17: Unresolved Review Threads Block the Merge
+
+**Context:** The 2026-11-15 rule says to read CodeRabbit's comments before setting `gh pr merge --auto`, but nothing enforced it. On #681 an agent set `--auto` before CodeRabbit reported (#601, second occurrence). The required `CodeRabbit` check then passed with a valid finding, because the check means the review finished, not that it found nothing. The pull request would have merged with that bug if another session had not pointed out the rule.
+
+**Decision:** The `main` ruleset requires conversation resolution before merging (`required_review_thread_resolution: true`). Every unresolved review thread, from CodeRabbit or a person, blocks the merge, auto-merge included. Resolve a thread after fixing it or after replying with the reason it does not apply.
+
+**Consequence:** Auto-merge can no longer land a pull request over an unresolved review thread. Findings that create no thread still pass: those in a review body (such as outside-diff findings), and a rate-limited or skipped review. So the 2026-11-15 rule to confirm that CodeRabbit reviewed the head commit and to read its review bodies stays.

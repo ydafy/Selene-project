@@ -84,7 +84,7 @@ It keeps stacks without a recorded branch and prints the reason for every stack 
    gh api --paginate repos/ydafy/Selene-project/issues/<N>/comments
    ```
 
-   Fix or answer each finding. A fix is a new commit, so wait for CodeRabbit's review of it and repeat this step.
+   Fix or answer each finding and resolve its thread; an unresolved thread blocks the merge, auto-merge included (`docs/decision-log.md`, "2026-11-17: Unresolved Review Threads Block the Merge"). A fix is a new commit, so wait for CodeRabbit's review of it and repeat this step.
 
 2. Turn on auto-merge: `gh pr merge <N> --auto --merge`. The pull request merges by itself when every required check is green. Never before CodeRabbit has reported on your last commit: a skipped or pending review counts as passing.
 3. When another pull request merges first, yours shows `BEHIND`. Run `gh pr update-branch <N>` once; CI runs again and auto-merge finishes. CodeRabbit may skip that merge commit, which is fine because it adds none of your changes.
