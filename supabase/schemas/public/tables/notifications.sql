@@ -46,6 +46,18 @@ CREATE TRIGGER trg_notifications_enqueue_push
   WHEN ((new.event_kind IS NOT NULL))
   EXECUTE FUNCTION public.fn_enqueue_push_deliveries();
 
+CREATE TRIGGER trg_notifications_broadcast_insert
+  AFTER INSERT ON public.notifications
+  REFERENCING NEW TABLE AS changed_rows
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION public.fn_broadcast_notification_changes();
+
+CREATE TRIGGER trg_notifications_broadcast_update
+  AFTER UPDATE ON public.notifications
+  REFERENCING NEW TABLE AS changed_rows
+  FOR EACH STATEMENT
+  EXECUTE FUNCTION public.fn_broadcast_notification_changes();
+
 CREATE POLICY "notifications_owner_select" ON "public"."notifications"
   FOR SELECT
   TO "authenticated"
