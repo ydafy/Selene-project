@@ -1,0 +1,33 @@
+# Squawk lints the migrations a pull request adds (scripts/ci/lint-migrations.ts).
+# How to read a rule and silence one with its reason: supabase/AGENTS.md,
+# "Migration lint". Rules not excluded here stay blocking.
+
+# The local stack and the hosted project run Postgres 17.
+pg_version = "17.0"
+# The Supabase CLI applies each migration file inside one transaction.
+assume_in_transaction = true
+
+excluded_rules = [
+  # Lock duration. At the design target (docs/conventions.md, "Design target")
+  # the largest tables hold tens of thousands of rows, so a table scan or an
+  # index build under lock takes milliseconds. Squawk has no warning level, so
+  # these rules are excluded rather than reported.
+  "adding-foreign-key-constraint",
+  "adding-not-nullable-field",
+  "constraint-missing-not-valid",
+  "disallowed-unique-constraint",
+  "require-concurrent-index-creation",
+  "require-concurrent-index-deletion",
+  "require-lock-timeout",
+  "require-statement-timeout",
+  "require-timeout-settings",
+  # `declarative sync` rewrites a changed function, view, type or constraint as
+  # a drop and a create in the same migration, so these fire on every change.
+  "ban-drop-constraint",
+  "ban-drop-function",
+  "ban-drop-type",
+  "ban-drop-view",
+  # Style: small counters stay integer; the type of each column is decided in
+  # review, not by a blanket rule.
+  "prefer-bigint-over-int",
+]
