@@ -19,7 +19,8 @@ const help =
   'Replay a failure: set SELENE_MODEL_SEED, SELENE_MODEL_PATH and SELENE_MODEL_REPLAY_PATH (the\n' +
   "commands' replayPath) to the values its Replay line printed, with the same SELENE_MODEL_COMMANDS\n" +
   '(a replay skips the outcome and mutant checks). SELENE_MODEL_MUTANT=<name> runs the main property\n' +
-  'with that mutant applied, to replay a mutant failure.';
+  'with that mutant applied, to replay a mutant failure. SELENE_MODEL_GUIDED_ONLY=1 generates only the\n' +
+  'guided path runs, the mode of the mutant checks; a Replay line includes it when it applies.';
 
 const ids = {
   admin: '00000000-0000-4000-8000-000000000001',
@@ -693,13 +694,23 @@ class BeginTransfer extends Step {
       ${runId}::uuid, ${ids[this.s]}::uuid, 1) AS result`;
     const [mapping] = await asOwnerFor(
       sp,
-      () => sp`SELECT net_payout_cents::int AS net FROM public.connect_payout_run_shipments
-        WHERE run_id = ${runId} AND shipment_id = ${ids[this.s]}`,
+      () => sp`SELECT m.net_payout_cents::int AS net,
+          (SELECT COALESCE(sum(oi.net_payout_cents), 0)::int FROM public.order_items oi
+            WHERE oi.shipment_id = m.shipment_id) AS items_net
+        FROM public.connect_payout_run_shipments m
+        WHERE m.run_id = ${runId} AND m.shipment_id = ${ids[this.s]}`,
     );
     assert.equal(
       result.amount,
       mapping.net,
       'BeginTransfer amount differs from the mapping net_payout_cents',
+    );
+    // FullOrNothing when the transfer starts: a partial amount the view and the
+    // mapping agree on must not wait for the completion to be caught.
+    assert.equal(
+      result.amount,
+      mapping.items_net,
+      'BeginTransfer amount differs from the shipment order_items net_payout_cents',
     );
     seen.transferToken = result.transfer_token;
     return 'begun';
@@ -1084,6 +1095,35 @@ async function productionFingerprint(sql: SQL) {
   return row.hash as string;
 }
 
+/** The env assignments and command that replay one failing run in the mode that produced it. */
+function replayLine<T>(
+  result: fc.RunDetails<T>,
+  commandsReplay: string | null,
+  mutant: string | null,
+  guidedOnly: boolean,
+) {
+  return (
+    `Replay: SELENE_MODEL_SEED=${result.seed} SELENE_MODEL_PATH=${result.counterexamplePath}` +
+    (commandsReplay ? ` SELENE_MODEL_REPLAY_PATH=${commandsReplay}` : '') +
+    (mutant ? ` SELENE_MODEL_MUTANT=${mutant}` : '') +
+    (guidedOnly ? ' SELENE_MODEL_GUIDED_ONLY=1' : '') +
+    ' bun scripts/verify/test-shipment-lifecycle-model.ts'
+  );
+}
+
+/** Prints fast-check's report (seed, path, commands), the error and the Replay line. */
+function printFailure<T>(
+  result: fc.RunDetails<T>,
+  mutant: string | null,
+  guidedOnly: boolean,
+) {
+  const report = fc.defaultReportMessage(result) ?? '';
+  console.log(report);
+  console.log(`Error: ${(result.errorInstance as Error)?.message}`);
+  const commandsReplay = /replayPath="([^"]*)"/.exec(report)?.[1] ?? null;
+  console.log(replayLine(result, commandsReplay, mutant, guidedOnly));
+}
+
 async function run() {
   const numRuns = positiveInt('SELENE_MODEL_RUNS', 50);
   // A run averages half the maximum. With 30, about 13% of runs complete the
@@ -1098,6 +1138,12 @@ async function run() {
   if (seedEnv && !Number.isInteger(seed))
     throw new Error(`SELENE_MODEL_SEED must be an integer, got ${seedEnv}`);
   const replay = path !== undefined;
+  const guidedOnlyEnv = process.env.SELENE_MODEL_GUIDED_ONLY ?? '';
+  if (!['', '0', '1'].includes(guidedOnlyEnv))
+    throw new Error(
+      `SELENE_MODEL_GUIDED_ONLY must be 1 or 0, got ${guidedOnlyEnv}`,
+    );
+  const guidedOnly = guidedOnlyEnv === '1';
   const mainMutantName = process.env.SELENE_MODEL_MUTANT;
   const mainMutant = mainMutantName
     ? mutants.find((m) => m.name === mainMutantName)
@@ -1120,20 +1166,19 @@ async function run() {
     const batch = async (batchSeed: number | undefined, n: number) => {
       const batchStarted = performance.now();
       const result = await fc.check(
-        await property(sql, stats, mainMutant ?? null, maxCommands, replayPath),
+        await property(
+          sql,
+          stats,
+          mainMutant ?? null,
+          maxCommands,
+          replayPath,
+          guidedOnly,
+        ),
         { numRuns, seed: batchSeed, path },
       );
       if (result.failed) {
-        const report = fc.defaultReportMessage(result) ?? '';
         console.log(`FAIL lifecycle property${label} (batch ${n})`);
-        console.log(report);
-        console.log(`Error: ${(result.errorInstance as Error)?.message}`);
-        const commandsReplay = /replayPath="([^"]*)"/.exec(report)?.[1];
-        console.log(
-          `Replay: SELENE_MODEL_SEED=${result.seed} SELENE_MODEL_PATH=${result.counterexamplePath}` +
-            `${commandsReplay ? ` SELENE_MODEL_REPLAY_PATH=${commandsReplay}` : ''}` +
-            `${mainMutant ? ` SELENE_MODEL_MUTANT=${mainMutant.name}` : ''} bun scripts/verify/test-shipment-lifecycle-model.ts`,
-        );
+        printFailure(result, mainMutant?.name ?? null, guidedOnly);
       } else {
         console.log(
           `PASS lifecycle property${label} (batch ${n}): ${result.numRuns} runs of up to ${maxCommands} commands (seed ${result.seed}) in ${seconds(batchStarted)}`,
@@ -1212,14 +1257,19 @@ async function run() {
           console.log(
             `PASS mutant ${mutant.name} (${mutant.why}) is caught after ${mutantDetails.numRuns} runs in ${seconds(mutantStarted)}: ${error.message}`,
           );
+          console.log(
+            `  ${replayLine(mutantDetails, null, mutant.name, true)}`,
+          );
         } else {
           failed++;
           console.log(
             `FAIL mutant ${mutant.name} (${mutant.why}) is not caught by ${mutant.caughtBy}: ` +
               (mutantDetails.failed
                 ? `${(error as Error)?.message}`
-                : `the property passed ${mutantDetails.numRuns} runs`),
+                : `the property passed ${mutantDetails.numRuns} runs (seed ${mutantDetails.seed}, SELENE_MODEL_GUIDED_ONLY=1)`),
           );
+          if (mutantDetails.failed)
+            printFailure(mutantDetails, mutant.name, true);
         }
       }
     }
