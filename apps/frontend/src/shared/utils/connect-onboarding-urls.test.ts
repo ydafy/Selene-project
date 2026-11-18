@@ -27,6 +27,23 @@ describe('buildConnectOnboardingDeepLinks', () => {
       { path: '/sell/onboarding', queryParams: { refresh: '1' } },
     ]);
   });
+
+  // odd/tasks/onboarding-return-source.md, S1-S2
+  it('carries the listing source as from and asks the server for it', () => {
+    const links = buildConnectOnboardingDeepLinks(
+      (path, options) =>
+        `selene://${path.replace(/^\//, '')}?${new URLSearchParams(
+          options.queryParams,
+        ).toString()}`,
+      'listing',
+    );
+
+    expect(links).toEqual({
+      returnUrl: 'selene://sell/onboarding?return=1&from=listing',
+      refreshUrl: 'selene://sell/onboarding?refresh=1&from=listing',
+      source: 'listing',
+    });
+  });
 });
 
 describe('isConnectOnboardingUrl', () => {

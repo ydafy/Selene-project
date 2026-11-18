@@ -4,6 +4,24 @@ export type ConnectOnboardingReturnEnv = Record<string, string | undefined>;
 
 const DEFAULT_ONBOARDING_APP_URL = 'selene://sell/onboarding';
 
+/**
+ * The only `from` values the bridge copies to the app URL. Anything else is
+ * dropped, so the request never controls more than this closed value (#690).
+ */
+const ALLOWED_SOURCES = new Set(['listing']);
+
+function parseSource(url: string): string | null {
+  const from = new URL(url).searchParams.get('from');
+  return from !== null && ALLOWED_SOURCES.has(from) ? from : null;
+}
+
+function withSource(url: string, source: string | null): string {
+  if (!source) return url;
+  const target = new URL(url);
+  target.searchParams.set('from', source);
+  return target.toString();
+}
+
 function parseState(url: string): ConnectOnboardingReturnState | null {
   const requestUrl = new URL(url);
   // `state` is the documented parameter. `type` is accepted as a compatibility
@@ -56,9 +74,11 @@ export function resolveConnectOnboardingRedirect(input: {
       // Future production domain swap: set SELENE_CONNECT_ONBOARDING_APP_URL to
       // `https://your-domain.example/sell/onboarding` and keep this bridge URL
       // stable, or replace Stripe-facing URLs in create-connect-account directly.
-      url:
+      url: withSource(
         resolveStateOverride(stateOverride) ||
-        buildTargetUrl(input.env.SELENE_CONNECT_ONBOARDING_APP_URL, state),
+          buildTargetUrl(input.env.SELENE_CONNECT_ONBOARDING_APP_URL, state),
+        parseSource(input.requestUrl),
+      ),
     };
   } catch {
     return { ok: false, status: 500, error: 'INVALID_ONBOARDING_APP_URL' };
