@@ -98,7 +98,7 @@ To change a version:
 
 When either tool reports a finding, fix the workflow. There is no exceptions file, and each tool has its own way to keep a finding, always with the maintainer's decision and the reason in a comment on the line above:
 
-- zizmor: an inline `# zizmor: ignore[<audit>]` comment on the flagged line.
+- zizmor: an inline `# zizmor: ignore[<audit>]` comment on the flagged line. For a finding inside a multiline `run: |` script, put it on the `run: |` line: a comment inside the script is part of the shell text, and zizmor still reports the finding.
 - actionlint: its own errors (syntax, expressions, job references) are always fixed. A shellcheck rule it reports can be kept with a `# shellcheck disable=<code>` line inside that `run:` script. A zizmor ignore comment does not hide an actionlint finding.
 
 Nothing checks that an ignore or disable comment is still needed, so remove it when you change the line it covers.
