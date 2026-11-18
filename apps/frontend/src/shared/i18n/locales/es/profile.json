@@ -8,7 +8,9 @@
   },
   "paymentMethods": {
     "errorTitle": "No pudimos abrir tus tarjetas",
-    "errorMessage": "Revisa tu conexión e inténtalo de nuevo."
+    "errorMessage": "Revisa tu conexión e inténtalo de nuevo.",
+    "addErrorTitle": "No pudimos agregar tu tarjeta",
+    "retry": "Intentar de nuevo"
   },
   "sections": {
     "favorites": "Tus Favoritos",
