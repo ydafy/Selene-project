@@ -7,11 +7,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
-import { Box, Text } from './base';
-import { Theme } from '../theme';
-import { useModeration } from '../hooks/use-moderation';
-import { useAuthContext } from '../lib/auth/auth-provider';
+import { Box, Text } from '@/shared/ui/base';
+import type { Theme } from '@/shared/theme';
+import { useModeration } from '@/shared/hooks/use-moderation';
+import {
+  reportCopy,
+  type ReportReason,
+} from '@/shared/hooks/use-moderation.logic';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
 import { colors } from '@/shared/theme/tokens';
+import { ReportDialog } from '@/shared/ui/report-dialog';
 
 type OptionsMenuProps = {
   targetId: string; // ID del producto o usuario
@@ -32,6 +37,8 @@ export const OptionsMenu = ({
   const { session } = useAuthContext();
   const { reportEntity, blockUser } = useModeration();
   const [visible, setVisible] = useState(false);
+  const [reportVisible, setReportVisible] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   if (isOwner) {
     return null;
@@ -56,15 +63,7 @@ export const OptionsMenu = ({
     // Pequeño delay para UX
     setTimeout(async () => {
       if (action === 'report') {
-        const { error } = await reportEntity(targetId, context);
-        if (!error) {
-          Toast.show({
-            type: 'success',
-            text1: t('menu.reportSentTitle'),
-            text2: t('menu.reportSentMsg'),
-            position: 'top',
-          });
-        }
+        setReportVisible(true);
       } else {
         const { error } = await blockUser(sellerId);
         if (!error) {
@@ -77,6 +76,28 @@ export const OptionsMenu = ({
         }
       }
     }, 200);
+  };
+
+  const submitReport = async (report: {
+    reason: ReportReason;
+    details: string;
+  }) => {
+    if (reporting) return;
+    setReporting(true);
+    const outcome = await reportEntity({
+      target: { context, id: targetId },
+      ...report,
+    });
+    setReporting(false);
+    const copy = reportCopy(context, outcome);
+    Toast.show({
+      type: copy.type,
+      text1: t(copy.text1Key),
+      text2: t(copy.text2Key),
+      position: 'top',
+    });
+    // On a failure the picker stays open so the user can retry.
+    if (outcome !== 'error') setReportVisible(false);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,7 +149,7 @@ export const OptionsMenu = ({
             >
               <MenuItem
                 icon="flag-outline"
-                label={t('menu.report')}
+                label={t(`product:report.${context}.action`)}
                 onPress={() => handleAction('report')}
                 color={theme.colors.textPrimary}
               />
@@ -145,6 +166,14 @@ export const OptionsMenu = ({
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      <ReportDialog
+        visible={reportVisible}
+        context={context}
+        loading={reporting}
+        onCancel={() => setReportVisible(false)}
+        onSubmit={submitReport}
+      />
     </>
   );
 };

@@ -1,22 +1,47 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuthContext } from '../lib/auth/auth-provider';
+import { supabase } from '@/shared/lib/supabase';
+import { useAuthContext } from '@/shared/lib/auth/auth-provider';
+import {
+  buildReportInsert,
+  reportOutcome,
+  type ReportOutcome,
+  type ReportReason,
+  type ReportTarget,
+} from './use-moderation.logic';
+
 export const useModeration = () => {
   const { session } = useAuthContext();
   const [loading, setLoading] = useState(false);
 
-  const reportEntity = async (targetId: string, type: 'product' | 'user') => {
-    if (!session) return { error: 'not_logged_in' };
+  const reportEntity = async ({
+    target,
+    reason,
+    details,
+  }: {
+    target: ReportTarget;
+    reason: ReportReason;
+    details?: string;
+  }): Promise<ReportOutcome> => {
+    if (!session) return 'error';
 
     setLoading(true);
-    const { error } = await supabase.from('reports').insert({
-      reporter_id: session.user.id,
-      target_id: targetId,
-      target_type: type,
-    });
-    setLoading(false);
-
-    return { error };
+    try {
+      // A plain insert: `authenticated` cannot SELECT reports, so asking for
+      // the inserted row (`.select()`) would fail with 42501.
+      const { error } = await supabase.from('reports').insert(
+        buildReportInsert({
+          reporterId: session.user.id,
+          target,
+          reason,
+          details,
+        }),
+      );
+      return reportOutcome(error);
+    } catch {
+      return 'error';
+    } finally {
+      setLoading(false);
+    }
   };
 
   const blockUser = async (userIdToBlock: string) => {

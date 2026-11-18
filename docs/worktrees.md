@@ -72,6 +72,14 @@ Run it from the main checkout. It reads `supabase stack list` and treats a stack
 
 It keeps stacks without a recorded branch and prints the reason for every stack it keeps. With `--yes` it runs `supabase stack destroy --stack-id <id> --yes` for each stale stack. Stacks written by an older CLI that `supabase stack list` cannot decode get their own section: their branch comes from `state.json`, the same rules apply, a stack with running Docker containers is kept, and a stale one is deleted as a folder, because the CLI cannot read it. A stack that fails to go is named, and the command exits with code 1.
 
+## Docker while other sessions work in parallel
+
+Measured on 2026-11-18 on the maintainer's machine (Ryzen 6 cores, 32 GB; Docker's WSL VM gets about 15.4 GB): with two stacks running, one of them during `supabase db reset` and `bun run test:db`, the VM used 4.5 GB and had 10.8 GB available (`wsl -d docker-desktop -e free -m`). `docker stats` showed only about 400 MB, because it counts containers and not the VM's own memory, so read the VM instead. Services other than the database sleep when idle, so a stack nobody calls costs little.
+
+- Without asking: `supabase start`, `supabase db reset`, `bun run test:db`, `functions:serve`, `stripe:listen` and Bruno, while at most two stacks run. Run `supabase stop` when your checks are done.
+- Message the other sessions first, and wait for their answer, before: a third stack, a native review START, e2e (`bun run test:e2e`, `test:e2e:local`), the full `bun test`, and a merge (next section). START fails with a timeout on Windows when one of these heavy runs is going on in another session (gentle-shell#990), and the other three are long CPU-bound runs.
+- Message them again when you finish.
+
 ## Merge while other sessions work in parallel
 
 `main` requires a branch to be up to date before it merges (`docs/decision-log.md`, "2026-11-17: Merge With Auto-Merge After CodeRabbit Reports"), so every merge puts the other open pull requests behind and their CI runs again. GitHub's merge queue would do this for us, but it only exists for repositories owned by an organization. Each session does it by hand, in this order:

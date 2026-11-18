@@ -57,13 +57,43 @@
     "memory_slots": "Memory Slots"
   },
   "menu": {
-    "report": "Report listing",
     "blockSeller": "Block seller",
     "cancel": "Cancel",
-    "reportSentTitle": "Report sent",
-    "reportSentMsg": "We will review this listing.",
     "userBlockedTitle": "User blocked",
     "userBlockedMsg": "You won't see their products again."
+  },
+  "report": {
+    "product": {
+      "action": "Report listing",
+      "title": "Report this listing",
+      "sentTitle": "Report sent",
+      "sentMsg": "We will review this listing.",
+      "alreadyTitle": "Already reported",
+      "alreadyMsg": "You already reported this listing. We are reviewing it."
+    },
+    "user": {
+      "action": "Report user",
+      "title": "Report this user",
+      "sentTitle": "Report sent",
+      "sentMsg": "We will review this user.",
+      "alreadyTitle": "Already reported",
+      "alreadyMsg": "You already reported this user. We are reviewing it."
+    },
+    "reasonLabel": "Why are you reporting this?",
+    "detailsLabel": "Details (optional)",
+    "detailsPlaceholder": "Tell us what happened",
+    "submit": "Send report",
+    "errorTitle": "Report not sent",
+    "errorMsg": "Something went wrong. Please try again.",
+    "reasons": {
+      "fraud": "Fraud or scam",
+      "counterfeit_or_misdescribed": "Counterfeit or not as described",
+      "prohibited_item": "Prohibited item",
+      "offensive_content": "Offensive content",
+      "harassment": "Harassment",
+      "spam": "Spam",
+      "other": "Other"
+    }
   },
   "search": {
     "title": "What are you looking for today?",
