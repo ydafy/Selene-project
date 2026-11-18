@@ -63,17 +63,23 @@ describe('resolveFirstListingOnboardingExit (S3)', () => {
       resolveFirstListingOnboardingExit({
         from: FIRST_LISTING_ONBOARDING_SOURCE,
       }),
-    ).toEqual({ showLater: true, successRoute: '/(tabs)/profile' });
+    ).toEqual({
+      showLater: true,
+      successRoute: '/(tabs)/profile',
+      source: 'listing',
+    });
   });
 
   it('keeps the current behavior from anywhere else', () => {
     expect(resolveFirstListingOnboardingExit({})).toEqual({
       showLater: false,
       successRoute: '/sell',
+      source: undefined,
     });
     expect(resolveFirstListingOnboardingExit({ from: 'other' })).toEqual({
       showLater: false,
       successRoute: '/sell',
+      source: undefined,
     });
   });
 });

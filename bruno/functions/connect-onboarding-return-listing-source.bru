@@ -1,0 +1,35 @@
+meta {
+  name: connect-onboarding-return-listing-source
+  type: http
+  seq: 199
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/connect-onboarding-return?state=return&from=listing
+  body: none
+  auth: none
+}
+
+settings {
+  encodeUrl: true
+  followRedirects: false
+  maxRedirects: 0
+}
+
+tests {
+  test("the bridge redirects to the app and keeps from=listing", function () {
+    expect(res.getStatus()).to.equal(302);
+    expect(res.getHeader("cache-control")).to.equal("no-store");
+    // The Bruno sandbox has no URL global, so read the query by hand.
+    const query = res.getHeader("location").split("#")[0].split("?")[1] || "";
+    expect(query.split("&").filter((p) => p.startsWith("from="))).to.deep.equal(["from=listing"]);
+  });
+}
+
+docs {
+  Stripe's return for a guide opened from the publish flow (#690). `create-connect-account` sends
+  Stripe this bridge URL when the app asks with `source: "listing"`; the app reads `from` to keep
+  the guide's "Más tarde" exit and its profile success route. The app URL itself comes from the
+  function's configuration, so only `from` is asserted. Redirects are not followed: the target is
+  an app scheme.
+}

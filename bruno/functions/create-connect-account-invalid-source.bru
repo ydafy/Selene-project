@@ -1,0 +1,38 @@
+meta {
+  name: create-connect-account-invalid-source
+  type: http
+  seq: 201
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/create-connect-account
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "source": "https://evil.test"
+  }
+}
+
+tests {
+  test("a source other than listing fails with one invalid_value issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_value");
+    expect(issues[0].path).to.deep.equal(["source"]);
+  });
+}
+
+docs {
+  `source` is a closed value (#690): only `listing` is accepted, and it reaches Stripe's return
+  URLs as `from=listing`. Validation runs after the Bearer token check and before the profile
+  read, so no Stripe account or AccountLink is created. Run after auth/login-seller.
+}
