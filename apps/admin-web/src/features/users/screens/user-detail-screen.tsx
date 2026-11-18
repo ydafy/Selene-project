@@ -460,7 +460,7 @@ export const UserDetailPage = () => {
             {/* COLUMNA 1: CONFLICTOS (DISPUTAS + REPORTES) */}
             <div className="space-y-6">
               <UserDisputesList disputes={disputes} currentUserId={id!} />
-              <UserReportsList reports={reports} />
+              <UserReportsList reports={reports} total={data.reportsCount} />
             </div>
 
             {/* COLUMNA 2: ACCIONES DE ADMIN Y NOTAS */}

@@ -1778,31 +1778,46 @@ export type Database = {
       reports: {
         Row: {
           created_at: string;
+          details: string | null;
           id: string;
-          reason: string | null;
+          outcome: Database['public']['Enums']['report_outcome'] | null;
+          reason: Database['public']['Enums']['report_reason'];
           reporter_id: string;
-          status: string;
-          target_id: string;
-          target_type: string;
+          resolution_note: string | null;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          status: Database['public']['Enums']['report_status'];
+          target_product_id: string | null;
+          target_user_id: string | null;
         };
         ComputedFields: never;
         Insert: {
           created_at?: string;
+          details?: string | null;
           id?: string;
-          reason?: string | null;
+          outcome?: Database['public']['Enums']['report_outcome'] | null;
+          reason: Database['public']['Enums']['report_reason'];
           reporter_id: string;
-          status?: string;
-          target_id: string;
-          target_type: string;
+          resolution_note?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          status?: Database['public']['Enums']['report_status'];
+          target_product_id?: string | null;
+          target_user_id?: string | null;
         };
         Update: {
           created_at?: string;
+          details?: string | null;
           id?: string;
-          reason?: string | null;
+          outcome?: Database['public']['Enums']['report_outcome'] | null;
+          reason?: Database['public']['Enums']['report_reason'];
           reporter_id?: string;
-          status?: string;
-          target_id?: string;
-          target_type?: string;
+          resolution_note?: string | null;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          status?: Database['public']['Enums']['report_status'];
+          target_product_id?: string | null;
+          target_user_id?: string | null;
         };
         Relationships: [
           {
@@ -1836,6 +1851,97 @@ export type Database = {
           {
             foreignKeyName: 'reports_reporter_id_fkey';
             columns: ['reporter_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'reports_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'reports_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_product_id_fkey';
+            columns: ['target_product_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_product_queue_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_product_id_fkey';
+            columns: ['target_product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_product_id_fkey';
+            columns: ['target_product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products_public';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'reports_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'reports_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_user_id_fkey';
+            columns: ['target_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reports_target_user_id_fkey';
+            columns: ['target_user_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
@@ -4359,6 +4465,17 @@ export type Database = {
         | 'hidden'
         | 'reserved'
         | 'in_dispute';
+      report_outcome:
+        'dismissed' | 'warned' | 'listing_removed' | 'account_suspended';
+      report_reason:
+        | 'fraud'
+        | 'counterfeit_or_misdescribed'
+        | 'prohibited_item'
+        | 'offensive_content'
+        | 'harassment'
+        | 'spam'
+        | 'other';
+      report_status: 'open' | 'resolved';
       shipment_tracking_event_type:
         | 'created'
         | 'information'
@@ -4533,6 +4650,22 @@ export const Constants = {
         'reserved',
         'in_dispute',
       ],
+      report_outcome: [
+        'dismissed',
+        'warned',
+        'listing_removed',
+        'account_suspended',
+      ],
+      report_reason: [
+        'fraud',
+        'counterfeit_or_misdescribed',
+        'prohibited_item',
+        'offensive_content',
+        'harassment',
+        'spam',
+        'other',
+      ],
+      report_status: ['open', 'resolved'],
       shipment_tracking_event_type: [
         'created',
         'information',

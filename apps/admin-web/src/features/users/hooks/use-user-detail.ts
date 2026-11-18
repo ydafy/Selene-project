@@ -86,12 +86,10 @@ export const useUserDetail = (userId: string) => {
           supabase
             .from('reports')
             .select(
-              `
-    *,
-    reporter:profiles!reporter_id(username)
-  `,
+              'id, created_at, reason, details, status, outcome, resolved_at, reporter:profiles!reporter_id(username)',
+              { count: 'exact' },
             )
-            .eq('target_id', userId)
+            .eq('target_user_id', userId)
             .order('created_at', { ascending: false })
             .limit(20),
           [],

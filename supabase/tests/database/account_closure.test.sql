@@ -162,8 +162,8 @@ update public.orders set status = 'completed' where id = pg_temp.mu(52);
 insert into public.reviews (reviewer_id, seller_id, product_id, rating, comment, order_id, shipment_id) values
   (pg_temp.mu(41), pg_temp.mu(42), pg_temp.mu(53), 5, 'by the closing user', pg_temp.mu(52), pg_temp.mu(53)),
   (pg_temp.mu(42), pg_temp.mu(41), pg_temp.mu(51), 4, 'about the closing user', pg_temp.mu(50), pg_temp.mu(51));
-insert into public.reports (reporter_id, target_id, target_type, reason)
-values (pg_temp.mu(41), pg_temp.mu(42), 'user', 'test report');
+insert into public.reports (reporter_id, target_user_id, reason, details)
+values (pg_temp.mu(41), pg_temp.mu(42), 'harassment', 'test report');
 insert into public.admin_audit_logs (admin_id, action_type, target_id, details)
 values (pg_temp.mu(43), 'USER_STATUS_UPDATE', pg_temp.mu(41), '{"new_status": "active"}'::jsonb);
 
