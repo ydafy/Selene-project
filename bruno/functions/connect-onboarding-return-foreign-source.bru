@@ -21,7 +21,9 @@ tests {
     expect(res.getStatus()).to.equal(302);
     const location = res.getHeader("location");
     expect(location).to.not.include("evil.test");
-    expect(new URL(location).searchParams.has("from")).to.equal(false);
+    // The Bruno sandbox has no URL global, so read the query by hand.
+    const query = location.split("#")[0].split("?")[1] || "";
+    expect(query.split("&").some((p) => p === "from" || p.startsWith("from="))).to.equal(false);
   });
 }
 

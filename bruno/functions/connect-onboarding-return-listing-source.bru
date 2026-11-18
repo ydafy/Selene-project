@@ -20,8 +20,9 @@ tests {
   test("the bridge redirects to the app and keeps from=listing", function () {
     expect(res.getStatus()).to.equal(302);
     expect(res.getHeader("cache-control")).to.equal("no-store");
-    const location = new URL(res.getHeader("location"));
-    expect(location.searchParams.get("from")).to.equal("listing");
+    // The Bruno sandbox has no URL global, so read the query by hand.
+    const query = res.getHeader("location").split("#")[0].split("?")[1] || "";
+    expect(query.split("&").filter((p) => p.startsWith("from="))).to.deep.equal(["from=listing"]);
   });
 }
 
