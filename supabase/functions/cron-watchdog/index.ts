@@ -6,7 +6,7 @@
  * to Sentry as an error. The run itself is a Sentry Cron Monitor, so a missed
  * or failed watchdog run alerts too. See odd/tasks/sentry-observability.md (L12).
  * Then reports each `internal.ops_failures` row to Sentry and deletes the rows
- * Sentry confirmed (`fn_list_ops_failures`, `fn_delete_ops_failures`; see
+ * Sentry acknowledged (`fn_list_ops_failures`, `fn_delete_ops_failures`; see
  * odd/tasks/table-cleanup.md S6b).
  */
 import { createClient } from '../_shared/supabase-js.ts';

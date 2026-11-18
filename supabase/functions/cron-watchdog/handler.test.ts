@@ -29,8 +29,8 @@ interface OpsFailureOptions {
     data: OpsFailureRow[] | null;
     error: { message: string } | null;
   };
-  /** Whether Sentry confirms delivery of the reported failures. */
-  delivered?: boolean;
+  /** Per event, whether Sentry acknowledged it (a boolean applies to all). */
+  delivered?: boolean | boolean[];
   deleteResult?: { data: number | null; error: { message: string } | null };
 }
 
@@ -71,7 +71,8 @@ function setup(
     },
     reportOpsFailures: async (events) => {
       reportedBatches.push(events);
-      return ops.delivered ?? true;
+      const delivered = ops.delivered ?? true;
+      return Array.isArray(delivered) ? delivered : events.map(() => delivered);
     },
     deleteOpsFailures: async (ids) => {
       deletedBatches.push(ids);
@@ -208,7 +209,7 @@ describe('cron-watchdog handler', () => {
     expect(await response.json()).toEqual({
       checked: 2,
       unhealthy: [],
-      opsFailures: { reported: 0, deleted: 0 },
+      opsFailures: { reported: 0, deleted: 0, kept: 0 },
     });
     expect(ctx.messages).toHaveLength(0);
     expect(ctx.rpcCalls()).toBe(1);
@@ -230,7 +231,7 @@ describe('cron-watchdog handler', () => {
         { jobname: 'weekly', reason: 'unsupported-schedule' },
         { jobname: 'zz-fail', reason: 'failed' },
       ],
-      opsFailures: { reported: 0, deleted: 0 },
+      opsFailures: { reported: 0, deleted: 0, kept: 0 },
     });
     expect(ctx.messages).toEqual([
       {
@@ -266,7 +267,7 @@ describe('cron-watchdog handler', () => {
     expect(await response.json()).toEqual({
       checked: 2,
       unhealthy: [{ jobname: 'dispatch-push', reason: 'http-failed' }],
-      opsFailures: { reported: 0, deleted: 0 },
+      opsFailures: { reported: 0, deleted: 0, kept: 0 },
     });
     expect(ctx.messages).toEqual([
       {
@@ -318,7 +319,7 @@ describe('cron-watchdog handler', () => {
         { jobname: 'b-late', reason: 'overdue' },
         { jobname: 'c-weekly', reason: 'unsupported-schedule' },
       ],
-      opsFailures: { reported: 0, deleted: 0 },
+      opsFailures: { reported: 0, deleted: 0, kept: 0 },
     });
     expect(ctx.messages.map((m) => m.message)).toEqual([
       'cron a-failed failed',
@@ -390,10 +391,10 @@ describe('cron-watchdog ops failures (internal.ops_failures)', () => {
     expect(await response.json()).toEqual({
       checked: 1,
       unhealthy: [{ jobname: 'zz-fail', reason: 'failed' }],
-      opsFailures: { reported: 2, deleted: 2 },
+      opsFailures: { reported: 2, deleted: 2, kept: 0 },
     });
     expect(ctx.messages.map((m) => m.message)).toEqual(['cron zz-fail failed']);
-    expect(ctx.listLimits).toEqual([100]);
+    expect(ctx.listLimits).toEqual([25]);
     expect(ctx.reportedBatches).toEqual([
       [
         {
@@ -434,7 +435,7 @@ describe('cron-watchdog ops failures (internal.ops_failures)', () => {
     expect(await response.json()).toEqual({
       checked: 1,
       unhealthy: [],
-      opsFailures: { reported: 0, deleted: 0 },
+      opsFailures: { reported: 0, deleted: 0, kept: 0 },
     });
     expect(ctx.listCalls()).toBe(1);
     expect(ctx.reportedBatches).toEqual([]);
@@ -487,7 +488,7 @@ describe('cron-watchdog ops failures (internal.ops_failures)', () => {
       listOpsFailures: async () => {
         throw new Error('network down');
       },
-      reportOpsFailures: async () => true,
+      reportOpsFailures: async (events) => events.map(() => true),
       deleteOpsFailures: async () => ({ data: 0, error: null }),
       runMonitored: async (fn) => fn(),
       log: () => undefined,
@@ -503,7 +504,33 @@ describe('cron-watchdog ops failures (internal.ops_failures)', () => {
     expect(messages).toEqual([['ops-failures-list-failed']]);
   });
 
-  it('keeps every row when Sentry does not confirm delivery (flush failed or timed out)', async () => {
+  it('deletes only the rows whose events Sentry acknowledged and keeps the rest', async () => {
+    const ctx = setup({ data: [], error: null }, SECRET, {
+      list: {
+        data: [
+          failureRow(1, 'fn_a', 'A'),
+          failureRow(2, 'fn_b', 'B'),
+          failureRow(3, 'fn_c', 'C'),
+        ],
+        error: null,
+      },
+      delivered: [true, false, true],
+    });
+    const response = await ctx.handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 0,
+      unhealthy: [],
+      opsFailures: { reported: 2, deleted: 2, kept: 1 },
+    });
+    expect(ctx.deletedBatches).toEqual([[1, 3]]);
+    expect(ctx.logs).toEqual([
+      'cron-watchdog: Sentry did not acknowledge 1 of 3 ops failures; kept for the next run',
+    ]);
+  });
+
+  it('keeps every row when Sentry acknowledges none of them (429, 5xx, dropped or no answer)', async () => {
     const ctx = setup({ data: [], error: null }, SECRET, {
       list: {
         data: [failureRow(3, 'fn_refresh_seller_stats', 'P0001')],
@@ -522,7 +549,7 @@ describe('cron-watchdog ops failures (internal.ops_failures)', () => {
     expect(ctx.reportedBatches).toHaveLength(1);
     expect(ctx.deletedBatches).toEqual([]);
     expect(ctx.logs).toEqual([
-      'cron-watchdog: Sentry did not confirm 1 ops failures; kept for the next run',
+      'cron-watchdog: Sentry did not acknowledge 1 of 1 ops failures; kept for the next run',
     ]);
   });
 

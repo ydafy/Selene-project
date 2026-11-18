@@ -31,7 +31,7 @@ export interface OpsFailureEvent {
 }
 
 type OpsFailuresOutcome =
-  | { reported: number; deleted: number }
+  | { reported: number; deleted: number; kept: number }
   | {
       error:
         | 'OPS_FAILURES_LIST_FAILED'
@@ -39,8 +39,12 @@ type OpsFailuresOutcome =
         | 'OPS_FAILURES_DELETE_FAILED';
     };
 
-/** At most this many failures per run; the rest wait for the next run. */
-export const OPS_FAILURES_BATCH = 100;
+/**
+ * At most this many failures per run; the rest wait for the next run (every
+ * 15 minutes). The reporter sends them in chunks of 10 and waits up to 2 s for
+ * each chunk, so a run stays well inside the job's 30 s pg_net timeout.
+ */
+export const OPS_FAILURES_BATCH = 25;
 
 export interface CronWatchdogDeps {
   getCronSecret: () => string | undefined;
@@ -57,10 +61,10 @@ export interface CronWatchdogDeps {
     error: { message: string } | null;
   }>;
   /**
-   * Sends the events to Sentry and resolves true only when Sentry confirmed
-   * delivery (the flush succeeded within its timeout).
+   * Sends the events to Sentry and resolves one flag per event: true only when
+   * Sentry acknowledged it with a 2xx (`reportMessagesDelivered`).
    */
-  reportOpsFailures: (events: OpsFailureEvent[]) => Promise<boolean>;
+  reportOpsFailures: (events: OpsFailureEvent[]) => Promise<boolean[]>;
   /** Deletes exactly these ids (`fn_delete_ops_failures`); data is the count. */
   deleteOpsFailures: (ids: number[]) => Promise<{
     data: number | null;
@@ -102,8 +106,8 @@ const WATCHDOG_TAGS = { edge_function: 'cron-watchdog' };
 
 export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
   /**
-   * Reports the oldest ops failures to Sentry and deletes only the rows Sentry
-   * confirmed. Never throws: a failure here must not fail the health report.
+   * Reports the oldest ops failures to Sentry and deletes only the rows whose
+   * events Sentry acknowledged. Never throws: a failure here must not fail the health report.
    * A crash between the report and the delete reports those rows again on the
    * next run, into the same Sentry issue (fingerprint).
    */
@@ -135,28 +139,32 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
       );
       return { error: 'OPS_FAILURES_LIST_FAILED' };
     }
-    if (rows.length === 0) return { reported: 0, deleted: 0 };
+    if (rows.length === 0) return { reported: 0, deleted: 0, kept: 0 };
 
-    let delivered = false;
+    let delivered: boolean[] = [];
     try {
       delivered = await deps.reportOpsFailures(rows.map(opsFailureEvent));
     } catch {
-      delivered = false;
+      delivered = [];
     }
-    if (!delivered) {
-      // Sentry itself is unreachable, so this goes to the function log only.
+    // Only an explicit true counts; a missing flag keeps the row.
+    const acknowledged = rows.filter((_, i) => delivered[i] === true);
+    const kept = rows.length - acknowledged.length;
+    if (kept > 0) {
+      // Sentry did not take these, so this goes to the function log only.
       deps.log(
-        `cron-watchdog: Sentry did not confirm ${rows.length} ops failures; kept for the next run`,
+        `cron-watchdog: Sentry did not acknowledge ${kept} of ${rows.length} ops failures; kept for the next run`,
       );
-      return { error: 'OPS_FAILURES_NOT_DELIVERED' };
     }
+    if (acknowledged.length === 0)
+      return { error: 'OPS_FAILURES_NOT_DELIVERED' };
 
     try {
       const { data, error } = await deps.deleteOpsFailures(
-        rows.map((row) => row.id),
+        acknowledged.map((row) => row.id),
       );
       if (error || data === null) throw new Error('OPS_FAILURES_DELETE_FAILED');
-      return { reported: rows.length, deleted: data };
+      return { reported: acknowledged.length, deleted: data, kept };
     } catch {
       await reportWatchdogProblem(
         'cron-watchdog could not delete reported ops failures',
