@@ -21,8 +21,9 @@
  *  - `transfer_group` in both PI metadata and the single-secret response
  *  - allocation JSON embedded in PI metadata, chunked to fit Stripe's 500-char
  *    metadata value limit
- *  - response is a single `{ orderId, clientSecret, customer, ephemeralKey,
- *    amount, transferGroup }` (no per-seller `paymentIntents[]`)
+ *  - response is a single `{ orderId, clientSecret, customer,
+ *    customerSessionClientSecret, amount, transferGroup }` (no per-seller
+ *    `paymentIntents[]`)
  */
 
 import { createHash } from 'node:crypto';
@@ -532,7 +533,7 @@ export function buildSinglePaymentIntentParams(
 export interface CreateConnectPaymentResponseBuilderInput {
   orderId: string;
   customerId: string;
-  ephemeralKeySecret: string;
+  customerSessionClientSecret: string;
   transferGroup: string;
 }
 
@@ -580,7 +581,7 @@ export function buildCreateConnectPaymentResponse(
   orderId: string;
   clientSecret: string;
   customer: string;
-  ephemeralKey: string;
+  customerSessionClientSecret: string;
   amount: number;
   transferGroup: string;
 } {
@@ -591,7 +592,7 @@ export function buildCreateConnectPaymentResponse(
     orderId: ctx.orderId,
     clientSecret: pi.client_secret,
     customer: ctx.customerId,
-    ephemeralKey: ctx.ephemeralKeySecret,
+    customerSessionClientSecret: ctx.customerSessionClientSecret,
     amount: pi.amount,
     transferGroup: ctx.transferGroup,
   };

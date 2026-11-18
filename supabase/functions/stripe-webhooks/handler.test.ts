@@ -144,7 +144,6 @@ async function invoke(event: unknown, options: Options = {}) {
       retrieve: stripeMethod('accounts.retrieve'),
       listExternalAccounts: stripeMethod('accounts.listExternalAccounts'),
     },
-    paymentMethods: { retrieve: stripeMethod('paymentMethods.retrieve') },
   };
 
   const handler = createStripeWebhooksHandler({
@@ -1706,62 +1705,21 @@ describe('setup_intent.succeeded', () => {
       payment_method: 'pm_1',
       metadata,
     });
-  const selene = { app_name: 'selene', user_id: 'user-1' };
 
-  it('saves the card of a Selene user', async () => {
-    const result = await invoke(setup(selene), {
-      stripe: {
-        'paymentMethods.retrieve': () => ({
-          id: 'pm_1',
-          type: 'card',
-          card: { brand: 'visa', last4: '4242', exp_month: 12, exp_year: 2030 },
-        }),
-      },
+  // Stripe owns saved cards: the event is acknowledged and Selene keeps no copy.
+  for (const [label, metadata] of [
+    ['a Selene user', { app_name: 'selene', user_id: 'user-1' }],
+    ['another app', { app_name: 'other', user_id: 'user-1' }],
+  ] as const) {
+    it(`acknowledges the setup intent of ${label} and writes nothing`, async () => {
+      const result = await invoke(setup(metadata));
+      expect(result.status).toBe(200);
+      expect(result.queries).toEqual([]);
+      expect(result.rpcs).toEqual([]);
+      expect(result.stripeCalls).toEqual([]);
+      expect(result.effects).toEqual(['supabase']);
     });
-    expect(result.status).toBe(200);
-    expect(result.stripeCalls).toEqual([
-      { method: 'paymentMethods.retrieve', args: ['pm_1'] },
-    ]);
-    expect(result.queries).toEqual([
-      {
-        table: 'payment_methods',
-        ops: [
-          [
-            'insert',
-            {
-              user_id: 'user-1',
-              stripe_payment_method_id: 'pm_1',
-              brand: 'visa',
-              last4: '4242',
-              exp_month: 12,
-              exp_year: 2030,
-            },
-          ],
-        ],
-      },
-    ]);
-  });
-
-  it('saves nothing for a payment method that is not a card', async () => {
-    const result = await invoke(setup(selene), {
-      stripe: {
-        'paymentMethods.retrieve': () => ({ id: 'pm_1', type: 'oxxo' }),
-      },
-    });
-    expect(result.status).toBe(200);
-    expect(result.queries).toEqual([]);
-    expect(
-      logged('SetupIntent payment method is not a card; not saved'),
-    ).toHaveLength(1);
-  });
-
-  it('ignores a setup intent from another app', async () => {
-    const result = await invoke(
-      setup({ app_name: 'other', user_id: 'user-1' }),
-    );
-    expect(result.status).toBe(200);
-    expect(result.effects).toEqual(['supabase']);
-  });
+  }
 });
 
 describe('shipment refund events', () => {

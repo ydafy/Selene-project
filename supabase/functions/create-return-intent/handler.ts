@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '../_shared/supabase-js.ts';
 import type Stripe from '../_shared/stripe/sdk.ts';
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
+import {
+  CUSTOMER_SESSION_FAILED,
+  createPaymentSheetSession,
+  stripeFailureReason,
+} from '../_shared/stripe/customer-session.ts';
 
 import { buildReturnShippingPaymentIntentParams } from './create-return-intent.ts';
 import { ReturnIntentRequestSchema } from './request-schema.ts';
@@ -8,7 +12,7 @@ import { ReturnIntentRequestSchema } from './request-schema.ts';
 export type SupabaseAdminClient = SupabaseClient;
 export type ReturnIntentStripeClient = Pick<
   Stripe,
-  'ephemeralKeys' | 'paymentIntents'
+  'customerSessions' | 'paymentIntents'
 >;
 
 export interface CreateReturnIntentDependencies {
@@ -147,7 +151,7 @@ export function createCreateReturnIntentHandler(
           'Seller does not have a Stripe Connect account configured',
         );
 
-      // 5. Generar Ephemeral Key y Payment Intent
+      // 5. CustomerSession for PaymentSheet, then the PaymentIntent
       log('INFO', 'Creando Payment Intent para retorno', {
         disputeId,
         sellerId: dispute.seller_id,
@@ -166,18 +170,28 @@ export function createCreateReturnIntentHandler(
           stripeAccountId: profile.stripe_account_id,
         });
 
-      const [ephemeralKey, paymentIntent] = await Promise.all([
-        stripe.ephemeralKeys.create(
-          { customer: profile.stripe_customer_id },
-          { apiVersion: STRIPE_API_VERSION },
-        ),
-        stripe.paymentIntents.create(paymentIntentParams, paymentIntentOptions),
-      ]);
+      // The session comes first: without it PaymentSheet cannot show the
+      // seller's saved cards, so the request stops before any PaymentIntent.
+      const customerSessionClientSecret = await createPaymentSheetSession(
+        stripe,
+        profile.stripe_customer_id,
+      ).catch((error: unknown) => {
+        log('ERROR', 'CustomerSession creation failed', {
+          disputeId,
+          error: stripeFailureReason(error),
+        });
+        throw new ApiError(500, CUSTOMER_SESSION_FAILED);
+      });
+
+      const paymentIntent = await stripe.paymentIntents.create(
+        paymentIntentParams,
+        paymentIntentOptions,
+      );
 
       return new Response(
         JSON.stringify({
           clientSecret: paymentIntent.client_secret,
-          ephemeralKey: ephemeralKey.secret,
+          customerSessionClientSecret,
           customer: profile.stripe_customer_id,
           amount: returnFeeCents / 100,
         }),

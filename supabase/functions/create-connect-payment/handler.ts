@@ -28,7 +28,10 @@
 
 import type { SupabaseClient } from '../_shared/supabase-js.ts';
 import type Stripe from '../_shared/stripe/sdk.ts';
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
+import {
+  createPaymentSheetSession,
+  stripeFailureReason,
+} from '../_shared/stripe/customer-session.ts';
 import { z } from '../_shared/zod-runtime.ts';
 import {
   assertValidCheckoutAllocation,
@@ -113,7 +116,7 @@ const describeReservationRpcData = (data: ReservationRpcData) => ({
 export type SupabaseAdminClient = SupabaseClient;
 export type CreateConnectPaymentStripeClient = Pick<
   Stripe,
-  'customers' | 'ephemeralKeys' | 'paymentIntents'
+  'customers' | 'customerSessions' | 'paymentIntents'
 >;
 
 export interface CreateConnectPaymentDependencies {
@@ -328,7 +331,7 @@ export function createCreateConnectPaymentHandler(
         throw new Error('SELLER_NOT_ONBOARDED');
       }
 
-      // 9. Get/create Stripe customer for buyer + ephemeral key for mobile SDK
+      // 9. Get/create Stripe customer for buyer + CustomerSession for PaymentSheet
       let customerId: string;
       const { data: buyerProfile } = await supabaseAdmin
         .from('profiles_private')
@@ -350,13 +353,19 @@ export function createCreateConnectPaymentHandler(
           .eq('id', user.id);
       }
 
-      const ephemeralKey = await stripe.ephemeralKeys.create(
-        { customer: customerId },
-        { apiVersion: STRIPE_API_VERSION },
-      );
-      // Stripe returns the secret only on create, and the PaymentSheet needs it.
-      const ephemeralKeySecret = ephemeralKey.secret;
-      if (!ephemeralKeySecret) throw new Error('EPHEMERAL_KEY_FAILED');
+      // PaymentSheet reads, saves and removes the buyer's saved cards through
+      // this session; Selene keeps no copy of them. Without a session the
+      // checkout stops: there is no fallback card list.
+      const customerSessionClientSecret = await createPaymentSheetSession(
+        stripe,
+        customerId,
+      ).catch(async (error: unknown) => {
+        log('error', 'CustomerSession creation failed', {
+          error: stripeFailureReason(error),
+        });
+        await releaseReserved('CUSTOMER_SESSION_FAILED');
+        throw new Error('CUSTOMER_SESSION_FAILED');
+      });
 
       // 10. Build the per-product allocation inputs with durable shipment ids, then
       // compute + validate the single-modal allocation. `shipmentId` correlation
@@ -466,7 +475,7 @@ export function createCreateConnectPaymentHandler(
       const response = buildCreateConnectPaymentResponse(pi, {
         orderId: orderGroupId,
         customerId,
-        ephemeralKeySecret,
+        customerSessionClientSecret,
         transferGroup,
       });
 
@@ -485,7 +494,7 @@ export function createCreateConnectPaymentHandler(
         PRODUCTS_NOT_FOUND: 404,
         PROFILES_LOAD_FAILED: 500,
         PI_CREATION_FAILED: 500,
-        EPHEMERAL_KEY_FAILED: 500,
+        CUSTOMER_SESSION_FAILED: 500,
         MISSING_SERVER_CONFIG: 500,
         INVALID_CONNECT_ECONOMICS: 422,
         INVALID_PUBLICATION_ECONOMICS_SNAPSHOT: 500,

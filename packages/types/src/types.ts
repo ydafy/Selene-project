@@ -12,7 +12,6 @@ export type Enums<T extends keyof Database['public']['Enums']> =
 
 // --- 2. ALIAS DE TABLAS (Sincronización Automática) ---
 export type Address = Tables<'addresses'>;
-export type PaymentMethod = Tables<'payment_methods'>;
 export type Notification = Tables<'notifications'>;
 export type Profile = Tables<'profiles'>;
 export type Product = Tables<'products'>;
@@ -230,7 +229,8 @@ export interface CreateConnectPaymentResponse {
   orderId: string;
   clientSecret: string;
   customer: string;
-  ephemeralKey: string;
+  /** CustomerSession for PaymentSheet: it shows, saves and removes the buyer's saved cards. */
+  customerSessionClientSecret: string;
   amount: number;
   transferGroup: string;
 }
@@ -312,7 +312,7 @@ export interface EdgeFunctionRegistry {
     response: {
       clientSecret: string;
       customer: string;
-      ephemeralKey: string;
+      customerSessionClientSecret: string;
     };
   };
   'delete-account': {
@@ -321,18 +321,12 @@ export interface EdgeFunctionRegistry {
       { success: true } | { error: string; blocked_reason?: string } | null;
   };
   'manage-payment-methods': {
+    // Stripe CustomerSheet owns the saved cards; Selene keeps no copy.
     payload:
-      | { action: 'list_payment_methods' }
-      | { action: 'get_setup_config' }
-      | { action: 'delete_payment_method'; paymentMethodId: string };
-    response: {
-      methods?: PaymentMethod[];
-      // get_setup_config: the SetupIntent client secret.
-      setupIntent?: string;
-      customer?: string;
-      ephemeralKey?: string;
-      publishableKey?: string;
-    };
+      { action: 'create_customer_session' } | { action: 'create_setup_intent' };
+    response:
+      | { customerId: string; customerSessionClientSecret: string }
+      | { setupIntentClientSecret: string };
   };
   'create-connect-account': {
     payload: { refreshUrl?: string; returnUrl?: string };

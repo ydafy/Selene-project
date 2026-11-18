@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import {
   createManagePaymentMethodsHandler,
   type PaymentMethodsStripe,
@@ -9,13 +8,11 @@ import {
 
 type Row = Record<string, unknown>;
 type Query = { table: string; ops: unknown[][] };
-type Result = { data?: unknown; error?: unknown; count?: number | null };
+type Result = { data?: unknown; error?: unknown };
 
 const USER_ID = '00000000-0000-4000-8000-0000000000b1';
 const OTHER_ID = '00000000-0000-4000-8000-0000000000b2';
-const PM_ID = '00000000-0000-4000-8000-0000000000c1';
 const TOKEN = 'buyer-access-token';
-const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const ENV: Record<string, string> = {
@@ -23,6 +20,8 @@ const ENV: Record<string, string> = {
   STRIPE_PUBLISHABLE_KEY: 'pk_test_x',
   SUPABASE_URL: 'https://project.supabase.co',
 };
+
+const ALL_SAVED_CARDS = ['always', 'limited', 'unspecified'];
 
 // A recording Supabase client: `respond` answers each query once its chain settles, and
 // `events` lists token checks and table reads in order.
@@ -51,17 +50,12 @@ function fakeSupabase(
       const query: Query = { table, ops: [] };
       queries.push(query);
       const settle = () =>
-        Promise.resolve({
-          data: null,
-          error: null,
-          count: null,
-          ...respond(query),
-        });
+        Promise.resolve({ data: null, error: null, ...respond(query) });
       const chain: Record<string, unknown> = {
         then: (ok: (v: unknown) => unknown, ko: (e: unknown) => unknown) =>
           settle().then(ok, ko),
       };
-      for (const op of ['select', 'eq', 'is', 'order', 'update']) {
+      for (const op of ['select', 'eq', 'is', 'order', 'update', 'insert']) {
         chain[op] = (...args: unknown[]) => {
           query.ops.push([op, ...args]);
           return chain;
@@ -83,44 +77,30 @@ function fakeSupabase(
   return { client: client as unknown as SupabaseAdminClient, events, queries };
 }
 
-// Answers by table and first operation.
-const database = (
-  input: {
-    customerId?: string | null;
-    activeCount?: number | null;
-    methods?: Row[] | null;
-    owned?: Row | null;
-    deleteError?: unknown;
-  } = {},
-) =>
+// Only profiles_private exists for this function; any other table is a test failure.
+const database = (input: { customerId?: string | null } = {}) =>
   fakeSupabase((query) => {
-    const first = query.ops[0];
-    if (query.table === 'profiles_private') {
-      return first[0] === 'update'
-        ? { error: null }
-        : {
-            data: {
-              stripe_customer_id:
-                'customerId' in input ? input.customerId : 'cus_1',
-            },
-          };
+    if (query.table !== 'profiles_private') {
+      throw new Error(`unexpected table ${query.table}`);
     }
-    if (first[0] === 'update') return { error: input.deleteError ?? null };
-    if ((first[2] as { head?: boolean } | undefined)?.head) {
-      return { count: input.activeCount ?? 0 };
-    }
-    if (query.ops.some(([op]) => op === 'maybeSingle')) {
-      return {
-        data:
-          'owned' in input
-            ? input.owned
-            : { stripe_payment_method_id: 'pm_stripe_1' },
-      };
-    }
-    return { data: 'methods' in input ? input.methods : [{ id: PM_ID }] };
+    return query.ops[0][0] === 'update'
+      ? { error: null }
+      : {
+          data: {
+            stripe_customer_id:
+              'customerId' in input ? input.customerId : 'cus_1',
+          },
+        };
   });
 
-function fakeStripe(input: { detachError?: Error } = {}) {
+function fakeStripe(
+  input: {
+    sessionError?: Error;
+    sessionSecret?: string;
+    setupIntentError?: Error;
+    setupIntentSecret?: string | null;
+  } = {},
+) {
   const calls: unknown[][] = [];
   const stripe: PaymentMethodsStripe = {
     customers: {
@@ -129,23 +109,23 @@ function fakeStripe(input: { detachError?: Error } = {}) {
         return { id: 'cus_new' };
       },
     },
-    ephemeralKeys: {
-      create: async (params, options) => {
-        calls.push(['ephemeralKeys.create', params, options]);
-        return { secret: 'ek_secret' };
+    customerSessions: {
+      create: async (params) => {
+        calls.push(['customerSessions.create', params]);
+        if (input.sessionError) throw input.sessionError;
+        return { client_secret: input.sessionSecret ?? 'cuss_secret' };
       },
     },
     setupIntents: {
       create: async (params, options) => {
         calls.push(['setupIntents.create', params, options]);
-        return { client_secret: 'seti_secret' };
-      },
-    },
-    paymentMethods: {
-      detach: async (paymentMethodId) => {
-        calls.push(['paymentMethods.detach', paymentMethodId]);
-        if (input.detachError) throw input.detachError;
-        return {};
+        if (input.setupIntentError) throw input.setupIntentError;
+        return {
+          client_secret:
+            'setupIntentSecret' in input
+              ? (input.setupIntentSecret ?? null)
+              : 'seti_secret',
+        };
       },
     },
   };
@@ -214,6 +194,22 @@ const PROFILE_LOOKUP: Query = {
   ops: [['select', 'stripe_customer_id'], ['eq', 'id', USER_ID], ['single']],
 };
 
+const CUSTOMER_SHEET_SESSION = (customer: string) => [
+  'customerSessions.create',
+  {
+    customer,
+    components: {
+      customer_sheet: {
+        enabled: true,
+        features: {
+          payment_method_remove: 'enabled',
+          payment_method_allow_redisplay_filters: ALL_SAVED_CARDS,
+        },
+      },
+    },
+  },
+];
+
 describe('manage-payment-methods handler', () => {
   beforeEach(() => {
     spyOn(console, 'log').mockImplementation(() => undefined);
@@ -225,7 +221,7 @@ describe('manage-payment-methods handler', () => {
   it('builds the clients from the configured URL and secrets', async () => {
     const { handler, created } = harness();
 
-    await handler(request({ action: 'list_payment_methods' }));
+    await handler(request({ action: 'create_customer_session' }));
 
     expect(created).toEqual([
       ['stripe', 'sk_test_x'],
@@ -239,7 +235,7 @@ describe('manage-payment-methods handler', () => {
       secretKey: undefined,
     });
 
-    await handler(request({ action: 'list_payment_methods' }));
+    await handler(request({ action: 'create_customer_session' }));
 
     expect(created).toEqual([
       ['stripe', ''],
@@ -252,7 +248,7 @@ describe('manage-payment-methods handler', () => {
 
     await expectJson(
       await handler(
-        request({ action: 'list_payment_methods' }, { authorization: null }),
+        request({ action: 'create_customer_session' }, { authorization: null }),
       ),
       401,
       { error: 'AUTH_REQUIRED' },
@@ -267,7 +263,7 @@ describe('manage-payment-methods handler', () => {
     await expectJson(
       await handler(
         request(
-          { action: 'list_payment_methods' },
+          { action: 'create_setup_intent' },
           { authorization: 'Bearer stolen-token' },
         ),
       ),
@@ -283,7 +279,7 @@ describe('manage-payment-methods handler', () => {
     const { handler, stripe } = harness({ db });
 
     await expectJson(
-      await handler(request({ action: 'list_payment_methods' })),
+      await handler(request({ action: 'create_customer_session' })),
       401,
       { error: 'AUTH_REQUIRED' },
     );
@@ -291,30 +287,44 @@ describe('manage-payment-methods handler', () => {
     expect(stripe.calls).toEqual([]);
   });
 
-  it('rejects an unknown action with 400 before any table or Stripe call', async () => {
-    const { handler, db, stripe } = harness();
+  for (const action of [
+    'list_payment_methods',
+    'delete_payment_method',
+    'get_setup_config',
+    'drop_everything',
+  ]) {
+    it(`rejects the action ${action} with 400 before any table or Stripe call`, async () => {
+      const { handler, db, stripe } = harness();
 
-    const response = await handler(request({ action: 'drop_everything' }));
+      const response = await handler(
+        request({
+          action,
+          paymentMethodId: '00000000-0000-4000-8000-0000000000c1',
+        }),
+      );
 
-    expect(response.status).toBe(400);
-    const body = (await response.json()) as { error: string };
-    expect(JSON.parse(body.error)).toMatchObject([
-      { code: 'invalid_value', path: ['action'] },
-    ]);
-    expect(db.events).toEqual([`auth:${TOKEN}`]);
-    expect(stripe.calls).toEqual([]);
-  });
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error: string };
+      expect(JSON.parse(body.error)).toMatchObject([
+        { code: 'invalid_value', path: ['action'] },
+      ]);
+      expect(db.events).toEqual([`auth:${TOKEN}`]);
+      expect(stripe.calls).toEqual([]);
+    });
+  }
 
   it('creates and stores a Stripe customer for the verified user when the profile has none', async () => {
     const { handler, db, stripe } = harness({
       db: database({ customerId: null }),
     });
 
-    const response = await handler(
-      request({ action: 'list_payment_methods', userId: OTHER_ID }),
+    await expectJson(
+      await handler(
+        request({ action: 'create_customer_session', userId: OTHER_ID }),
+      ),
+      200,
+      { customerId: 'cus_new', customerSessionClientSecret: 'cuss_secret' },
     );
-
-    expect(response.status).toBe(200);
     expect(stripe.calls).toEqual([
       [
         'customers.create',
@@ -323,8 +333,9 @@ describe('manage-payment-methods handler', () => {
           metadata: { supabase_user_id: USER_ID },
         },
       ],
+      CUSTOMER_SHEET_SESSION('cus_new'),
     ]);
-    expect(db.queries.slice(0, 2)).toEqual([
+    expect(db.queries).toEqual([
       PROFILE_LOOKUP,
       {
         table: 'profiles_private',
@@ -336,49 +347,67 @@ describe('manage-payment-methods handler', () => {
     ]);
   });
 
-  describe('get_setup_config', () => {
-    it('returns a setup intent and ephemeral key for the stored customer', async () => {
-      const { handler, db, stripe } = harness({
-        db: database({ activeCount: 2 }),
+  describe('create_customer_session', () => {
+    it("returns a CustomerSheet session for the verified user's stored customer, reading only the profile", async () => {
+      const { handler, db, stripe } = harness();
+
+      await expectJson(
+        await handler(request({ action: 'create_customer_session' })),
+        200,
+        { customerId: 'cus_1', customerSessionClientSecret: 'cuss_secret' },
+      );
+      expect(db.queries).toEqual([PROFILE_LOOKUP]);
+      expect(stripe.calls).toEqual([CUSTOMER_SHEET_SESSION('cus_1')]);
+    });
+
+    it('answers 500 CUSTOMER_SESSION_FAILED when Stripe refuses the session, with no fallback list', async () => {
+      const { handler, db } = harness({
+        stripe: fakeStripe({ sessionError: new Error('No such customer') }),
       });
+
+      await expectJson(
+        await handler(request({ action: 'create_customer_session' })),
+        500,
+        { error: 'CUSTOMER_SESSION_FAILED' },
+      );
+      expect(db.queries).toEqual([PROFILE_LOOKUP]);
+    });
+
+    it('answers 500 CUSTOMER_SESSION_FAILED when the session has no client secret', async () => {
+      const { handler } = harness({
+        stripe: fakeStripe({ sessionSecret: '' }),
+      });
+
+      await expectJson(
+        await handler(request({ action: 'create_customer_session' })),
+        500,
+        { error: 'CUSTOMER_SESSION_FAILED' },
+      );
+    });
+  });
+
+  describe('create_setup_intent', () => {
+    it("creates an on-session card SetupIntent for the verified user's customer, with no card limit", async () => {
+      const { handler, db, stripe } = harness();
 
       await expectJson(
         await handler(
           request(
-            { action: 'get_setup_config' },
+            { action: 'create_setup_intent' },
             { idempotencyKey: 'setup-key-1' },
           ),
         ),
         200,
-        {
-          setupIntent: 'seti_secret',
-          ephemeralKey: 'ek_secret',
-          customer: 'cus_1',
-          publishableKey: 'pk_test_x',
-        },
+        { setupIntentClientSecret: 'seti_secret' },
       );
-      expect(db.queries).toEqual([
-        PROFILE_LOOKUP,
-        {
-          table: 'payment_methods',
-          ops: [
-            ['select', '*', { count: 'exact', head: true }],
-            ['eq', 'user_id', USER_ID],
-            ['is', 'deleted_at', null],
-          ],
-        },
-      ]);
+      expect(db.queries).toEqual([PROFILE_LOOKUP]);
       expect(stripe.calls).toEqual([
-        [
-          'ephemeralKeys.create',
-          { customer: 'cus_1' },
-          { apiVersion: STRIPE_API_VERSION },
-        ],
         [
           'setupIntents.create',
           {
             customer: 'cus_1',
             allowed_payment_method_types: ['card'],
+            usage: 'on_session',
             metadata: { user_id: USER_ID, app_name: 'selene' },
           },
           { idempotencyKey: 'setup-key-1' },
@@ -390,7 +419,7 @@ describe('manage-payment-methods handler', () => {
       const { handler, stripe } = harness();
 
       expect(
-        (await handler(request({ action: 'get_setup_config' }))).status,
+        (await handler(request({ action: 'create_setup_intent' }))).status,
       ).toBe(200);
       const options = stripe.calls.find(
         ([call]) => call === 'setupIntents.create',
@@ -398,141 +427,27 @@ describe('manage-payment-methods handler', () => {
       expect(options.idempotencyKey).toMatch(UUID);
     });
 
-    it('answers 400 PAYMENT_LIMIT_REACHED at three active cards, with no Stripe call', async () => {
-      const { handler, stripe } = harness({ db: database({ activeCount: 3 }) });
-
-      await expectJson(
-        await handler(request({ action: 'get_setup_config' })),
-        400,
-        { error: 'PAYMENT_LIMIT_REACHED' },
-      );
-      expect(stripe.calls).toEqual([]);
-    });
-  });
-
-  describe('list_payment_methods', () => {
-    it("lists the verified user's active cards, newest first", async () => {
-      const { handler, db, stripe } = harness();
-
-      await expectJson(
-        await handler(request({ action: 'list_payment_methods' })),
-        200,
-        { methods: [{ id: PM_ID }] },
-      );
-      expect(db.queries).toEqual([
-        PROFILE_LOOKUP,
-        {
-          table: 'payment_methods',
-          ops: [
-            ['select', '*'],
-            ['eq', 'user_id', USER_ID],
-            ['is', 'deleted_at', null],
-            ['order', 'created_at', { ascending: false }],
-          ],
-        },
-      ]);
-      expect(stripe.calls).toEqual([]);
-    });
-
-    it('answers an empty list when the read returns no data', async () => {
-      const { handler } = harness({ db: database({ methods: null }) });
-
-      await expectJson(
-        await handler(request({ action: 'list_payment_methods' })),
-        200,
-        { methods: [] },
-      );
-    });
-  });
-
-  describe('delete_payment_method', () => {
-    const OWNED_LOOKUP: Query = {
-      table: 'payment_methods',
-      ops: [
-        ['select', 'stripe_payment_method_id'],
-        ['eq', 'id', PM_ID],
-        ['eq', 'user_id', USER_ID],
-        ['is', 'deleted_at', null],
-        ['maybeSingle'],
-      ],
-    };
-
-    it('answers 400 PAYMENT_METHOD_ID_REQUIRED without an id, before reading cards', async () => {
-      const { handler, db, stripe } = harness();
-
-      await expectJson(
-        await handler(request({ action: 'delete_payment_method' })),
-        400,
-        { error: 'PAYMENT_METHOD_ID_REQUIRED' },
-      );
-      expect(db.queries).toEqual([PROFILE_LOOKUP]);
-      expect(stripe.calls).toEqual([]);
-    });
-
-    it("detaches the verified user's card in Stripe and soft-deletes it", async () => {
-      const { handler, db, stripe } = harness();
-
-      await expectJson(
-        await handler(
-          request({ action: 'delete_payment_method', paymentMethodId: PM_ID }),
-        ),
-        200,
-        { success: true },
-      );
-      expect(stripe.calls).toEqual([['paymentMethods.detach', 'pm_stripe_1']]);
-      expect(db.queries.slice(0, 2)).toEqual([PROFILE_LOOKUP, OWNED_LOOKUP]);
-      const softDelete = db.queries[2];
-      expect(softDelete.table).toBe('payment_methods');
-      expect(softDelete.ops).toEqual([
-        ['update', { deleted_at: expect.stringMatching(ISO) }],
-        ['eq', 'id', PM_ID],
-      ]);
-    });
-
-    it('answers success without Stripe or a write when the card is not an active card of the user', async () => {
-      const { handler, db, stripe } = harness({
-        db: database({ owned: null }),
-      });
-
-      await expectJson(
-        await handler(
-          request({ action: 'delete_payment_method', paymentMethodId: PM_ID }),
-        ),
-        200,
-        { success: true, message: 'Already deleted' },
-      );
-      expect(db.queries).toEqual([PROFILE_LOOKUP, OWNED_LOOKUP]);
-      expect(stripe.calls).toEqual([]);
-    });
-
-    it('still soft-deletes when the Stripe detach fails', async () => {
-      const { handler, db } = harness({
-        stripe: fakeStripe({
-          detachError: new Error('No such payment method'),
-        }),
-      });
-
-      await expectJson(
-        await handler(
-          request({ action: 'delete_payment_method', paymentMethodId: PM_ID }),
-        ),
-        200,
-        { success: true },
-      );
-      expect(db.queries[2].ops[0][0]).toBe('update');
-    });
-
-    it('answers 400 DB_DELETE_FAILED when the soft delete fails', async () => {
+    it('answers 500 SETUP_INTENT_FAILED when Stripe refuses the SetupIntent', async () => {
       const { handler } = harness({
-        db: database({ deleteError: { message: 'denied' } }),
+        stripe: fakeStripe({ setupIntentError: new Error('rate limited') }),
       });
 
       await expectJson(
-        await handler(
-          request({ action: 'delete_payment_method', paymentMethodId: PM_ID }),
-        ),
-        400,
-        { error: 'DB_DELETE_FAILED: denied' },
+        await handler(request({ action: 'create_setup_intent' })),
+        500,
+        { error: 'SETUP_INTENT_FAILED' },
+      );
+    });
+
+    it('answers 500 SETUP_INTENT_FAILED when the SetupIntent has no client secret', async () => {
+      const { handler } = harness({
+        stripe: fakeStripe({ setupIntentSecret: null }),
+      });
+
+      await expectJson(
+        await handler(request({ action: 'create_setup_intent' })),
+        500,
+        { error: 'SETUP_INTENT_FAILED' },
       );
     });
   });
