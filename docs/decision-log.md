@@ -375,7 +375,7 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 **Decision (maintainer, 2026-11-17):**
 
 - A new CI job, `repo-checks`, runs actionlint and zizmor on `.github/workflows/`. Both are release binaries pinned by version and sha256 (`docs/dependencies.md`, "Keep the workflow linters current").
-- The calibration findings were fixed, not accepted: `issues: write` moved to the `report` job, and every checkout sets `persist-credentials: false`. There is no exceptions file.
+- The calibration findings were fixed, not accepted: `issues: write` moved to the `report` job, and every checkout sets `persist-credentials: false`. No finding is accepted: there is no exceptions file and no `# zizmor: ignore` comment. A later exception uses that inline comment with its reason (`docs/dependencies.md`).
 - gitleaks is not added. Secret scanning and push protection cover what it would.
 - `repo-checks` joins the required checks of the `main` ruleset; the maintainer adds it. This extends the 2026-11-09 entry, which requires every job in `.github/workflows/ci.yml`.
 

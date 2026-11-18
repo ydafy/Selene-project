@@ -62,9 +62,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Install actionlint and zizmor
+        id: install
         shell: bash
         run: |
           set -euo pipefail
+          # actionlint puts the version in its archive name; zizmor's name never
+          # changes, so a zizmor bump only changes ZIZMOR_VERSION and ZIZMOR_SHA256.
           actionlint_tar="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           zizmor_tar=zizmor-x86_64-unknown-linux-gnu.tar.gz
           cd "$RUNNER_TEMP"
@@ -80,9 +83,10 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       # shellcheck is preinstalled on ubuntu-latest; actionlint runs it on every run: script.
       - run: actionlint
-      # Also runs after an actionlint failure, so one push shows both results.
+      # Also runs after an actionlint failure, so one push shows both results,
+      # but not after a failed install, where it could only add "command not found".
       - name: zizmor
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: zizmor --no-progress --format github .github/workflows
