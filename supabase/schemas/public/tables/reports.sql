@@ -25,7 +25,7 @@ CREATE TABLE "public"."reports" (
   ))
 );
 
-COMMENT ON TABLE "public"."reports" IS 'User reports of a listing or a user (#653). Exactly one target. Users insert only; admins read; the resolution is written once by the admin workflow (#298). Kept forever as moderation evidence, so every foreign key is ON DELETE RESTRICT.';
+COMMENT ON TABLE "public"."reports" IS 'User reports of a listing or a user (#653). Exactly one target. Users insert only; admins read; the resolution is written once by the admin workflow (#298), and a resolved report never changes (trigger reports_keep_resolved_closed). Kept forever as moderation evidence, so every foreign key is ON DELETE RESTRICT.';
 
 ALTER TABLE "public"."reports"
   ENABLE ROW LEVEL SECURITY;
@@ -43,6 +43,11 @@ CREATE INDEX ix_reports_open_created_at ON public.reports USING btree (created_a
 CREATE UNIQUE INDEX ux_reports_open_product ON public.reports USING btree (reporter_id, target_product_id) WHERE ((status = 'open'::public.report_status) AND (target_product_id IS NOT NULL));
 
 CREATE UNIQUE INDEX ux_reports_open_user ON public.reports USING btree (reporter_id, target_user_id) WHERE ((status = 'open'::public.report_status) AND (target_user_id IS NOT NULL));
+
+CREATE TRIGGER reports_keep_resolved_closed
+  BEFORE UPDATE ON public.reports
+  FOR EACH ROW
+  EXECUTE FUNCTION internal.fn_reports_keep_resolved_closed();
 
 CREATE POLICY "reports_insert" ON "public"."reports"
   FOR INSERT
