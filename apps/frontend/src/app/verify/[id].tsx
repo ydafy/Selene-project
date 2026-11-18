@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -58,6 +58,12 @@ export default function VerifyProductScreen() {
 
   // Missing payments are the next step after the evidence (S2).
   const paymentNeed = usePaymentSetupNeed();
+  // The success dialog confirms after an await: read the latest value, not the one
+  // captured when the seller pressed submit.
+  const paymentNeedRef = useRef(paymentNeed);
+  useEffect(() => {
+    paymentNeedRef.current = paymentNeed;
+  }, [paymentNeed]);
 
   // Estado para Diálogos
   const [dialogConfig, setDialogConfig] = useState({
@@ -116,7 +122,7 @@ export default function VerifyProductScreen() {
         isError: false,
         onConfirm: () => {
           closeDialog();
-          router.replace(resolveVerifySuccessRoute(paymentNeed));
+          router.replace(resolveVerifySuccessRoute(paymentNeedRef.current));
           // Evidence sent: a moment to offer push, after the success dialog (L6).
           void offerPushPermission('listing');
         },

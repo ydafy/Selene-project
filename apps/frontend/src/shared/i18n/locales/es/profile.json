@@ -72,7 +72,8 @@
       "cardHint": "Toca para ver detalle",
       "deleteLabel": "Eliminar publicación",
       "deleteHint": "Abre diálogo de confirmación",
-      "inDisputeBadge": "Esta publicación tiene una disputa activa"
+      "inDisputeBadge": "Esta publicación tiene una disputa activa",
+      "openPayments": "Activar cobros"
     }
   },
   "review": {

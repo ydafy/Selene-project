@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import { getStatusColor, resolveListingStatusKey } from './product-status';
+import {
+  getStatusColor,
+  listingStatusOpensPayments,
+  resolveListingStatusKey,
+} from './product-status';
 import en from '@/shared/i18n/locales/en/profile.json';
 import es from '@/shared/i18n/locales/es/profile.json';
 
@@ -40,6 +44,25 @@ describe('listing chip when payments are not set up', () => {
   it('uses warning for missing payments and error for rejected ones', () => {
     expect(getStatusColor('PAYMENTS_SETUP')).toBe('warning');
     expect(getStatusColor('PAYMENTS_REJECTED')).toBe('error');
+  });
+
+  // A screen reader reaches the guide through the card's own action (CodeRabbit, PR #693).
+  it('only a payments chip opens the payments guide', () => {
+    expect(listingStatusOpensPayments('PAYMENTS_SETUP')).toBe(true);
+    expect(listingStatusOpensPayments('PAYMENTS_REJECTED')).toBe(true);
+    for (const key of [
+      'verified',
+      'pending_verification',
+      'ACCOUNT_HOLD',
+      null,
+    ]) {
+      expect(listingStatusOpensPayments(key)).toBe(false);
+    }
+  });
+
+  it('names the screen reader action in both languages', () => {
+    expect(es.listings.a11y.openPayments).toBe('Activar cobros');
+    expect(en.listings.a11y.openPayments).toBe('Set up payments');
   });
 
   it('has the labels in both languages', () => {

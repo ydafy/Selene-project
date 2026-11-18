@@ -14,6 +14,7 @@ import {
   getStatusColor,
   isAccountHeld,
   isProductHistory,
+  listingStatusOpensPayments,
   resolveListingStatusKey,
 } from '../logic/product-status';
 import type { PaymentSetupNeed } from '@/shared/utils/payment-setup-need';
@@ -57,8 +58,8 @@ export const MyListingCard = ({
   const statusKey = resolveListingStatusKey(product, paymentNeed);
   const statusColor = getStatusColor(statusKey);
   // A verified listing nobody can buy: the chip opens the payments guide (S4).
-  const opensPayments =
-    statusKey === 'PAYMENTS_SETUP' || statusKey === 'PAYMENTS_REJECTED';
+  const opensPayments = listingStatusOpensPayments(statusKey);
+  const openPayments = () => router.push('/sell/onboarding');
 
   // Status action states
   const isPending = product.status === 'pending_verification';
@@ -120,8 +121,18 @@ export const MyListingCard = ({
       onPress={handlePress}
       activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${formatCents(product.price_cents)}`}
+      accessibilityLabel={`${product.name}, ${formatCents(product.price_cents)}, ${t(`listings.status.${statusKey}`)}`}
       accessibilityHint={t('listings.a11y.cardHint')}
+      // The card groups its children for screen readers, so the payments chip
+      // is reachable as a card action instead (S4).
+      accessibilityActions={
+        opensPayments
+          ? [{ name: 'openPayments', label: t('listings.a11y.openPayments') }]
+          : undefined
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'openPayments') openPayments();
+      }}
     >
       <Box
         flexDirection="row"
@@ -170,9 +181,7 @@ export const MyListingCard = ({
           {/* STATUS BADGE */}
           <TouchableOpacity
             disabled={!opensPayments}
-            onPress={
-              opensPayments ? () => router.push('/sell/onboarding') : undefined
-            }
+            onPress={opensPayments ? openPayments : undefined}
             activeOpacity={0.7}
             accessibilityRole={opensPayments ? 'button' : undefined}
           >

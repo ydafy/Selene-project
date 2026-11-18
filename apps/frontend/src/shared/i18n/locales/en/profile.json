@@ -74,7 +74,8 @@
       "cardHint": "Tap to view details",
       "deleteLabel": "Delete listing",
       "deleteHint": "Opens confirmation dialog",
-      "inDisputeBadge": "This listing has an active dispute"
+      "inDisputeBadge": "This listing has an active dispute",
+      "openPayments": "Set up payments"
     }
   },
   "review": {

@@ -18,7 +18,7 @@ test('the listing moment is offered after a verification is sent, once its succe
   expect(read('app/verify/[id].tsx')).toMatch(
     // The route is the profile, or the payments guide while payments are missing
     // (odd/tasks/first-listing-payment-setup.md, S2).
-    /onConfirm: \(\) => \{\s*closeDialog\(\);\s*router\.replace\(resolveVerifySuccessRoute\(paymentNeed\)\);\s*(?:\/\/[^\n]*\s*)?void offerPushPermission\('listing'\);/,
+    /onConfirm: \(\) => \{\s*closeDialog\(\);\s*router\.replace\(resolveVerifySuccessRoute\(paymentNeedRef\.current\)\);\s*(?:\/\/[^\n]*\s*)?void offerPushPermission\('listing'\);/,
   );
 });
 

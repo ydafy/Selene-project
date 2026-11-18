@@ -45,6 +45,12 @@ export const resolveListingStatusKey = (
   return product.status;
 };
 
+/** A payments chip is the only one that opens the payments guide. */
+export const listingStatusOpensPayments = (
+  statusKey: string | null | undefined,
+): boolean =>
+  statusKey === 'PAYMENTS_SETUP' || statusKey === 'PAYMENTS_REJECTED';
+
 /**
  * Determina si un estado de producto pertenece al historial (no activo).
  */
