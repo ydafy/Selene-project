@@ -131,6 +131,36 @@ describe('connect-onboarding-return handler', () => {
     });
   }
 
+  // Encodings and repeats never widen the closed value (#690).
+  for (const query of [
+    'from=%20listing',
+    'from=listing%0d%0aX-Evil%3A1',
+    'from=%2F%2Fevil.test',
+    'FROM=listing',
+    'from=https%3A%2F%2Fevil.test&from=listing',
+  ]) {
+    it(`drops ${query}`, async () => {
+      const { handler } = harness();
+
+      await expectRedirect(
+        await handler(new Request(`${BRIDGE}?state=return&${query}`)),
+        'selene://sell/onboarding?return=1',
+      );
+    });
+  }
+
+  it('keeps the configured HTTPS app URL host, path and fragment with from=listing', async () => {
+    const { handler } = harness({
+      SELENE_CONNECT_ONBOARDING_APP_URL:
+        'https://app.example/sell/onboarding#h',
+    });
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=refresh&from=listing`)),
+      'https://app.example/sell/onboarding?refresh=1&from=listing#h',
+    );
+  });
+
   it('answers 400 INVALID_ONBOARDING_RETURN_STATE for an unknown state', async () => {
     const { handler } = harness();
 
