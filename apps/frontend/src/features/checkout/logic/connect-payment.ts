@@ -44,7 +44,7 @@ const uniqueProductIds = (items: CartLikeItem[]) => {
 export const ConnectPaymentResponseSchema = z.object({
   orderId: z.string(),
   customer: z.string(),
-  ephemeralKey: z.string(),
+  customerSessionClientSecret: z.string(),
   clientSecret: z.string(),
   amount: z.number(),
   transferGroup: z.string(),
@@ -55,7 +55,7 @@ export type ConnectPaymentResponse = CreateConnectPaymentResponse;
 export interface NormalizedConnectPayment {
   orderId: string;
   customer: string;
-  ephemeralKey: string;
+  customerSessionClientSecret: string;
   clientSecret: string;
   amount: number;
   transferGroup: string;
@@ -87,7 +87,7 @@ export function normalizeConnectPaymentResponse(
   return {
     orderId: parsed.orderId,
     customer: parsed.customer,
-    ephemeralKey: parsed.ephemeralKey,
+    customerSessionClientSecret: parsed.customerSessionClientSecret,
     clientSecret: parsed.clientSecret,
     amount: parsed.amount,
     transferGroup: parsed.transferGroup,

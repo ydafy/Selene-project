@@ -6,7 +6,7 @@
 // supabase/queries, which no longer exists).
 export const SOURCE_TEXT_TEST_COUNTS: Record<string, number> = {
   'apps/admin-web': 3,
-  'apps/frontend': 75,
+  'apps/frontend': 74,
   'packages/types': 1,
   scripts: 14,
   'supabase/functions': 0,

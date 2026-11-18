@@ -2,7 +2,7 @@ type PaymentSheetInitConfig = {
   merchantDisplayName: string;
   paymentIntentClientSecret: string;
   customerId: string;
-  customerEphemeralKeySecret: string;
+  customerSessionClientSecret: string;
   allowsDelayedPaymentMethods: boolean;
   appearance: {
     shapes: { borderRadius: number };

@@ -15,7 +15,6 @@ interface PaymentSession {
 interface CheckoutState {
   // Datos
   selectedAddress: Address | null;
-  selectedPaymentMethodId: string | null;
 
   // Single-connect-payment fields
   clientSecret: string | null;
@@ -29,7 +28,6 @@ interface CheckoutState {
 
   // Acciones
   setSelectedAddress: (address: Address | null) => void;
-  setSelectedPaymentMethodId: (id: string | null) => void;
   setPaymentSession: (session: PaymentSession) => void;
   clearPaymentSession: () => void;
   setStatus: (status: CheckoutStatus) => void;
@@ -42,7 +40,6 @@ interface CheckoutState {
 
 export const useCheckoutStore = create<CheckoutState>((set, get) => ({
   selectedAddress: null,
-  selectedPaymentMethodId: null,
   clientSecret: null,
   orderId: null,
   amount: null,
@@ -63,9 +60,6 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
     }
     set({ selectedAddress: address, error: null });
   },
-
-  setSelectedPaymentMethodId: (id) =>
-    set({ selectedPaymentMethodId: id, error: null }),
 
   setPaymentSession: (session) =>
     set({
@@ -90,7 +84,6 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
   resetCheckout: () =>
     set({
       selectedAddress: null,
-      selectedPaymentMethodId: null,
       amount: null,
       clientSecret: null,
       orderId: null,
@@ -101,10 +94,10 @@ export const useCheckoutStore = create<CheckoutState>((set, get) => ({
 
   isReady: () => {
     const state = get();
+    // The buyer chooses the card in Stripe PaymentSheet, so no card gate here.
     const hasAddress = !!state.selectedAddress;
-    const hasPayment = !!state.selectedPaymentMethodId;
     const isNotProcessing = state.status !== 'processing';
 
-    return hasAddress && hasPayment && isNotProcessing;
+    return hasAddress && isNotProcessing;
   },
 }));

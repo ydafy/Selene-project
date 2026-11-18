@@ -3,7 +3,12 @@
     "orders": "My Orders",
     "listings": "My Listings",
     "addresses": "Addresses",
-    "payments": "Payments"
+    "payments": "Payments",
+    "paymentMethods": "Payment methods"
+  },
+  "paymentMethods": {
+    "errorTitle": "We couldn't open your cards",
+    "errorMessage": "Check your connection and try again."
   },
   "sections": {
     "favorites": "Your Favorites",

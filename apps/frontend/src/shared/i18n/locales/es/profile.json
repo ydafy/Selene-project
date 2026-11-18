@@ -3,7 +3,12 @@
     "orders": "Mis Pedidos",
     "listings": "Mis Publicaciones",
     "addresses": "Direcciones",
-    "payments": "Pagos"
+    "payments": "Pagos",
+    "paymentMethods": "Métodos de pago"
+  },
+  "paymentMethods": {
+    "errorTitle": "No pudimos abrir tus tarjetas",
+    "errorMessage": "Revisa tu conexión e inténtalo de nuevo."
   },
   "sections": {
     "favorites": "Tus Favoritos",

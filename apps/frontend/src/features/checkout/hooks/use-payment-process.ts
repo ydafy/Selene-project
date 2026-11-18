@@ -298,7 +298,7 @@ export const usePaymentProcess = () => {
           error: theme.colors.error,
         },
       },
-      customerEphemeralKeySecret: paymentSnapshot.ephemeralKey,
+      customerSessionClientSecret: paymentSnapshot.customerSessionClientSecret,
       customerId: paymentSnapshot.customer,
       initPaymentSheet,
       merchantDisplayName: 'Selene Marketplace',

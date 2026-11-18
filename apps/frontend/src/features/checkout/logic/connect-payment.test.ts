@@ -28,11 +28,11 @@ describe('connect payment helpers', () => {
     });
   });
 
-  it('normalizes the single-secret Connect response shape', () => {
+  it('normalizes the single-secret Connect response with a CustomerSession', () => {
     const normalized = normalizeConnectPaymentResponse({
       orderId: 'order-1',
       customer: 'cus_123',
-      ephemeralKey: 'eph_123',
+      customerSessionClientSecret: 'cuss_secret_123',
       clientSecret: 'pi_secret',
       amount: 85_100,
       transferGroup: 'grp_order-1',
@@ -41,18 +41,37 @@ describe('connect payment helpers', () => {
     expect(normalized).toEqual({
       orderId: 'order-1',
       customer: 'cus_123',
-      ephemeralKey: 'eph_123',
+      customerSessionClientSecret: 'cuss_secret_123',
       clientSecret: 'pi_secret',
       amount: 85_100,
       transferGroup: 'grp_order-1',
     });
   });
 
-  it('rejects the legacy per-seller paymentIntents array shape', () => {
+  it('rejects a response that carries an ephemeral key instead of a CustomerSession', () => {
     const legacy = {
       orderId: 'order-1',
       customer: 'cus_123',
       ephemeralKey: 'eph_123',
+      clientSecret: 'pi_secret',
+      amount: 85_100,
+      transferGroup: 'grp_order-1',
+    };
+
+    expect(() => normalizeConnectPaymentResponse(legacy as never)).toThrow(
+      expect.objectContaining({
+        issues: [
+          expect.objectContaining({ path: ['customerSessionClientSecret'] }),
+        ],
+      }),
+    );
+  });
+
+  it('rejects the legacy per-seller paymentIntents array shape', () => {
+    const legacy = {
+      orderId: 'order-1',
+      customer: 'cus_123',
+      customerSessionClientSecret: 'cuss_secret_123',
       paymentIntents: [
         {
           sellerId: 'seller-a',
@@ -71,7 +90,7 @@ describe('connect payment helpers', () => {
     const missingGroup = {
       orderId: 'order-1',
       customer: 'cus_123',
-      ephemeralKey: 'eph_123',
+      customerSessionClientSecret: 'cuss_secret_123',
       clientSecret: 'pi_secret',
       amount: 85_100,
     };
