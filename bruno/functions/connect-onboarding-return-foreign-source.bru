@@ -1,0 +1,32 @@
+meta {
+  name: connect-onboarding-return-foreign-source
+  type: http
+  seq: 200
+}
+
+get {
+  url: {{baseUrl}}/functions/v1/connect-onboarding-return?state=return&from=https%3A%2F%2Fevil.test
+  body: none
+  auth: none
+}
+
+settings {
+  encodeUrl: false
+  followRedirects: false
+  maxRedirects: 0
+}
+
+tests {
+  test("the bridge drops any from other than listing and still redirects to the app", function () {
+    expect(res.getStatus()).to.equal(302);
+    const location = res.getHeader("location");
+    expect(location).to.not.include("evil.test");
+    expect(new URL(location).searchParams.has("from")).to.equal(false);
+  });
+}
+
+docs {
+  The bridge is public, so `from` is caller-controlled. Only the closed value `listing` reaches
+  the app URL (#690); anything else is dropped, so the bridge never redirects anywhere a caller
+  chooses.
+}

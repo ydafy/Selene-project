@@ -91,6 +91,46 @@ describe('connect-onboarding-return handler', () => {
     );
   });
 
+  it('keeps from=listing on the default app deep link for a return and a refresh', async () => {
+    const { handler } = harness();
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=return&from=listing`)),
+      'selene://sell/onboarding?return=1&from=listing',
+    );
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=refresh&from=listing`)),
+      'selene://sell/onboarding?refresh=1&from=listing',
+    );
+  });
+
+  it('keeps from=listing on the configured per-state deep link', async () => {
+    const { handler } = harness({
+      SELENE_CONNECT_ONBOARDING_RETURN_DEEP_LINK:
+        'exp://127.0.0.1:8081/--/sell/onboarding?return=1',
+    });
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=return&from=listing`)),
+      'exp://127.0.0.1:8081/--/sell/onboarding?return=1&from=listing',
+    );
+  });
+
+  for (const from of ['https://evil.test', 'profile', 'LISTING', '']) {
+    it(`drops from=${JSON.stringify(from)} and still redirects to the app`, async () => {
+      const { handler } = harness();
+
+      await expectRedirect(
+        await handler(
+          new Request(
+            `${BRIDGE}?state=return&from=${encodeURIComponent(from)}`,
+          ),
+        ),
+        'selene://sell/onboarding?return=1',
+      );
+    });
+  }
+
   it('answers 400 INVALID_ONBOARDING_RETURN_STATE for an unknown state', async () => {
     const { handler } = harness();
 
