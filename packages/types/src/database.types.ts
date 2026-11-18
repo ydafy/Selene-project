@@ -3727,6 +3727,7 @@ export type Database = {
         };
         Returns: boolean;
       };
+      fn_delete_ops_failures: { Args: { p_ids: number[] }; Returns: number };
       fn_enqueue_stripe_fee_reconciliation_job: {
         Args: { p_order_id: string; p_stripe_payment_intent_id: string };
         Returns: boolean;
@@ -3832,6 +3833,16 @@ export type Database = {
         Returns: {
           object_names: string[];
           order_id: string;
+        }[];
+      };
+      fn_list_ops_failures: {
+        Args: { p_limit: number };
+        Returns: {
+          code: string;
+          context: Json;
+          id: number;
+          occurred_at: string;
+          source: string;
         }[];
       };
       fn_list_push_receipts_due: {

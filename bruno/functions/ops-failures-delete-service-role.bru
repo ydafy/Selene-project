@@ -1,0 +1,32 @@
+meta {
+  name: ops-failures-delete-service-role
+  type: http
+  seq: 197
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_delete_ops_failures
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  { "p_ids": [-1] }
+}
+
+tests {
+  test("the service role may call the delete; an unknown id removes nothing", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(0);
+  });
+}
+
+docs {
+  odd/tasks/table-cleanup.md S6b: what cron-watchdog calls after Sentry confirms delivery.
+  Deletes exactly the given ids and returns the count; id -1 never exists.
+}
