@@ -19,13 +19,13 @@ join pg_namespace rn on rn.oid = r.relnamespace
 join pg_attribute a on a.attrelid = c.conrelid and a.attnum = c.conkey[1]
 where c.contype = 'f' and n.nspname in ('public', 'internal');
 
--- (a) Only the profile rows themselves reference auth.users. payment_methods
--- and system_logs are owned by #309 (odd/tasks/integrity-constraints.md S12).
+-- (a) Only the profile rows themselves reference auth.users. system_logs is
+-- owned by #309 (odd/tasks/integrity-constraints.md S12).
 select is_empty(
   $$select tbl || '.' || col from fk_actions
     where target = 'auth.users'
       and (tbl, col) not in (('public.profiles', 'id'), ('public.profiles_private', 'id'),
-                             ('public.payment_methods', 'user_id'), ('public.system_logs', 'user_id'))
+                             ('public.system_logs', 'user_id'))
     order by 1$$,
   'no foreign key outside profiles and profiles_private references auth.users');
 

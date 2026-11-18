@@ -3,7 +3,7 @@
 -- and credentials but never touches the ledger (#277).
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(51);
+select plan(52);
 \ir ../fixtures/money.psql
 
 -- Same economics formula as validate_product_publication_economics.
@@ -179,9 +179,6 @@ values
    null, 'CDMX', 'CDMX', '06600', null, null, true, null, 'home');
 update public.shipments set origin_address_id = pg_temp.mu(81) where id = pg_temp.mu(51);
 
-insert into public.payment_methods (user_id, stripe_payment_method_id, brand, last4, exp_month, exp_year) values
-  (pg_temp.mu(41), 'pm_t4_41', 'visa', '4242', 12, 2030),
-  (pg_temp.mu(42), 'pm_t4_42', 'visa', '4243', 12, 2030);
 insert into public.blocked_users (blocker_id, blocked_id) values
   (pg_temp.mu(41), pg_temp.mu(42)), (pg_temp.mu(42), pg_temp.mu(41)), (pg_temp.mu(42), pg_temp.mu(44));
 insert into public.notifications (user_id, type, title) values
@@ -237,10 +234,10 @@ select is(
 select is(
   (select coalesce(stripe_customer_id, 'null') from public.profiles_private where id = pg_temp.mu(41)),
   'null', 'purge: the private profile drops the Stripe customer id');
-select is(
-  (select string_agg(stripe_payment_method_id, ',' order by stripe_payment_method_id)
-   from public.payment_methods where user_id in (pg_temp.mu(41), pg_temp.mu(42))),
-  'pm_t4_42', 'purge: payment methods of the user are deleted, others kept');
+-- Saved cards live only in Stripe (odd/tasks/table-cleanup.md S7e); what the
+-- closure does with them there is #697.
+select hasnt_table('public', 'payment_methods', 'purge: Selene keeps no copy of saved cards');
+select hasnt_function('public', 'check_max_payment_methods', 'purge: no saved-card cap function remains');
 select is(
   (select string_agg(right(blocker_id::text, 2) || '>' || right(blocked_id::text, 2), ',' order by blocker_id, blocked_id)
    from public.blocked_users
