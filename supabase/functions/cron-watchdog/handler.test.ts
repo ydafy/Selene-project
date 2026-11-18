@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 
-import { createCronWatchdogHandler, type CronWatchdogDeps } from './handler';
+import {
+  createCronWatchdogHandler,
+  type CronWatchdogDeps,
+  type OpsFailureEvent,
+  type OpsFailureRow,
+} from './handler';
 import type { CronHealthRow } from './health';
 
 const NOW = new Date('2026-10-21T12:00:00.000Z');
@@ -19,12 +24,23 @@ const healthyRow = (jobname: string): CronHealthRow => ({
 const minutesAgo = (minutes: number): string =>
   new Date(NOW.getTime() - minutes * 60_000).toISOString();
 
+interface OpsFailureOptions {
+  list?: {
+    data: OpsFailureRow[] | null;
+    error: { message: string } | null;
+  };
+  /** Whether Sentry confirms delivery of the reported failures. */
+  delivered?: boolean;
+  deleteResult?: { data: number | null; error: { message: string } | null };
+}
+
 function setup(
   rpcResult: {
     data: CronHealthRow[] | null;
     error: { message: string } | null;
   },
   secret: string | undefined = SECRET,
+  ops: OpsFailureOptions = {},
 ) {
   const messages: Array<{
     message: string;
@@ -34,6 +50,10 @@ function setup(
   const logs: string[] = [];
   let rpcCalls = 0;
   let monitorRuns = 0;
+  let listCalls = 0;
+  const listLimits: number[] = [];
+  const reportedBatches: OpsFailureEvent[][] = [];
+  const deletedBatches: number[][] = [];
   const deps: CronWatchdogDeps = {
     getCronSecret: () => secret,
     now: () => NOW,
@@ -43,6 +63,19 @@ function setup(
     },
     reportMessage: async (message, options) => {
       messages.push({ message, ...options });
+    },
+    listOpsFailures: async (limit) => {
+      listCalls += 1;
+      listLimits.push(limit);
+      return ops.list ?? { data: [], error: null };
+    },
+    reportOpsFailures: async (events) => {
+      reportedBatches.push(events);
+      return ops.delivered ?? true;
+    },
+    deleteOpsFailures: async (ids) => {
+      deletedBatches.push(ids);
+      return ops.deleteResult ?? { data: ids.length, error: null };
     },
     runMonitored: async (fn) => {
       monitorRuns += 1;
@@ -54,10 +87,27 @@ function setup(
     handler: createCronWatchdogHandler(deps),
     messages,
     logs,
+    reportedBatches,
+    deletedBatches,
+    listLimits,
     rpcCalls: () => rpcCalls,
+    listCalls: () => listCalls,
     monitorRuns: () => monitorRuns,
   };
 }
+
+const failureRow = (
+  id: number,
+  source: string,
+  code: string,
+  context: Record<string, unknown> = {},
+): OpsFailureRow => ({
+  id,
+  source,
+  code,
+  context,
+  occurred_at: minutesAgo(id),
+});
 
 const post = (headers: Record<string, string> = {}) =>
   new Request('https://example.test/cron-watchdog', {
@@ -144,6 +194,7 @@ describe('cron-watchdog handler', () => {
     expect(response.status).toBe(500);
     expect(await response.text()).not.toContain('permission denied');
     expect(ctx.messages).toHaveLength(0);
+    expect(ctx.listCalls()).toBe(0);
   });
 
   it('returns 200 with an empty list and sends nothing to Sentry when healthy', async () => {
@@ -154,7 +205,11 @@ describe('cron-watchdog handler', () => {
     const response = await ctx.handler(post({ 'x-cron-secret': SECRET }));
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ checked: 2, unhealthy: [] });
+    expect(await response.json()).toEqual({
+      checked: 2,
+      unhealthy: [],
+      opsFailures: { reported: 0, deleted: 0 },
+    });
     expect(ctx.messages).toHaveLength(0);
     expect(ctx.rpcCalls()).toBe(1);
   });
@@ -175,6 +230,7 @@ describe('cron-watchdog handler', () => {
         { jobname: 'weekly', reason: 'unsupported-schedule' },
         { jobname: 'zz-fail', reason: 'failed' },
       ],
+      opsFailures: { reported: 0, deleted: 0 },
     });
     expect(ctx.messages).toEqual([
       {
@@ -210,6 +266,7 @@ describe('cron-watchdog handler', () => {
     expect(await response.json()).toEqual({
       checked: 2,
       unhealthy: [{ jobname: 'dispatch-push', reason: 'http-failed' }],
+      opsFailures: { reported: 0, deleted: 0 },
     });
     expect(ctx.messages).toEqual([
       {
@@ -261,6 +318,7 @@ describe('cron-watchdog handler', () => {
         { jobname: 'b-late', reason: 'overdue' },
         { jobname: 'c-weekly', reason: 'unsupported-schedule' },
       ],
+      opsFailures: { reported: 0, deleted: 0 },
     });
     expect(ctx.messages.map((m) => m.message)).toEqual([
       'cron a-failed failed',
@@ -302,5 +360,229 @@ describe('cron-watchdog handler', () => {
 
     expect(response.status).toBe(405);
     expect(ctx.rpcCalls()).toBe(0);
+    expect(ctx.listCalls()).toBe(0);
+  });
+});
+
+describe('cron-watchdog ops failures (internal.ops_failures)', () => {
+  const authorized = () => post({ 'x-cron-secret': SECRET });
+  const failedJob = (): CronHealthRow => ({
+    ...healthyRow('zz-fail'),
+    last_status: 'failed',
+  });
+
+  it('reports each failure as one Sentry event after the health report, then deletes the reported ids', async () => {
+    const ctx = setup({ data: [failedJob()], error: null }, SECRET, {
+      list: {
+        data: [
+          failureRow(7, 'fn_cron_return_delivery_timeout', 'P0001', {
+            dispute_id: 'd-1',
+            error: 'boom',
+          }),
+          failureRow(9, 'fn_update_product_fts', '22001'),
+        ],
+        error: null,
+      },
+    });
+    const response = await ctx.handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 1,
+      unhealthy: [{ jobname: 'zz-fail', reason: 'failed' }],
+      opsFailures: { reported: 2, deleted: 2 },
+    });
+    expect(ctx.messages.map((m) => m.message)).toEqual(['cron zz-fail failed']);
+    expect(ctx.listLimits).toEqual([100]);
+    expect(ctx.reportedBatches).toEqual([
+      [
+        {
+          message: 'ops failure: fn_cron_return_delivery_timeout P0001',
+          fingerprint: [
+            'ops-failure',
+            'fn_cron_return_delivery_timeout',
+            'P0001',
+          ],
+          tags: {
+            'ops.source': 'fn_cron_return_delivery_timeout',
+            'ops.code': 'P0001',
+          },
+          extra: {
+            ops_failure_id: 7,
+            context: { dispute_id: 'd-1', error: 'boom' },
+            occurred_at: minutesAgo(7),
+          },
+        },
+        {
+          message: 'ops failure: fn_update_product_fts 22001',
+          fingerprint: ['ops-failure', 'fn_update_product_fts', '22001'],
+          tags: { 'ops.source': 'fn_update_product_fts', 'ops.code': '22001' },
+          extra: { ops_failure_id: 9, context: {}, occurred_at: minutesAgo(9) },
+        },
+      ],
+    ]);
+    expect(ctx.deletedBatches).toEqual([[7, 9]]);
+  });
+
+  it('sends nothing to Sentry and deletes nothing when there are no failures', async () => {
+    const ctx = setup({ data: [healthyRow('a')], error: null }, SECRET, {
+      list: { data: [], error: null },
+    });
+    const response = await ctx.handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 1,
+      unhealthy: [],
+      opsFailures: { reported: 0, deleted: 0 },
+    });
+    expect(ctx.listCalls()).toBe(1);
+    expect(ctx.reportedBatches).toEqual([]);
+    expect(ctx.deletedBatches).toEqual([]);
+    expect(ctx.messages).toEqual([]);
+  });
+
+  it('reports a list error to Sentry without its text and still returns the health report', async () => {
+    const ctx = setup({ data: [failedJob()], error: null }, SECRET, {
+      list: {
+        data: null,
+        error: { message: 'permission denied for function x' },
+      },
+    });
+    const response = await ctx.handler(authorized());
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(body)).toEqual({
+      checked: 1,
+      unhealthy: [{ jobname: 'zz-fail', reason: 'failed' }],
+      opsFailures: { error: 'OPS_FAILURES_LIST_FAILED' },
+    });
+    expect(body).not.toContain('permission denied');
+    expect(ctx.messages).toEqual([
+      {
+        message: 'cron zz-fail failed',
+        fingerprint: ['cron-unhealthy', 'zz-fail', 'failed'],
+        tags: { 'cron.job': 'zz-fail', 'cron.reason': 'failed' },
+      },
+      {
+        message: 'cron-watchdog could not list ops failures',
+        fingerprint: ['ops-failures-list-failed'],
+        tags: { edge_function: 'cron-watchdog' },
+      },
+    ]);
+    expect(ctx.reportedBatches).toEqual([]);
+    expect(ctx.deletedBatches).toEqual([]);
+  });
+
+  it('treats a list call that throws like a list error', async () => {
+    const messages: string[][] = [];
+    const handler = createCronWatchdogHandler({
+      getCronSecret: () => SECRET,
+      now: () => NOW,
+      fetchCronHealth: async () => ({ data: [], error: null }),
+      reportMessage: async (_message, options) => {
+        messages.push(options.fingerprint);
+      },
+      listOpsFailures: async () => {
+        throw new Error('network down');
+      },
+      reportOpsFailures: async () => true,
+      deleteOpsFailures: async () => ({ data: 0, error: null }),
+      runMonitored: async (fn) => fn(),
+      log: () => undefined,
+    });
+    const response = await handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 0,
+      unhealthy: [],
+      opsFailures: { error: 'OPS_FAILURES_LIST_FAILED' },
+    });
+    expect(messages).toEqual([['ops-failures-list-failed']]);
+  });
+
+  it('keeps every row when Sentry does not confirm delivery (flush failed or timed out)', async () => {
+    const ctx = setup({ data: [], error: null }, SECRET, {
+      list: {
+        data: [failureRow(3, 'fn_refresh_seller_stats', 'P0001')],
+        error: null,
+      },
+      delivered: false,
+    });
+    const response = await ctx.handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 0,
+      unhealthy: [],
+      opsFailures: { error: 'OPS_FAILURES_NOT_DELIVERED' },
+    });
+    expect(ctx.reportedBatches).toHaveLength(1);
+    expect(ctx.deletedBatches).toEqual([]);
+    expect(ctx.logs).toEqual([
+      'cron-watchdog: Sentry did not confirm 1 ops failures; kept for the next run',
+    ]);
+  });
+
+  it('keeps every row when the reporter throws', async () => {
+    let deleteCalls = 0;
+    const handler = createCronWatchdogHandler({
+      getCronSecret: () => SECRET,
+      now: () => NOW,
+      fetchCronHealth: async () => ({ data: [], error: null }),
+      reportMessage: async () => undefined,
+      listOpsFailures: async () => ({
+        data: [failureRow(3, 'fn_x', 'X')],
+        error: null,
+      }),
+      reportOpsFailures: async () => {
+        throw new Error('sentry down');
+      },
+      deleteOpsFailures: async () => {
+        deleteCalls += 1;
+        return { data: 1, error: null };
+      },
+      runMonitored: async (fn) => fn(),
+      log: () => undefined,
+    });
+    const response = await handler(authorized());
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      checked: 0,
+      unhealthy: [],
+      opsFailures: { error: 'OPS_FAILURES_NOT_DELIVERED' },
+    });
+    expect(deleteCalls).toBe(0);
+  });
+
+  it('reports a delete error to Sentry without its text and still returns the health report', async () => {
+    const ctx = setup({ data: [], error: null }, SECRET, {
+      list: { data: [failureRow(4, 'fn_x', 'X')], error: null },
+      deleteResult: {
+        data: null,
+        error: { message: 'permission denied secret' },
+      },
+    });
+    const response = await ctx.handler(authorized());
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(body)).toEqual({
+      checked: 0,
+      unhealthy: [],
+      opsFailures: { error: 'OPS_FAILURES_DELETE_FAILED' },
+    });
+    expect(body).not.toContain('permission denied');
+    expect(ctx.deletedBatches).toEqual([[4]]);
+    expect(ctx.messages).toEqual([
+      {
+        message: 'cron-watchdog could not delete reported ops failures',
+        fingerprint: ['ops-failures-delete-failed'],
+        tags: { edge_function: 'cron-watchdog' },
+      },
+    ]);
   });
 });

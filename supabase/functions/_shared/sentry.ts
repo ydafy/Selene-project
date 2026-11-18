@@ -2,13 +2,16 @@
 // Reports thrown errors and 5xx responses only. Never reads or attaches request or
 // response bodies, headers, URLs, query strings, user ids or emails. Any failure to
 // load or call the SDK degrades to a plain passthrough: Sentry must never break a
-// money flow. Also offers `reportMessage` and `withMonitor` for the cron watchdog (L12).
+// money flow. Also offers `reportMessage` and `withMonitor` for the cron watchdog (L12),
+// and `reportMessagesDelivered`, which says whether Sentry confirmed delivery
+// (odd/tasks/table-cleanup.md S6b).
 
 const FLUSH_TIMEOUT_MS = 2000;
 
 interface SentryScope {
   setTag(key: string, value: string): unknown;
   setFingerprint(fingerprint: string[]): unknown;
+  setExtra(key: string, value: unknown): unknown;
 }
 
 interface SentryEvent {
@@ -40,6 +43,7 @@ export interface SentrySdk {
     callback: () => T,
     config: SentryMonitorConfig,
   ): T;
+  /** Resolves true when every queued event was sent within the timeout. */
   flush(timeout?: number): Promise<unknown>;
 }
 
@@ -54,6 +58,12 @@ export interface SentryMonitorConfig {
 export interface SentryMessageOptions {
   fingerprint: string[];
   tags: Record<string, string>;
+}
+
+/** One error message with its own tags, fingerprint and extra data. */
+export interface SentryDeliveredMessage extends SentryMessageOptions {
+  message: string;
+  extra: Record<string, unknown>;
 }
 
 export interface SentryWrapperDeps {
@@ -131,6 +141,36 @@ export function createSentry(deps: SentryWrapperDeps) {
         return sdk.captureMessage(message, 'error');
       }),
     );
+  };
+
+  /**
+   * Captures each message as an error in its own scope, flushes once, and
+   * resolves true only when Sentry confirmed delivery (flush resolved true
+   * within FLUSH_TIMEOUT_MS). Resolves false without a DSN, when the SDK cannot
+   * load, or when a capture or the flush fails or times out. Never throws. An
+   * empty list resolves true without loading anything.
+   */
+  const reportMessagesDelivered = async (
+    messages: SentryDeliveredMessage[],
+  ): Promise<boolean> => {
+    if (messages.length === 0) return true;
+    const sdk = await getActiveSdk();
+    if (!sdk) return false;
+    try {
+      for (const { message, fingerprint, tags, extra } of messages) {
+        sdk.withScope((scope) => {
+          for (const [key, value] of Object.entries(tags))
+            scope.setTag(key, value);
+          for (const [key, value] of Object.entries(extra))
+            scope.setExtra(key, value);
+          scope.setFingerprint(fingerprint);
+          return sdk.captureMessage(message, 'error');
+        });
+      }
+      return (await sdk.flush(FLUSH_TIMEOUT_MS)) === true;
+    } catch {
+      return false;
+    }
   };
 
   /**
@@ -228,13 +268,18 @@ export function createSentry(deps: SentryWrapperDeps) {
     };
   };
 
-  return { withSentry, reportMessage, withMonitor };
+  return { withSentry, reportMessage, reportMessagesDelivered, withMonitor };
 }
 
 export const createSentryWrapper = (deps: SentryWrapperDeps) =>
   createSentry(deps).withSentry;
 
-export const { withSentry, reportMessage, withMonitor } = createSentry({
+export const {
+  withSentry,
+  reportMessage,
+  reportMessagesDelivered,
+  withMonitor,
+} = createSentry({
   getEnv: (name) => Deno.env.get(name),
   loadSdk: async () =>
     (await import('npm:@sentry/deno@11.8.0')) as unknown as SentrySdk,

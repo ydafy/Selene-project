@@ -8,12 +8,15 @@ interface CaptureCall {
   level?: string;
   tags: Record<string, string>;
   fingerprint?: string[];
+  extra?: Record<string, unknown>;
 }
 
 interface FakeSdkOptions {
   captureThrows?: boolean;
   flushThrows?: boolean;
   monitorThrows?: boolean;
+  /** What flush resolves to (the real SDK resolves false on timeout). */
+  flushResult?: boolean;
 }
 
 function createFakeSdk(options: FakeSdkOptions = {}) {
@@ -22,6 +25,7 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
   const flushCalls: number[] = [];
   let currentTags: Record<string, string> = {};
   let currentFingerprint: string[] | undefined;
+  let currentExtra: Record<string, unknown> = {};
   const fingerprintCalls: string[][] = [];
   const monitorCalls: Array<{ slug: string; config: unknown }> = [];
 
@@ -33,7 +37,11 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
       const previousTags = currentTags;
       currentTags = {};
       currentFingerprint = undefined;
+      currentExtra = {};
       const scope = {
+        setExtra: (key: string, value: unknown) => {
+          currentExtra[key] = value;
+        },
         setFingerprint: (fingerprint: string[]) => {
           fingerprintCalls.push(fingerprint);
           currentFingerprint = fingerprint;
@@ -69,6 +77,9 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
         level,
         tags: { ...currentTags },
         fingerprint: currentFingerprint,
+        ...(Object.keys(currentExtra).length > 0
+          ? { extra: { ...currentExtra } }
+          : {}),
       });
       return 'event-id';
     },
@@ -80,7 +91,7 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
     flush: async (timeout) => {
       flushCalls.push(timeout as number);
       if (options.flushThrows) throw new Error('flush failed');
-      return true;
+      return options.flushResult ?? true;
     },
   };
 
@@ -408,6 +419,96 @@ describe('reportMessage', () => {
     await expect(
       flush.sentry.reportMessage('m', { fingerprint: ['a'], tags: {} }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('reportMessagesDelivered', () => {
+  const events = [
+    {
+      message: 'ops failure: fn_a P0001',
+      fingerprint: ['ops-failure', 'fn_a', 'P0001'],
+      tags: { 'ops.source': 'fn_a', 'ops.code': 'P0001' },
+      extra: { ops_failure_id: 1, context: { id: 'x' } },
+    },
+    {
+      message: 'ops failure: fn_b 22001',
+      fingerprint: ['ops-failure', 'fn_b', '22001'],
+      tags: { 'ops.source': 'fn_b', 'ops.code': '22001' },
+      extra: { ops_failure_id: 2, context: {} },
+    },
+  ];
+
+  it('captures each event in its own scope with tags, fingerprint and extras, flushes once, and resolves true', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    await expect(ctx.sentry.reportMessagesDelivered(events)).resolves.toBe(
+      true,
+    );
+
+    expect(ctx.captures).toEqual([
+      {
+        kind: 'message',
+        payload: 'ops failure: fn_a P0001',
+        level: 'error',
+        fingerprint: ['ops-failure', 'fn_a', 'P0001'],
+        tags: { 'ops.source': 'fn_a', 'ops.code': 'P0001' },
+        extra: { ops_failure_id: 1, context: { id: 'x' } },
+      },
+      {
+        kind: 'message',
+        payload: 'ops failure: fn_b 22001',
+        level: 'error',
+        fingerprint: ['ops-failure', 'fn_b', '22001'],
+        tags: { 'ops.source': 'fn_b', 'ops.code': '22001' },
+        extra: { ops_failure_id: 2, context: {} },
+      },
+    ]);
+    expect(ctx.flushCalls).toEqual([2000]);
+  });
+
+  it('resolves false without SENTRY_DSN and never loads the SDK', async () => {
+    const ctx = setupClient({});
+    await expect(ctx.sentry.reportMessagesDelivered(events)).resolves.toBe(
+      false,
+    );
+    expect(ctx.loadCalls()).toBe(0);
+    expect(ctx.captures).toHaveLength(0);
+  });
+
+  it('resolves false when flush times out (resolves false)', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN }, { flushResult: false });
+    await expect(ctx.sentry.reportMessagesDelivered(events)).resolves.toBe(
+      false,
+    );
+    expect(ctx.flushCalls).toEqual([2000]);
+  });
+
+  it('resolves false, never throwing, when flush or capture throws', async () => {
+    const flush = setupClient({ SENTRY_DSN: DSN }, { flushThrows: true });
+    await expect(flush.sentry.reportMessagesDelivered(events)).resolves.toBe(
+      false,
+    );
+    const capture = setupClient({ SENTRY_DSN: DSN }, { captureThrows: true });
+    await expect(capture.sentry.reportMessagesDelivered(events)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('resolves false when the SDK cannot load', async () => {
+    const sentry = createSentry({
+      getEnv: (name) => (name === 'SENTRY_DSN' ? DSN : undefined),
+      loadSdk: async () => {
+        throw new Error('load failed');
+      },
+      log: () => {},
+    });
+    await expect(sentry.reportMessagesDelivered(events)).resolves.toBe(false);
+  });
+
+  it('resolves true without capturing or flushing when there is nothing to send', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    await expect(ctx.sentry.reportMessagesDelivered([])).resolves.toBe(true);
+    expect(ctx.captures).toHaveLength(0);
+    expect(ctx.flushCalls).toHaveLength(0);
   });
 });
 
