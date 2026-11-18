@@ -3,7 +3,7 @@
 -- target, a coherent resolution, insert-only clients and admin-only reads.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(41);
+select plan(42);
 \ir ../fixtures/money.psql
 
 -- 1 reporter, 2 seller of listing 3, hidden listing 6 and soft-deleted
@@ -170,6 +170,10 @@ select throws_ok(
              outcome = null, resolution_note = null
            where target_product_id = %L and status = 'resolved'$$, pg_temp.mu(3)),
   '23514', 'a resolved report cannot change', 'a resolved report cannot be reopened');
+select throws_ok(
+  format($$update public.reports set resolution_note = 'edited later'
+           where target_product_id = %L and status = 'resolved'$$, pg_temp.mu(3)),
+  '23514', 'a resolved report cannot change', 'a resolved report''s note cannot be edited');
 select is(
   (select array[status::text, outcome::text, resolution_note]
      from public.reports where target_product_id = pg_temp.mu(3) and status = 'resolved'),
