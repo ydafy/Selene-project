@@ -255,7 +255,8 @@ deno_version = 2
 # per_worker, which kept every worker alive (about 110 MiB each) for both
 # `functions serve` and the lazy runtime of `supabase start`: the Bruno
 # functions folder passed 3.8 GiB in about 30 s. With oneshot the same run
-# peaks at 1.9 GiB and stays flat across two passes, at the same latency (#702).
+# peaked at 1.9 GiB over two passes, at the same latency (#702). Growth is
+# slower, not proven bounded (supabase/edge-runtime#719).
 policy = "oneshot"
 
 # Per-worktree local projects: `supabase start` assigns each worktree (and
