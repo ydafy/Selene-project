@@ -14,7 +14,10 @@ import {
   getStatusColor,
   isAccountHeld,
   isProductHistory,
+  listingStatusOpensPayments,
+  resolveListingStatusKey,
 } from '../logic/product-status';
+import type { PaymentSetupNeed } from '@/shared/utils/payment-setup-need';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 type MyListingCardProps = {
@@ -27,6 +30,8 @@ type MyListingCardProps = {
   isInDispute?: boolean;
   orderId?: string;
   shipmentId?: string;
+  /** The seller's missing payment setup; null when set up or unknown. */
+  paymentNeed?: PaymentSetupNeed;
 };
 
 export const MyListingCard = ({
@@ -39,6 +44,7 @@ export const MyListingCard = ({
   isInDispute = false,
   orderId,
   shipmentId,
+  paymentNeed = null,
 }: MyListingCardProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
@@ -49,8 +55,11 @@ export const MyListingCard = ({
     product.status,
     product.status_before_account_hold,
   );
-  const statusKey = isHeld ? 'ACCOUNT_HOLD' : product.status;
+  const statusKey = resolveListingStatusKey(product, paymentNeed);
   const statusColor = getStatusColor(statusKey);
+  // A verified listing nobody can buy: the chip opens the payments guide (S4).
+  const opensPayments = listingStatusOpensPayments(statusKey);
+  const openPayments = () => router.push('/sell/onboarding');
 
   // Status action states
   const isPending = product.status === 'pending_verification';
@@ -112,8 +121,18 @@ export const MyListingCard = ({
       onPress={handlePress}
       activeOpacity={0.9}
       accessibilityRole="button"
-      accessibilityLabel={`${product.name}, ${formatCents(product.price_cents)}`}
+      accessibilityLabel={`${product.name}, ${formatCents(product.price_cents)}, ${t(`listings.status.${statusKey}`)}`}
       accessibilityHint={t('listings.a11y.cardHint')}
+      // The card groups its children for screen readers, so the payments chip
+      // is reachable as a card action instead (S4).
+      accessibilityActions={
+        opensPayments
+          ? [{ name: 'openPayments', label: t('listings.a11y.openPayments') }]
+          : undefined
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === 'openPayments') openPayments();
+      }}
     >
       <Box
         flexDirection="row"
@@ -160,18 +179,29 @@ export const MyListingCard = ({
           </Box>
 
           {/* STATUS BADGE */}
-          <Box flexDirection="row" alignItems="center" marginTop="s">
-            <Box
-              width={8}
-              height={8}
-              borderRadius="full"
-              backgroundColor={statusColor}
-              marginRight="xs"
-            />
-            <Text variant="caption-md" color="textSecondary">
-              {t(`listings.status.${statusKey}`)}
-            </Text>
-          </Box>
+          <TouchableOpacity
+            disabled={!opensPayments}
+            onPress={opensPayments ? openPayments : undefined}
+            activeOpacity={0.7}
+            accessibilityRole={opensPayments ? 'button' : undefined}
+          >
+            <Box flexDirection="row" alignItems="center" marginTop="s">
+              <Box
+                width={8}
+                height={8}
+                borderRadius="full"
+                backgroundColor={statusColor}
+                marginRight="xs"
+              />
+              <Text
+                variant="caption-md"
+                color={opensPayments ? statusColor : 'textSecondary'}
+                textDecorationLine={opensPayments ? 'underline' : 'none'}
+              >
+                {t(`listings.status.${statusKey}`)}
+              </Text>
+            </Box>
+          </TouchableOpacity>
 
           {/* in_dispute BADGE — rendered before action bar */}
           {isInDispute && (

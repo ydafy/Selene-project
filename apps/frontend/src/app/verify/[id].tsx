@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -26,6 +26,8 @@ import {
 } from '@/features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
+import { usePaymentSetupNeed } from '@/shared/hooks/use-payment-setup-need';
+import { resolveVerifySuccessRoute } from '@/features/payments/logic/first-listing-payment-flow';
 import MaterialCommunityIcons from '@react-native-vector-icons/material-design-icons';
 
 export default function VerifyProductScreen() {
@@ -53,6 +55,15 @@ export default function VerifyProductScreen() {
     status,
     rejectionReason,
   } = useVerificationLogic(id);
+
+  // Missing payments are the next step after the evidence (S2).
+  const paymentNeed = usePaymentSetupNeed();
+  // The success dialog confirms after an await: read the latest value, not the one
+  // captured when the seller pressed submit.
+  const paymentNeedRef = useRef(paymentNeed);
+  useEffect(() => {
+    paymentNeedRef.current = paymentNeed;
+  }, [paymentNeed]);
 
   // Estado para Diálogos
   const [dialogConfig, setDialogConfig] = useState({
@@ -111,7 +122,7 @@ export default function VerifyProductScreen() {
         isError: false,
         onConfirm: () => {
           closeDialog();
-          router.replace('/(tabs)/profile');
+          router.replace(resolveVerifySuccessRoute(paymentNeedRef.current));
           // Evidence sent: a moment to offer push, after the success dialog (L6).
           void offerPushPermission('listing');
         },

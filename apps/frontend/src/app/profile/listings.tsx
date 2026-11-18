@@ -23,6 +23,7 @@ import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { Theme } from '@/shared/theme';
 import { Product } from '@selene/types';
 import { useSeleneRefresh } from '@/shared/hooks/use-selene-refresh';
+import { usePaymentSetupNeed } from '@/shared/hooks/use-payment-setup-need';
 
 export default function MyListingsScreen() {
   const theme = useTheme<Theme>();
@@ -37,6 +38,9 @@ export default function MyListingsScreen() {
     useProductManagement();
 
   const { loadProductForEdit, resetDraft } = useSellStore();
+
+  // Read once per list: the chips of verified listings depend on it (S4).
+  const paymentNeed = usePaymentSetupNeed();
 
   // Local state
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -167,6 +171,7 @@ export default function MyListingsScreen() {
                 onVerify={handleVerify}
                 isDeleting={deletingProductId === item.id}
                 isInDispute={item.status === 'in_dispute'}
+                paymentNeed={paymentNeed}
               />
             </Box>
           )}

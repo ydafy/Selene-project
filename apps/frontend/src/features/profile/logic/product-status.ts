@@ -1,4 +1,5 @@
 import { Theme } from '@/shared/theme';
+import type { PaymentSetupNeed } from '@/shared/utils/payment-setup-need';
 
 /**
  * Devuelve el color del tema asociado al estado del producto.
@@ -19,10 +20,36 @@ export const getStatusColor = (
     in_review: 'warning',
     in_dispute: 'warning',
     ACCOUNT_HOLD: 'warning',
+    PAYMENTS_SETUP: 'warning',
+    PAYMENTS_REJECTED: 'error',
   };
 
   return statusMap[status] || 'textSecondary';
 };
+
+/**
+ * The chip key for a listing on the seller's own list. A verified listing whose
+ * seller cannot receive payments is not buyable, so it does not say "Activo".
+ */
+export const resolveListingStatusKey = (
+  product: {
+    status: string | null | undefined;
+    status_before_account_hold?: string | null;
+  },
+  paymentNeed: PaymentSetupNeed,
+): string | null | undefined => {
+  if (isAccountHeld(product)) return 'ACCOUNT_HOLD';
+  if (product.status === 'verified' && paymentNeed) {
+    return paymentNeed === 'rejected' ? 'PAYMENTS_REJECTED' : 'PAYMENTS_SETUP';
+  }
+  return product.status;
+};
+
+/** A payments chip is the only one that opens the payments guide. */
+export const listingStatusOpensPayments = (
+  statusKey: string | null | undefined,
+): boolean =>
+  statusKey === 'PAYMENTS_SETUP' || statusKey === 'PAYMENTS_REJECTED';
 
 /**
  * Determina si un estado de producto pertenece al historial (no activo).
