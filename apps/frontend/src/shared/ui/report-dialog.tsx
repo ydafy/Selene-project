@@ -89,7 +89,12 @@ export const ReportDialog = ({
                     selected ? theme.colors.primary : theme.colors.textSecondary
                   }
                 />
-                <Text variant="body-md" color="textPrimary" marginLeft="s">
+                <Text
+                  variant="body-md"
+                  color="textPrimary"
+                  marginLeft="s"
+                  flex={1}
+                >
                   {t(`product:report.reasons.${option}`)}
                 </Text>
               </Box>
