@@ -251,6 +251,13 @@ otp_expiry = 900
 # Pin its Deno major so local serve matches the hosted runtime.
 [edge_runtime]
 deno_version = 2
+# One worker per request, freed when it answers. CLI 3.1.0 defaults to
+# per_worker, which kept every worker alive (about 110 MiB each) for both
+# `functions serve` and the lazy runtime of `supabase start`: the Bruno
+# functions folder passed 3.8 GiB in about 30 s. With oneshot the same run
+# peaked at 1.9 GiB over two passes, at the same latency (#702). Growth is
+# slower, not proven bounded (supabase/edge-runtime#719).
+policy = "oneshot"
 
 # Per-worktree local projects: `supabase start` assigns each worktree (and
 # branch) its own ports and data, so several worktrees can run at once.
