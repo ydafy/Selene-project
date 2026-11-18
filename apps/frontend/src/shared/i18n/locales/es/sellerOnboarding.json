@@ -45,7 +45,8 @@
     "start": "Llenar formulario",
     "continue": "Continuar formulario",
     "review": "Corregir datos",
-    "checking": "Verificando estado..."
+    "checking": "Verificando estado...",
+    "later": "Más tarde"
   },
   "loading": {
     "title": "Verificando tu estado de Stripe",

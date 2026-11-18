@@ -11,6 +11,8 @@ import { PrimaryButton } from '@/shared/ui/button/primary-button';
 import { Theme } from '@/shared/theme';
 import { useSellStore } from '@/features/sell/store/use-sell-store';
 import { triggerHaptic } from '@/shared/utils/haptics';
+import { usePaymentSetupNeed } from '@/shared/hooks/use-payment-setup-need';
+import { resolveSellSuccessSubtitleKey } from '@/features/payments/logic/first-listing-payment-flow';
 
 export default function SellSuccessScreen() {
   const { t } = useTranslation('sell');
@@ -24,6 +26,9 @@ export default function SellSuccessScreen() {
   const { resetDraft } = useSellStore();
 
   const { productId } = useLocalSearchParams<{ productId: string }>();
+
+  // Payments are step 2 of the flow while they are missing (S1, S2).
+  const paymentNeed = usePaymentSetupNeed();
 
   // 3. BLOQUEO TOTAL DEL BOTÓN ATRÁS (Android)
   useEffect(() => {
@@ -123,7 +128,7 @@ export default function SellSuccessScreen() {
         marginBottom="xl"
         style={{ lineHeight: 24 }}
       >
-        {t('success.subtitle')}
+        {t(resolveSellSuccessSubtitleKey(paymentNeed))}
       </Text>
 
       {/* Acciones */}

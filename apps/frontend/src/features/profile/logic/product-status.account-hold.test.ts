@@ -3,6 +3,7 @@ import {
   getStatusColor,
   isAccountHeld,
   isProductHistory,
+  resolveListingStatusKey,
 } from './product-status';
 import en from '@/shared/i18n/locales/en/profile.json';
 import es from '@/shared/i18n/locales/es/profile.json';
@@ -58,6 +59,15 @@ describe('listings held by an account suspension', () => {
       expect(en.listings.status).toHaveProperty(status);
       expect(es.listings.status).toHaveProperty(status);
     }
+  });
+
+  it('a held listing stays held even when payments are missing', () => {
+    expect(
+      resolveListingStatusKey(
+        { status: 'hidden', status_before_account_hold: 'verified' },
+        'setup',
+      ),
+    ).toBe('ACCOUNT_HOLD');
   });
 
   it('has the held label in both languages', () => {

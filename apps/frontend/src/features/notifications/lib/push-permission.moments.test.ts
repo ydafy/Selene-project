@@ -16,7 +16,9 @@ test('the checkout success screen offers the purchase moment', () => {
 
 test('the listing moment is offered after a verification is sent, once its success dialog closes', () => {
   expect(read('app/verify/[id].tsx')).toMatch(
-    /onConfirm: \(\) => \{\s*closeDialog\(\);\s*router\.replace\('\/\(tabs\)\/profile'\);\s*(?:\/\/[^\n]*\s*)?void offerPushPermission\('listing'\);/,
+    // The route is the profile, or the payments guide while payments are missing
+    // (odd/tasks/first-listing-payment-setup.md, S2).
+    /onConfirm: \(\) => \{\s*closeDialog\(\);\s*router\.replace\(resolveVerifySuccessRoute\(paymentNeedRef\.current\)\);\s*(?:\/\/[^\n]*\s*)?void offerPushPermission\('listing'\);/,
   );
 });
 
