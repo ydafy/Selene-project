@@ -24,7 +24,9 @@ const resolved: UserReport = {
 };
 
 it('shows the reason label, the details and the open status', () => {
-  const html = renderToStaticMarkup(<UserReportsList reports={[open]} />);
+  const html = renderToStaticMarkup(
+    <UserReportsList reports={[open]} total={1} />,
+  );
   expect(html).toContain('Fraude o estafa');
   expect(html).toContain('Pidió el pago fuera de la app');
   expect(html).toContain('Abierta');
@@ -33,7 +35,9 @@ it('shows the reason label, the details and the open status', () => {
 });
 
 it('shows the outcome of a resolved report and no details when there are none', () => {
-  const html = renderToStaticMarkup(<UserReportsList reports={[resolved]} />);
+  const html = renderToStaticMarkup(
+    <UserReportsList reports={[resolved]} total={1} />,
+  );
   expect(html).toContain('Spam');
   expect(html).toContain('Resuelta: usuario advertido');
   expect(html).not.toContain('Sin detalles');
@@ -41,7 +45,14 @@ it('shows the outcome of a resolved report and no details when there are none', 
 });
 
 it('keeps the empty state when the user has no reports', () => {
-  const html = renderToStaticMarkup(<UserReportsList reports={[]} />);
+  const html = renderToStaticMarkup(<UserReportsList reports={[]} total={0} />);
   expect(html).toContain('Este usuario no tiene denuncias.');
   expect(html).toContain('0 reportes');
+});
+
+it('counts every report in the header, not only the listed ones', () => {
+  const html = renderToStaticMarkup(
+    <UserReportsList reports={[open]} total={23} />,
+  );
+  expect(html).toContain('23 reportes');
 });

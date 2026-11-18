@@ -15,14 +15,21 @@ export type UserReport = Pick<
   reporter: Pick<Tables<'profiles'>, 'username'> | null;
 };
 
-export const UserReportsList = ({ reports }: { reports: UserReport[] }) => (
+export const UserReportsList = ({
+  reports,
+  total,
+}: {
+  reports: UserReport[];
+  /** Every report against the user; the list shows at most the newest 20. */
+  total: number;
+}) => (
   <div className="bg-state-gray rounded-3xl border border-white/5 overflow-hidden shadow-xl">
     <div className="p-6 border-b border-white/5 bg-fire/5 flex justify-between items-center">
       <h3 className="font-bold text-fire flex items-center gap-2 text-sm uppercase tracking-wider">
         <AlertTriangle size={18} /> Denuncias Recibidas
       </h3>
       <span className="text-xs font-bold text-fire bg-fire/10 px-2 py-1 rounded-lg">
-        {reports.length} reportes
+        {total} reportes
       </span>
     </div>
     <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
