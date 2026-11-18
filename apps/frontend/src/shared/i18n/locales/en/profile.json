@@ -3,7 +3,7 @@
     "orders": "My Orders",
     "listings": "My Listings",
     "addresses": "Addresses",
-    "payments": "Payments",
+    "payments": "Payouts",
     "paymentMethods": "Payment methods"
   },
   "paymentMethods": {
