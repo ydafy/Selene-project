@@ -57,13 +57,43 @@
     "memory_slots": "Ranuras de memoria"
   },
   "menu": {
-    "report": "Reportar anuncio",
     "blockSeller": "Bloquear vendedor",
     "cancel": "Cancelar",
-    "reportSentTitle": "Reporte enviado",
-    "reportSentMsg": "Revisaremos esta publicación.",
     "userBlockedTitle": "Usuario bloqueado",
     "userBlockedMsg": "No volverás a ver sus productos."
+  },
+  "report": {
+    "product": {
+      "action": "Reportar anuncio",
+      "title": "Reportar este anuncio",
+      "sentTitle": "Reporte enviado",
+      "sentMsg": "Revisaremos este anuncio.",
+      "alreadyTitle": "Ya lo reportaste",
+      "alreadyMsg": "Ya reportaste este anuncio. Lo estamos revisando."
+    },
+    "user": {
+      "action": "Reportar usuario",
+      "title": "Reportar a este usuario",
+      "sentTitle": "Reporte enviado",
+      "sentMsg": "Revisaremos a este usuario.",
+      "alreadyTitle": "Ya lo reportaste",
+      "alreadyMsg": "Ya reportaste a este usuario. Lo estamos revisando."
+    },
+    "reasonLabel": "¿Por qué lo reportas?",
+    "detailsLabel": "Detalles (opcional)",
+    "detailsPlaceholder": "Cuéntanos qué pasó",
+    "submit": "Enviar reporte",
+    "errorTitle": "No se envió el reporte",
+    "errorMsg": "Algo salió mal. Inténtalo de nuevo.",
+    "reasons": {
+      "fraud": "Fraude o estafa",
+      "counterfeit_or_misdescribed": "Falsificado o no coincide con la descripción",
+      "prohibited_item": "Artículo prohibido",
+      "offensive_content": "Contenido ofensivo",
+      "harassment": "Acoso",
+      "spam": "Spam",
+      "other": "Otro"
+    }
   },
   "search": {
     "title": "Comprar",
