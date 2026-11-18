@@ -32,8 +32,7 @@ tests {
 }
 
 docs {
-  The body `error` is zod 4's `ZodError.message` (JSON of issues); `usePaymentMethods` only
-  branches on `PAYMENT_LIMIT_REACHED`. Validation runs after the Bearer token check and before
-  the Stripe customer lookup or creation, so nothing is created or soft-deleted. Run after
-  auth/login-buyer.
+  The body `error` is zod 4's `ZodError.message` (JSON of issues). Validation runs after the
+  Bearer token check and before the Stripe customer lookup or creation, so nothing is created.
+  Run after auth/login-buyer.
 }

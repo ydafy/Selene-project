@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test';
 
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import {
   ADDRESS_ID,
   BUYER_ID,
@@ -24,7 +23,7 @@ import {
 
 const NO_MONEY_EFFECTS = {
   customers: 0,
-  ephemeralKeys: 0,
+  customerSessions: 0,
   paymentIntents: 0,
   writes: 0,
 };
@@ -151,7 +150,7 @@ describe('create-connect-payment handler: successful checkout', () => {
       orderId: 'uuid-1',
       clientSecret: 'pi_1_secret',
       customer: CUSTOMER_ID,
-      ephemeralKey: 'ek_secret',
+      customerSessionClientSecret: 'cuss_secret',
       amount: expected.amount,
       transferGroup: 'selene_order_uuid-1',
     });
@@ -163,7 +162,7 @@ describe('create-connect-payment handler: successful checkout', () => {
       'from:products',
       'from:profiles_private',
       'from:profiles_private',
-      'stripe.ephemeralKeys.create',
+      'stripe.customerSessions.create',
       'stripe.paymentIntents.create',
     ]);
     expect(result.rpcs).toEqual([RESERVE_RPC]);
@@ -192,8 +191,27 @@ describe('create-connect-payment handler: successful checkout', () => {
       },
     ]);
     expect(result.customersCreate).toEqual([]);
-    expect(result.ephemeralKeysCreate).toEqual([
-      [{ customer: CUSTOMER_ID }, { apiVersion: STRIPE_API_VERSION }],
+    expect(result.customerSessionsCreate).toEqual([
+      [
+        {
+          customer: CUSTOMER_ID,
+          components: {
+            mobile_payment_element: {
+              enabled: true,
+              features: {
+                payment_method_redisplay: 'enabled',
+                payment_method_save: 'enabled',
+                payment_method_remove: 'enabled',
+                payment_method_allow_redisplay_filters: [
+                  'always',
+                  'limited',
+                  'unspecified',
+                ],
+              },
+            },
+          },
+        },
+      ],
     ]);
     expect(result.paymentIntentsCreate).toEqual([[expected, {}]]);
     expect(expected).not.toHaveProperty('transfer_data');
@@ -235,10 +253,12 @@ describe('create-connect-payment handler: successful checkout', () => {
     expect(result.calls.slice(-4)).toEqual([
       'stripe.customers.create',
       'from:profiles_private',
-      'stripe.ephemeralKeys.create',
+      'stripe.customerSessions.create',
       'stripe.paymentIntents.create',
     ]);
-    expect(result.ephemeralKeysCreate[0][0]).toEqual({ customer: 'cus_new' });
+    expect(
+      (result.customerSessionsCreate[0][0] as { customer: string }).customer,
+    ).toBe('cus_new');
     expect(
       (result.paymentIntentsCreate[0][0] as { customer: string }).customer,
     ).toBe('cus_new');
@@ -401,13 +421,35 @@ describe('create-connect-payment handler: failures before the charge', () => {
     expect(result.paymentIntentsCreate).toEqual([]);
   });
 
-  it('answers 500 EPHEMERAL_KEY_FAILED without a key secret and creates no PaymentIntent', async () => {
-    const result = await runCreateConnectPayment({ ephemeralSecret: null });
+  for (const [label, options] of [
+    ['Stripe refuses the CustomerSession', { customerSessionError: 'boom' }],
+    [
+      'the CustomerSession has no client secret',
+      { customerSessionSecret: null },
+    ],
+  ] as const) {
+    it(`answers 500 CUSTOMER_SESSION_FAILED when ${label}, releases the reservation and creates no PaymentIntent`, async () => {
+      const result = await runCreateConnectPayment(options);
 
-    expect(result.status).toBe(500);
-    expect(result.body).toEqual({ error: 'EPHEMERAL_KEY_FAILED' });
-    expect(result.paymentIntentsCreate).toEqual([]);
-    expect(result.rpcs).toEqual([RESERVE_RPC]);
+      expect(result.status).toBe(500);
+      expect(result.body).toEqual({ error: 'CUSTOMER_SESSION_FAILED' });
+      expect(result.paymentIntentsCreate).toEqual([]);
+      expect(result.rpcs).toEqual([RESERVE_RPC, RELEASE_RPC]);
+      expect(result.calls.slice(-2)).toEqual([
+        'stripe.customerSessions.create',
+        'rpc:fn_release_products',
+      ]);
+    });
+  }
+
+  it('never creates an ephemeral key', async () => {
+    const result = await runCreateConnectPayment();
+
+    expect(result.status).toBe(200);
+    expect(result.body).not.toHaveProperty('ephemeralKey');
+    expect(result.calls.some((call) => call.includes('ephemeralKeys'))).toBe(
+      false,
+    );
   });
 });
 

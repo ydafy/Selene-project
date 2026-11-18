@@ -1,0 +1,79 @@
+meta {
+  name: manage-payment-methods-create-customer-session
+  type: http
+  seq: 199
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "action": "create_customer_session"
+  }
+}
+
+script:post-response {
+  const key = bru.getEnvVar("secretKey");
+  const profile = await bru.sendRequest({
+    method: "GET",
+    url:
+      bru.getEnvVar("baseUrl") +
+      "/rest/v1/profiles_private?id=eq.00000000-0000-4000-8000-000000000003&select=stripe_customer_id",
+    headers: { apikey: key, Authorization: "Bearer " + key },
+  });
+  bru.setVar("pmStoredCustomer", JSON.stringify(profile.data));
+  const again = await bru.sendRequest({
+    method: "POST",
+    url: bru.getEnvVar("baseUrl") + "/functions/v1/manage-payment-methods",
+    headers: {
+      apikey: bru.getEnvVar("publishableKey"),
+      Authorization: "Bearer " + bru.getVar("buyerToken"),
+      "Content-Type": "application/json",
+    },
+    data: { action: "create_customer_session" },
+  });
+  bru.setVar("pmSecondSession", JSON.stringify({ status: again.status, body: again.data }));
+}
+
+tests {
+  test("returns a CustomerSheet session for the buyer's Stripe customer and nothing else", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(Object.keys(body).sort()).to.deep.equal(["customerId", "customerSessionClientSecret"]);
+    expect(body.customerId).to.match(/^cus_/);
+    expect(body.customerSessionClientSecret).to.match(/^cuss_secret_/);
+  });
+
+  test("the customer is the one stored for the buyer", function () {
+    expect(JSON.parse(bru.getVar("pmStoredCustomer"))).to.deep.equal([
+      { stripe_customer_id: res.getBody().customerId },
+    ]);
+  });
+
+  test("a second opening reuses the stored customer and gets a new session", function () {
+    const second = JSON.parse(bru.getVar("pmSecondSession"));
+    expect(second.status).to.equal(200);
+    expect(second.body.customerId).to.equal(res.getBody().customerId);
+    expect(second.body.customerSessionClientSecret).to.match(/^cuss_secret_/);
+    expect(second.body.customerSessionClientSecret).to.not.equal(
+      res.getBody().customerSessionClientSecret,
+    );
+  });
+}
+
+docs {
+  Calls the Stripe sandbox: a CustomerSession with `components.customer_sheet` enabled, removal
+  enabled and every `allow_redisplay` value shown (supabase/functions/_shared/stripe/customer-session.ts).
+  The first run creates a sandbox customer for the buyer and stores it in profiles_private; the second
+  call proves the stored customer is reused and each opening gets a new session. Selene reads and
+  writes no card table. Run after auth/login-buyer.
+}

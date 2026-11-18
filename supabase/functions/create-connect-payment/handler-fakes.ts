@@ -72,8 +72,10 @@ export interface RunOptions {
   buyerProfile?: Row | null;
   customerUpdateError?: string;
   newCustomerId?: string;
-  /** `null` makes Stripe return an ephemeral key without a secret. */
-  ephemeralSecret?: string | null;
+  /** `null` makes Stripe return a CustomerSession without a client secret. */
+  customerSessionSecret?: string | null;
+  /** `customerSessions.create` throws with this message. */
+  customerSessionError?: string;
   piError?: string;
   pi?: Row;
   /** Values `randomUUID` returns, in order. */
@@ -95,7 +97,7 @@ export async function runCreateConnectPayment(options: RunOptions = {}) {
   const supabaseClients: unknown[][] = [];
   const stripeClients: string[] = [];
   const customersCreate: unknown[][] = [];
-  const ephemeralKeysCreate: unknown[][] = [];
+  const customerSessionsCreate: unknown[][] = [];
   const paymentIntentsCreate: unknown[][] = [];
   const uuids = [
     ...(options.uuids ?? ['uuid-1', 'uuid-2', 'uuid-3', 'uuid-4']),
@@ -219,16 +221,19 @@ export async function runCreateConnectPayment(options: RunOptions = {}) {
         return { id: options.newCustomerId ?? 'cus_new' };
       },
     },
-    ephemeralKeys: {
+    customerSessions: {
       create: async (...args: unknown[]) => {
-        calls.push('stripe.ephemeralKeys.create');
-        ephemeralKeysCreate.push(args);
+        calls.push('stripe.customerSessions.create');
+        customerSessionsCreate.push(args);
+        if (options.customerSessionError) {
+          throw new Error(options.customerSessionError);
+        }
         return {
-          id: 'ephkey_1',
-          secret:
-            options.ephemeralSecret === undefined
-              ? 'ek_secret'
-              : (options.ephemeralSecret ?? undefined),
+          object: 'customer_session',
+          client_secret:
+            options.customerSessionSecret === undefined
+              ? 'cuss_secret'
+              : (options.customerSessionSecret ?? ''),
         };
       },
     },
@@ -318,7 +323,7 @@ export async function runCreateConnectPayment(options: RunOptions = {}) {
     supabaseClients,
     stripeClients,
     customersCreate,
-    ephemeralKeysCreate,
+    customerSessionsCreate,
     paymentIntentsCreate,
   };
 }
@@ -329,7 +334,7 @@ export function moneyEffects(
 ) {
   return {
     customers: result.customersCreate.length,
-    ephemeralKeys: result.ephemeralKeysCreate.length,
+    customerSessions: result.customerSessionsCreate.length,
     paymentIntents: result.paymentIntentsCreate.length,
     writes: result.queries.filter((q) => q.ops.some(([op]) => op === 'update'))
       .length,

@@ -51,10 +51,6 @@
     "protectionDesc": "Seguro Selene cubre el procesamiento del pago y mantiene tu compra protegida si el hardware no llega, está dañado o no coincide con la descripción técnica. Sujeto a Términos y Condiciones."
   },
   "payment": {
-    "selectMethod": "Método de pago",
-    "expires": "Expira {{month}}/{{year}}",
-    "limitReached": "Límite de 3 tarjetas alcanzado",
-    "endingIn": "terminada en",
     "securityTitle": "Seguridad de Pago",
     "reservedTitle": "Hardware Apartado",
     "reservingTitle": "Apartando Hardware...",
@@ -75,17 +71,7 @@
     "noAddressError": "Falta la dirección de envío.",
     "outOfStockMsg": "Alguien más acaba de comprar uno de tus productos.",
     "genericError": "Ocurrió un error al conectar con el servidor.",
-    "sellerNotReadyError": "Uno o más vendedores aún no pueden recibir pagos. Quita esos artículos de tu carrito o inténtalo más tarde.",
-    "addCard": "Agregar nueva tarjeta",
-    "verifyingCard": "Verificando tarjeta...",
-    "connectingStripe": "Conectando con Stripe...",
-    "loadFailed": "No pudimos cargar tus tarjetas. Revisa tu conexión.",
-    "emptyTitle": "Sin tarjetas",
-    "emptyMessage": "Agrega un método de pago para continuar.",
-    "deleteTitle": "Eliminar tarjeta",
-    "deleteDescription": "¿Estás seguro de que quieres eliminar la tarjeta terminada en {{last4}}?",
-    "deleteAction": "Eliminar",
-    "deleteFailed": "No se pudo eliminar la tarjeta."
+    "sellerNotReadyError": "Uno o más vendedores aún no pueden recibir pagos. Quita esos artículos de tu carrito o inténtalo más tarde."
   },
 
   "success": {

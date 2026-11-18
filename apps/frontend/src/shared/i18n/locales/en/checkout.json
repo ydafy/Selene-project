@@ -50,10 +50,6 @@
     "protectionDesc": "Seguro Selene covers payment processing and keeps your purchase protected if the hardware doesn't arrive, is damaged, or doesn't match the technical description. Subject to Terms and Conditions."
   },
   "payment": {
-    "selectMethod": "Payment Method",
-    "expires": "Expires {{month}}/{{year}}",
-    "limitReached": "3-card limit reached",
-    "endingIn": "Ending in",
     "securityTitle": "Payment Security",
     "reservedTitle": "Hardware Reserved",
     "reservingTitle": "Reserving Hardware...",
@@ -72,17 +68,7 @@
     "noAddressError": "Missing shipping address.",
     "outOfStockMsg": "Someone else just purchased one of your products.",
     "genericError": "An error occurred while connecting to the server.",
-    "sellerNotReadyError": "One or more sellers can't receive payments yet. Remove those items from your cart or try again later.",
-    "addCard": "Add new card",
-    "verifyingCard": "Verifying card...",
-    "connectingStripe": "Connecting to Stripe...",
-    "loadFailed": "We could not load your cards. Check your connection.",
-    "emptyTitle": "No cards",
-    "emptyMessage": "Add a payment method to continue.",
-    "deleteTitle": "Delete card",
-    "deleteDescription": "Are you sure you want to delete the card ending in {{last4}}?",
-    "deleteAction": "Delete",
-    "deleteFailed": "The card could not be deleted."
+    "sellerNotReadyError": "One or more sellers can't receive payments yet. Remove those items from your cart or try again later."
   },
   "success": {
     "title": "Payment Confirmed!",

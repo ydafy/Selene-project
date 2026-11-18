@@ -20,12 +20,10 @@ import { ScreenHeader } from '@/shared/ui/layout/screen-header';
 import { Checkbox } from '@/shared/ui/form/checkbox';
 import { ConfirmDialog } from '@/shared/ui/feedback/confirm-dialog';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
-import { PaymentMethodPickerModal } from '@/features/checkout/components/payment-method-picker-modal';
 
 // Componentes de Checkout
 import { CheckoutItem } from '@/features/checkout/components/checkout-item';
 import { AddressSection } from '@/shared/ui/address/address-section';
-import { PaymentSection } from '@/features/checkout/components/payment-section';
 import { SummaryBreakdown } from '@/features/checkout/components/summary-breakdown';
 
 // Stores, Hooks y Servicios
@@ -33,7 +31,6 @@ import { useCartStore } from '@/shared/store/use-cart-store';
 import { useCheckoutStore } from '@/shared/store/use-checkout-store';
 import { useAddresses } from '@/shared/hooks/use-addresses';
 import { useOrderCalculations } from '@/features/orders/hooks/use-order-calculations';
-import { usePaymentMethods } from '@/features/checkout/hooks/use-payment-methods';
 import { formatCents } from '@/shared/utils/money/format-cents';
 import { Address } from '@selene/types';
 import { useAuthContext } from '@/shared/lib/auth/auth-provider';
@@ -47,22 +44,13 @@ export default function CheckoutSummaryScreen() {
 
   // Modales
   const addressModalRef = useRef<BottomSheetModal>(null);
-  const paymentModalRef = useRef<BottomSheetModal>(null);
 
   // Stores
   const cartItems = useCartStore((state) => state.items);
-  const {
-    selectedAddress,
-    setSelectedAddress,
-    selectedPaymentMethodId,
-    setSelectedPaymentMethodId,
-    status,
-    setStatus,
-    setError,
-  } = useCheckoutStore();
+  const { selectedAddress, setSelectedAddress, status, setStatus, setError } =
+    useCheckoutStore();
 
   const { addresses, isLoading: loadingAddresses } = useAddresses();
-  const { methods, isLoadingMethods } = usePaymentMethods();
   const { subtotalCents, serviceFeeCents, totalCents } =
     useOrderCalculations(cartItems);
 
@@ -72,11 +60,6 @@ export default function CheckoutSummaryScreen() {
     useState(false);
   const [unavailableItems, setUnavailableItems] = useState<string[]>([]);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
-
-  const selectedPaymentMethod = useMemo(
-    () => methods.find((m) => m.id === selectedPaymentMethodId),
-    [methods, selectedPaymentMethodId],
-  );
 
   const isSelfPurchase = useMemo(
     () => cartItems.some((item) => item.seller_id === session?.user.id),
@@ -97,18 +80,6 @@ export default function CheckoutSummaryScreen() {
     }
   }, [addresses, loadingAddresses, selectedAddress, setSelectedAddress]);
 
-  useEffect(() => {
-    if (!isLoadingMethods && methods.length > 0 && !selectedPaymentMethodId) {
-      const defaultMethod = methods.find((m) => m.is_default) || methods[0];
-      setSelectedPaymentMethodId(defaultMethod.id);
-    }
-  }, [
-    methods,
-    isLoadingMethods,
-    selectedPaymentMethodId,
-    setSelectedPaymentMethodId,
-  ]);
-
   // --- MANEJADORES ---
   const handleAddressSelect = (address: Address) => {
     setSelectedAddress(address);
@@ -119,7 +90,6 @@ export default function CheckoutSummaryScreen() {
     // 1. VALIDACIÓN DECLARATIVA CON ZOD
     const validation = checkoutValidationSchema.safeParse({
       addressId: selectedAddress?.id,
-      paymentMethodId: selectedPaymentMethodId,
       isTermsAccepted,
     });
 
@@ -236,15 +206,6 @@ export default function CheckoutSummaryScreen() {
           isLoading={loadingAddresses}
         />
 
-        {/* SECCIÓN MÉTODO DE PAGO (Ilumina en rojo si falta) */}
-        <PaymentSection
-          method={selectedPaymentMethod}
-          onPress={() => paymentModalRef.current?.present()}
-          showError={showErrors && !selectedPaymentMethodId}
-          isLoading={isLoadingMethods}
-          label={t('payment.selectMethod')}
-        />
-
         {/* LISTADO DE PRODUCTOS */}
         <Box marginBottom="l">
           <ThemedText variant="subheader-lg" marginBottom="s" color="primary">
@@ -327,7 +288,6 @@ export default function CheckoutSummaryScreen() {
         onCancel={() => setIsProtectionDialogVisible(false)}
       />
 
-      <PaymentMethodPickerModal innerRef={paymentModalRef} />
       <AddressPickerModal
         innerRef={addressModalRef}
         onSelect={handleAddressSelect}

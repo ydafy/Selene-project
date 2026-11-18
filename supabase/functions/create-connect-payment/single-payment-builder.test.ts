@@ -805,7 +805,7 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
     const ctx = {
       orderId: '11111111-2222-3333-4444-555555555555',
       customerId: 'cus_1',
-      ephemeralKeySecret: 'ek_secret_1',
+      customerSessionClientSecret: 'cuss_secret_1',
       transferGroup: 'selene_order_11111111-2222-3333-4444-555555555555',
     };
     const pi = { client_secret: 'pi_secret_x', amount: 187_800 } as const;
@@ -816,7 +816,7 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
       orderId: ctx.orderId,
       clientSecret: 'pi_secret_x',
       customer: 'cus_1',
-      ephemeralKey: 'ek_secret_1',
+      customerSessionClientSecret: 'cuss_secret_1',
       amount: 187_800,
       transferGroup: ctx.transferGroup,
     });
@@ -826,7 +826,7 @@ describe('single-payment-builder > buildCreateConnectPaymentResponse', () => {
     const ctx = {
       orderId: 'o_1',
       customerId: 'cus_1',
-      ephemeralKeySecret: 'ek_1',
+      customerSessionClientSecret: 'cuss_1',
       transferGroup: 'selene_order_o_1',
     };
     const pi = { client_secret: 'cs_1', amount: 5000 } as const;

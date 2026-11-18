@@ -22,17 +22,18 @@ body:json {
 }
 
 tests {
-  test("returns a card SetupIntent, an ephemeral key and the buyer's customer", function () {
-    expect(res.getStatus()).to.equal(200);
-    const body = res.getBody();
-    expect(body.setupIntent).to.match(/^seti_\w+_secret_\w+$/);
-    expect(body.ephemeralKey).to.match(/^ek_test_/);
-    expect(body.customer).to.match(/^cus_/);
+  test("the removed get_setup_config action fails with one invalid_value issue", function () {
+    expect(res.getStatus()).to.equal(400);
+    const issues = JSON.parse(res.getBody().error);
+    expect(issues).to.have.length(1);
+    expect(issues[0].code).to.equal("invalid_value");
+    expect(issues[0].path).to.deep.equal(["action"]);
   });
 }
 
 docs {
-  Calls the Stripe sandbox: the SetupIntent is created with `allowed_payment_method_types: ['card']`
-  on STRIPE_API_VERSION (endive removed `payment_method_types`), and the ephemeral key with the same
-  version. The first run creates a sandbox customer for the buyer. Run after auth/login-buyer.
+  Stripe's sheets own saved cards (odd/tasks/table-cleanup.md, S7b): the old ephemeral-key setup,
+  list and delete actions are gone, and the function accepts only `create_customer_session` and
+  `create_setup_intent`. Validation runs after the Bearer token check and before the Stripe
+  customer lookup, so the request creates nothing. Run after auth/login-buyer.
 }

@@ -1,30 +1,26 @@
 import type { SupabaseClient } from '../_shared/supabase-js.ts';
 import type Stripe from '../_shared/stripe/sdk.ts';
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
+import {
+  CUSTOMER_SESSION_FAILED,
+  createCustomerSheetSession,
+  stripeFailureReason,
+  type CustomerSessionStripe,
+} from '../_shared/stripe/customer-session.ts';
 
 import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
 
 export type SupabaseAdminClient = SupabaseClient;
 
 // The Stripe calls this function makes; index.ts passes the real client.
-export interface PaymentMethodsStripe {
+export interface PaymentMethodsStripe extends CustomerSessionStripe {
   customers: {
     create: (params: Stripe.CustomerCreateParams) => Promise<{ id: string }>;
-  };
-  ephemeralKeys: {
-    create: (
-      params: Stripe.EphemeralKeyCreateParams,
-      options: { apiVersion: string },
-    ) => Promise<{ secret?: string }>;
   };
   setupIntents: {
     create: (
       params: Stripe.SetupIntentCreateParams,
       options: { idempotencyKey: string },
     ) => Promise<{ client_secret: string | null }>;
-  };
-  paymentMethods: {
-    detach: (paymentMethodId: string) => Promise<unknown>;
   };
 }
 
@@ -64,6 +60,26 @@ const authRequired = () =>
     headers: { 'Content-Type': 'application/json' },
   });
 
+const SETUP_INTENT_FAILED = 'SETUP_INTENT_FAILED';
+
+const json = (body: Record<string, unknown>) =>
+  new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// A Stripe call the sheet cannot open without: 500 with a stable code, the
+// Stripe message only in the log.
+const stripeFailure = (code: string, caught: unknown) => {
+  log('ERROR', 'Stripe call failed', {
+    code,
+    error: stripeFailureReason(caught),
+  });
+  return new Response(JSON.stringify({ error: code }), {
+    status: 500,
+    headers: { 'Content-Type': 'application/json' },
+  });
+};
+
 export function createManagePaymentMethodsHandler(
   deps: ManagePaymentMethodsDependencies,
 ) {
@@ -88,8 +104,7 @@ export function createManagePaymentMethodsHandler(
 
       // 2. Validar Input
       const body = await req.json().catch(() => ({}));
-      const { action, paymentMethodId } =
-        ManagePaymentMethodsRequestSchema.parse(body);
+      const { action } = ManagePaymentMethodsRequestSchema.parse(body);
 
       // 3. Asegurar Stripe Customer
       const { data: profile } = await supabaseAdmin
@@ -112,106 +127,54 @@ export function createManagePaymentMethodsHandler(
           .eq('id', user.id);
       }
 
+      // Stripe's CustomerSheet owns the saved cards: it lists and removes
+      // them through the session and adds one by confirming the SetupIntent.
+      // Selene keeps no copy and no card limit of its own.
       switch (action) {
-        case 'get_setup_config': {
-          // Solo contamos tarjetas activas
-          const { count } = await supabaseAdmin
-            .from('payment_methods')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .is('deleted_at', null);
-
-          if (count && count >= 3) throw new Error('PAYMENT_LIMIT_REACHED');
-
-          const [ephemeralKey, setupIntent] = await Promise.all([
-            stripe.ephemeralKeys.create(
-              { customer: customerId },
-              { apiVersion: STRIPE_API_VERSION },
-            ),
-            stripe.setupIntents.create(
-              {
-                customer: customerId,
-                allowed_payment_method_types: ['card'],
-                metadata: { user_id: user.id, app_name: APP_NAME },
-              },
-              {
-                idempotencyKey:
-                  req.headers.get('idempotency-key') || crypto.randomUUID(),
-              },
-            ),
-          ]);
-
-          return new Response(
-            JSON.stringify({
-              setupIntent: setupIntent.client_secret,
-              ephemeralKey: ephemeralKey.secret,
-              customer: customerId,
-              publishableKey: deps.getEnv('STRIPE_PUBLISHABLE_KEY'),
-            }),
-            { headers: { 'Content-Type': 'application/json' } },
-          );
-        }
-
-        case 'list_payment_methods': {
-          const { data: methods } = await supabaseAdmin
-            .from('payment_methods')
-            .select('*')
-            .eq('user_id', user.id)
-            .is('deleted_at', null) // Filtrar las borradas
-            .order('created_at', { ascending: false });
-
-          return new Response(JSON.stringify({ methods: methods || [] }), {
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-
-        case 'delete_payment_method': {
-          if (!paymentMethodId) throw new Error('PAYMENT_METHOD_ID_REQUIRED');
-
-          const { data: pm } = await supabaseAdmin
-            .from('payment_methods')
-            .select('stripe_payment_method_id')
-            .eq('id', paymentMethodId)
-            .eq('user_id', user.id)
-            .is('deleted_at', null)
-            .maybeSingle();
-
-          if (!pm) {
-            return new Response(
-              JSON.stringify({ success: true, message: 'Already deleted' }),
-              {
-                headers: { 'Content-Type': 'application/json' },
-              },
-            );
-          }
-
+        case 'create_customer_session': {
+          let customerSessionClientSecret: string;
           try {
-            await stripe.paymentMethods.detach(pm.stripe_payment_method_id);
-            log('INFO', 'Tarjeta desvinculada de Stripe', {
-              pmId: pm.stripe_payment_method_id,
-            });
+            customerSessionClientSecret = await createCustomerSheetSession(
+              stripe,
+              customerId,
+            );
           } catch (caught) {
-            const stripeError = caught as Error;
-            log('WARN', 'Fallo al desvincular en Stripe (continuando con DB)', {
-              error: stripeError.message,
-            });
+            return stripeFailure(CUSTOMER_SESSION_FAILED, caught);
           }
-
-          // SOFT DELETE: No usamos .delete(), usamos .update()
-          const { error: dbError } = await supabaseAdmin
-            .from('payment_methods')
-            .update({ deleted_at: new Date().toISOString() })
-            .eq('id', paymentMethodId);
-
-          if (dbError) throw new Error(`DB_DELETE_FAILED: ${dbError.message}`);
-
-          return new Response(JSON.stringify({ success: true }), {
-            headers: { 'Content-Type': 'application/json' },
-          });
+          return json({ customerId, customerSessionClientSecret });
         }
 
-        default:
-          throw new Error('INVALID_ACTION');
+        case 'create_setup_intent': {
+          let setupIntentClientSecret: string | null;
+          try {
+            ({ client_secret: setupIntentClientSecret } =
+              await stripe.setupIntents.create(
+                {
+                  customer: customerId,
+                  allowed_payment_method_types: ['card'],
+                  // Selene charges a saved card only with the buyer in the
+                  // sheet, never off-session.
+                  usage: 'on_session',
+                  metadata: { user_id: user.id, app_name: APP_NAME },
+                },
+                {
+                  idempotencyKey:
+                    req.headers.get('idempotency-key') || crypto.randomUUID(),
+                },
+              ));
+          } catch (caught) {
+            return stripeFailure(SETUP_INTENT_FAILED, caught);
+          }
+          if (!setupIntentClientSecret) {
+            return stripeFailure(SETUP_INTENT_FAILED, 'no client secret');
+          }
+          return json({ setupIntentClientSecret });
+        }
+
+        default: {
+          const unknownAction: never = action;
+          throw new Error(`INVALID_ACTION: ${String(unknownAction)}`);
+        }
       }
     } catch (caught) {
       const error = caught as Error;

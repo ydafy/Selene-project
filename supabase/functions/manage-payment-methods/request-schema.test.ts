@@ -3,49 +3,37 @@ import { describe, expect, it } from 'bun:test';
 import { ManagePaymentMethodsRequestSchema } from './request-schema.ts';
 
 describe('manage-payment-methods request schema', () => {
-  it('accepts each action, with an optional RFC 9562 payment method id', () => {
-    for (const action of [
-      'get_setup_config',
-      'list_payment_methods',
-      'delete_payment_method',
-    ]) {
+  it('accepts exactly the two sheet actions', () => {
+    for (const action of ['create_customer_session', 'create_setup_intent']) {
       expect(
         ManagePaymentMethodsRequestSchema.safeParse({ action }).data,
       ).toEqual({ action });
     }
-
-    const request = {
-      action: 'delete_payment_method',
-      paymentMethodId: '00000000-0000-4000-8000-0000000000c1',
-    };
-    expect(ManagePaymentMethodsRequestSchema.safeParse(request).data).toEqual(
-      request,
-    );
   });
 
-  it('rejects an unknown action with one invalid_value issue', () => {
-    const result = ManagePaymentMethodsRequestSchema.safeParse({
-      action: 'drop_everything',
-    });
-
-    expect(result.error?.issues).toHaveLength(1);
-    expect(result.error?.issues[0]).toMatchObject({
-      code: 'invalid_value',
-      path: ['action'],
-    });
+  it('drops a paymentMethodId: Selene no longer addresses a card by id', () => {
+    expect(
+      ManagePaymentMethodsRequestSchema.safeParse({
+        action: 'create_setup_intent',
+        paymentMethodId: '00000000-0000-4000-8000-0000000000c1',
+      }).data,
+    ).toEqual({ action: 'create_setup_intent' });
   });
 
-  it('rejects a non-RFC payment method id, which zod 3 accepted', () => {
-    const result = ManagePaymentMethodsRequestSchema.safeParse({
-      action: 'delete_payment_method',
-      paymentMethodId: '11111111-2222-3333-4444-555555555555',
-    });
+  for (const action of [
+    'list_payment_methods',
+    'delete_payment_method',
+    'get_setup_config',
+    'drop_everything',
+  ]) {
+    it(`rejects ${action} with one invalid_value issue`, () => {
+      const result = ManagePaymentMethodsRequestSchema.safeParse({ action });
 
-    expect(result.error?.issues).toHaveLength(1);
-    expect(result.error?.issues[0]).toMatchObject({
-      code: 'invalid_format',
-      format: 'uuid',
-      path: ['paymentMethodId'],
+      expect(result.error?.issues).toHaveLength(1);
+      expect(result.error?.issues[0]).toMatchObject({
+        code: 'invalid_value',
+        path: ['action'],
+      });
     });
-  });
+  }
 });

@@ -30,7 +30,7 @@ describe('create-connect-payment allocation validation', () => {
       },
     ]);
     expect(result.calls.slice(-2)).toEqual([
-      'stripe.ephemeralKeys.create',
+      'stripe.customerSessions.create',
       'rpc:fn_release_products',
     ]);
     expect(result.paymentIntentsCreate).toEqual([]);

@@ -21,7 +21,7 @@ export const singleSecretResponse = {
   orderId: 'o_1',
   clientSecret: 'pi_1_secret_1',
   customer: 'cus_1',
-  ephemeralKey: 'ek_1',
+  customerSessionClientSecret: 'cuss_1',
   amount: 5000,
   transferGroup: 'selene_order_o_1',
 } satisfies CreateConnectPaymentResponse;
@@ -29,7 +29,7 @@ export const singleSecretResponse = {
 export const legacyPerSellerResponse = {
   orderId: 'o_1',
   customer: 'cus_1',
-  ephemeralKey: 'ek_1',
+  customerSessionClientSecret: 'cuss_1',
   // @ts-expect-error the per-seller paymentIntents[] shape is not the contract
   paymentIntents: [{ sellerId: 's_1', clientSecret: 'cs_1', amount: 2500 }],
 } satisfies Partial<CreateConnectPaymentResponse>;
@@ -39,7 +39,7 @@ export const responseWithoutTransferGroup: CreateConnectPaymentResponse = {
   orderId: 'o_1',
   clientSecret: 'pi_1_secret_1',
   customer: 'cus_1',
-  ephemeralKey: 'ek_1',
+  customerSessionClientSecret: 'cuss_1',
   amount: 5000,
 };
 

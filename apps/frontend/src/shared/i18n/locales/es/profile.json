@@ -3,7 +3,14 @@
     "orders": "Mis Pedidos",
     "listings": "Mis Publicaciones",
     "addresses": "Direcciones",
-    "payments": "Pagos"
+    "payments": "Cobros",
+    "paymentMethods": "Métodos de pago"
+  },
+  "paymentMethods": {
+    "errorTitle": "No pudimos abrir tus tarjetas",
+    "errorMessage": "Revisa tu conexión e inténtalo de nuevo.",
+    "addErrorTitle": "No pudimos agregar tu tarjeta",
+    "retry": "Intentar de nuevo"
   },
   "sections": {
     "favorites": "Tus Favoritos",
