@@ -91,6 +91,76 @@ describe('connect-onboarding-return handler', () => {
     );
   });
 
+  it('keeps from=listing on the default app deep link for a return and a refresh', async () => {
+    const { handler } = harness();
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=return&from=listing`)),
+      'selene://sell/onboarding?return=1&from=listing',
+    );
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=refresh&from=listing`)),
+      'selene://sell/onboarding?refresh=1&from=listing',
+    );
+  });
+
+  it('keeps from=listing on the configured per-state deep link', async () => {
+    const { handler } = harness({
+      SELENE_CONNECT_ONBOARDING_RETURN_DEEP_LINK:
+        'exp://127.0.0.1:8081/--/sell/onboarding?return=1',
+    });
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=return&from=listing`)),
+      'exp://127.0.0.1:8081/--/sell/onboarding?return=1&from=listing',
+    );
+  });
+
+  for (const from of ['https://evil.test', 'profile', 'LISTING', '']) {
+    it(`drops from=${JSON.stringify(from)} and still redirects to the app`, async () => {
+      const { handler } = harness();
+
+      await expectRedirect(
+        await handler(
+          new Request(
+            `${BRIDGE}?state=return&from=${encodeURIComponent(from)}`,
+          ),
+        ),
+        'selene://sell/onboarding?return=1',
+      );
+    });
+  }
+
+  // Encodings and repeats never widen the closed value (#690).
+  for (const query of [
+    'from=%20listing',
+    'from=listing%0d%0aX-Evil%3A1',
+    'from=%2F%2Fevil.test',
+    'FROM=listing',
+    'from=https%3A%2F%2Fevil.test&from=listing',
+  ]) {
+    it(`drops ${query}`, async () => {
+      const { handler } = harness();
+
+      await expectRedirect(
+        await handler(new Request(`${BRIDGE}?state=return&${query}`)),
+        'selene://sell/onboarding?return=1',
+      );
+    });
+  }
+
+  it('keeps the configured HTTPS app URL host, path and fragment with from=listing', async () => {
+    const { handler } = harness({
+      SELENE_CONNECT_ONBOARDING_APP_URL:
+        'https://app.example/sell/onboarding#h',
+    });
+
+    await expectRedirect(
+      await handler(new Request(`${BRIDGE}?state=refresh&from=listing`)),
+      'https://app.example/sell/onboarding?refresh=1&from=listing#h',
+    );
+  });
+
   it('answers 400 INVALID_ONBOARDING_RETURN_STATE for an unknown state', async () => {
     const { handler } = harness();
 

@@ -16,7 +16,11 @@
 export interface ConnectOnboardingUrlInput {
   returnUrl?: string;
   refreshUrl?: string;
+  source?: ConnectOnboardingSource;
 }
+
+/** Closed set of guide sources the return URLs carry as `from` (#690). */
+export type ConnectOnboardingSource = 'listing';
 
 export type ConnectOnboardingUrlEnv = Record<string, string | undefined>;
 
@@ -56,15 +60,26 @@ function buildBridgeUrl(
   return url.toString();
 }
 
+function withSource(
+  url: string,
+  source: ConnectOnboardingSource | undefined,
+): string {
+  if (!source) return url;
+  const withFrom = new URL(url);
+  withFrom.searchParams.set('from', source);
+  return withFrom.toString();
+}
+
 function resolveStripeFacingUrl(
   configuredUrl: string | undefined,
   env: ConnectOnboardingUrlEnv,
   state: ConnectOnboardingState,
+  source: ConnectOnboardingSource | undefined,
 ) {
-  if (isHttpsUrl(configuredUrl)) return configuredUrl;
+  if (isHttpsUrl(configuredUrl)) return withSource(configuredUrl, source);
 
   const bridgeUrl = buildBridgeUrl(env, state);
-  if (bridgeUrl) return bridgeUrl;
+  if (bridgeUrl) return withSource(bridgeUrl, source);
 
   // Stripe Account Links reject custom schemes (`selene://...`) and plain HTTP.
   // For local Stripe testing, set SELENE_CONNECT_ONBOARDING_BRIDGE_URL to a
@@ -73,7 +88,7 @@ function resolveStripeFacingUrl(
 }
 
 export function resolveConnectOnboardingUrls(
-  _input: ConnectOnboardingUrlInput,
+  input: ConnectOnboardingUrlInput,
   env: ConnectOnboardingUrlEnv,
 ) {
   // Client-provided URLs are accepted only as request context. They are never
@@ -82,17 +97,20 @@ export function resolveConnectOnboardingUrls(
   // fallback: Stripe receives HTTPS, then the bridge redirects back into the app
   // deep link. When Selene owns a production web/universal-link domain, replace
   // the bridge with SELENE_CONNECT_ONBOARDING_RETURN_URL/REFRESH_URL in one env
-  // place, or keep the bridge and change its app target URL.
+  // place, or keep the bridge and change its app target URL. Only the closed
+  // `source` value is copied, as `from`, so the app keeps the guide's exits.
   return {
     returnUrl: resolveStripeFacingUrl(
       env.SELENE_CONNECT_ONBOARDING_RETURN_URL,
       env,
       'return',
+      input.source,
     ),
     refreshUrl: resolveStripeFacingUrl(
       env.SELENE_CONNECT_ONBOARDING_REFRESH_URL,
       env,
       'refresh',
+      input.source,
     ),
   };
 }

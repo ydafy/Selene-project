@@ -86,11 +86,11 @@ export default function SellerOnboardingScreen() {
 
   const handleStart = useCallback(async () => {
     try {
-      await startOnboarding();
+      await startOnboarding(exit.source);
     } catch {
       return;
     }
-  }, [startOnboarding]);
+  }, [exit.source, startOnboarding]);
 
   const visibleErrorKey = resolveConnectOnboardingVisibleError({
     status,

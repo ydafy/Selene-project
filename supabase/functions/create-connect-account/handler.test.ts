@@ -571,6 +571,57 @@ describe('create-connect-account handler', () => {
     );
   });
 
+  it('adds from=listing to the bridge URLs for source listing', async () => {
+    const { handler, stripe } = harness({
+      env: {
+        SELENE_CONNECT_ONBOARDING_BRIDGE_URL: 'https://tunnel.example/bridge',
+      },
+    });
+
+    expect((await handler(request({ source: 'listing' }))).status).toBe(200);
+    expect(stripe.calls[2]).toEqual(
+      onboardingLinkFor(
+        'acct_created',
+        'https://tunnel.example/bridge?state=return&from=listing',
+        'https://tunnel.example/bridge?state=refresh&from=listing',
+      ),
+    );
+  });
+
+  it('adds from=listing to the configured HTTPS return and refresh URLs for source listing', async () => {
+    const { handler, stripe } = harness({
+      env: {
+        SELENE_CONNECT_ONBOARDING_RETURN_URL: 'https://selene.example/return',
+        SELENE_CONNECT_ONBOARDING_REFRESH_URL: 'https://selene.example/refresh',
+      },
+    });
+
+    expect((await handler(request({ source: 'listing' }))).status).toBe(200);
+    expect(stripe.calls[2]).toEqual(
+      onboardingLinkFor(
+        'acct_created',
+        'https://selene.example/return?from=listing',
+        'https://selene.example/refresh?from=listing',
+      ),
+    );
+  });
+
+  for (const source of ['https://evil.test', 'profile', 'LISTING', '']) {
+    it(`rejects source ${JSON.stringify(source)} with 400 before any table or Stripe call`, async () => {
+      const { handler, database, stripe } = harness();
+
+      const response = await handler(request({ source }));
+
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error: string };
+      expect(JSON.parse(body.error)).toMatchObject([
+        { code: 'invalid_value', path: ['source'] },
+      ]);
+      expect(database.events).toEqual([`auth:${TOKEN}`]);
+      expect(stripe.calls).toEqual([]);
+    });
+  }
+
   it('answers 500 CONNECT_ONBOARDING_BRIDGE_URL_REQUIRED with no HTTPS target, before any table or Stripe call', async () => {
     const { handler, database, stripe } = harness({
       env: { SUPABASE_URL: 'http://127.0.0.1:54321' },
