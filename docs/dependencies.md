@@ -96,7 +96,12 @@ To change a version:
 
 3. Change the version and the sha256 in `.github/workflows/ci.yml`, run both tools locally on `.github/workflows/` (`actionlint`, and `zizmor .github/workflows` with `GH_TOKEN` set), and fix what they report before you push.
 
-When either tool reports a finding, fix the workflow. A finding stays only with the maintainer's decision, as an inline `# zizmor: ignore[<audit>]` comment on the flagged line, with the reason in a comment on the line above it. This comment is the only way to accept a finding; there is no separate exceptions file. Nothing checks that an ignore comment is still needed, so remove it when you change the line it covers. None exists today.
+When either tool reports a finding, fix the workflow. There is no exceptions file, and each tool has its own way to keep a finding, always with the maintainer's decision and the reason in a comment on the line above:
+
+- zizmor: an inline `# zizmor: ignore[<audit>]` comment on the flagged line.
+- actionlint: its own errors (syntax, expressions, job references) are always fixed. A shellcheck rule it reports can be kept with a `# shellcheck disable=<code>` line inside that `run:` script. A zizmor ignore comment does not hide an actionlint finding.
+
+Nothing checks that an ignore or disable comment is still needed, so remove it when you change the line it covers.
 
 ## Keep the Supabase CLI and Docker current
 
