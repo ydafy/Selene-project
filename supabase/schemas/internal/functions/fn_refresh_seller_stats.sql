@@ -36,9 +36,9 @@ BEGIN
     WHERE id = p_seller_id;
 
 EXCEPTION WHEN OTHERS THEN
-    -- Registro en la Caja Negra (Metadata JSONB)
-    INSERT INTO public.system_logs (level, message, metadata) 
-    VALUES ('ERROR', 'Fallo en recálculo de reputación', 
+    -- The review write goes on; the failure is recorded for cron-watchdog.
+    INSERT INTO internal.ops_failures (source, code, context)
+    VALUES ('fn_refresh_seller_stats', SQLSTATE,
             jsonb_build_object('seller_id', p_seller_id, 'error', SQLERRM));
 END;
 $function$;

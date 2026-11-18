@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/system_logs?message=eq.Cron shipping timeout: release failed&metadata->>dispute_id=eq.{{rgDisp5}}&select=level,metadata
+  url: {{baseUrl}}/rest/v1/system_logs?metadata->>dispute_id=eq.{{rgDisp5}}&select=level,message,metadata
   body: none
   auth: none
 }
@@ -16,12 +16,12 @@ headers {
 }
 
 tests {
-  test("the refusal is logged once with its reason", function () {
+  test("no system_logs row names the dispute", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ level: "WARNING", metadata: { dispute_id: bru.getVar("rgDisp5"), shipment_id: bru.getVar("rgShip5"), error: "SHIPMENT_NOT_DELIVERED" } }]);
+    expect(res.getBody()).to.deep.equal([]);
   });
 }
 
 docs {
-  Same WARNING row as before the change.
+  The refused release is recorded as a RELEASE_REFUSED row in internal.ops_failures (odd/tasks/table-cleanup.md S6a), not in system_logs. That schema is not exposed over REST, so shipment_funds_release.test.sql pins the row; this request proves nothing reaches system_logs.
 }

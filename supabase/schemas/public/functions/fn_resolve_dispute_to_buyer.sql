@@ -81,9 +81,8 @@ BEGIN
     RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
-    -- Registro de error crítico
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_resolve_dispute_to_buyer', jsonb_build_object('dispute_id', p_dispute_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
+    INSERT INTO internal.ops_failures (source, code, context)
+    VALUES ('fn_resolve_dispute_to_buyer', SQLSTATE, jsonb_build_object('dispute_id', p_dispute_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
 
     RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/system_logs?message=eq.Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required&metadata->>dispute_id=eq.{{ncDispB}}&select=level,metadata
+  url: {{baseUrl}}/rest/v1/system_logs?metadata->>dispute_id=eq.{{ncDispB}}&select=level,message,metadata
   body: none
   auth: none
 }
@@ -16,12 +16,12 @@ headers {
 }
 
 tests {
-  test("one ERROR row names the dispute and its shipment", function () {
+  test("no system_logs row names the dispute", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ level: "ERROR", metadata: { dispute_id: bru.getVar("ncDispB"), shipment_id: bru.getVar("ncShipB") } }]);
+    expect(res.getBody()).to.deep.equal([]);
   });
 }
 
 docs {
-  fn_cron_return_delivery_timeout logs the manual-intervention error once for the return_delivered dispute and counts it in total_errors.
+  fn_cron_return_delivery_timeout counts the return_delivered dispute in total_errors and records its manual-intervention failure in internal.ops_failures (odd/tasks/table-cleanup.md S6a), not in system_logs. That schema is not exposed over REST, so refunds.test.sql and dispute_return_timeouts.test.sql pin the row; this request proves nothing reaches system_logs.
 }

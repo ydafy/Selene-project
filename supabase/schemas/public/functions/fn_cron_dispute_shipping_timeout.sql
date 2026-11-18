@@ -59,21 +59,21 @@ BEGIN
                 ON CONFLICT (source_event_key, user_id) WHERE source_event_key IS NOT NULL DO NOTHING;
             ELSE
                 -- Data integrity issue: disputa activa sin shipment_id — requiere intervención manual
-                INSERT INTO public.system_logs (level, message, metadata)
-                VALUES ('ERROR', 'Cron shipping timeout: dispute without shipment_id — requires manual intervention',
+                INSERT INTO internal.ops_failures (source, code, context)
+                VALUES ('fn_cron_dispute_shipping_timeout', 'DISPUTE_WITHOUT_SHIPMENT',
                         jsonb_build_object('dispute_id', v_dispute.id, 'order_id', v_dispute.order_id));
             END IF;
         EXCEPTION
             WHEN SQLSTATE 'SR001' THEN
                 -- La resolución ya se revirtió con el bloque
-                INSERT INTO public.system_logs (level, message, metadata)
-                VALUES ('WARNING', 'Cron shipping timeout: release failed',
+                INSERT INTO internal.ops_failures (source, code, context)
+                VALUES ('fn_cron_dispute_shipping_timeout', 'RELEASE_REFUSED',
                         jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', v_err));
             WHEN OTHERS THEN
                 -- Atrapar excepciones DB sin abortar el resto del lote
-                INSERT INTO public.system_logs (level, message, metadata)
-                VALUES ('ERROR', 'Cron shipping timeout: DB exception',
-                        jsonb_build_object('dispute_id', v_dispute.id, 'error', SQLERRM));
+                INSERT INTO internal.ops_failures (source, code, context)
+                VALUES ('fn_cron_dispute_shipping_timeout', SQLSTATE,
+                        jsonb_build_object('dispute_id', v_dispute.id, 'shipment_id', v_dispute.shipment_id, 'error', SQLERRM));
         END;
     END LOOP;
 END;

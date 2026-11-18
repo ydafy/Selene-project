@@ -1,0 +1,31 @@
+meta {
+  name: ops-failures-delete-anon-denied
+  type: http
+  seq: 198
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_delete_ops_failures
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  { "p_ids": [1] }
+}
+
+tests {
+  test("an anonymous caller cannot delete ops failures", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  odd/tasks/table-cleanup.md S6b: EXECUTE on fn_delete_ops_failures is revoked from `anon`.
+  Sends only the publishable key, as an anonymous client does.
+}

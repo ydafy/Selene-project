@@ -93,8 +93,8 @@ BEGIN
 
     RETURN QUERY SELECT true, NULL::TEXT;
 EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_seller_submit_return_evidence',
+    INSERT INTO internal.ops_failures (source, code, context)
+    VALUES ('fn_seller_submit_return_evidence', SQLSTATE,
             jsonb_build_object('dispute_id', p_dispute_id, 'error', SQLERRM));
     RETURN QUERY SELECT false, 'EVIDENCE_SUBMISSION_FAILED'::TEXT;
 END;

@@ -54,11 +54,6 @@ BEGIN
     ELSE
         RETURN QUERY SELECT false, v_current_locker_name, v_current_locked_at;
     END IF;
-
-EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_lock_dispute', jsonb_build_object('dispute_id', p_dispute_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
-    RAISE;
 END;
 $function$;
 

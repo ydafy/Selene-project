@@ -2,13 +2,22 @@
 // Reports thrown errors and 5xx responses only. Never reads or attaches request or
 // response bodies, headers, URLs, query strings, user ids or emails. Any failure to
 // load or call the SDK degrades to a plain passthrough: Sentry must never break a
-// money flow. Also offers `reportMessage` and `withMonitor` for the cron watchdog (L12).
+// money flow. Also offers `reportMessage` and `withMonitor` for the cron watchdog (L12),
+// and `reportMessagesDelivered`, which says which events Sentry acknowledged
+// (odd/tasks/table-cleanup.md S6b).
 
 const FLUSH_TIMEOUT_MS = 2000;
+/**
+ * Events captured before waiting for their acknowledgements. Well below the
+ * transport buffer of @sentry/core 11.8.0 (64 requests; a full buffer drops the
+ * event and still resolves), so a batch never overflows it.
+ */
+const DELIVERY_CHUNK_SIZE = 10;
 
 interface SentryScope {
   setTag(key: string, value: string): unknown;
   setFingerprint(fingerprint: string[]): unknown;
+  setExtra(key: string, value: unknown): unknown;
 }
 
 interface SentryEvent {
@@ -34,13 +43,33 @@ export interface SentrySdk {
   init(options: SentryInitOptions): unknown;
   withScope<T>(callback: (scope: SentryScope) => T): T;
   captureException(error: unknown): unknown;
-  captureMessage(message: string, level: 'error'): unknown;
+  /** Returns the event id. */
+  captureMessage(message: string, level: 'error'): string;
+  getClient(): SentryClient | undefined;
   withMonitor<T>(
     slug: string,
     callback: () => T,
     config: SentryMonitorConfig,
   ): T;
+  /** Resolves true once every queued request settled, whatever Sentry answered; false on timeout. */
   flush(timeout?: number): Promise<unknown>;
+}
+
+/** Sentry's answer to one sent envelope; empty when nothing was sent. */
+export interface SentrySendResponse {
+  statusCode?: number;
+}
+
+/** The subset of the SDK client this helper uses. */
+export interface SentryClient {
+  /** Fires after the transport answered (or dropped) one event; returns the unregister function. */
+  on(
+    hook: 'afterSendEvent',
+    callback: (
+      event: { event_id?: string },
+      sendResponse: SentrySendResponse,
+    ) => void,
+  ): () => void;
 }
 
 /** Sentry Cron Monitor config, as accepted by the SDK `withMonitor`. */
@@ -56,10 +85,18 @@ export interface SentryMessageOptions {
   tags: Record<string, string>;
 }
 
+/** One error message with its own tags, fingerprint and extra data. */
+export interface SentryDeliveredMessage extends SentryMessageOptions {
+  message: string;
+  extra: Record<string, unknown>;
+}
+
 export interface SentryWrapperDeps {
   getEnv: (name: string) => string | undefined;
   loadSdk: () => Promise<SentrySdk>;
   log: (message: string) => void;
+  /** How long `reportMessagesDelivered` waits for each chunk's acknowledgements. */
+  deliveryTimeoutMs?: number;
 }
 
 type Handler = (req: Request) => Response | Promise<Response>;
@@ -71,6 +108,7 @@ const stripPersonalData = (event: SentryEvent): SentryEvent => {
 };
 
 export function createSentry(deps: SentryWrapperDeps) {
+  const deliveryTimeoutMs = deps.deliveryTimeoutMs ?? FLUSH_TIMEOUT_MS;
   let sdkPromise: Promise<SentrySdk | null> | null = null;
 
   const getSdk = (dsn: string): Promise<SentrySdk | null> => {
@@ -131,6 +169,114 @@ export function createSentry(deps: SentryWrapperDeps) {
         return sdk.captureMessage(message, 'error');
       }),
     );
+  };
+
+  /**
+   * Captures one chunk and resolves, per message, whether Sentry answered its
+   * event with a 2xx before the timeout. The hook ignores events this call did
+   * not capture and is removed before resolving. A capture that throws makes
+   * the whole chunk undelivered.
+   */
+  const deliverChunk = (
+    sdk: SentrySdk,
+    client: SentryClient,
+    chunk: SentryDeliveredMessage[],
+  ): Promise<boolean[]> =>
+    new Promise((resolve) => {
+      const outcomes = new Map<string, boolean | undefined>();
+      const ids: Array<string | undefined> = [];
+      let done = false;
+      let unregister: () => void = () => undefined;
+      const finish = (failAll: boolean) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        try {
+          unregister();
+        } catch {
+          // Unregistering is best effort.
+        }
+        resolve(
+          ids.map(
+            (id) => !failAll && id !== undefined && outcomes.get(id) === true,
+          ),
+        );
+      };
+      const allAnswered = () =>
+        ids.length === chunk.length &&
+        [...outcomes.values()].every((outcome) => outcome !== undefined);
+      const timer = setTimeout(() => finish(false), deliveryTimeoutMs);
+
+      try {
+        unregister = client.on('afterSendEvent', (event, sendResponse) => {
+          const id = event.event_id;
+          if (!id || !outcomes.has(id) || outcomes.get(id) !== undefined)
+            return;
+          const status = sendResponse.statusCode;
+          outcomes.set(
+            id,
+            typeof status === 'number' && status >= 200 && status < 300,
+          );
+          if (allAnswered()) finish(false);
+        });
+        for (const { message, fingerprint, tags, extra } of chunk) {
+          const id = sdk.withScope((scope) => {
+            for (const [key, value] of Object.entries(tags))
+              scope.setTag(key, value);
+            for (const [key, value] of Object.entries(extra))
+              scope.setExtra(key, value);
+            scope.setFingerprint(fingerprint);
+            return sdk.captureMessage(message, 'error');
+          });
+          const known = typeof id === 'string' && id !== '' ? id : undefined;
+          ids.push(known);
+          if (known) outcomes.set(known, undefined);
+        }
+      } catch {
+        ids.length = chunk.length;
+        finish(true);
+        return;
+      }
+      if (allAnswered()) finish(false);
+    });
+
+  /**
+   * Captures each message as an error in its own scope, in chunks of
+   * DELIVERY_CHUNK_SIZE, and resolves one flag per message: true only when
+   * Sentry answered that event with a 2xx before the timeout (the SDK
+   * `afterSendEvent` hook). A full transport buffer, a rate limit (429), a
+   * server error, a network error or no answer all count as not delivered.
+   * Stops after the first chunk with an undelivered event; the later messages
+   * resolve false without being sent. Without a DSN, or when the SDK cannot
+   * load, every flag is false. Never throws.
+   */
+  const reportMessagesDelivered = async (
+    messages: SentryDeliveredMessage[],
+  ): Promise<boolean[]> => {
+    const results = messages.map(() => false);
+    if (messages.length === 0) return results;
+    const sdk = await getActiveSdk();
+    if (!sdk) return results;
+    let client: SentryClient | undefined;
+    try {
+      client = sdk.getClient();
+    } catch {
+      return results;
+    }
+    if (!client) return results;
+
+    for (let start = 0; start < messages.length; start += DELIVERY_CHUNK_SIZE) {
+      const delivered = await deliverChunk(
+        sdk,
+        client,
+        messages.slice(start, start + DELIVERY_CHUNK_SIZE),
+      );
+      delivered.forEach((ok, i) => {
+        results[start + i] = ok;
+      });
+      if (!delivered.every(Boolean)) break;
+    }
+    return results;
   };
 
   /**
@@ -228,13 +374,18 @@ export function createSentry(deps: SentryWrapperDeps) {
     };
   };
 
-  return { withSentry, reportMessage, withMonitor };
+  return { withSentry, reportMessage, reportMessagesDelivered, withMonitor };
 }
 
 export const createSentryWrapper = (deps: SentryWrapperDeps) =>
   createSentry(deps).withSentry;
 
-export const { withSentry, reportMessage, withMonitor } = createSentry({
+export const {
+  withSentry,
+  reportMessage,
+  reportMessagesDelivered,
+  withMonitor,
+} = createSentry({
   getEnv: (name) => Deno.env.get(name),
   loadSdk: async () =>
     (await import('npm:@sentry/deno@11.8.0')) as unknown as SentrySdk,

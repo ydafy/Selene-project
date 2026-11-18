@@ -23,5 +23,5 @@ tests {
 }
 
 docs {
-  A cron must not log the dispute that is in the other cron's state.
+  A cron must not log the dispute that is in the other cron's state. The crons now record failures in internal.ops_failures (odd/tasks/table-cleanup.md S6a), which REST cannot read; dispute_return_timeouts.test.sql pins which disputes each cron picks.
 }

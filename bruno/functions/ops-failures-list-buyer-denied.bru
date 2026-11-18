@@ -1,0 +1,32 @@
+meta {
+  name: ops-failures-list-buyer-denied
+  type: http
+  seq: 194
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_ops_failures
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  { "p_limit": 100 }
+}
+
+tests {
+  test("an authenticated buyer cannot list ops failures", function () {
+    expect(res.getStatus()).to.equal(403);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  odd/tasks/table-cleanup.md S6b: EXECUTE on fn_list_ops_failures is revoked from
+  `authenticated`. Run after auth/login-buyer.
+}

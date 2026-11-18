@@ -8,13 +8,37 @@ interface CaptureCall {
   level?: string;
   tags: Record<string, string>;
   fingerprint?: string[];
+  extra?: Record<string, unknown>;
+}
+
+/**
+ * A fake of the SDK transport as @sentry/core 11.8.0 builds it: each captured
+ * event becomes one request held in a promise buffer; when the buffer is full
+ * the event is dropped and `afterSendEvent` fires with an empty response
+ * (transports/base.ts); otherwise it fires with Sentry's HTTP status.
+ */
+interface FakeTransportOptions {
+  /** HTTP status for the nth captured event (1-based); default 200. */
+  status?: (n: number) => number;
+  /** The nth event never gets a response (lost request). */
+  noResponse?: (n: number) => boolean;
+  /** Requests in flight at once; more are dropped. Default 64, as the SDK. */
+  bufferSize?: number;
+  /** Runs when the nth event is answered, before its hook fires. */
+  onRespond?: (n: number) => void;
 }
 
 interface FakeSdkOptions {
   captureThrows?: boolean;
   flushThrows?: boolean;
   monitorThrows?: boolean;
+  transport?: FakeTransportOptions;
 }
+
+type AfterSendEvent = (
+  event: { event_id?: string },
+  sendResponse: { statusCode?: number },
+) => void;
 
 function createFakeSdk(options: FakeSdkOptions = {}) {
   const initCalls: Array<Record<string, unknown>> = [];
@@ -22,8 +46,39 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
   const flushCalls: number[] = [];
   let currentTags: Record<string, string> = {};
   let currentFingerprint: string[] | undefined;
+  let currentExtra: Record<string, unknown> = {};
   const fingerprintCalls: string[][] = [];
   const monitorCalls: Array<{ slug: string; config: unknown }> = [];
+  const hooks = new Set<AfterSendEvent>();
+  let eventCount = 0;
+  let inFlight = 0;
+  let maxInFlight = 0;
+
+  const emit: AfterSendEvent = (event, response) => {
+    for (const hook of [...hooks]) hook(event, response);
+  };
+
+  /** Returns the event id and, with a transport, sends the event. */
+  const send = (): string => {
+    eventCount += 1;
+    const n = eventCount;
+    const id = `event-${n}`;
+    const transport = options.transport;
+    if (!transport) return id;
+    if (inFlight >= (transport.bufferSize ?? 64)) {
+      queueMicrotask(() => emit({ event_id: id }, {}));
+      return id;
+    }
+    inFlight += 1;
+    maxInFlight = Math.max(maxInFlight, inFlight);
+    setTimeout(() => {
+      inFlight -= 1;
+      if (transport.noResponse?.(n)) return;
+      transport.onRespond?.(n);
+      emit({ event_id: id }, { statusCode: transport.status?.(n) ?? 200 });
+    }, 1);
+    return id;
+  };
 
   const sdk: SentrySdk = {
     init: (initOptions) => {
@@ -33,7 +88,11 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
       const previousTags = currentTags;
       currentTags = {};
       currentFingerprint = undefined;
+      currentExtra = {};
       const scope = {
+        setExtra: (key: string, value: unknown) => {
+          currentExtra[key] = value;
+        },
         setFingerprint: (fingerprint: string[]) => {
           fingerprintCalls.push(fingerprint);
           currentFingerprint = fingerprint;
@@ -59,7 +118,7 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
         tags: { ...currentTags },
         fingerprint: currentFingerprint,
       });
-      return 'event-id';
+      return send();
     },
     captureMessage: (message, level) => {
       if (options.captureThrows) throw new Error('capture failed');
@@ -69,9 +128,21 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
         level,
         tags: { ...currentTags },
         fingerprint: currentFingerprint,
+        ...(Object.keys(currentExtra).length > 0
+          ? { extra: { ...currentExtra } }
+          : {}),
       });
-      return 'event-id';
+      return send();
     },
+    getClient: () => ({
+      on: (hook, callback) => {
+        if (hook !== 'afterSendEvent') return () => undefined;
+        hooks.add(callback);
+        return () => {
+          hooks.delete(callback);
+        };
+      },
+    }),
     withMonitor: (slug, callback, config) => {
       if (options.monitorThrows) throw new Error('monitor failed');
       monitorCalls.push({ slug, config });
@@ -86,6 +157,9 @@ function createFakeSdk(options: FakeSdkOptions = {}) {
 
   return {
     sdk,
+    emit,
+    hookCount: () => hooks.size,
+    maxInFlight: () => maxInFlight,
     initCalls,
     captures,
     flushCalls,
@@ -355,6 +429,7 @@ function setupClient(
       return fake.sdk;
     },
     log: () => {},
+    deliveryTimeoutMs: 50,
   });
   return { ...fake, sentry, loadCalls: () => loadCalls };
 }
@@ -408,6 +483,188 @@ describe('reportMessage', () => {
     await expect(
       flush.sentry.reportMessage('m', { fingerprint: ['a'], tags: {} }),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('reportMessagesDelivered', () => {
+  const opsEvent = (n: number) => ({
+    message: `ops failure: fn_${n} P0001`,
+    fingerprint: ['ops-failure', `fn_${n}`, 'P0001'],
+    tags: { 'ops.source': `fn_${n}`, 'ops.code': 'P0001' },
+    extra: { ops_failure_id: n, context: { n } },
+  });
+  const events = (count: number) =>
+    Array.from({ length: count }, (_, i) => opsEvent(i + 1));
+
+  it('captures each event in its own scope and resolves true for each event Sentry answered with 2xx', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN }, { transport: {} });
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([true, true]);
+
+    expect(ctx.captures).toEqual([
+      {
+        kind: 'message',
+        payload: 'ops failure: fn_1 P0001',
+        level: 'error',
+        fingerprint: ['ops-failure', 'fn_1', 'P0001'],
+        tags: { 'ops.source': 'fn_1', 'ops.code': 'P0001' },
+        extra: { ops_failure_id: 1, context: { n: 1 } },
+      },
+      {
+        kind: 'message',
+        payload: 'ops failure: fn_2 P0001',
+        level: 'error',
+        fingerprint: ['ops-failure', 'fn_2', 'P0001'],
+        tags: { 'ops.source': 'fn_2', 'ops.code': 'P0001' },
+        extra: { ops_failure_id: 2, context: { n: 2 } },
+      },
+    ]);
+    expect(ctx.hookCount()).toBe(0);
+  });
+
+  it('delivers 100 events through a 64-entry transport buffer, never more than 10 in flight', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { bufferSize: 64 } },
+    );
+    const result = await ctx.sentry.reportMessagesDelivered(events(100));
+
+    expect(result).toEqual(Array(100).fill(true));
+    expect(ctx.captures).toHaveLength(100);
+    expect(ctx.maxInFlight()).toBe(10);
+  });
+
+  it('counts an event the full transport buffer dropped (empty response) as not delivered', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { bufferSize: 3 } },
+    );
+    const result = await ctx.sentry.reportMessagesDelivered(events(12));
+
+    expect(result).toEqual([...Array(3).fill(true), ...Array(9).fill(false)]);
+    // The first chunk failed, so the second chunk is never sent.
+    expect(ctx.captures).toHaveLength(10);
+  });
+
+  it('counts HTTP 429 as not delivered', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { status: () => 429 } },
+    );
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([false, false]);
+  });
+
+  it('counts HTTP 500 as not delivered', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { status: () => 500 } },
+    );
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(1)),
+    ).resolves.toEqual([false]);
+  });
+
+  it('keeps per-event results in a mixed chunk and stops before the next chunk', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { status: (n) => (n === 3 ? 500 : n === 7 ? 429 : 200) } },
+    );
+    const result = await ctx.sentry.reportMessagesDelivered(events(12));
+
+    expect(result).toEqual([
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    expect(ctx.captures).toHaveLength(10);
+  });
+
+  it('sends every chunk when each one succeeds', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN }, { transport: {} });
+    const result = await ctx.sentry.reportMessagesDelivered(events(25));
+
+    expect(result).toEqual(Array(25).fill(true));
+    expect(ctx.captures).toHaveLength(25);
+  });
+
+  it('counts an event without a response before the timeout as not delivered', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { transport: { noResponse: (n) => n === 2 } },
+    );
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([true, false]);
+    expect(ctx.hookCount()).toBe(0);
+  });
+
+  it('ignores acknowledgements of events it did not capture', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      {
+        transport: {
+          status: () => 500,
+          // Another request's event answers 200 while ours are pending.
+          onRespond: () =>
+            fake.emit({ event_id: 'other' }, { statusCode: 200 }),
+        },
+      },
+    );
+    const fake = ctx;
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([false, false]);
+  });
+
+  it('resolves all false without SENTRY_DSN and never loads the SDK', async () => {
+    const ctx = setupClient({});
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([false, false]);
+    expect(ctx.loadCalls()).toBe(0);
+    expect(ctx.captures).toHaveLength(0);
+  });
+
+  it('resolves all false, never throwing, when capture throws', async () => {
+    const ctx = setupClient(
+      { SENTRY_DSN: DSN },
+      { captureThrows: true, transport: {} },
+    );
+    await expect(
+      ctx.sentry.reportMessagesDelivered(events(2)),
+    ).resolves.toEqual([false, false]);
+    expect(ctx.hookCount()).toBe(0);
+  });
+
+  it('resolves all false when the SDK cannot load', async () => {
+    const sentry = createSentry({
+      getEnv: (name) => (name === 'SENTRY_DSN' ? DSN : undefined),
+      loadSdk: async () => {
+        throw new Error('load failed');
+      },
+      log: () => {},
+    });
+    await expect(sentry.reportMessagesDelivered(events(1))).resolves.toEqual([
+      false,
+    ]);
+  });
+
+  it('resolves an empty list without loading the SDK', async () => {
+    const ctx = setupClient({ SENTRY_DSN: DSN });
+    await expect(ctx.sentry.reportMessagesDelivered([])).resolves.toEqual([]);
+    expect(ctx.loadCalls()).toBe(0);
   });
 });
 

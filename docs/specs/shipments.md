@@ -490,7 +490,7 @@ WHERE seller_id = v_seller_id;
 
 - Marks dispute as `resolved` (buyer didn't pay return label in 48h)
 - Connect shipment (`stripe_payment_intent_id IS NOT NULL`): resolves the dispute for the buyer and notifies both parties
-- Shipment without a payment intent: writes an `ERROR` row in `system_logs` and leaves the dispute for manual intervention
+- Shipment without a payment intent: records a `SHIPMENT_NOT_CONNECT` row in `internal.ops_failures` and leaves the dispute for manual intervention
 - Fallback: resolves a dispute without `shipment_id` for the buyer
 
 ### fn_cron_dispute_shipping_timeout
@@ -503,7 +503,7 @@ WHERE seller_id = v_seller_id;
 
 - Marks dispute as `resolved` if return not delivered within 10 days
 - Connect shipment: resolves the dispute for the buyer, refund pending in `resolve-dispute-refund`
-- Shipment without a payment intent: writes an `ERROR` row in `system_logs`, counts it in `total_errors` and leaves the dispute for manual intervention
+- Shipment without a payment intent: records a `SHIPMENT_NOT_CONNECT` row in `internal.ops_failures`, counts it in `total_errors` and leaves the dispute for manual intervention
 
 ### fn_cron_release_shipment_funds
 

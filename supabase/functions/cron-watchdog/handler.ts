@@ -13,6 +13,39 @@ import {
   type CronUnhealthyJob,
 } from './health.ts';
 
+/** One `internal.ops_failures` row, as `fn_list_ops_failures` returns it. */
+export interface OpsFailureRow {
+  id: number;
+  source: string;
+  code: string;
+  context: unknown;
+  occurred_at: string;
+}
+
+/** One Sentry error event for one ops failure. */
+export interface OpsFailureEvent {
+  message: string;
+  fingerprint: string[];
+  tags: Record<string, string>;
+  extra: Record<string, unknown>;
+}
+
+type OpsFailuresOutcome =
+  | { reported: number; deleted: number; kept: number }
+  | {
+      error:
+        | 'OPS_FAILURES_LIST_FAILED'
+        | 'OPS_FAILURES_NOT_DELIVERED'
+        | 'OPS_FAILURES_DELETE_FAILED';
+    };
+
+/**
+ * At most this many failures per run; the rest wait for the next run (every
+ * 15 minutes). The reporter sends them in chunks of 10 and waits up to 2 s for
+ * each chunk, so a run stays well inside the job's 30 s pg_net timeout.
+ */
+export const OPS_FAILURES_BATCH = 25;
+
 export interface CronWatchdogDeps {
   getCronSecret: () => string | undefined;
   now: () => Date;
@@ -22,6 +55,21 @@ export interface CronWatchdogDeps {
   }>;
   // Sentry message reporter (`reportMessage` from `_shared/sentry.ts`).
   reportMessage: CronMismatchReporter;
+  /** The oldest `internal.ops_failures` rows (`fn_list_ops_failures`). */
+  listOpsFailures: (limit: number) => Promise<{
+    data: OpsFailureRow[] | null;
+    error: { message: string } | null;
+  }>;
+  /**
+   * Sends the events to Sentry and resolves one flag per event: true only when
+   * Sentry acknowledged it with a 2xx (`reportMessagesDelivered`).
+   */
+  reportOpsFailures: (events: OpsFailureEvent[]) => Promise<boolean[]>;
+  /** Deletes exactly these ids (`fn_delete_ops_failures`); data is the count. */
+  deleteOpsFailures: (ids: number[]) => Promise<{
+    data: number | null;
+    error: { message: string } | null;
+  }>;
   /** Runs the authenticated check inside the Sentry Cron Monitor. */
   runMonitored: <T>(fn: () => Promise<T>) => Promise<T>;
   log: (message: string) => void;
@@ -42,7 +90,90 @@ const sentryMessage = (job: CronUnhealthyJob): string =>
     ? `cron ${job.jobname} http-failed: ${withoutUrls(job.httpError ?? 'unknown error')} at ${job.httpFailedAt}`
     : `cron ${job.jobname} ${job.reason}`;
 
+const opsFailureEvent = (row: OpsFailureRow): OpsFailureEvent => ({
+  message: `ops failure: ${row.source} ${row.code}`,
+  // One Sentry issue per source and code, however often it repeats.
+  fingerprint: ['ops-failure', row.source, row.code],
+  tags: { 'ops.source': row.source, 'ops.code': row.code },
+  extra: {
+    ops_failure_id: row.id,
+    context: row.context,
+    occurred_at: row.occurred_at,
+  },
+});
+
+const WATCHDOG_TAGS = { edge_function: 'cron-watchdog' };
+
 export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
+  /**
+   * Reports the oldest ops failures to Sentry and deletes only the rows whose
+   * events Sentry acknowledged. Never throws: a failure here must not fail the health report.
+   * A crash between the report and the delete reports those rows again on the
+   * next run, into the same Sentry issue (fingerprint).
+   */
+  const reportWatchdogProblem = async (
+    message: string,
+    fingerprint: string,
+  ): Promise<void> => {
+    try {
+      await deps.reportMessage(message, {
+        fingerprint: [fingerprint],
+        tags: WATCHDOG_TAGS,
+      });
+    } catch {
+      // Reporting must not fail the health report.
+    }
+  };
+
+  const drainOpsFailures = async (): Promise<OpsFailuresOutcome> => {
+    let rows: OpsFailureRow[];
+    try {
+      const { data, error } = await deps.listOpsFailures(OPS_FAILURES_BATCH);
+      if (error || !data) throw new Error('OPS_FAILURES_LIST_FAILED');
+      rows = data;
+    } catch {
+      // The database error text is not forwarded.
+      await reportWatchdogProblem(
+        'cron-watchdog could not list ops failures',
+        'ops-failures-list-failed',
+      );
+      return { error: 'OPS_FAILURES_LIST_FAILED' };
+    }
+    if (rows.length === 0) return { reported: 0, deleted: 0, kept: 0 };
+
+    let delivered: boolean[] = [];
+    try {
+      delivered = await deps.reportOpsFailures(rows.map(opsFailureEvent));
+    } catch {
+      delivered = [];
+    }
+    // Only an explicit true counts; a missing flag keeps the row.
+    const acknowledged = rows.filter((_, i) => delivered[i] === true);
+    const kept = rows.length - acknowledged.length;
+    if (kept > 0) {
+      // Sentry did not take these, so this goes to the function log only.
+      deps.log(
+        `cron-watchdog: Sentry did not acknowledge ${kept} of ${rows.length} ops failures; kept for the next run`,
+      );
+    }
+    if (acknowledged.length === 0)
+      return { error: 'OPS_FAILURES_NOT_DELIVERED' };
+
+    try {
+      const { data, error } = await deps.deleteOpsFailures(
+        acknowledged.map((row) => row.id),
+      );
+      if (error || data === null) throw new Error('OPS_FAILURES_DELETE_FAILED');
+      return { reported: acknowledged.length, deleted: data, kept };
+    } catch {
+      await reportWatchdogProblem(
+        'cron-watchdog could not delete reported ops failures',
+        'ops-failures-delete-failed',
+      );
+      return { error: 'OPS_FAILURES_DELETE_FAILED' };
+    }
+  };
+
   const check = async (): Promise<Response> => {
     const { data, error } = await deps.fetchCronHealth();
     if (error || !data) {
@@ -58,7 +189,8 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
         tags: { 'cron.job': jobname, 'cron.reason': reason },
       });
     }
-    // The response lists only names and reasons, never error text.
+    const opsFailures = await drainOpsFailures();
+    // The response lists only names, reasons, counts and codes, never error text.
     return json(
       {
         checked: data.length,
@@ -66,6 +198,7 @@ export function createCronWatchdogHandler(deps: CronWatchdogDeps) {
           jobname,
           reason,
         })),
+        opsFailures,
       },
       200,
     );

@@ -1,0 +1,31 @@
+meta {
+  name: ops-failures-list-anon-denied
+  type: http
+  seq: 193
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_ops_failures
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  { "p_limit": 100 }
+}
+
+tests {
+  test("an anonymous caller cannot list ops failures", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+  });
+}
+
+docs {
+  odd/tasks/table-cleanup.md S6b: internal.ops_failures context is server-only; EXECUTE on
+  fn_list_ops_failures is revoked from `anon`.
+}

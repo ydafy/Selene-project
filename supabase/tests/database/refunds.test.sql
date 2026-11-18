@@ -1,9 +1,10 @@
 -- Dispute refunds (#276 T2): the non-Connect order and refund functions are
 -- gone; fn_record_dispute_refund is service-role only, locks the shipment
 -- before the dispute, refuses in a fixed order without writing, and records a
--- Stripe refund on the shipment, the dispute and system_logs; the two dispute
--- crons leave a dispute whose shipment has no Stripe payment intent alone and
--- log it for manual intervention.
+-- Stripe refund on the shipment and the dispute (its notes keep the refund id;
+-- no system_logs row repeats it); the two dispute crons leave a dispute whose
+-- shipment has no Stripe payment intent alone and record it in
+-- internal.ops_failures for manual intervention.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(37);
@@ -207,12 +208,10 @@ select is(
   E'Prior note\n[SYSTEM]: Reembolso Stripe unknown registrado.',
   'record: earlier notes are kept and a missing refund id is written as unknown');
 select is(
-  (select string_agg(l.level || ':' || l.message || ':' || l.metadata::text, ' ' order by l.metadata->>'stripe_refund_id' nulls last)
-   from public.system_logs l
-   where l.message = 'Dispute refund recorded' and l.metadata->>'dispute_id' in (pg_temp.mu(7310)::text, pg_temp.mu(7311)::text)),
-  'INFO:Dispute refund recorded:' || jsonb_build_object('dispute_id', pg_temp.mu(7310), 'shipment_id', pg_temp.mu(7110), 'stripe_refund_id', 're_test_7110')::text
-    || ' INFO:Dispute refund recorded:' || jsonb_build_object('dispute_id', pg_temp.mu(7311), 'shipment_id', pg_temp.mu(7111), 'stripe_refund_id', null)::text,
-  'record: one INFO log per refund with the dispute, the shipment and the refund id');
+  (select count(*) from public.system_logs l
+   where l.metadata->>'dispute_id' in (pg_temp.mu(7310)::text, pg_temp.mu(7311)::text)
+      or l.metadata->>'shipment_id' in (pg_temp.mu(7110)::text, pg_temp.mu(7111)::text)),
+  0::bigint, 'record: a recorded refund writes no system_logs row; the dispute notes hold the refund id');
 
 create table pg_temp.recorded as select pg_temp.refund_sig(7310) as v;
 set local role service_role;
@@ -220,8 +219,8 @@ select is(pg_temp.record(7310, 're_test_again'), 'true:ALREADY_RECORDED', 'recor
 reset role;
 select is(
   pg_temp.refund_sig(7310) || ':' || (select count(*) from public.system_logs
-                                        where message = 'Dispute refund recorded' and metadata->>'dispute_id' = pg_temp.mu(7310)::text),
-  (select v from pg_temp.recorded) || ':1', 'record: a second call changes nothing and logs nothing');
+                                        where metadata->>'dispute_id' = pg_temp.mu(7310)::text),
+  (select v from pg_temp.recorded) || ':0', 'record: a second call changes nothing and logs nothing');
 
 -- 6. Dispute crons: a shipment without a Stripe payment intent -----------------------
 -- Keep the disputes above out of the crons' selection.
@@ -251,19 +250,17 @@ create temp table return_cron on commit drop as select * from public.fn_cron_ret
 reset role;
 
 select is(
-  (select count(*) from public.system_logs
-   where level = 'ERROR'
-     and message = 'Cron payout timeout: shipment has no Stripe payment intent, manual intervention required'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(7320), 'shipment_id', pg_temp.mu(7120))),
-  1::bigint, 'payout cron: a shipment without a payment intent logs one ERROR for manual intervention');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_cron_dispute_payout_timeout' and code = 'SHIPMENT_NOT_CONNECT'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(7320), 'shipment_id', pg_temp.mu(7120))),
+  1::bigint, 'payout cron: a shipment without a payment intent records one failure for manual intervention');
 select is(pg_temp.refund_sig(7320), (select v from pg_temp.sig where n = 7320),
   'payout cron: the dispute and the shipment without a payment intent are left unchanged');
 select is(
-  (select count(*) from public.system_logs
-   where level = 'ERROR'
-     and message = 'Cron return-delivery-timeout: shipment has no Stripe payment intent, manual intervention required'
-     and metadata = jsonb_build_object('dispute_id', pg_temp.mu(7321), 'shipment_id', pg_temp.mu(7121))),
-  1::bigint, 'return cron: a shipment without a payment intent logs one ERROR for manual intervention');
+  (select count(*) from internal.ops_failures
+   where source = 'fn_cron_return_delivery_timeout' and code = 'SHIPMENT_NOT_CONNECT'
+     and context = jsonb_build_object('dispute_id', pg_temp.mu(7321), 'shipment_id', pg_temp.mu(7121))),
+  1::bigint, 'return cron: a shipment without a payment intent records one failure for manual intervention');
 select is(pg_temp.refund_sig(7321), (select v from pg_temp.sig where n = 7321),
   'return cron: the dispute and the shipment without a payment intent are left unchanged');
 select is(

@@ -15,7 +15,7 @@
 -- shipment first found blocked on day 10 gets stage 7 only. Nothing follows
 -- stage 14, and nothing is sent once the account is unblocked. Running it
 -- twice sends nothing new. Each notice is its own subtransaction: a failure is
--- logged to system_logs as a WARNING and the run goes on. Returns the number
+-- recorded in internal.ops_failures and the run goes on. Returns the number
 -- of notices inserted.
 --
 -- Grant review (AGENTS.md): SECURITY DEFINER with search_path '' because it
@@ -114,8 +114,8 @@ BEGIN
       GET DIAGNOSTICS v_inserted = ROW_COUNT;
       v_count := v_count + v_inserted;
     EXCEPTION WHEN OTHERS THEN
-      INSERT INTO public.system_logs (level, message, metadata) VALUES ('WARNING', 'Held payout notice failed',
-        jsonb_build_object('shipment_id', v_row.shipment_id, 'stage', v_row.stage, 'sqlstate', SQLSTATE, 'error', SQLERRM));
+      INSERT INTO internal.ops_failures (source, code, context) VALUES ('fn_notify_held_payouts', SQLSTATE,
+        jsonb_build_object('shipment_id', v_row.shipment_id, 'stage', v_row.stage, 'error', SQLERRM));
     END;
   END LOOP;
 

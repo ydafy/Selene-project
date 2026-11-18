@@ -1,0 +1,42 @@
+meta {
+  name: ops-failures-service-role
+  type: http
+  seq: 196
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_list_ops_failures
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+body:json {
+  { "p_limit": 1000 }
+}
+
+tests {
+  test("the service role lists at most 100 failures, oldest first, with only the typed columns", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.be.an("array");
+    expect(rows.length).to.be.at.most(100);
+    for (const row of rows) {
+      expect(Object.keys(row).sort()).to.eql(["code", "context", "id", "occurred_at", "source"]);
+    }
+    for (let i = 1; i < rows.length; i++) {
+      expect(Date.parse(rows[i].occurred_at)).to.be.at.least(Date.parse(rows[i - 1].occurred_at));
+    }
+  });
+}
+
+docs {
+  odd/tasks/table-cleanup.md S6b: what cron-watchdog reads. p_limit is clamped to 1..100.
+  The rows depend on what earlier requests left (the dispute crons write failures), so only
+  the shape and order are asserted; supabase/tests/database/ops_failures_drain.test.sql pins
+  the values and the delete.
+}
