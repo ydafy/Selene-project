@@ -142,11 +142,11 @@ export function createCreateConnectAccountHandler(
 
       // 3. Validate input (links are optional — fallback to defaults below)
       const body = await req.json().catch(() => ({}));
-      const { refreshUrl, returnUrl } =
+      const { refreshUrl, returnUrl, source } =
         CreateConnectAccountRequestSchema.parse(body);
 
       const onboardingUrls = resolveConnectOnboardingUrls(
-        { refreshUrl, returnUrl },
+        { refreshUrl, returnUrl, source },
         {
           SUPABASE_URL: supabaseUrl,
           SELENE_CONNECT_ONBOARDING_BRIDGE_URL: deps.getEnv(

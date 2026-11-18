@@ -329,7 +329,7 @@ export interface EdgeFunctionRegistry {
       | { setupIntentClientSecret: string };
   };
   'create-connect-account': {
-    payload: { refreshUrl?: string; returnUrl?: string };
+    payload: { refreshUrl?: string; returnUrl?: string; source?: 'listing' };
     response: { url: string; accountId: string };
   };
   'resolve-shipment-tracking-url': {

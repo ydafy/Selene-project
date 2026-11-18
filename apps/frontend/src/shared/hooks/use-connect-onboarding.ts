@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { invokeEdge } from '../lib/edge-client';
 import {
   buildConnectOnboardingDeepLinks,
+  type ConnectOnboardingSource,
   isConnectOnboardingUrl,
   shouldAttemptConnectStatusRefresh,
 } from '../utils/connect-onboarding-urls';
@@ -263,30 +264,34 @@ export function useConnectOnboarding(userId: string | undefined) {
     return () => subscription.remove();
   }, [refreshFromStripe]);
 
-  const startOnboarding = useCallback(async () => {
-    setError(null);
-    setIsStarting(true);
-    try {
-      const res = await invokeEdge(
-        'create-connect-account',
-        // These are app-return deep links for onboarding context. The Edge
-        // Function never forwards raw custom schemes to Stripe; it converts any
-        // non-HTTPS value to the HTTPS redirect bridge required by AccountLinks.
-        buildConnectOnboardingDeepLinks(Linking.createURL),
-      );
-      if (!res?.url) {
-        throw new Error(CONNECT_ONBOARDING_ERROR.onboardingUrlUnavailable);
-      }
+  const startOnboarding = useCallback(
+    async (source?: ConnectOnboardingSource) => {
+      setError(null);
+      setIsStarting(true);
+      try {
+        const res = await invokeEdge(
+          'create-connect-account',
+          // These are app-return deep links for onboarding context. The Edge
+          // Function never forwards raw custom schemes to Stripe; it converts any
+          // non-HTTPS value to the HTTPS redirect bridge required by AccountLinks.
+          // Only the closed `source` reaches Stripe, as `from` on the bridge URL.
+          buildConnectOnboardingDeepLinks(Linking.createURL, source),
+        );
+        if (!res?.url) {
+          throw new Error(CONNECT_ONBOARDING_ERROR.onboardingUrlUnavailable);
+        }
 
-      await WebBrowser.openBrowserAsync(res.url);
-      await refreshFromStripe({ skipCachedAccountCheck: true });
-    } catch (e) {
-      setError(toOnboardingErrorKey(e, CONNECT_ONBOARDING_ERROR.unknown));
-      throw e;
-    } finally {
-      setIsStarting(false);
-    }
-  }, [refreshFromStripe]);
+        await WebBrowser.openBrowserAsync(res.url);
+        await refreshFromStripe({ skipCachedAccountCheck: true });
+      } catch (e) {
+        setError(toOnboardingErrorKey(e, CONNECT_ONBOARDING_ERROR.unknown));
+        throw e;
+      } finally {
+        setIsStarting(false);
+      }
+    },
+    [refreshFromStripe],
+  );
 
   const refresh = useCallback(() => {
     return qc.invalidateQueries({ queryKey: ['connect-onboarding', userId] });
