@@ -141,12 +141,9 @@ BEGIN
   RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES (
-    'CRITICAL',
-    'Fallo en fn_cancel_shipment',
-    jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM)
-  );
+  INSERT INTO internal.ops_failures (source, code, context)
+  VALUES ('fn_cancel_shipment', SQLSTATE,
+          jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM));
   RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;
 $function$;

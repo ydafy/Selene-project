@@ -219,12 +219,14 @@ select is(
 
 -- 3. _as_admin resolution: the actor rule ---------------------------------------------
 -- success:error_message, or the raised error; then whether dispute 9421
--- changed; then the errors of the ERROR system_logs rows the call wrote for it.
+-- changed; then the errors of the internal.ops_failures rows the call wrote for
+-- it (S6d: no system_logs row).
 create function pg_temp.t9_resolve(p_to text, p_actor uuid) returns text language plpgsql as $$
 declare
   v_before text := (select d::text from public.disputes d where d.id = pg_temp.mu(9421));
-  v_logs bigint := (select count(*) from public.system_logs l
-    where l.level = 'ERROR' and l.metadata ->> 'dispute_id' = pg_temp.mu(9421)::text);
+  v_last bigint := (select coalesce(max(f.id), 0) from internal.ops_failures f);
+  v_system_logs bigint := (select count(*) from public.system_logs l
+    where l.metadata ->> 'dispute_id' = pg_temp.mu(9421)::text);
   v_result text;
 begin
   begin
@@ -240,23 +242,26 @@ begin
   end;
   return v_result || '|' || case when (select d::text from public.disputes d where d.id = pg_temp.mu(9421)) = v_before
     then 'unchanged' else 'changed' end
-    || '|' || case when (select count(*) from public.system_logs l
-                         where l.level = 'ERROR' and l.metadata ->> 'dispute_id' = pg_temp.mu(9421)::text) = v_logs
-              then 'no log'
-              else (select 'log ' || string_agg(distinct l.metadata ->> 'error', ',') from public.system_logs l
-                    where l.level = 'ERROR' and l.metadata ->> 'dispute_id' = pg_temp.mu(9421)::text) end;
+    || '|' || coalesce((select 'log ' || string_agg(f.source || ':' || f.code || ':' || (f.context ->> 'error'), ',' order by f.id)
+                        from internal.ops_failures f
+                        where f.id > v_last and f.context ->> 'dispute_id' = pg_temp.mu(9421)::text), 'no log')
+    || case when (select count(*) from public.system_logs l
+                  where l.metadata ->> 'dispute_id' = pg_temp.mu(9421)::text) = v_system_logs
+            then '' else '|system_logs' end;
 end $$;
 
 select set_config('request.jwt.claims', '{"role": "service_role"}', true);
 set local role service_role;
 -- The function's own handler catches UNAUTHORIZED_NO_ACTOR: the caller gets
--- INTERNAL_SERVER_ERROR and the error is logged.
-select is(pg_temp.t9_resolve('buyer', null), 'false:INTERNAL_SERVER_ERROR|unchanged|log UNAUTHORIZED_NO_ACTOR',
-  'fn_resolve_dispute_to_buyer_as_admin: a NULL actor is refused with UNAUTHORIZED_NO_ACTOR logged');
+-- INTERNAL_SERVER_ERROR and the error is recorded in internal.ops_failures.
+select is(pg_temp.t9_resolve('buyer', null),
+  'false:INTERNAL_SERVER_ERROR|unchanged|log fn_resolve_dispute_to_buyer_as_admin:P0001:UNAUTHORIZED_NO_ACTOR',
+  'fn_resolve_dispute_to_buyer_as_admin: a NULL actor is refused with UNAUTHORIZED_NO_ACTOR recorded');
 select is(pg_temp.t9_resolve('buyer', pg_temp.mu(9102)), 'false:UNAUTHORIZED_ADMIN_ONLY|unchanged|no log',
   'fn_resolve_dispute_to_buyer_as_admin: an actor who is not an admin is refused');
-select is(pg_temp.t9_resolve('seller', null), 'false:INTERNAL_SERVER_ERROR|unchanged|log UNAUTHORIZED_NO_ACTOR',
-  'fn_resolve_dispute_to_seller_as_admin: a NULL actor is refused with UNAUTHORIZED_NO_ACTOR logged');
+select is(pg_temp.t9_resolve('seller', null),
+  'false:INTERNAL_SERVER_ERROR|unchanged|log fn_resolve_dispute_to_seller_as_admin:P0001:UNAUTHORIZED_NO_ACTOR',
+  'fn_resolve_dispute_to_seller_as_admin: a NULL actor is refused with UNAUTHORIZED_NO_ACTOR recorded');
 select is(pg_temp.t9_resolve('seller', pg_temp.mu(9101)), 'false:UNAUTHORIZED_ADMIN_ONLY|unchanged|no log',
   'fn_resolve_dispute_to_seller_as_admin: an actor who is not an admin is refused');
 reset role;

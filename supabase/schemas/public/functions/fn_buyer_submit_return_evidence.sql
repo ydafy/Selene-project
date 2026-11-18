@@ -51,9 +51,9 @@ IF v_auth_user_id IS NULL THEN RETURN QUERY SELECT false, 'UNAUTHORIZED'::TEXT; 
     RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
-INSERT INTO public.system_logs (level, message, metadata)
-VALUES ('ERROR', 'Fallo en fn_buyer_submit_return_evidence', jsonb_build_object('dispute_id', p_dispute_id, 'error', SQLERRM));
-RETURN QUERY SELECT false, SQLERRM;
+INSERT INTO internal.ops_failures (source, code, context)
+VALUES ('fn_buyer_submit_return_evidence', SQLSTATE, jsonb_build_object('dispute_id', p_dispute_id, 'error', SQLERRM));
+RETURN QUERY SELECT false, 'INTERNAL_ERROR'::TEXT;
 END;
 $function$;
 

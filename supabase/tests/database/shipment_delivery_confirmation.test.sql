@@ -181,9 +181,14 @@ select is(pg_temp.confirm(8121, 'buyer', 8002), 'false:INTERNAL_ERROR:-:false',
   'INTERNAL_ERROR when the completion event cannot be written');
 select is(pg_temp.sig(8121) || ' ' || (select count(*) from public.shipment_completion_events where shipment_id = pg_temp.mu(8121)),
   (select sig from pg_temp.before_err) || ' 0', 'INTERNAL_ERROR: the shipment is unchanged and no event is written');
-select is(pg_temp.logs(8121),
-  'ERROR|Shipment completion RPC failed|' || jsonb_build_object('sqlstate', '23505', 'shipment_id', pg_temp.mu(8121))::text,
-  'INTERNAL_ERROR: only an ERROR system log with the shipment and the SQLSTATE remains');
+select is(
+  (select coalesce(string_agg(f.code || '|' || f.context::text, ' / ' order by f.id), '-')
+   from internal.ops_failures f
+   where f.source = 'fn_confirm_shipment_delivery' and f.context ->> 'shipment_id' = pg_temp.mu(8121)::text)
+  || ' ' || pg_temp.logs(8121),
+  '23505|' || jsonb_build_object('shipment_id', pg_temp.mu(8121),
+    'error', 'duplicate key value violates unique constraint "shipment_completion_events_idempotency_key_key"')::text || ' -',
+  'INTERNAL_ERROR: one ops_failures row with the SQLSTATE, the shipment and the message remains, and no system log (S6d)');
 
 -- 7. shipment_completion_events constraints ---------------------------------------------------------
 create function pg_temp.ev_ins(p_ship integer, p_source text, p_actor integer, p_key text) returns void language sql as $$

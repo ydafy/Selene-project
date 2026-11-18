@@ -172,12 +172,9 @@ BEGIN
 
   RETURN QUERY SELECT true, NULL::text, p_source, false;
 EXCEPTION WHEN OTHERS THEN
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES (
-    'ERROR',
-    'Shipment completion RPC failed',
-    jsonb_build_object('shipment_id', p_shipment_id, 'sqlstate', SQLSTATE)
-  );
+  INSERT INTO internal.ops_failures (source, code, context)
+  VALUES ('fn_confirm_shipment_delivery', SQLSTATE,
+          jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM));
   RETURN QUERY SELECT false, 'INTERNAL_ERROR'::text, NULL::text, false;
 END;
 $function$;

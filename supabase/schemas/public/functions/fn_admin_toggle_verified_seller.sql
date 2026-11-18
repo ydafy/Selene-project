@@ -14,13 +14,14 @@ BEGIN
     -- 1. SEGURIDAD: Obtener ID desde JWT autenticado
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
+    -- A refused caller gets false, as an unexpected error does, but it is not a failure to record.
     IF v_auth_user_id IS NULL THEN
-        RAISE EXCEPTION 'UNAUTHORIZED_NO_SESSION';
+        RETURN false;
     END IF;
 
     -- 2. VALIDACIÓN DE ROL: Buscar en profiles_private vía is_admin()
     IF NOT is_admin() THEN
-        RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
+        RETURN false;
     END IF;
 
     -- 3. ACTUALIZAR SELLO EN PROFILES (is_verified_seller vive en profiles)
@@ -43,8 +44,8 @@ BEGIN
     RETURN true;
 
 EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_admin_toggle_verified_seller',
+    INSERT INTO internal.ops_failures (source, code, context)
+    VALUES ('fn_admin_toggle_verified_seller', SQLSTATE,
             jsonb_build_object('target_id', p_target_user_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
     RETURN false;
 END;

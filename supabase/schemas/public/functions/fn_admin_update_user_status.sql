@@ -92,11 +92,6 @@ BEGIN
            jsonb_build_object('previous_status', v_previous_status::text, 'new_status', p_new_status::text, 'reason', p_reason));
 
     RETURN true;
-
-EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_admin_update_user_status', jsonb_build_object('target_id', p_target_user_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
-    RAISE;
 END;
 $function$;
 

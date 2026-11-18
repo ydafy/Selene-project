@@ -49,10 +49,6 @@ async function cleanup() {
     db.from('notifications').delete().eq('event_payload->>order_id', orderId),
     'notifications',
   );
-  await ok(
-    db.from('system_logs').delete().eq('metadata->>order_id', orderId),
-    'system_logs',
-  );
   await ok(db.from('disputes').delete().eq('id', disputeId), 'disputes');
   await ok(db.from('shipments').delete().eq('id', shipmentId), 'shipments');
   await ok(db.from('orders').delete().eq('id', orderId), 'orders');

@@ -41,12 +41,11 @@ BEGIN
   RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
-  -- FIX: Inyectamos el insert de telemetría para mantener consistencia absoluta
-  -- con todo el sistema de diagnóstico de errores del proyecto.
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('ERROR', 'Fallo en fn_seller_initiate_return_label',
+  -- The raw error stays server-side (cron-watchdog reports it); the caller gets a code.
+  INSERT INTO internal.ops_failures (source, code, context)
+  VALUES ('fn_seller_initiate_return_label', SQLSTATE,
           jsonb_build_object('dispute_id', p_dispute_id, 'error', SQLERRM));
-  RETURN QUERY SELECT false, SQLERRM;
+  RETURN QUERY SELECT false, 'INTERNAL_ERROR'::TEXT;
 END;
 $function$;
 

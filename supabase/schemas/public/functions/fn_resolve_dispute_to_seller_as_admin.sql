@@ -93,8 +93,8 @@ BEGIN
     RETURN QUERY SELECT true, NULL::TEXT;
 
 EXCEPTION WHEN OTHERS THEN
-    INSERT INTO public.system_logs (level, message, metadata)
-    VALUES ('ERROR', 'Fallo en fn_resolve_dispute_to_seller', jsonb_build_object('dispute_id', p_dispute_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
+    INSERT INTO internal.ops_failures (source, code, context)
+    VALUES ('fn_resolve_dispute_to_seller_as_admin', SQLSTATE, jsonb_build_object('dispute_id', p_dispute_id, 'admin_id', v_auth_user_id, 'error', SQLERRM));
 
     RETURN QUERY SELECT false, 'INTERNAL_SERVER_ERROR'::TEXT;
 END;

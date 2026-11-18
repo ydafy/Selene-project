@@ -54,12 +54,6 @@ BEGIN
   WHERE id = p_shipment_id;
 
   RETURN QUERY SELECT true, 'CONNECT_SHIPMENT_SKIPPED_WALLET'::text;
-
-EXCEPTION WHEN OTHERS THEN
-  INSERT INTO public.system_logs (level, message, metadata)
-  VALUES ('ERROR', 'Fallo en fn_release_shipment_funds',
-          jsonb_build_object('shipment_id', p_shipment_id, 'error', SQLERRM));
-  RETURN QUERY SELECT false, SQLERRM;
 END;
 $function$;
 

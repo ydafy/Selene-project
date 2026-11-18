@@ -324,9 +324,9 @@ drop trigger t3_fail_cancel on public.shipments;
 select is(
   pg_temp.audits(64314) || ':' || ((pg_temp.op(64314)).refund_resolved_at is null) || ':'
   || (select status::text from public.shipments where id = pg_temp.mu(64314)) || ':'
-  || (select count(*) from public.system_logs where message = 'Fallo en fn_cancel_shipment'
-      and metadata->>'shipment_id' = pg_temp.mu(64314)::text),
-  '0:true:paid:0', 'resolve: a failed completion commits nothing, audit row and log included');
+  || (select count(*) from internal.ops_failures where source = 'fn_cancel_shipment'
+      and context->>'shipment_id' = pg_temp.mu(64314)::text),
+  '0:true:paid:0', 'resolve: a failed completion commits nothing, audit row and failure row included');
 
 select * from finish();
 rollback;

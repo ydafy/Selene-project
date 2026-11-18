@@ -244,7 +244,7 @@ const cases: Array<
     },
   ],
   [
-    'P4 a cancellation failure inside the resolution commits nothing: no resolution, no audit row, no system_logs row, shipment still open',
+    'P4 a cancellation failure inside the resolution commits nothing: no resolution, no audit row, no ops_failures row, shipment still open',
     async (tx) => {
       await start(tx);
       await apply(tx, 're_p4', 'canceled');
@@ -255,9 +255,9 @@ const cases: Array<
       await tx.unsafe(
         'CREATE TRIGGER p4_boom BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION pg_temp.p4_boom()',
       );
-      const logs = await count(
+      const failures = await count(
         tx,
-        'SELECT count(*)::int AS n FROM public.system_logs',
+        'SELECT count(*)::int AS n FROM internal.ops_failures',
       );
       await asService(tx);
       await rejects(tx, (sp) => resolve(sp), 'CANCELLATION_COMPLETE_FAILED');
@@ -273,8 +273,8 @@ const cases: Array<
         0,
       );
       assert.equal(
-        await count(tx, 'SELECT count(*)::int AS n FROM public.system_logs'),
-        logs,
+        await count(tx, 'SELECT count(*)::int AS n FROM internal.ops_failures'),
+        failures,
       );
       assert.equal(await shipmentStatus(tx), 'paid');
     },
