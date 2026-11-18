@@ -367,3 +367,16 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 **Decision:** The `main` ruleset requires conversation resolution before merging (`required_review_thread_resolution: true`). Every unresolved review thread, from CodeRabbit or a person, blocks the merge, auto-merge included. Resolve a thread after fixing it or after replying with the reason it does not apply.
 
 **Consequence:** Auto-merge can no longer land a pull request over an unresolved review thread. Findings that create no thread still pass: those in a review body (such as outside-diff findings), and a rate-limited or skipped review. So the 2026-11-15 rule to confirm that CodeRabbit reviewed the head commit and to read its review bodies stays.
+
+## 2026-11-17: Workflows Are Linted in CI; gitleaks Is Not Added
+
+**Context:** #629 (roadmap #623, item 6) proposed actionlint, zizmor and gitleaks in CI. A calibration run on `main` found real findings for the first two. actionlint 1.7.12 with shellcheck reported one (SC2035 in `.github/workflows/ci.yml`). zizmor 1.32.0 reported 11: `issues: write` granted to every job of `.github/workflows/dependency-report.yml`, and 10 checkout steps that left the job token in the checkout's Git config. gitleaks 8.30.1 found only false positives and keystore passwords already retired. This repository is public, so CI runs only after a push has already published a leaked key. GitHub secret scanning covers the whole history for free, and push protection, which is on, is the only layer that stops a key before it is public. None of 18 reference repositories runs gitleaks; zizmor runs in CI at vercel/vercel, supabase/supabase, astral-sh/uv, python/cpython and grafana.
+
+**Decision (maintainer, 2026-11-17):**
+
+- A new CI job, `repo-checks`, runs actionlint and zizmor on `.github/workflows/`. Both are release binaries pinned by version and sha256 (`docs/dependencies.md`, "Keep the workflow linters current").
+- The calibration findings were fixed, not accepted: `issues: write` moved to the `report` job, and every checkout sets `persist-credentials: false`. There is no exceptions file.
+- gitleaks is not added. Secret scanning and push protection cover what it would.
+- `repo-checks` joins the required checks of the `main` ruleset; the maintainer adds it. This extends the 2026-11-09 entry, which requires every job in `.github/workflows/ci.yml`.
+
+**Consequence:** A workflow change that adds a risky pattern fails CI on its pull request. A layer that catches nothing real in its first 2-3 months is removed, as the roadmap rule for new test layers says. The weekly report does not track the two binaries yet (#687).

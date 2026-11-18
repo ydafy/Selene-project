@@ -1,5 +1,6 @@
 # CI: lint, format check, typecheck and the bun test suite, the pgTAP database tests
-# against a local Supabase stack started inside the job, and the admin-web Playwright specs.
+# against a local Supabase stack started inside the job, the admin-web Playwright specs,
+# and actionlint and zizmor on the workflows.
 name: CI
 
 on:
@@ -19,7 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # No job pushes or fetches after checkout, so none keeps the token in .git/config.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Bun version comes from "packageManager" in package.json.
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
@@ -40,8 +44,48 @@ jobs:
           deno-version: 2.6.6
       - name: deno check Edge Functions
         working-directory: supabase/functions
-        run: deno check --frozen */index.ts
+        run: deno check --frozen ./*/index.ts
       - run: bun test
+
+  # actionlint and zizmor on .github/workflows/. Both are release binaries pinned by
+  # version and sha256 (docs/dependencies.md, "Keep the workflow linters current").
+  repo-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+      ZIZMOR_VERSION: 1.32.0
+      ZIZMOR_SHA256: bb110cc765eca9cd7efb2e284a956be5974c60027b0970f16397d86208a9957b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install actionlint and zizmor
+        shell: bash
+        run: |
+          set -euo pipefail
+          actionlint_tar="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          zizmor_tar=zizmor-x86_64-unknown-linux-gnu.tar.gz
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o "$actionlint_tar" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${actionlint_tar}"
+          curl -fsSL --retry 3 -o "$zizmor_tar" \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/${zizmor_tar}"
+          echo "${ACTIONLINT_SHA256}  ${actionlint_tar}" | sha256sum -c -
+          echo "${ZIZMOR_SHA256}  ${zizmor_tar}" | sha256sum -c -
+          mkdir -p bin
+          tar -xzf "$actionlint_tar" -C bin actionlint
+          tar -xzf "$zizmor_tar" -C bin zizmor
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # shellcheck is preinstalled on ubuntu-latest; actionlint runs it on every run: script.
+      - run: actionlint
+      # Also runs after an actionlint failure, so one push shows both results.
+      - name: zizmor
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: zizmor --no-progress --format github .github/workflows
 
   # Every commit of the pull request goes through scripts/ci/check-commit-msg.ts,
   # so a commit made with --no-verify or in a clone without hooks still fails.
@@ -52,6 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - name: Check commit messages
@@ -70,6 +115,7 @@ jobs:
       # base the migration lint diffs against.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 2
       # Same CLI version as the maintainer's machine; bump them together.
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
@@ -113,6 +159,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps chromium
