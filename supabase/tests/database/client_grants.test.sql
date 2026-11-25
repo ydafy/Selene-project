@@ -50,6 +50,8 @@ select results_eq(
       ('authenticated', 'products', 'INSERT'),
       ('authenticated', 'products', 'SELECT'),
       ('authenticated', 'products', 'UPDATE'),
+      ('authenticated', 'product_verification_evidence', 'SELECT'),
+      ('authenticated', 'product_verifications', 'SELECT'),
       ('authenticated', 'products_public', 'SELECT'),
       ('authenticated', 'profiles', 'SELECT'),
       ('authenticated', 'profiles_private', 'SELECT'),

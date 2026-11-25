@@ -1343,6 +1343,229 @@ export type Database = {
         };
         Relationships: [];
       };
+      product_verification_evidence: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: Database['public']['Enums']['verification_evidence_kind'];
+          storage_path: string;
+          verification_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: Database['public']['Enums']['verification_evidence_kind'];
+          storage_path: string;
+          verification_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: Database['public']['Enums']['verification_evidence_kind'];
+          storage_path?: string;
+          verification_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'product_verification_evidence_verification_id_fkey';
+            columns: ['verification_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_product_queue_view';
+            referencedColumns: ['verification_id'];
+          },
+          {
+            foreignKeyName: 'product_verification_evidence_verification_id_fkey';
+            columns: ['verification_id'];
+            isOneToOne: false;
+            referencedRelation: 'product_verifications';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      product_verifications: {
+        Row: {
+          benchmark_score: number | null;
+          decided_at: string | null;
+          decided_by: string | null;
+          decision:
+            Database['public']['Enums']['product_verification_decision'] | null;
+          id: string;
+          locked_at: string | null;
+          locked_by: string | null;
+          private_note_id: string | null;
+          product_id: string;
+          public_note: string | null;
+          submitted_at: string;
+          submitted_by: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          benchmark_score?: number | null;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision?:
+            Database['public']['Enums']['product_verification_decision'] | null;
+          id?: string;
+          locked_at?: string | null;
+          locked_by?: string | null;
+          private_note_id?: string | null;
+          product_id: string;
+          public_note?: string | null;
+          submitted_at?: string;
+          submitted_by: string;
+        };
+        Update: {
+          benchmark_score?: number | null;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision?:
+            Database['public']['Enums']['product_verification_decision'] | null;
+          id?: string;
+          locked_at?: string | null;
+          locked_by?: string | null;
+          private_note_id?: string | null;
+          product_id?: string;
+          public_note?: string | null;
+          submitted_at?: string;
+          submitted_by?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'product_verifications_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_locked_by_fkey';
+            columns: ['locked_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_locked_by_fkey';
+            columns: ['locked_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_locked_by_fkey';
+            columns: ['locked_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_locked_by_fkey';
+            columns: ['locked_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_locked_by_fkey';
+            columns: ['locked_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_private_note_id_fkey';
+            columns: ['private_note_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_notes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'admin_product_queue_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_product_id_fkey';
+            columns: ['product_id'];
+            isOneToOne: false;
+            referencedRelation: 'products_public';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_submitted_by_fkey';
+            columns: ['submitted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['buyer_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_submitted_by_fkey';
+            columns: ['submitted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_disputes_monitor_view';
+            referencedColumns: ['seller_id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_submitted_by_fkey';
+            columns: ['submitted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_seller_onboarding_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_submitted_by_fkey';
+            columns: ['submitted_by'];
+            isOneToOne: false;
+            referencedRelation: 'admin_user_directory_view';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'product_verifications_submitted_by_fkey';
+            columns: ['submitted_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       products: {
         Row: {
           aspect_ratio: number;
@@ -3113,134 +3336,75 @@ export type Database = {
       admin_product_queue_view: {
         Row: {
           aspect_ratio: number;
+          benchmark_score: number | null;
           category: string;
           condition: string;
           created_at: string;
-          deleted_at: string | null;
           description: string;
-          fts: unknown;
+          evidence: Json | null;
           id: string;
           images: string[];
+          last_rejection_note: string | null;
           locked_at: string | null;
           locked_by: string | null;
           name: string;
           origin_zip: string | null;
           package_preset: string | null;
           price_cents: number;
-          rejection_reason: string | null;
-          reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
           shipping_payer: string;
           specifications: NonNullable<Json>;
           status: Database['public']['Enums']['product_status'];
+          submitted_at: string;
           updated_at: string;
           usage: string;
-          verification_data: Json | null;
-          verified_at: string | null;
+          verification_id: string;
           views: number;
         };
         ComputedFields: never;
-        Insert: {
-          aspect_ratio?: number | null;
-          category?: string | null;
-          condition?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          fts?: unknown;
-          id?: string | null;
-          images?: string[] | null;
-          locked_at?: string | null;
-          locked_by?: string | null;
-          name?: string | null;
-          origin_zip?: string | null;
-          package_preset?: string | null;
-          price_cents?: number | null;
-          rejection_reason?: string | null;
-          reserved_at?: string | null;
-          seller_id?: string | null;
-          shipping_cost_cents?: number | null;
-          shipping_payer?: string | null;
-          specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status'] | null;
-          updated_at?: string | null;
-          usage?: string | null;
-          verification_data?: Json | null;
-          verified_at?: string | null;
-          views?: number | null;
-        };
-        Update: {
-          aspect_ratio?: number | null;
-          category?: string | null;
-          condition?: string | null;
-          created_at?: string | null;
-          deleted_at?: string | null;
-          description?: string | null;
-          fts?: unknown;
-          id?: string | null;
-          images?: string[] | null;
-          locked_at?: string | null;
-          locked_by?: string | null;
-          name?: string | null;
-          origin_zip?: string | null;
-          package_preset?: string | null;
-          price_cents?: number | null;
-          rejection_reason?: string | null;
-          reserved_at?: string | null;
-          seller_id?: string | null;
-          shipping_cost_cents?: number | null;
-          shipping_payer?: string | null;
-          specifications?: Json | null;
-          status?: Database['public']['Enums']['product_status'] | null;
-          updated_at?: string | null;
-          usage?: string | null;
-          verification_data?: Json | null;
-          verified_at?: string | null;
-          views?: number | null;
-        };
         Relationships: [
           {
-            foreignKeyName: 'products_category_fkey';
-            columns: ['category'];
-            isOneToOne: false;
-            referencedRelation: 'category_configurations';
-            referencedColumns: ['category_name'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
+            foreignKeyName: 'product_verifications_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
             referencedRelation: 'admin_disputes_monitor_view';
             referencedColumns: ['buyer_id'];
           },
           {
-            foreignKeyName: 'products_locked_by_fkey';
+            foreignKeyName: 'product_verifications_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
             referencedRelation: 'admin_disputes_monitor_view';
             referencedColumns: ['seller_id'];
           },
           {
-            foreignKeyName: 'products_locked_by_fkey';
+            foreignKeyName: 'product_verifications_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
             referencedRelation: 'admin_seller_onboarding_view';
             referencedColumns: ['id'];
           },
           {
-            foreignKeyName: 'products_locked_by_fkey';
+            foreignKeyName: 'product_verifications_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
             referencedRelation: 'admin_user_directory_view';
             referencedColumns: ['id'];
           },
           {
-            foreignKeyName: 'products_locked_by_fkey';
+            foreignKeyName: 'product_verifications_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'products_category_fkey';
+            columns: ['category'];
+            isOneToOne: false;
+            referencedRelation: 'category_configurations';
+            referencedColumns: ['category_name'];
           },
           {
             foreignKeyName: 'products_seller_id_fkey';
@@ -4448,6 +4612,15 @@ export type Database = {
         };
         Returns: Json;
       };
+      fn_submit_product_verification: {
+        Args: {
+          p_benchmark_score?: number;
+          p_performance_paths?: string[];
+          p_physical_paths: string[];
+          p_product_id: string;
+        };
+        Returns: string;
+      };
       fn_transition_payout_release_stage: {
         Args: {
           p_claim_token?: string;
@@ -4526,6 +4699,7 @@ export type Database = {
         | 'hidden'
         | 'reserved'
         | 'in_dispute';
+      product_verification_decision: 'approved' | 'rejected';
       report_outcome:
         'dismissed' | 'warned' | 'listing_removed' | 'account_suspended';
       report_reason:
@@ -4546,6 +4720,7 @@ export type Database = {
         | 'returned';
       stripe_onboarding_status: 'pending' | 'complete' | 'rejected';
       user_role: 'user' | 'admin';
+      verification_evidence_kind: 'physical' | 'performance';
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -4711,6 +4886,7 @@ export const Constants = {
         'reserved',
         'in_dispute',
       ],
+      product_verification_decision: ['approved', 'rejected'],
       report_outcome: [
         'dismissed',
         'warned',
@@ -4737,6 +4913,7 @@ export const Constants = {
       ],
       stripe_onboarding_status: ['pending', 'complete', 'rejected'],
       user_role: ['user', 'admin'],
+      verification_evidence_kind: ['physical', 'performance'],
     },
   },
 } as const;

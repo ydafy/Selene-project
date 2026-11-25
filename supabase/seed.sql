@@ -173,6 +173,45 @@ CROSS JOIN (VALUES
 ) AS p(id, name, description, price_cents, category, condition, usage, specifications, shipping_cost_cents, package_preset, status)
 WHERE s.id = 1;
 
+-- Verification history (odd/tasks/verification-history.md): the verified
+-- listings have an attempt approved by the admin, the rejected one an attempt
+-- rejected with a reason, and the one in review an open attempt with its
+-- proofs. The proof paths name no stored file; the seed uploads nothing.
+INSERT INTO public.product_verifications (
+  id, product_id, submitted_by, submitted_at, benchmark_score,
+  decision, decided_by, decided_at, public_note
+)
+SELECT
+  v.id, v.product_id, '00000000-0000-4000-8000-000000000002', now() - interval '2 days', v.benchmark_score,
+  v.decision::public.product_verification_decision,
+  CASE WHEN v.decision IS NOT NULL THEN '00000000-0000-4000-8000-000000000001'::uuid END,
+  CASE WHEN v.decision IS NOT NULL THEN now() - interval '1 day' END,
+  v.public_note
+FROM (VALUES
+  ('00000000-0000-4000-8000-0000000000c1'::uuid, '00000000-0000-4000-8000-0000000000b1'::uuid, 14200, 'approved', NULL),
+  ('00000000-0000-4000-8000-0000000000c2'::uuid, '00000000-0000-4000-8000-0000000000b2'::uuid, NULL, 'approved', NULL),
+  ('00000000-0000-4000-8000-0000000000c3'::uuid, '00000000-0000-4000-8000-0000000000b3'::uuid, NULL, 'approved', NULL),
+  ('00000000-0000-4000-8000-0000000000c4'::uuid, '00000000-0000-4000-8000-0000000000b4'::uuid, NULL, 'approved', NULL),
+  ('00000000-0000-4000-8000-0000000000c6'::uuid, '00000000-0000-4000-8000-0000000000b6'::uuid, 21800, NULL, NULL),
+  ('00000000-0000-4000-8000-0000000000c7'::uuid, '00000000-0000-4000-8000-0000000000b7'::uuid, NULL, 'rejected',
+   'La foto no muestra el número de serie del kit.'),
+  ('00000000-0000-4000-8000-0000000000ca'::uuid, '00000000-0000-4000-8000-0000000000ba'::uuid, NULL, 'approved', NULL)
+) AS v(id, product_id, benchmark_score, decision, public_note);
+
+INSERT INTO public.product_verification_evidence (verification_id, kind, storage_path)
+SELECT v.id, e.kind::public.verification_evidence_kind, v.product_id::text || '/' || e.file
+FROM public.product_verifications v
+CROSS JOIN (VALUES ('physical', 'physical-proof.jpg'), ('performance', 'performance-proof.jpg')) AS e(kind, file)
+WHERE v.product_id IN (
+  '00000000-0000-4000-8000-0000000000b1', '00000000-0000-4000-8000-0000000000b6'
+)
+UNION ALL
+SELECT v.id, 'physical'::public.verification_evidence_kind, v.product_id::text || '/physical-proof.jpg'
+FROM public.product_verifications v
+WHERE v.product_id NOT IN (
+  '00000000-0000-4000-8000-0000000000b1', '00000000-0000-4000-8000-0000000000b6'
+);
+
 -- Auto-completion fixtures for complete-delivered-shipments (backlog BL14): one fixture-buyer
 -- order with four fixture-seller shipments. f1 is due (delivered 3 days ago, no dispute); f2 is due but has
 -- an open dispute; f3 is due and its dispute is resolved; f4 was delivered 1 hour ago.

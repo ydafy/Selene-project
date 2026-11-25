@@ -51,6 +51,7 @@ insert into expected_grants values
   ('authenticated', 'public.fn_register_push_token(text, text)'),
   ('authenticated', 'public.fn_resolve_product_verdict(uuid, text, text, text)'),
   ('authenticated', 'public.fn_seller_submit_return_evidence(uuid, text[], text)'),
+  ('authenticated', 'public.fn_submit_product_verification(uuid, text[], text[], integer)'),
   ('authenticated', 'public.fn_unlock_product(uuid)'),
   ('authenticated', 'public.fn_unregister_push_token(text)'),
   ('authenticated', 'public.is_admin()'); -- RLS and storage policies, admin views

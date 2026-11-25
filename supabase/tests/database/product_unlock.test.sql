@@ -1,13 +1,14 @@
--- fn_unlock_product: an active admin releases a listing's review lock when it
--- is theirs or older than 10 minutes, writes a PRODUCT_UNLOCK audit row and
--- returns true; a fresh lock held by another admin, an unlocked listing or a
--- missing one returns false and changes nothing. No session, a non-admin, and
+-- fn_unlock_product: an active admin releases the review lock on a listing's
+-- open verification attempt when it is theirs or older than 10 minutes, writes
+-- a PRODUCT_UNLOCK audit row naming the attempt and returns true; a fresh lock
+-- held by another admin, an unlocked attempt, a listing without an open
+-- attempt or a missing one returns false and changes nothing. No session, a non-admin, and
 -- a suspended or banned admin are refused. Also the 10-minute reservation TTL
 -- of the expired-only fn_release_listings that fn_reserve_products runs, and
 -- the (status, reserved_at) partial index. Runs against the
 -- local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(26);
+select plan(28);
 
 \ir ../fixtures/money.psql
 
@@ -22,37 +23,49 @@ select pg_temp.money_user(5206, 'admin');
 update public.profiles_private set status = 'suspended' where id = pg_temp.mu(5205);
 update public.profiles_private set status = 'banned' where id = pg_temp.mu(5206);
 
--- A listing of seller 5202 in p_status, locked by p_locked_by p_lock_age ago
--- (NULL leaves it unlocked), reserved p_reserved_age ago (NULL: not reserved).
+-- A listing of seller 5202 in p_status, reserved p_reserved_age ago (NULL: not
+-- reserved). A listing in review gets an open attempt pg_temp.mu(p_n + 1000)
+-- unless p_open is false, locked by p_locked_by p_lock_age ago (NULL leaves it
+-- unlocked).
 create function pg_temp.listing(
   p_n integer, p_status text, p_locked_by integer, p_lock_age interval,
-  p_reserved_age interval default null
-) returns uuid language sql as $$
+  p_reserved_age interval default null, p_open boolean default true
+) returns uuid language plpgsql as $$
+begin
   insert into public.products (
     id, name, description, price_cents, category, condition, usage, images, status,
     specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
-    locked_by, locked_at, reserved_at,
+    reserved_at,
     publication_shipping_reserve_cents, publication_commission_rate,
     publication_insurance_rate
   )
   select pg_temp.mu(p_n), 'Test GPU', 'Test listing', 100000, 'GPU', 'used', 'gaming',
     array['https://example.test/p.png'], p_status::public.product_status,
     '{}'::jsonb, pg_temp.mu(5202), 10000, '06600', 'gpu_1',
-    case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
-    case when p_locked_by is null then null else now() - p_lock_age end,
     now() - p_reserved_age,
     10000::bigint + s.shipping_buffer_cents
       + ceil(100000::numeric * s.insurance_rate)::bigint,
     s.service_fee_pct,
     s.insurance_rate
-  from public.system_settings s where s.id = 1
-  returning id
+  from public.system_settings s where s.id = 1;
+  if p_status = 'in_review' and p_open then
+    insert into public.product_verifications (id, product_id, submitted_by, locked_by, locked_at)
+    values (pg_temp.mu(p_n + 1000), pg_temp.mu(p_n), pg_temp.mu(5202),
+      case when p_locked_by is null then null else pg_temp.mu(p_locked_by) end,
+      case when p_locked_by is null then null else now() - p_lock_age end);
+  end if;
+  return pg_temp.mu(p_n);
+end $$;
+
+-- locked_by|locked_at of a listing's attempt.
+create function pg_temp.lock_of(p_n integer) returns text language sql as $$
+  select coalesce((select coalesce(v.locked_by::text, '-') || '|' || coalesce(v.locked_at::text, '-')
+    from public.product_verifications v where v.id = pg_temp.mu(p_n + 1000)), 'no attempt')
 $$;
 
--- status|locked_by|locked_at|updated_at|audit rows of a listing.
+-- status|attempt lock|updated_at|audit rows of a listing.
 create function pg_temp.sig_of(p_n integer) returns text language sql as $$
-  select p.status::text || '|' || coalesce(p.locked_by::text, '-') || '|'
-    || coalesce(p.locked_at::text, '-') || '|' || coalesce(p.updated_at::text, '-')
+  select p.status::text || '|' || pg_temp.lock_of(p_n) || '|' || coalesce(p.updated_at::text, '-')
     || '|audits:' || (select count(*) from public.admin_audit_logs a where a.target_id = p.id)
   from public.products p where p.id = pg_temp.mu(p_n)
 $$;
@@ -63,12 +76,13 @@ $$;
 create function pg_temp.unchanged(p_n integer) returns boolean language sql as $$
   select pg_temp.sig_of(p_n) = (select v from pg_temp.sig where n = p_n)
 $$;
--- status|locked_by|locked_at, then each audit row as admin|action|timestamp is now().
+-- status|attempt lock, then each audit row as admin|action|timestamp is
+-- now()|verification_id is the attempt.
 create function pg_temp.after_unlock(p_n integer) returns text language sql as $$
-  select p.status::text || '|' || coalesce(p.locked_by::text, '-') || '|'
-    || coalesce(p.locked_at::text, '-') || '|' || coalesce((
+  select p.status::text || '|' || pg_temp.lock_of(p_n) || '|' || coalesce((
       select string_agg(a.admin_id::text || '|' || a.action_type || '|'
-        || ((a.details->>'timestamp')::timestamptz = now())::text, ' ; ')
+        || ((a.details->>'timestamp')::timestamptz = now())::text || '|'
+        || (a.details->>'verification_id' = pg_temp.mu(p_n + 1000)::text)::text, ' ; ')
       from public.admin_audit_logs a where a.target_id = p.id), '-')
   from public.products p where p.id = pg_temp.mu(p_n)
 $$;
@@ -85,7 +99,8 @@ select pg_temp.listing(5225, 'in_review', 5203, interval '10 minutes');
 select pg_temp.listing(5226, 'in_review', 5203, interval '10 minutes 1 second');
 select pg_temp.listing(5227, 'in_review', 5203, interval '1 minute');
 select pg_temp.listing(5228, 'in_review', null, null);
-select pg_temp.remember(array[5221, 5222, 5223, 5225, 5227, 5228]);
+select pg_temp.listing(5229, 'in_review', null, null, null, false);
+select pg_temp.remember(array[5221, 5222, 5223, 5225, 5227, 5228, 5229]);
 
 -- Refusals ---------------------------------------------------------------------
 -- Each refused caller holds the lock, so without the check the call would go through.
@@ -120,8 +135,8 @@ select pg_temp.as_user(5201);
 set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5224)), true, 'the admin releases their own fresh lock');
 reset role;
-select is(pg_temp.after_unlock(5224), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
-  'releasing their own lock clears it, keeps the status and writes one PRODUCT_UNLOCK audit row');
+select is(pg_temp.after_unlock(5224), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true|true',
+  'releasing their own lock clears it, keeps the status and writes one PRODUCT_UNLOCK audit row naming the attempt');
 
 set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5225)), false,
@@ -133,7 +148,7 @@ set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5226)), true,
   'another admin''s lock older than 10 minutes is released');
 reset role;
-select is(pg_temp.after_unlock(5226), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true',
+select is(pg_temp.after_unlock(5226), 'in_review|-|-|' || pg_temp.mu(5201)::text || '|PRODUCT_UNLOCK|true|true',
   'releasing an expired lock clears it and audits the admin who released it');
 
 set local role authenticated;
@@ -145,6 +160,11 @@ set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5228)), false, 'an unlocked listing returns false');
 reset role;
 select ok(pg_temp.unchanged(5228), 'an unlocked listing gets no audit row');
+
+set local role authenticated;
+select is(public.fn_unlock_product(pg_temp.mu(5229)), false, 'a listing without an open attempt returns false');
+reset role;
+select ok(pg_temp.unchanged(5229), 'a listing without an open attempt gets no audit row');
 
 set local role authenticated;
 select is(public.fn_unlock_product(pg_temp.mu(5299)), false, 'a missing listing returns false');

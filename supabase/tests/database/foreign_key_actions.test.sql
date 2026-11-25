@@ -29,8 +29,8 @@ select is_empty(
     order by 1$$,
   'no foreign key outside profiles and profiles_private references auth.users');
 
--- (b) Money and shipment history, and moderation reports (#653), cannot be
--- deleted from under their rows.
+-- (b) Money and shipment history, moderation reports (#653) and verification
+-- history (#651) cannot be deleted from under their rows.
 select is_empty(
   $$select e.tbl || '.' || e.col || coalesce(' is ' || f.action || ' -> ' || f.target, ' is missing')
     from (values
@@ -65,7 +65,13 @@ select is_empty(
       ('public.reports', 'reporter_id', 'public.profiles'),
       ('public.reports', 'target_product_id', 'public.products'),
       ('public.reports', 'target_user_id', 'public.profiles'),
-      ('public.reports', 'resolved_by', 'public.profiles')
+      ('public.reports', 'resolved_by', 'public.profiles'),
+      ('public.product_verifications', 'product_id', 'public.products'),
+      ('public.product_verifications', 'submitted_by', 'public.profiles'),
+      ('public.product_verifications', 'decided_by', 'public.profiles'),
+      ('public.product_verifications', 'private_note_id', 'public.admin_user_notes'),
+      ('public.product_verifications', 'locked_by', 'public.profiles'),
+      ('public.product_verification_evidence', 'verification_id', 'public.product_verifications')
     ) as e(tbl, col, target)
     left join fk_actions f on f.tbl = e.tbl and f.col = e.col
     where f.action is distinct from 'r' or f.target is distinct from e.target
