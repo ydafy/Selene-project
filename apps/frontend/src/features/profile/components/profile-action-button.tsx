@@ -1,4 +1,4 @@
-import { TouchableOpacity } from 'react-native';
+import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import MaterialCommunityIcons, {
   type MaterialDesignIconsIconName,
@@ -10,17 +10,25 @@ type ProfileActionButtonProps = {
   label: string;
   icon: MaterialDesignIconsIconName;
   onPress: () => void;
+  /** Shows a spinner instead of the icon and ignores presses. */
+  loading?: boolean;
 };
 
 export const ProfileActionButton = ({
   label,
   icon,
   onPress,
+  loading = false,
 }: ProfileActionButtonProps) => {
   const theme = useTheme<Theme>();
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      onPress={loading ? undefined : onPress}
+      disabled={loading}
+      accessibilityState={loading ? { busy: true, disabled: true } : undefined}
+      activeOpacity={0.7}
+    >
       <Box
         width={100} // Ancho fijo para uniformidad
         height={80}
@@ -33,12 +41,22 @@ export const ProfileActionButton = ({
         borderWidth={1}
         borderColor="cardBackground"
       >
-        <Box marginBottom="s">
-          <MaterialCommunityIcons
-            name={icon}
-            size={28}
-            color={theme.colors.primary}
-          />
+        <Box
+          marginBottom="s"
+          minWidth={28}
+          minHeight={28}
+          justifyContent="center"
+          alignItems="center"
+        >
+          {loading ? (
+            <ActivityIndicator color={theme.colors.primary} />
+          ) : (
+            <MaterialCommunityIcons
+              name={icon}
+              size={28}
+              color={theme.colors.primary}
+            />
+          )}
         </Box>
         <Text
           variant="caption-md"

@@ -173,7 +173,6 @@ BEGIN
     updated_at = now()
   WHERE id = p_user_id;
 
-  DELETE FROM public.payment_methods WHERE user_id = p_user_id;
   DELETE FROM public.favorites WHERE user_id = p_user_id;
   DELETE FROM public.blocked_users WHERE blocker_id = p_user_id OR blocked_id = p_user_id;
   DELETE FROM public.notifications WHERE user_id = p_user_id;
