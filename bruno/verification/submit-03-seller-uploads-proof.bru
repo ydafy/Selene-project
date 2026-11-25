@@ -1,0 +1,35 @@
+meta {
+  name: submit-03-seller-uploads-proof
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/storage/v1/object/verification/{{submitProofPath}}
+  body: text
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+  Content-Type: image/png
+}
+
+body:text {
+  bruno verification proof
+}
+
+script:pre-request {
+  bru.setVar("submitProofPath", bru.getVar("submitProductId") + "/bruno_submit_" + Date.now() + ".png");
+}
+
+tests {
+  test("the owner uploads a physical proof into the listing's folder", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+}
+
+docs {
+  The proof the seller submits in submit-10. The bucket accepts only image types.
+}

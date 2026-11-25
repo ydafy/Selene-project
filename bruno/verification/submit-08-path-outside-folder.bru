@@ -1,0 +1,35 @@
+meta {
+  name: submit-08-path-outside-folder
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": ["00000000-0000-4000-8000-0000000000b1/proof.png"]
+  }
+}
+
+tests {
+  test("every proof must be in the listing's own folder", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("INVALID_EVIDENCE_PATH");
+  });
+}
+
+docs {
+  The path points into the folder of the seeded listing b1 (#651 S3).
+}

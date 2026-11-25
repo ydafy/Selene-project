@@ -1,0 +1,36 @@
+meta {
+  name: submit-06-in-review-refused
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "00000000-0000-4000-8000-0000000000b6",
+    "p_physical_paths": ["00000000-0000-4000-8000-0000000000b6/proof.png"]
+  }
+}
+
+tests {
+  test("a listing already in review cannot take another submission", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("INVALID_STATUS_FOR_VERIFICATION");
+  });
+}
+
+docs {
+  The seeded listing b6 is in_review with the open attempt c6. Only pending_verification or rejected
+  listings take a submission (#651 S3).
+}
