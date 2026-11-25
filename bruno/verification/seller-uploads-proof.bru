@@ -13,7 +13,7 @@ post {
 headers {
   apikey: {{publishableKey}}
   Authorization: Bearer {{sellerToken}}
-  Content-Type: text/plain
+  Content-Type: image/png
 }
 
 body:text {
@@ -21,7 +21,7 @@ body:text {
 }
 
 script:pre-request {
-  bru.setVar("proofName", "bruno_proof_" + Date.now() + ".txt");
+  bru.setVar("proofName", "bruno_proof_" + Date.now() + ".png");
 }
 
 tests {
@@ -32,5 +32,6 @@ tests {
 
 docs {
   Run after auth/login-seller. Uses a unique object name per run so the request is
-  idempotent without UPDATE/DELETE policies. The seeded seller owns listing b1.
+  idempotent without UPDATE/DELETE policies. The seeded seller owns listing b1. The bucket accepts
+  only image types (allowed_mime_types), so the request declares image/png.
 }

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=locked_by,locked_at
+  url: {{baseUrl}}/rest/v1/product_verifications?product_id=eq.00000000-0000-4000-8000-0000000000b6&decision=is.null&select=locked_by,locked_at
   body: none
   auth: none
 }
@@ -16,13 +16,14 @@ headers {
 }
 
 tests {
-  test("the listing is unlocked", function () {
+  test("the open attempt is unlocked and still open", function () {
     expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
     expect(res.getBody()[0].locked_by).to.equal(null);
     expect(res.getBody()[0].locked_at).to.equal(null);
   });
 }
 
 docs {
-  Service-role read after unlock-product-09. unlock-product-11 checks the audit row.
+  Service-role read after unlock-product-09. The lock lives on the open verification attempt (#651 S4). unlock-product-11 checks the audit row.
 }

@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/rest/v1/products?id=eq.00000000-0000-4000-8000-0000000000b4&select=locked_by,locked_at
+  url: {{baseUrl}}/rest/v1/product_verifications?product_id=eq.00000000-0000-4000-8000-0000000000b6&decision=is.null&select=locked_by,locked_at
   body: none
   auth: none
 }
@@ -18,11 +18,13 @@ headers {
 tests {
   test("the refused calls left the admin's lock in place", function () {
     expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
     expect(res.getBody()[0].locked_by).to.equal("00000000-0000-4000-8000-000000000001");
     expect(res.getBody()[0].locked_at).to.not.equal(null);
   });
 }
 
 docs {
-  Service-role read after unlock-product-03, unlock-product-05 and unlock-product-06.
+  Service-role read after unlock-product-03, unlock-product-05 and unlock-product-06. The lock lives on the
+  open verification attempt (#651 S4).
 }
