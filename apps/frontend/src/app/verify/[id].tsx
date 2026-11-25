@@ -23,6 +23,7 @@ import { useVerificationLogic } from '@/features/verify/hooks/use-verification-l
 import {
   canSubmitVerification,
   resolveVerificationRequirements,
+  verificationErrorMessage,
 } from '@/features/verify/logic/verification-submit';
 import { theme } from '@/shared/theme';
 import { offerPushPermission } from '@/features/notifications/lib/push-permission';
@@ -127,12 +128,11 @@ export default function VerifyProductScreen() {
           void offerPushPermission('listing');
         },
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setDialogConfig({
         visible: true,
         title: t('alerts.errorTitle'),
-        description: t('alerts.errorMessage'),
+        description: verificationErrorMessage(error, t),
         isError: true,
         onConfirm: closeDialog,
       });

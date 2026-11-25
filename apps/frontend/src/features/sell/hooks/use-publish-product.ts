@@ -218,10 +218,7 @@ export const usePublishProduct = () => {
           : { sacredChanges: true, economicsChanges: false };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const updatePayload: any = {
-          ...productData,
-          rejection_reason: null,
-        };
+        const updatePayload: any = { ...productData };
 
         if (economicsChanges) {
           // A price or shipping change is a new deal: re-snapshot the fees.

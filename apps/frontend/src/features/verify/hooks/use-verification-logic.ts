@@ -4,12 +4,25 @@ import { supabase } from '@/shared/lib/supabase';
 import { uploadMediaFromUri } from '@/shared/lib/upload-media';
 import { ProductCategory, ProductStatus } from '@selene/types';
 import {
-  buildVerificationData,
+  buildVerificationSubmission,
   describeError,
+  readLatestAttempt,
   resolveVerificationRequirements,
   type VerificationLoadState,
 } from '../logic/verification-submit';
 import { buildVerificationProofUpload } from '../logic/verification-proof-upload';
+
+// The owner reads its own attempts and their proofs (RLS on both tables, #651).
+const fetchLatestAttempt = (productId: string) =>
+  supabase
+    .from('product_verifications')
+    .select(
+      'decision, public_note, benchmark_score, product_verification_evidence(kind, storage_path)',
+    )
+    .eq('product_id', productId)
+    .order('submitted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
 export const useVerificationLogic = (productId?: string) => {
   const [loadState, setLoadState] = useState<VerificationLoadState>('loading');
@@ -37,7 +50,7 @@ export const useVerificationLogic = (productId?: string) => {
       setLoadState('loading');
       const { data, error } = await supabase
         .from('products')
-        .select('category, status, rejection_reason, verification_data')
+        .select('category, status')
         .eq('id', productId)
         .single();
 
@@ -48,30 +61,39 @@ export const useVerificationLogic = (productId?: string) => {
         return;
       }
 
+      const { data: attempt, error: attemptError } =
+        await fetchLatestAttempt(productId);
+      if (!active) return;
+      if (attemptError) {
+        console.error(
+          '[verification] load failed',
+          describeError(attemptError),
+        );
+        setLoadState('error');
+        return;
+      }
+
+      const latest = readLatestAttempt(attempt);
       setCategory(data.category as ProductCategory);
       setStatus(data.status as ProductStatus);
-      setRejectionReason(data.rejection_reason);
+      setRejectionReason(latest.rejectionReason);
 
       // Previously submitted proofs are shown through short-lived signed URLs;
       // untouched proofs keep their stored paths on resubmission.
-      if (data.verification_data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const vData = data.verification_data as any;
-
-        if (vData.benchmark_score) setScore(String(vData.benchmark_score));
-
-        if (vData.proof_physical) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_physical, 3600);
-          if (active && signed) setPhysicalUri(signed.signedUrl);
-        }
-        if (vData.proof_performance) {
-          const { data: signed } = await supabase.storage
-            .from('verification')
-            .createSignedUrl(vData.proof_performance, 3600);
-          if (active && signed) setPerformanceUri(signed.signedUrl);
-        }
+      if (latest.benchmarkScore !== null) {
+        setScore(String(latest.benchmarkScore));
+      }
+      if (latest.physicalPath) {
+        const { data: signed } = await supabase.storage
+          .from('verification')
+          .createSignedUrl(latest.physicalPath, 3600);
+        if (active && signed) setPhysicalUri(signed.signedUrl);
+      }
+      if (latest.performancePath) {
+        const { data: signed } = await supabase.storage
+          .from('verification')
+          .createSignedUrl(latest.performancePath, 3600);
+        if (active && signed) setPerformanceUri(signed.signedUrl);
       }
       if (active) setLoadState('ready');
     };
@@ -115,23 +137,19 @@ export const useVerificationLogic = (productId?: string) => {
     setIsUploading(true);
     try {
       // Remote (http) URIs are proofs already stored; only new local files are uploaded.
-      // The stored paths are re-read so an untouched proof keeps its path.
-      const { data: currentData, error: readError } = await supabase
-        .from('products')
-        .select('verification_data')
-        .eq('id', productId)
-        .single();
+      // The latest attempt is re-read so an untouched proof keeps its path.
+      const { data: attempt, error: readError } =
+        await fetchLatestAttempt(productId);
       if (readError) throw readError;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const oldVData = (currentData?.verification_data as any) || {};
+      const previous = readLatestAttempt(attempt);
 
-      let physicalPath: string | undefined = oldVData.proof_physical;
+      let physicalPath = previous.physicalPath;
       if (physicalUri && !physicalUri.startsWith('http')) {
         physicalPath = await uploadProof(physicalUri, 'physical');
       }
 
       const { requiresBenchmark } = resolveVerificationRequirements(category);
-      let performancePath: string | undefined = oldVData.proof_performance;
+      let performancePath = previous.performancePath;
       if (performanceUri && !performanceUri.startsWith('http')) {
         performancePath = await uploadProof(
           performanceUri,
@@ -139,28 +157,21 @@ export const useVerificationLogic = (productId?: string) => {
         );
       }
 
-      const verificationData = buildVerificationData({
-        category,
-        score,
-        physicalPath,
-        performancePath,
-        submittedAt: new Date().toISOString(),
-      });
-
-      const { data: updated, error } = await supabase
-        .from('products')
-        .update({
-          status: 'in_review',
-          verification_data: verificationData,
-          rejection_reason: null, // Limpiamos el rechazo al reenviar
-        })
-        .eq('id', productId)
-        .select('id');
+      // Only the server records an attempt and moves the listing to review (S3).
+      const { data: verificationId, error } = await supabase.rpc(
+        'fn_submit_product_verification',
+        buildVerificationSubmission({
+          productId,
+          category,
+          score,
+          physicalPath,
+          performancePath,
+        }),
+      );
 
       if (error) throw error;
-      // RLS can filter the row out without an error; that is not a submission.
-      if (!updated || updated.length !== 1) {
-        throw new Error('VERIFICATION_UPDATE_NO_ROW');
+      if (!verificationId) {
+        throw new Error('VERIFICATION_SUBMIT_NO_ATTEMPT');
       }
       return 'SUCCESS';
     } catch (error) {
