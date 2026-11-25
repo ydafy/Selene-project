@@ -16,6 +16,8 @@ import {
 type PaymentMethodsSheetProps = {
   visible: boolean;
   onClose: () => void;
+  /** True while the secrets are fetched, before the native sheet opens. */
+  onPreparingChange?: (preparing: boolean) => void;
 };
 
 // Stripe CustomerSheet shows, adds and removes the buyer's saved cards.
@@ -24,6 +26,7 @@ type PaymentMethodsSheetProps = {
 export const PaymentMethodsSheet = ({
   visible,
   onClose,
+  onPreparingChange,
 }: PaymentMethodsSheetProps) => {
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
@@ -43,19 +46,29 @@ export const PaymentMethodsSheet = ({
 
   useEffect(() => {
     if (!visible) return;
-    let cancelled = false;
+    // `active` stays true while this fetch may still change the screen.
+    let active = true;
+    const settle = () => {
+      active = false;
+      onPreparingChange?.(false);
+    };
+    onPreparingChange?.(true);
     preparePaymentMethodsSession((name, body) => invokeEdge(name, body)).then(
       (prepared) => {
-        if (!cancelled) setSession(prepared);
+        if (!active) return;
+        settle();
+        setSession(prepared);
       },
       () => {
-        if (!cancelled) offerRetry(t('paymentMethods.errorTitle'));
+        if (!active) return;
+        settle();
+        offerRetry(t('paymentMethods.errorTitle'));
       },
     );
     return () => {
-      cancelled = true;
+      if (active) settle();
     };
-    // Refetch only on a new opening or retry; offerRetry and t are per render.
+    // Refetch only on a new opening or retry; the callbacks and t are per render.
   }, [visible, attempt]);
 
   if (!session) return null;

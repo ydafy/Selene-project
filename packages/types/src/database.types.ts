@@ -1303,46 +1303,6 @@ export type Database = {
           },
         ];
       };
-      payment_methods: {
-        Row: {
-          brand: string;
-          created_at: string;
-          deleted_at: string | null;
-          exp_month: number;
-          exp_year: number;
-          id: string;
-          is_default: boolean | null;
-          last4: string;
-          stripe_payment_method_id: string;
-          user_id: string;
-        };
-        ComputedFields: never;
-        Insert: {
-          brand: string;
-          created_at?: string;
-          deleted_at?: string | null;
-          exp_month: number;
-          exp_year: number;
-          id?: string;
-          is_default?: boolean | null;
-          last4: string;
-          stripe_payment_method_id: string;
-          user_id: string;
-        };
-        Update: {
-          brand?: string;
-          created_at?: string;
-          deleted_at?: string | null;
-          exp_month?: number;
-          exp_year?: number;
-          id?: string;
-          is_default?: boolean | null;
-          last4?: string;
-          stripe_payment_method_id?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
       products: {
         Row: {
           aspect_ratio: number;
