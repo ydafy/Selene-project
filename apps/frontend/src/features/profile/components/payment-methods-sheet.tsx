@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
 import { useTheme } from '@shopify/restyle';
 import { useTranslation } from 'react-i18next';
 import { CustomerSheet } from '@stripe/stripe-react-native';
@@ -7,8 +8,9 @@ import Toast from 'react-native-toast-message';
 import { invokeEdge } from '@/shared/lib/edge-client';
 import { Theme } from '@/shared/theme';
 import {
-  createPaymentMethodsSecretProvider,
   customerSheetOutcome,
+  preparePaymentMethodsSession,
+  type PaymentMethodsSession,
 } from '../logic/payment-methods-sheet';
 
 type PaymentMethodsSheetProps = {
@@ -17,7 +19,8 @@ type PaymentMethodsSheetProps = {
 };
 
 // Stripe CustomerSheet shows, adds and removes the buyer's saved cards.
-// It renders nothing itself: `visible` presents the native sheet.
+// It renders nothing itself: the native sheet opens once its secrets are
+// fetched, and a failed fetch offers a retry instead of opening it.
 export const PaymentMethodsSheet = ({
   visible,
   onClose,
@@ -25,19 +28,43 @@ export const PaymentMethodsSheet = ({
   const theme = useTheme<Theme>();
   const { t } = useTranslation('profile');
 
-  const clientSecretProvider = useMemo(
-    () =>
-      createPaymentMethodsSecretProvider((name, body) =>
-        invokeEdge(name, body),
-      ),
-    [],
-  );
+  const [session, setSession] = useState<PaymentMethodsSession | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  const offerRetry = (title: string) => {
+    Alert.alert(title, t('paymentMethods.errorMessage'), [
+      { text: t('common:dialog.cancel'), style: 'cancel', onPress: onClose },
+      {
+        text: t('paymentMethods.retry'),
+        onPress: () => setAttempt((value) => value + 1),
+      },
+    ]);
+  };
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    preparePaymentMethodsSession((name, body) => invokeEdge(name, body)).then(
+      (prepared) => {
+        if (!cancelled) setSession(prepared);
+      },
+      () => {
+        if (!cancelled) offerRetry(t('paymentMethods.errorTitle'));
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+    // Refetch only on a new opening or retry; offerRetry and t are per render.
+  }, [visible, attempt]);
+
+  if (!session) return null;
 
   return (
     <CustomerSheet.Component
-      visible={visible}
+      visible
       intentConfiguration={{ paymentMethodTypes: ['card'] }}
-      clientSecretProvider={clientSecretProvider}
+      clientSecretProvider={session.clientSecretProvider}
       merchantDisplayName="Selene Marketplace"
       headerTextForSelectionScreen={t('menu.paymentMethods')}
       appearance={{
@@ -57,6 +84,11 @@ export const PaymentMethodsSheet = ({
         },
       }}
       onResult={(result) => {
+        setSession(null);
+        if (session.setupIntentFailed()) {
+          offerRetry(t('paymentMethods.addErrorTitle'));
+          return;
+        }
         onClose();
         if (customerSheetOutcome(result) === 'failed') {
           Toast.show({

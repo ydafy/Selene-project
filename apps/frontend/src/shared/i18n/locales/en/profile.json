@@ -8,7 +8,9 @@
   },
   "paymentMethods": {
     "errorTitle": "We couldn't open your cards",
-    "errorMessage": "Check your connection and try again."
+    "errorMessage": "Check your connection and try again.",
+    "addErrorTitle": "We couldn't add your card",
+    "retry": "Try again"
   },
   "sections": {
     "favorites": "Your Favorites",
