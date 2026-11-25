@@ -32,6 +32,12 @@ begin
   return pg_temp.mu(p_n);
 end $$;
 
+-- products.category references category_configurations; the fixtures do not
+-- depend on the seed's rows.
+insert into public.category_configurations (category_name, sell_fields, filter_fields)
+values ('GPU', '[]'::jsonb, '[]'::jsonb)
+on conflict (category_name) do nothing;
+
 -- A sold listing of p_seller priced at p_price_cents, with the publication
 -- economics fields computed from system_settings like a real publication.
 create function pg_temp.money_product(p_n integer, p_seller integer, p_price_cents bigint default 100000)

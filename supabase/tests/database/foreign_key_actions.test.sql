@@ -3,7 +3,7 @@
 -- CASCADE, and user references point to public.profiles, not auth.users.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(5);
+select plan(6);
 \ir ../fixtures/money.psql
 
 -- Every single-column foreign key in public and internal, with its target and
@@ -71,6 +71,17 @@ select is_empty(
     where f.action is distinct from 'r' or f.target is distinct from e.target
     order by 1$$,
   'money and shipment history foreign keys are ON DELETE RESTRICT');
+
+-- A listing's category is configuration: deleting a category in use fails,
+-- renaming it renames its listings (#651 S6).
+select is(
+  (select f.action || ' on update ' || c.confupdtype::text || ' -> ' || f.target
+   from fk_actions f
+   join pg_constraint c on c.conrelid = 'public.products'::regclass and c.contype = 'f'
+     and c.confrelid = 'public.category_configurations'::regclass
+   where f.tbl = 'public.products' and f.col = 'category'),
+  'r on update c -> public.category_configurations',
+  'products.category references category_configurations ON DELETE RESTRICT ON UPDATE CASCADE');
 
 -- User-owned preferences follow their profile.
 select is_empty(

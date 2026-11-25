@@ -2,7 +2,7 @@
 -- each rule is a constraint, and a write that breaks it fails.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(78);
+select plan(81);
 \ir ../fixtures/money.psql
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -368,6 +368,22 @@ select is_empty(
 select throws_ok(
   $$update public.category_configurations set updated_at = null where category_name = 'integrity_308'$$,
   '23502', null, 'a NULL category_configurations.updated_at is rejected');
+
+-- products.category references category_configurations (#651 S6).
+select throws_ok(
+  $$update public.products set category = 'integrity_308_unknown' where id = pg_temp.mu(308111)$$,
+  '23503', null, 'a products.category without a category configuration is rejected');
+
+update public.products set category = 'integrity_308' where id = pg_temp.mu(308111);
+update public.category_configurations set category_name = 'integrity_308_renamed'
+where category_name = 'integrity_308';
+select is(
+  (select category from public.products where id = pg_temp.mu(308111)),
+  'integrity_308_renamed', 'renaming a category renames it on its products');
+
+select throws_ok(
+  $$delete from public.category_configurations where category_name = 'integrity_308_renamed'$$,
+  '23503', null, 'a category with products cannot be deleted');
 
 -- webhook_dlq
 select is_empty(

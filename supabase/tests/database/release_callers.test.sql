@@ -9,6 +9,12 @@
 begin;
 select plan(50);
 
+-- products.category references category_configurations; this file does not
+-- depend on the seed's rows.
+insert into public.category_configurations (category_name, sell_fields, filter_fields)
+values ('GPU', '[]'::jsonb, '[]'::jsonb)
+on conflict (category_name) do nothing;
+
 create function pg_temp.u(n integer) returns uuid language sql as $$
   select ('e0000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid
 $$;

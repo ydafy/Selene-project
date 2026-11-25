@@ -4,6 +4,12 @@
 begin;
 select plan(19);
 
+-- products.category references category_configurations; this file does not
+-- depend on the seed's rows.
+insert into public.category_configurations (category_name, sell_fields, filter_fields)
+values ('GPU', '[]'::jsonb, '[]'::jsonb)
+on conflict (category_name) do nothing;
+
 create function pg_temp.make_reserved(p_id uuid, p_seller uuid, p_age interval)
 returns void language sql as $$
   insert into public.products (

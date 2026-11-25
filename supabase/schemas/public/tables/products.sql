@@ -105,6 +105,9 @@ ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
 
 ALTER TABLE "public"."products"
+  ADD CONSTRAINT "products_category_fkey" FOREIGN KEY (category) REFERENCES public.category_configurations(category_name) ON UPDATE CASCADE ON DELETE RESTRICT;
+
+ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id) ON DELETE RESTRICT;
 
 ALTER TABLE "public"."products"
@@ -116,6 +119,8 @@ CREATE INDEX idx_products_reserved_status_reserved_at ON public.products USING b
   WHERE (status = 'reserved'::public.product_status);
 
 CREATE INDEX idx_products_specifications ON public.products USING gin (specifications);
+
+CREATE INDEX ix_products_category ON public.products USING btree (category);
 
 CREATE INDEX ix_products_locked_by ON public.products USING btree (locked_by);
 

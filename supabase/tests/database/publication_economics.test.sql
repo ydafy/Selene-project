@@ -5,6 +5,12 @@
 begin;
 select plan(31);
 
+-- products.category references category_configurations; this file does not
+-- depend on the seed's rows.
+insert into public.category_configurations (category_name, sell_fields, filter_fields)
+values ('GPU', '[]'::jsonb, '[]'::jsonb)
+on conflict (category_name) do nothing;
+
 -- Snapshot reserve for a price and shipping cost (cents) under the current settings.
 create function pg_temp.fresh_reserve(p_price_cents bigint, p_shipping_cents bigint)
 returns bigint language sql security definer as $$

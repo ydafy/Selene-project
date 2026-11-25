@@ -1449,6 +1449,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: 'products_category_fkey';
+            columns: ['category'];
+            isOneToOne: false;
+            referencedRelation: 'category_configurations';
+            referencedColumns: ['category_name'];
+          },
+          {
             foreignKeyName: 'products_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
@@ -3194,6 +3201,13 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: 'products_category_fkey';
+            columns: ['category'];
+            isOneToOne: false;
+            referencedRelation: 'category_configurations';
+            referencedColumns: ['category_name'];
+          },
+          {
             foreignKeyName: 'products_locked_by_fkey';
             columns: ['locked_by'];
             isOneToOne: false;
@@ -3346,6 +3360,13 @@ export type Database = {
           views?: number | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'products_category_fkey';
+            columns: ['category'];
+            isOneToOne: false;
+            referencedRelation: 'category_configurations';
+            referencedColumns: ['category_name'];
+          },
           {
             foreignKeyName: 'products_seller_id_fkey';
             columns: ['seller_id'];
