@@ -1,0 +1,32 @@
+meta {
+  name: submit-17-cleanup
+  type: http
+  seq: 28
+}
+
+patch {
+  url: {{baseUrl}}/rest/v1/products?id=eq.{{submitProductId}}
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+body:json {
+  { "status": "hidden", "deleted_at": "2026-01-01T00:00:00Z" }
+}
+
+tests {
+  test("the test listing is hidden and soft-deleted", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].deleted_at).to.be.a("string");
+  });
+}
+
+docs {
+  Ends the submit sequence. The attempt and its evidence stay as history.
+}

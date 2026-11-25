@@ -1,0 +1,35 @@
+meta {
+  name: submit-15-admin-rejects
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_product_verdict
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_verdict": "REJECT",
+    "p_public_note": "La foto no muestra el número de serie."
+  }
+}
+
+tests {
+  test("the admin rejects the attempt", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.equal(true);
+  });
+}
+
+docs {
+  The call admin-web makes from the verification screen (#651 S5).
+}
