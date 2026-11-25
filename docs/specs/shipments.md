@@ -474,13 +474,7 @@ Flow:
 
 ### fn_release_shipment_funds
 
-```sql
--- Moves seller's pending balance to available
-UPDATE wallets SET
-  available_balance = available_balance + v_net_payout,
-  pending_balance = pending_balance - v_net_payout
-WHERE seller_id = v_seller_id;
-```
+Marks a shipment `completed`; it moves no money. A completed shipment becomes payable from the admin payout queue, where an admin releases the funds through Stripe Connect. Service role only. It refuses, with `success = false`, a shipment that does not exist (`SHIPMENT_NOT_FOUND`), has no Stripe payment intent (`SHIPMENT_NOT_CONNECT`), is not `delivered` (`SHIPMENT_NOT_DELIVERED`), has a dispute that is not `resolved` or `rejected` (`SHIPMENT_IN_ACTIVE_DISPUTE`), or has no `delivered_at` or was delivered less than 48 hours ago (`GRACE_PERIOD_ACTIVE`). On success it returns the wallet-era code `CONNECT_SHIPMENT_SKIPPED_WALLET` (#442).
 
 ---
 
@@ -496,8 +490,8 @@ WHERE seller_id = v_seller_id;
 ### fn_cron_dispute_shipping_timeout
 
 - Marks dispute as `resolved` (buyer didn't ship return in 48h)
-- Calls `fn_release_shipment_funds(shipment_id)` if `shipment_id IS NOT NULL`
-- Fallback: `fn_release_order_funds(order_id)` for pre-migration disputes
+- Resolves the dispute for the seller, then calls `fn_release_shipment_funds(shipment_id)`; when the release is refused, the resolution is rolled back, a `RELEASE_REFUSED` row goes to `internal.ops_failures`, and the next run retries
+- Dispute without `shipment_id`: records a `DISPUTE_WITHOUT_SHIPMENT` row in `internal.ops_failures` and leaves the dispute for manual intervention
 
 ### fn_cron_return_delivery_timeout
 

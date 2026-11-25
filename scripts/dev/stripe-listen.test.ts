@@ -63,7 +63,6 @@ describe('buildStripeListenArgs', () => {
       'payment_intent.succeeded',
       'payment_intent.payment_failed',
       'payment_intent.canceled',
-      'setup_intent.succeeded',
       'refund.updated',
       'refund.failed',
       'account.updated',
@@ -96,8 +95,8 @@ function describeDrift(markdown: string): string | undefined {
 }
 
 describe('docs/go-live.md webhook events', () => {
-  const platform = STRIPE_WEBHOOK_EVENTS.slice(0, 6);
-  const connect = STRIPE_WEBHOOK_EVENTS.slice(6);
+  const platform = STRIPE_WEBHOOK_EVENTS.slice(0, 5);
+  const connect = STRIPE_WEBHOOK_EVENTS.slice(5);
   const toDoc = (first: readonly string[], second: readonly string[]) =>
     [
       `- Platform events: ${first.map((e) => `\`${e}\``).join(', ')}.`,
