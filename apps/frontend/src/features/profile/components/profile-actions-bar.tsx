@@ -24,6 +24,8 @@ export const ProfileActionsBar = () => {
   const { setDefault } = useAddresses();
   const { setSelectedAddress } = useCheckoutStore();
   const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
+  const [isPaymentMethodsPreparing, setIsPaymentMethodsPreparing] =
+    useState(false);
 
   const handleOpenAddressPicker = useCallback(() => {
     addressModalRef.current?.present();
@@ -58,6 +60,7 @@ export const ProfileActionsBar = () => {
       label: t('menu.paymentMethods'),
       icon: 'credit-card-multiple-outline',
       onPress: () => setIsPaymentMethodsVisible(true),
+      loading: isPaymentMethodsPreparing,
     },
     {
       label: t('menu.payments'),
@@ -93,6 +96,7 @@ export const ProfileActionsBar = () => {
             label={action.label}
             icon={action.icon as any}
             onPress={action.onPress}
+            loading={action.loading}
           />
         ))}
       </ScrollView>
@@ -120,6 +124,7 @@ export const ProfileActionsBar = () => {
       <PaymentMethodsSheet
         visible={isPaymentMethodsVisible}
         onClose={() => setIsPaymentMethodsVisible(false)}
+        onPreparingChange={setIsPaymentMethodsPreparing}
       />
     </Box>
   );
