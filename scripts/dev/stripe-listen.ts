@@ -7,7 +7,6 @@ export const STRIPE_WEBHOOK_EVENTS = [
   'payment_intent.succeeded',
   'payment_intent.payment_failed',
   'payment_intent.canceled',
-  'setup_intent.succeeded',
   'refund.updated',
   'refund.failed',
   'account.updated',
