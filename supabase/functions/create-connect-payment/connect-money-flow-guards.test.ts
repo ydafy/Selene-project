@@ -50,7 +50,7 @@ describe('Connect money-flow guards', () => {
     expect(result.queries).toEqual([]);
     expect(moneyEffects(result)).toEqual({
       customers: 0,
-      ephemeralKeys: 0,
+      customerSessions: 0,
       paymentIntents: 0,
       writes: 0,
     });

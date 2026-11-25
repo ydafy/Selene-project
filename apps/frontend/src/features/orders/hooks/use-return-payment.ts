@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { invokeEdge } from '@/shared/lib/edge-client';
 import { Theme } from '@/shared/theme';
 import { useTranslation } from 'react-i18next';
+import { parseReturnIntentResponse } from '../logic/return-intent-response';
 
 export const useReturnPayment = (disputeId: string) => {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -28,16 +29,14 @@ export const useReturnPayment = (disputeId: string) => {
         idempotencyKey,
       });
 
-      if (!data?.clientSecret) {
-        throw new Error('Error al inicializar el pago');
-      }
+      const secrets = parseReturnIntentResponse(data);
 
       // 3. Configurar el Payment Sheet (Estética Selene)
       const { error: stripeError } = await initPaymentSheet({
         merchantDisplayName: 'Selene Marketplace',
-        paymentIntentClientSecret: data.clientSecret,
-        customerId: data.customer,
-        customerEphemeralKeySecret: data.ephemeralKey,
+        paymentIntentClientSecret: secrets.paymentIntentClientSecret,
+        customerId: secrets.customerId,
+        customerSessionClientSecret: secrets.customerSessionClientSecret,
         allowsDelayedPaymentMethods: false,
         appearance: {
           shapes: { borderRadius: 12 },

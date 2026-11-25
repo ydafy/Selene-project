@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
-import { STRIPE_API_VERSION } from '../_shared/stripe/api-version.ts';
 import {
   createCreateReturnIntentHandler,
   type CreateReturnIntentDependencies,
@@ -45,6 +44,8 @@ function harness(
     settings?: Row[];
     profiles?: Row[];
     rpcResult?: { data: unknown; error: { message: string } | null };
+    /** `customerSessions.create` throws with this message. */
+    customerSessionError?: string;
   } = {},
 ) {
   const users = input.users ?? { [TOKEN]: { id: SELLER_ID } };
@@ -116,11 +117,18 @@ function harness(
   };
 
   const stripe = {
-    ephemeralKeys: {
-      create: async (params: Row, options: Row) => {
-        calls.push('stripe:ephemeralKeys.create');
-        stripeCalls.push({ method: 'ephemeralKeys.create', params, options });
-        return { secret: 'ek_secret' };
+    customerSessions: {
+      create: async (params: Row) => {
+        calls.push('stripe:customerSessions.create');
+        stripeCalls.push({
+          method: 'customerSessions.create',
+          params,
+          options: {},
+        });
+        if (input.customerSessionError) {
+          throw new Error(input.customerSessionError);
+        }
+        return { object: 'customer_session', client_secret: 'cuss_secret' };
       },
     },
     paymentIntents: {
@@ -389,7 +397,7 @@ describe('create-return-intent handler', () => {
       status: 200,
       body: {
         clientSecret: 'pi_return_secret',
-        ephemeralKey: 'ek_secret',
+        customerSessionClientSecret: 'cuss_secret',
         customer: 'cus_seller',
         amount: 450,
       },
@@ -401,9 +409,26 @@ describe('create-return-intent handler', () => {
     });
     expect(h.stripeCalls).toEqual([
       {
-        method: 'ephemeralKeys.create',
-        params: { customer: 'cus_seller' },
-        options: { apiVersion: STRIPE_API_VERSION },
+        method: 'customerSessions.create',
+        params: {
+          customer: 'cus_seller',
+          components: {
+            mobile_payment_element: {
+              enabled: true,
+              features: {
+                payment_method_redisplay: 'enabled',
+                payment_method_save: 'enabled',
+                payment_method_remove: 'enabled',
+                payment_method_allow_redisplay_filters: [
+                  'always',
+                  'limited',
+                  'unspecified',
+                ],
+              },
+            },
+          },
+        },
+        options: {},
       },
       {
         method: 'paymentIntents.create',
@@ -514,7 +539,9 @@ describe('create-return-intent handler', () => {
         }) as unknown as SupabaseAdminClient,
       createStripe: () =>
         ({
-          ephemeralKeys: { create: async () => ({ secret: 'ek_secret' }) },
+          customerSessions: {
+            create: async () => ({ client_secret: 'cuss_secret' }),
+          },
           paymentIntents: {
             create: async () => {
               throw new Error('Your card was declined.');
@@ -527,5 +554,17 @@ describe('create-return-intent handler', () => {
       status: 400,
       body: { error: 'Your card was declined.' },
     });
+  });
+
+  it('answers 500 CUSTOMER_SESSION_FAILED when Stripe refuses the CustomerSession, before creating the PaymentIntent', async () => {
+    const h = harness({ customerSessionError: 'No such customer' });
+
+    expect(await result(await h.handler(request()))).toEqual({
+      status: 500,
+      body: { error: 'CUSTOMER_SESSION_FAILED' },
+    });
+    expect(h.stripeCalls.map((call) => call.method)).toEqual([
+      'customerSessions.create',
+    ]);
   });
 });

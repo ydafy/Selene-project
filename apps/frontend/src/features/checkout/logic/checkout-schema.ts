@@ -14,8 +14,6 @@ export const checkoutValidationSchema = z.object({
       'Dirección de entrega inválida.',
     ),
 
-  paymentMethodId: z.string().min(1, 'Debes seleccionar un método de pago.'),
-
   isTermsAccepted: z.boolean().refine((val) => val === true, {
     message: 'Debes aceptar los términos y condiciones de compra.',
   }),

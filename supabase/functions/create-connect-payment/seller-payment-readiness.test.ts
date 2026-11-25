@@ -162,7 +162,7 @@ describe('create-connect-payment seller readiness gate', () => {
       expect(result.calls.at(-1)).toBe('rpc:fn_release_products');
       expect(moneyEffects(result)).toEqual({
         customers: 0,
-        ephemeralKeys: 0,
+        customerSessions: 0,
         paymentIntents: 0,
         writes: 0,
       });

@@ -65,7 +65,7 @@ const log = (
 export type { SupabaseAdminClient };
 export type StripeWebhooksStripeClient = Pick<
   Stripe,
-  'webhooks' | 'charges' | 'refunds' | 'payouts' | 'accounts' | 'paymentMethods'
+  'webhooks' | 'charges' | 'refunds' | 'payouts' | 'accounts'
 >;
 
 export interface StripeWebhooksDependencies {
@@ -1013,36 +1013,6 @@ export function createStripeWebhooksHandler(deps: StripeWebhooksDependencies) {
               category,
             });
             throw error; // Existing webhook retry/DLQ path; never successful refresh logging.
-          }
-        }
-      }
-
-      if (event.type === 'setup_intent.succeeded') {
-        const si = event.data.object as Stripe.SetupIntent;
-        const { user_id, app_name } = si.metadata || {};
-
-        if (app_name === APP_NAME && user_id) {
-          const pmId = si.payment_method as string;
-          const pm = await stripe.paymentMethods.retrieve(pmId);
-          const card = pm.card;
-
-          // The saved-cards SetupIntent allows only cards, and payment_methods
-          // stores card details only.
-          if (!card) {
-            log('WARN', 'SetupIntent payment method is not a card; not saved', {
-              user_id,
-              paymentMethodType: pm.type,
-            });
-          } else {
-            await supabaseAdmin.from('payment_methods').insert({
-              user_id,
-              stripe_payment_method_id: pmId,
-              brand: card.brand,
-              last4: card.last4,
-              exp_month: card.exp_month,
-              exp_year: card.exp_year,
-            });
-            log('INFO', 'Nuevo método de pago guardado', { user_id });
           }
         }
       }

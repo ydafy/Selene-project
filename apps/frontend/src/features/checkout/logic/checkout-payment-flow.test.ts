@@ -30,7 +30,7 @@ describe('presentSinglePaymentSheet', () => {
         shapes: { borderRadius: 12 },
       },
       allowsDelayedPaymentMethods: false,
-      customerEphemeralKeySecret: 'ek_test_1',
+      customerSessionClientSecret: 'cuss_secret_test_1',
       customerId: 'cus_test_1',
       initPaymentSheet,
       merchantDisplayName: 'Selene Marketplace',
@@ -41,7 +41,7 @@ describe('presentSinglePaymentSheet', () => {
     expect(initPaymentSheet).toHaveBeenCalledTimes(1);
     expect(presentPaymentSheet).toHaveBeenCalledTimes(1);
     expect(initPaymentSheet.mock.calls[0]?.[0]).toMatchObject({
-      customerEphemeralKeySecret: 'ek_test_1',
+      customerSessionClientSecret: 'cuss_secret_test_1',
       customerId: 'cus_test_1',
       merchantDisplayName: 'Selene Marketplace',
       paymentIntentClientSecret: 'cs_test_1',
@@ -73,7 +73,7 @@ describe('presentSinglePaymentSheet', () => {
         shapes: { borderRadius: 12 },
       },
       allowsDelayedPaymentMethods: false,
-      customerEphemeralKeySecret: 'ek_test_1',
+      customerSessionClientSecret: 'cuss_secret_test_1',
       customerId: 'cus_test_1',
       initPaymentSheet,
       merchantDisplayName: 'Selene Marketplace',
@@ -110,7 +110,7 @@ describe('presentSinglePaymentSheet', () => {
         shapes: { borderRadius: 12 },
       },
       allowsDelayedPaymentMethods: false,
-      customerEphemeralKeySecret: 'ek_test_1',
+      customerSessionClientSecret: 'cuss_secret_test_1',
       customerId: 'cus_test_1',
       initPaymentSheet,
       merchantDisplayName: 'Selene Marketplace',

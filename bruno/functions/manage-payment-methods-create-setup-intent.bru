@@ -1,0 +1,37 @@
+meta {
+  name: manage-payment-methods-create-setup-intent
+  type: http
+  seq: 200
+}
+
+post {
+  url: {{baseUrl}}/functions/v1/manage-payment-methods
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "action": "create_setup_intent"
+  }
+}
+
+tests {
+  test("returns only the client secret of a new SetupIntent", function () {
+    expect(res.getStatus()).to.equal(200);
+    const body = res.getBody();
+    expect(Object.keys(body)).to.deep.equal(["setupIntentClientSecret"]);
+    expect(body.setupIntentClientSecret).to.match(/^seti_\w+_secret_\w+$/);
+  });
+}
+
+docs {
+  Calls the Stripe sandbox: a SetupIntent for the buyer's customer with
+  `allowed_payment_method_types: ['card']` and `usage: 'on_session'`; CustomerSheet confirms it to
+  add a card. There is no card limit: Stripe owns the saved cards. Run after auth/login-buyer.
+}

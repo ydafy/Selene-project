@@ -9,11 +9,12 @@ import { Box } from '@/shared/ui/base';
 import { ProfileActionButton } from './profile-action-button';
 import { Theme } from '@/shared/theme';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AddressPickerModal } from '@/shared/ui/address/address-picker-modal';
 import { Address } from '@selene/types';
 import { useAddresses } from '@/shared/hooks/use-addresses';
 import { useCheckoutStore } from '@/shared/store/use-checkout-store';
+import { PaymentMethodsSheet } from './payment-methods-sheet';
 
 export const ProfileActionsBar = () => {
   const theme = useTheme<Theme>();
@@ -22,6 +23,7 @@ export const ProfileActionsBar = () => {
   const addressModalRef = useRef<BottomSheetModal>(null);
   const { setDefault } = useAddresses();
   const { setSelectedAddress } = useCheckoutStore();
+  const [isPaymentMethodsVisible, setIsPaymentMethodsVisible] = useState(false);
 
   const handleOpenAddressPicker = useCallback(() => {
     addressModalRef.current?.present();
@@ -51,6 +53,11 @@ export const ProfileActionsBar = () => {
       label: t('menu.addresses'),
       icon: 'map-marker-outline',
       onPress: () => handleOpenAddressPicker(),
+    },
+    {
+      label: t('menu.paymentMethods'),
+      icon: 'credit-card-multiple-outline',
+      onPress: () => setIsPaymentMethodsVisible(true),
     },
     {
       label: t('menu.payments'),
@@ -109,6 +116,10 @@ export const ProfileActionsBar = () => {
       <AddressPickerModal
         innerRef={addressModalRef}
         onSelect={handleAddressChange}
+      />
+      <PaymentMethodsSheet
+        visible={isPaymentMethodsVisible}
+        onClose={() => setIsPaymentMethodsVisible(false)}
       />
     </Box>
   );
