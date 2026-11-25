@@ -50,7 +50,7 @@ Follow these rules:
 To change a runtime version:
 
 1. Change the source of truth and every `apps/frontend/eas.json` profile in the same commit. Run `bun test scripts/guards/runtime-versions.test.ts`.
-2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, run `bun upgrade`, or `bun upgrade --version <version>` for an exact one.
+2. Switch your local runtime. For Node with nvm-windows, which does not read `.nvmrc`, run `nvm install <version>`, then `nvm use <version>`. For Bun, `bun upgrade` installs the latest release and takes no version. For an exact version on Windows, run `iex "& {$(irm https://bun.sh/install.ps1)} -Version <version>"` in PowerShell (https://bun.com/docs/installation). Check the result with `bun -v`. Run either from any folder: they change the machine's Bun, not the repository.
 3. Run the checks in "Update without breaking things", then a development EAS build.
 
 ## Keep GitHub Actions pinned
