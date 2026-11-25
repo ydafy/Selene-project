@@ -40,6 +40,24 @@ const settledWithin = <T>(promise: Promise<T>, ms: number) =>
   ]);
 
 describe('preparePaymentMethodsSession', () => {
+  it('requests the SetupIntent only after the CustomerSession answered, so both use the same customer', async () => {
+    let sessionAnswered = false;
+    const setupIntentAfterSession: boolean[] = [];
+    const invoke = mock<ManagePaymentMethodsInvoke>(async (_name, body) => {
+      if (body.action === 'create_customer_session') {
+        await flush();
+        sessionAnswered = true;
+        return session(1);
+      }
+      setupIntentAfterSession.push(sessionAnswered);
+      return setupIntent(1);
+    });
+
+    await preparePaymentMethodsSession(invoke);
+
+    expect(setupIntentAfterSession).toEqual([true]);
+  });
+
   it('fetches a CustomerSession and a SetupIntent before the sheet opens', async () => {
     const invoke = invokeAnswering({
       create_customer_session: [session(1)],

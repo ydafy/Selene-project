@@ -68,10 +68,11 @@ export async function preparePaymentMethodsSession(
     ).setupIntentClientSecret;
   const fetchSetupIntentOrNull = () => fetchSetupIntent().catch(() => null);
 
-  const [firstSession, firstSetupIntent] = await Promise.all([
-    fetchCustomerSession(),
-    fetchSetupIntent(),
-  ]);
+  // Sequential on purpose: for a buyer without a Stripe customer, the first
+  // request creates it. Two parallel requests could each create one and hand
+  // the sheet a session and a SetupIntent for different customers.
+  const firstSession = await fetchCustomerSession();
+  const firstSetupIntent = await fetchSetupIntent();
 
   let prefetchedSession: typeof firstSession | null = firstSession;
   let nextSetupIntent: Promise<string | null> =
