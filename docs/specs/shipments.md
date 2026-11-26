@@ -474,7 +474,7 @@ Flow:
 
 ### fn_release_shipment_funds
 
-Marks a shipment `completed`; it moves no money. A completed shipment becomes payable from the admin payout queue, where an admin releases the funds through Stripe Connect. Service role only. It refuses, with `success = false`, a shipment that does not exist (`SHIPMENT_NOT_FOUND`), has no Stripe payment intent (`SHIPMENT_NOT_CONNECT`), is not `delivered` (`SHIPMENT_NOT_DELIVERED`), has a dispute that is not `resolved` or `rejected` (`SHIPMENT_IN_ACTIVE_DISPUTE`), or has no `delivered_at` or was delivered less than 48 hours ago (`GRACE_PERIOD_ACTIVE`). On success it returns the wallet-era code `CONNECT_SHIPMENT_SKIPPED_WALLET` (#442).
+Marks a shipment `completed`; it moves no money. A completed shipment becomes payable from the admin payout queue, where an admin releases the funds through Stripe Connect. Service role only. It refuses, with `success = false`, a shipment that does not exist (`SHIPMENT_NOT_FOUND`), has no Stripe payment intent (`SHIPMENT_NOT_CONNECT`), is not `delivered` (`SHIPMENT_NOT_DELIVERED`), has a dispute that is not `resolved` or `rejected` (`SHIPMENT_IN_ACTIVE_DISPUTE`), or has no `delivered_at` or was delivered less than 48 hours ago (`GRACE_PERIOD_ACTIVE`). On success it returns `success = true` with `SHIPMENT_COMPLETED`.
 
 ---
 

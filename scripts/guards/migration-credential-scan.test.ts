@@ -36,7 +36,7 @@ describe('migration secrets (probes)', () => {
     for (const text of [
       "select 'sk_live_';",
       'vault secret name stripe_webhook_secret',
-      "CONNECT_SHIPMENT_SKIPPED_WALLET 'eyJ'",
+      "SHIPMENT_COMPLETED 'eyJ'",
       'whsec_ and sb_secret_ alone',
     ]) {
       expect({ text, flagged: looksSecret(text) }).toEqual({

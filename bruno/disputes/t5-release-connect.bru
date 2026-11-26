@@ -24,7 +24,7 @@ body:json {
 tests {
   test("a Connect shipment is marked completed", function () {
     expect(res.getStatus()).to.equal(200);
-    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "CONNECT_SHIPMENT_SKIPPED_WALLET" }]);
+    expect(res.getBody()).to.deep.equal([{ success: true, error_message: "SHIPMENT_COMPLETED" }]);
   });
 }
 
