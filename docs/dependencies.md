@@ -209,7 +209,7 @@ Updating is the default. Leave a package alone only for a reason you can write d
 TypeScript 7.0 is `latest` on npm, but this repository stays on TypeScript 6.0.3 (`~6.0.3` in `package.json`, `apps/frontend/package.json`, and `apps/admin-web/package.json`). Two facts block the upgrade:
 
 - TypeScript 7.0 ships no programmatic compiler API. The API arrives in 7.1.
-- `typescript-eslint` 8.72.1, the latest release, declares the peer range `typescript >=4.8.4 <6.1.0`. It does not accept 7.
+- `typescript-eslint` 8.73.0, the latest release (checked 2026-11-25), declares the peer range `typescript >=4.8.4 <6.1.0`. It does not accept 7.
 
 Without the API and without a compatible `typescript-eslint`, `bun run lint` would stop working. The evidence is in `odd/tasks/repo-hygiene.md`, L20 and L21.
 
