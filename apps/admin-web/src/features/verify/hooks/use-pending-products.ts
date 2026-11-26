@@ -13,14 +13,13 @@ export const usePendingProducts = () => {
   const query = useQuery({
     queryKey: ['pending-products'],
     queryFn: async () => {
-      // QUERY 1: Productos + Vendedor (testing join)
-      // QUERY 1: Productos + Vendedor
+      // QUERY 1: open verification attempts (lock, proofs, last rejection) + seller.
+      // The view lists only in_review products with an open attempt, for admins.
       const { data: rawProducts, error: pError } = await supabase
-        .from('products')
+        .from('admin_product_queue_view')
         .select(
-          'id, name, price_cents, category, condition, images, description, specifications, verification_data, status, created_at, seller_id, locked_by, aspect_ratio, views, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
+          'id, name, price_cents, category, condition, images, description, specifications, status, created_at, seller_id, aspect_ratio, views, verification_id, submitted_at, benchmark_score, locked_by, locked_at, last_rejection_note, evidence, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)',
         )
-        .eq('status', 'in_review')
         .order('created_at', { ascending: false });
 
       if (pError) throw pError;
@@ -45,24 +44,9 @@ export const usePendingProducts = () => {
         .in('user_id', sellerIds)
         .order('created_at', { ascending: false });
 
-      // QUERY 4: Último rechazo de cada producto (para ver por qué volvió a revisión)
-      const productIds = products.map((p) => p.id);
-
-      const { data: rejectionHistory } = await supabase
-        .from('admin_audit_logs')
-        .select('target_id, details, created_at')
-        .eq('action_type', 'PRODUCT_REJECT')
-        .in('target_id', productIds)
-        .order('created_at', { ascending: false });
-
       // Unir en memoria
       return products.map((p) => {
         const s = sellerStats?.find((stat) => stat.seller_id === p.seller_id);
-
-        // Buscar el último rechazo de este producto
-        const lastRejection = rejectionHistory?.find(
-          (h) => h.target_id === p.id,
-        );
 
         // Calculamos el ratio basado solo en lo ya procesado
         const processed = s?.processed_count || 0;
@@ -79,7 +63,6 @@ export const usePendingProducts = () => {
           internal_notes:
             allNotes?.filter((n) => n.user_id === p.seller_id).slice(0, 3) ||
             [],
-          last_rejection: lastRejection || null,
         };
       });
     },

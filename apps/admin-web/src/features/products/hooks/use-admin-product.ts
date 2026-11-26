@@ -18,10 +18,8 @@ interface AdminProduct {
   condition: string;
   created_at: string;
   deleted_at: string | null;
-  locked_by: string | null;
   seller_id: string;
   seller: { username: string | null } | null;
-  locker: { username: string | null } | null;
 }
 
 export type ProductTab = 'active' | 'history';
@@ -56,10 +54,9 @@ export const useAdminProduct = (tab: ProductTab, search: string) => {
 
       let queryBuilder = supabase
         .from('products')
-        .select(
-          '*, seller:profiles!products_seller_id_fkey(username), locker:profiles!products_locked_by_fkey(username)',
-          { count: 'exact' },
-        )
+        .select('*, seller:profiles!products_seller_id_fkey(username)', {
+          count: 'exact',
+        })
         .in('status', filterStatuses)
         .order('created_at', { ascending: false });
 

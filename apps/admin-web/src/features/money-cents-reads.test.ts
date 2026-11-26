@@ -68,6 +68,7 @@ if (process.env.MONEY_CENTS_READS_CHILD !== '1') {
       'lt',
       'or',
       'limit',
+      'range',
       'single',
       'maybeSingle',
     ]) {
@@ -76,17 +77,32 @@ if (process.env.MONEY_CENTS_READS_CHILD !== '1') {
     return chain;
   }
 
-  let queryFn: () => Promise<unknown> = async () => undefined;
+  let queryFn: (context?: unknown) => Promise<unknown> = async () => undefined;
   mock.module('@tanstack/react-query', () => ({
     useQuery: (options: { queryFn: () => Promise<unknown> }) => {
       queryFn = options.queryFn;
       return {};
     },
+    useInfiniteQuery: (options: {
+      queryFn: (context: unknown) => Promise<unknown>;
+    }) => {
+      queryFn = options.queryFn;
+      return {};
+    },
+    keepPreviousData: undefined,
+    QueryClient: class {},
     useMutation: () => ({}),
     useQueryClient: () => ({}),
   }));
   mock.module('@/shared/lib/supabase', () => ({
     supabase: { from: (table: string) => builder(table) },
+  }));
+  mock.module('@/shared/store/use-auth-store', () => ({
+    useAuthStore: () => ({
+      user: { id: 'admin-1' },
+      profile: { role: 'admin' },
+      initialized: true,
+    }),
   }));
 
   const { useAdminStats } =
@@ -97,12 +113,14 @@ if (process.env.MONEY_CENTS_READS_CHILD !== '1') {
     await import('@/features/users/hooks/use-user-detail');
   const { usePendingProducts } =
     await import('@/features/verify/hooks/use-pending-products');
+  const { useAdminProduct } =
+    await import('@/features/products/hooks/use-admin-product');
 
   async function run(hook: () => unknown, data: Record<string, unknown>) {
     calls = [];
     rows = data;
     hook();
-    return queryFn();
+    return queryFn({ pageParam: 0 });
   }
 
   it('sums the dashboard money in integer cents', async () => {
@@ -161,10 +179,56 @@ if (process.env.MONEY_CENTS_READS_CHILD !== '1') {
 
   it('reads the pending products price in cents', async () => {
     const products = (await run(usePendingProducts, {})) as unknown[];
-    const select = calls.find((call) => call.table === 'products')?.select;
+    const select = calls.find(
+      (call) => call.table === 'admin_product_queue_view',
+    )?.select;
 
     expect(products).toEqual([]);
     expect(select).toContain(' price_cents,');
     expect(PESOS_COLUMN.test(select ?? '')).toBe(false);
+  });
+
+  // The verification attempt keeps the lock, proofs and rejection note (#651);
+  // the products columns that held them are dropped.
+  const DROPPED_PRODUCT_COLUMN =
+    /\b(verification_data|rejection_reason|verified_at|locked_by|locked_at)\b|products_locked_by_fkey/;
+
+  it('reads the verification queue from the open attempts', async () => {
+    const queueSelect =
+      'id, name, price_cents, category, condition, images, description, specifications, status, created_at, seller_id, aspect_ratio, views, verification_id, submitted_at, benchmark_score, locked_by, locked_at, last_rejection_note, evidence, seller:profiles!products_seller_id_fkey(username, avatar_url, id, is_verified_seller)';
+    const evidence = [
+      { kind: 'performance', storage_path: 'p1/bench.png' },
+      { kind: 'physical', storage_path: 'p1/paper.png' },
+    ];
+    const products = (await run(usePendingProducts, {
+      [`admin_product_queue_view|${queueSelect}`]: [
+        {
+          id: 'p1',
+          seller_id: 's1',
+          last_rejection_note: 'Falta el papel con tu usuario',
+          evidence,
+        },
+      ],
+    })) as Array<Record<string, unknown>>;
+
+    expect(calls.map((call) => call.table)).toEqual([
+      'admin_product_queue_view',
+      'seller_trust_stats',
+      'admin_user_notes',
+    ]);
+    expect(products).toHaveLength(1);
+    expect(products[0]).toMatchObject({
+      id: 'p1',
+      last_rejection_note: 'Falta el papel con tu usuario',
+      evidence,
+    });
+  });
+
+  it('lists managed products without the dropped verification columns', async () => {
+    await run(() => useAdminProduct('active', ''), {});
+    const select = calls.find((call) => call.table === 'products')?.select;
+
+    expect(select).toContain('seller:profiles!products_seller_id_fkey');
+    expect(DROPPED_PRODUCT_COLUMN.test(select ?? '')).toBe(false);
   });
 }

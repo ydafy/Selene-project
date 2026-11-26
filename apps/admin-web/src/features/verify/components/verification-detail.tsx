@@ -57,10 +57,6 @@ export const VerificationDetail = ({
   const [internalNote, setInternalNote] = useState('');
   const { user } = useAuthStore();
 
-  const vData = isRecord(product.verification_data)
-    ? product.verification_data
-    : null;
-
   const rank = getRank(product.seller_stats.sold, product.seller_stats.ratio);
 
   const saveInternalNote = async () => {
@@ -108,7 +104,7 @@ export const VerificationDetail = ({
       )}
 
       {/* B. CONTEXTO DE RE-INTENTO */}
-      {product.rejection_reason && (
+      {product.last_rejection_note && (
         <div className="m-6 mb-0 bg-fire/5 border border-fire/20 rounded-xl p-4 flex gap-3">
           <AlertCircle size={20} className="text-fire shrink-0" />
           <div>
@@ -116,7 +112,7 @@ export const VerificationDetail = ({
               Motivo de rechazo anterior:
             </h5>
             <p className="text-sm text-platinum mt-1 italic">
-              "{product.rejection_reason}"
+              "{product.last_rejection_note}"
             </p>
             <p className="text-[10px] text-blue-light mt-2 font-medium">
               Verifica si el usuario corrigió este punto antes de aprobar.
@@ -236,7 +232,8 @@ export const VerificationDetail = ({
       <div className="p-6 space-y-6">
         {/* EVIDENCE VIEWER */}
         <EvidenceViewer
-          verificationData={vData}
+          evidence={product.evidence}
+          benchmarkScore={product.benchmark_score}
           images={product.images || []}
           onImageClick={onImageClick}
         />

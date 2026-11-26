@@ -6,21 +6,24 @@ import {
   FileQuestion,
 } from 'lucide-react';
 import { SecureImage } from '@/shared/ui/secure-image';
-import type { VerificationData } from '@selene/types';
+import type { VerificationEvidence } from '@selene/types';
 
 interface EvidenceViewerProps {
-  verificationData: VerificationData | Record<string, unknown> | null;
+  evidence: VerificationEvidence[];
+  benchmarkScore: number | null;
   images: string[];
   onImageClick: (url: string) => void;
 }
 
 export const EvidenceViewer = ({
-  verificationData,
+  evidence,
+  benchmarkScore,
   images,
   onImageClick,
 }: EvidenceViewerProps) => {
-  // Tipado seguro con la interfaz real de Selene (sin ningún 'any')
-  const vData = (verificationData || {}) as Partial<VerificationData>;
+  // An attempt can carry several proofs of each kind (#651).
+  const physical = evidence.filter((e) => e.kind === 'physical');
+  const performance = evidence.filter((e) => e.kind === 'performance');
 
   return (
     <div className="space-y-6">
@@ -31,21 +34,28 @@ export const EvidenceViewer = ({
           <p className="text-sm font-medium text-blue-light flex items-center gap-2">
             <Eye size={14} /> Prueba Física (Papelito con Usuario)
           </p>
-          <div className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 flex items-center justify-center relative">
-            {vData.proof_physical ? (
-              <SecureImage
-                path={vData.proof_physical}
-                alt="Prueba física"
-                className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
-                onClick={(url) => onImageClick(url)}
-              />
-            ) : (
+          {physical.length > 0 ? (
+            physical.map((proof, index) => (
+              <div
+                key={proof.storage_path}
+                className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 flex items-center justify-center relative"
+              >
+                <SecureImage
+                  path={proof.storage_path}
+                  alt={`Prueba física ${index + 1}`}
+                  className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                  onClick={(url) => onImageClick(url)}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 flex items-center justify-center relative">
               <div className="flex flex-col items-center gap-2 text-text-muted">
                 <FileQuestion size={24} />
                 <span className="text-xs">Sin prueba física</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Prueba de Rendimiento / Benchmark */}
@@ -53,28 +63,33 @@ export const EvidenceViewer = ({
           <p className="text-sm font-medium text-blue-light flex items-center gap-2">
             <TrendingUp size={14} /> Rendimiento (Benchmark / FurMark)
           </p>
-          <div className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 relative flex items-center justify-center">
-            {vData.proof_performance ? (
-              <>
+          {performance.length > 0 ? (
+            performance.map((proof, index) => (
+              <div
+                key={proof.storage_path}
+                className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 relative flex items-center justify-center"
+              >
                 <SecureImage
-                  path={vData.proof_performance}
+                  path={proof.storage_path}
                   className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
-                  alt="Benchmark"
+                  alt={`Benchmark ${index + 1}`}
                   onClick={(url) => onImageClick(url)}
                 />
-                {typeof vData.benchmark_score === 'number' && (
+                {index === 0 && benchmarkScore !== null && (
                   <div className="absolute bottom-3 right-3 bg-lion text-night px-3 py-1 rounded-lg font-bold text-xs shadow-2xl">
-                    Score: {vData.benchmark_score}
+                    Score: {benchmarkScore}
                   </div>
                 )}
-              </>
-            ) : (
+              </div>
+            ))
+          ) : (
+            <div className="aspect-video bg-night rounded-xl overflow-hidden border border-white/5 relative flex items-center justify-center">
               <div className="flex flex-col items-center gap-2 text-text-muted">
                 <FileQuestion size={24} />
                 <span className="text-xs">Sin benchmark adjunto</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
