@@ -5,10 +5,12 @@
  * without importing React Native through the component tree.
  */
 
-export type ImageGridTranslator = (
-  key: string,
-  options?: Record<string, unknown>,
-) => string;
+// Two call shapes instead of one optional parameter: i18next 27 types TFunction
+// as a union of argument tuples, and an optional `options` matches none of them.
+export type ImageGridTranslator = {
+  (key: string): string;
+  (key: string, options: Record<string, unknown>): string;
+};
 
 export const buildPhotoCounterA11yLabel = (
   current: number,

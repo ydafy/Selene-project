@@ -46,10 +46,7 @@ async function translator(lng: 'es' | 'en') {
   });
   const locale = lng === 'es' ? 'es-MX' : 'en-US';
   return {
-    t: instance.t.bind(instance) as (
-      key: string,
-      values?: Record<string, unknown>,
-    ) => string,
+    t: instance.t.bind(instance),
     formatAmount: (cents: number) => formatCentsWithLocale(cents, locale),
   };
 }
