@@ -134,6 +134,9 @@ ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_quote_cost_cents_check" CHECK (((label_quote_cost_cents IS NULL) OR (label_quote_cost_cents >= 0)));
 
 ALTER TABLE "public"."shipments"
+  ADD CONSTRAINT "shipments_stripe_payment_intent_id_check" CHECK ((stripe_payment_intent_id ~ '^pi_\S+$'::text));
+
+ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_origin_address_id_fkey" FOREIGN KEY (origin_address_id) REFERENCES public.addresses(id) ON DELETE RESTRICT;
 
 CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (delivered_at)
