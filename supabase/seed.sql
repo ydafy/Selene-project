@@ -134,7 +134,7 @@ INSERT INTO public.addresses (
 INSERT INTO public.products (
   id, name, description, price_cents, category, condition, usage, images, status,
   specifications, seller_id, shipping_cost_cents, origin_zip, package_preset,
-  verified_at, publication_shipping_reserve_cents, publication_commission_rate,
+  publication_shipping_reserve_cents, publication_commission_rate,
   publication_insurance_rate
 )
 SELECT
@@ -142,7 +142,6 @@ SELECT
   ARRAY['https://placehold.co/800x800/png?text=' || replace(p.name, ' ', '+')],
   p.status::public.product_status, p.specifications, '00000000-0000-4000-8000-000000000002',
   p.shipping_cost_cents, '06600', p.package_preset,
-  CASE WHEN p.status = 'verified' THEN now() END,
   p.shipping_cost_cents
     + s.shipping_buffer_cents
     + ceil(p.price_cents::numeric * s.insurance_rate)::bigint,

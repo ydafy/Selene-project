@@ -1537,8 +1537,6 @@ export type Database = {
           fts: unknown;
           id: string;
           images: string[];
-          locked_at: string | null;
-          locked_by: string | null;
           name: string;
           origin_zip: string | null;
           package_preset: string | null;
@@ -1546,7 +1544,6 @@ export type Database = {
           publication_commission_rate: number;
           publication_insurance_rate: number;
           publication_shipping_reserve_cents: number;
-          rejection_reason: string | null;
           reserved_at: string | null;
           seller_id: string;
           shipping_cost_cents: number;
@@ -1557,8 +1554,6 @@ export type Database = {
             Database['public']['Enums']['product_status'] | null;
           updated_at: string;
           usage: string;
-          verification_data: Json | null;
-          verified_at: string | null;
           views: number;
         };
         ComputedFields: never;
@@ -1572,8 +1567,6 @@ export type Database = {
           fts?: unknown;
           id?: string;
           images?: string[];
-          locked_at?: string | null;
-          locked_by?: string | null;
           name: string;
           origin_zip?: string | null;
           package_preset?: string | null;
@@ -1581,7 +1574,6 @@ export type Database = {
           publication_commission_rate: number;
           publication_insurance_rate: number;
           publication_shipping_reserve_cents: number;
-          rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id: string;
           shipping_cost_cents?: number;
@@ -1592,8 +1584,6 @@ export type Database = {
             Database['public']['Enums']['product_status'] | null;
           updated_at?: string;
           usage: string;
-          verification_data?: Json | null;
-          verified_at?: string | null;
           views?: number;
         };
         Update: {
@@ -1606,8 +1596,6 @@ export type Database = {
           fts?: unknown;
           id?: string;
           images?: string[];
-          locked_at?: string | null;
-          locked_by?: string | null;
           name?: string;
           origin_zip?: string | null;
           package_preset?: string | null;
@@ -1615,7 +1603,6 @@ export type Database = {
           publication_commission_rate?: number;
           publication_insurance_rate?: number;
           publication_shipping_reserve_cents?: number;
-          rejection_reason?: string | null;
           reserved_at?: string | null;
           seller_id?: string;
           shipping_cost_cents?: number;
@@ -1626,8 +1613,6 @@ export type Database = {
             Database['public']['Enums']['product_status'] | null;
           updated_at?: string;
           usage?: string;
-          verification_data?: Json | null;
-          verified_at?: string | null;
           views?: number;
         };
         Relationships: [
@@ -1637,41 +1622,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: 'category_configurations';
             referencedColumns: ['category_name'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
-            columns: ['locked_by'];
-            isOneToOne: false;
-            referencedRelation: 'admin_disputes_monitor_view';
-            referencedColumns: ['buyer_id'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
-            columns: ['locked_by'];
-            isOneToOne: false;
-            referencedRelation: 'admin_disputes_monitor_view';
-            referencedColumns: ['seller_id'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
-            columns: ['locked_by'];
-            isOneToOne: false;
-            referencedRelation: 'admin_seller_onboarding_view';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
-            columns: ['locked_by'];
-            isOneToOne: false;
-            referencedRelation: 'admin_user_directory_view';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'products_locked_by_fkey';
-            columns: ['locked_by'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'products_seller_id_fkey';

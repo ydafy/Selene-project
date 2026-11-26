@@ -52,7 +52,6 @@ select is_empty(
       ('internal.account_closures', 'user_id', 'public.profiles'),
       ('public.reviews', 'order_id', 'public.orders'),
       ('public.reviews', 'shipment_id', 'public.shipments'),
-      ('public.products', 'locked_by', 'public.profiles'),
       ('public.admin_audit_logs', 'admin_id', 'public.profiles'),
       ('public.admin_user_notes', 'admin_id', 'public.profiles'),
       ('public.shipment_cancellation_operations', 'order_id', 'public.orders'),

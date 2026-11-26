@@ -94,7 +94,7 @@ select lives_ok(
     where id = 'd0000000-0000-4000-8000-0000000000a2'$$,
   'verified -> reserved with a stale snapshot is accepted');
 select lives_ok(
-  $$update public.products set status = 'verified', verified_at = now()
+  $$update public.products set status = 'verified'
     where id = 'd0000000-0000-4000-8000-0000000000a4'$$,
   'an admin approval with a stale snapshot is accepted');
 select lives_ok(
@@ -251,7 +251,7 @@ select is(
   'pending_verification:120000:15000:true',
   'the re-priced listing stores the new price and the fresh snapshot');
 select lives_ok(
-  $$update public.products set status = 'verified', verified_at = now()
+  $$update public.products set status = 'verified'
     where id = 'd0000000-0000-4000-8000-0000000000a3'$$,
   'the re-priced listing is approved');
 

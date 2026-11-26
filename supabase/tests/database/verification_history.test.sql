@@ -6,7 +6,7 @@
 -- through the client. Runs against the local database only: `supabase start`,
 -- then `bun run test:db`.
 begin;
-select plan(91);
+select plan(98);
 
 \ir ../fixtures/money.psql
 
@@ -449,11 +449,6 @@ select is(
    where n.user_id = pg_temp.mu(79001) and n.event_payload->>'product_id' = pg_temp.mu(79101)::text),
   'product.approved_with_note,product.rejected', 'the seller gets the approval notice');
 select is(pg_temp.attempts(79101), 'rejected,approved', 'both decisions are kept');
-select is(
-  (select coalesce(rejection_reason, '-') || '|' || coalesce(verified_at::text, '-') || '|'
-     || coalesce(locked_by::text, '-') || '|' || coalesce(locked_at::text, '-')
-   from public.products where id = pg_temp.mu(79101)),
-  '-|-|-|-', 'the verdicts and locks no longer write the listing''s legacy columns');
 
 -- A repeated identical verdict after the decision writes nothing.
 select pg_temp.as_user(79004);
@@ -477,6 +472,29 @@ select isnt(public.fn_submit_product_verification(pg_temp.mu(79102), array[pg_te
 reset role;
 select is((select status::text from public.products where id = pg_temp.mu(79102)) || '|' || pg_temp.attempts(79102),
   'in_review|open', 'the rejected listing is in review with one open attempt');
+
+-- S3: the owner can no longer put a listing in review with a plain UPDATE.
+select pg_temp.listing(79170, 79001, 'pending_verification');
+select pg_temp.listing(79171, 79001, 'rejected');
+select pg_temp.as_user(79001);
+set local role authenticated;
+select throws_ok(
+  format($$update public.products set status = 'in_review' where id = %L$$, pg_temp.mu(79170)),
+  '42501', null, 'the owner cannot move a pending listing to in_review with an UPDATE');
+select throws_ok(
+  format($$update public.products set status = 'in_review' where id = %L$$, pg_temp.mu(79171)),
+  '42501', null, 'the owner cannot move a rejected listing to in_review with an UPDATE');
+reset role;
+select is(
+  (select string_agg(status::text, ',' order by name) from public.products
+   where id in (pg_temp.mu(79170), pg_temp.mu(79171))) || '|'
+    || (select count(*) from public.product_verifications
+        where product_id in (pg_temp.mu(79170), pg_temp.mu(79171))),
+  'pending_verification,rejected|0', 'the refused updates leave both listings and their attempts unchanged');
+
+-- S7: products no longer keeps the verification columns.
+select hasnt_column('public', 'products', c, 'products has no column ' || c)
+from unnest(array['verification_data', 'rejection_reason', 'verified_at', 'locked_by', 'locked_at']) as c;
 
 -- Schema shape --------------------------------------------------------------------
 select enum_has_labels('public', 'product_verification_decision', array['approved', 'rejected'],

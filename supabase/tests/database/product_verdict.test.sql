@@ -51,11 +51,9 @@ begin
   return pg_temp.mu(p_n);
 end $$;
 
--- status|updated_at|rejection_reason|verified_at|locked_by|locked_at of a listing.
+-- status|updated_at of a listing.
 create function pg_temp.core(p_n integer) returns text language sql as $$
-  select p.status::text || '|' || coalesce(p.updated_at::text, '-') || '|'
-    || coalesce(p.rejection_reason, '-') || '|' || coalesce(p.verified_at::text, '-') || '|'
-    || coalesce(p.locked_by::text, '-') || '|' || coalesce(p.locked_at::text, '-')
+  select p.status::text || '|' || coalesce(p.updated_at::text, '-')
   from public.products p where p.id = pg_temp.mu(p_n)
 $$;
 -- locked_by|locked_at of a listing's attempt.
@@ -218,7 +216,7 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5126), 'APPROVE', 'Note')
 reset role;
 select is(pg_temp.lock_of(5126), '-|-', 'APPROVE on a verified listing releases the attempt''s lock');
 select is(pg_temp.core(5126) || '|' || pg_temp.attempt(5126),
-  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|-|-|-|-|open|-|-|-|-' from pg_temp.sig where n = 5126),
+  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|open|-|-|-|-' from pg_temp.sig where n = 5126),
   'APPROVE on a verified listing leaves the listing untouched and the attempt open');
 select is(pg_temp.audits(5126), 0::bigint, 'APPROVE on a verified listing writes no audit row');
 select is(pg_temp.notices(5126), 0::bigint, 'APPROVE on a verified listing sends no notice');
@@ -229,7 +227,7 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5127), 'REJECT', 'New rea
 reset role;
 select is(pg_temp.lock_of(5127), '-|-', 'REJECT on a rejected listing releases the attempt''s lock');
 select is(pg_temp.core(5127) || '|' || pg_temp.attempt(5127),
-  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|-|-|-|-|open|-|-|-|-' from pg_temp.sig where n = 5127),
+  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|open|-|-|-|-' from pg_temp.sig where n = 5127),
   'REJECT on a rejected listing leaves the listing untouched and records no reason');
 select is(pg_temp.audits(5127) + pg_temp.notices(5127), 0::bigint,
   'REJECT on a rejected listing writes no audit row and sends no notice');
@@ -240,8 +238,8 @@ set local role authenticated;
 select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), 'APPROVE', null, '   '), true,
   'APPROVE returns true');
 reset role;
-select is(pg_temp.core(5129), 'verified|' || now()::text || '|-|-|-|-',
-  'APPROVE sets verified and stamps updated_at, without writing the legacy columns');
+select is(pg_temp.core(5129), 'verified|' || now()::text,
+  'APPROVE sets verified and stamps updated_at');
 select is(pg_temp.attempt(5129) || '|' || pg_temp.lock_of(5129),
   'approved|' || pg_temp.mu(5101)::text || '|true|-|-|-|-',
   'APPROVE closes the attempt with the reviewer and clears its lock');
@@ -297,7 +295,7 @@ select is(public.fn_resolve_product_verdict(pg_temp.mu(5131), 'REJECT', '  Seria
   'REJECT returns true');
 reset role;
 select is(pg_temp.core(5131) || '|' || pg_temp.attempt(5131) || '|' || pg_temp.lock_of(5131),
-  'rejected|' || now()::text || '|-|-|-|-|rejected|' || pg_temp.mu(5101)::text
+  'rejected|' || now()::text || '|rejected|' || pg_temp.mu(5101)::text
     || '|true|Serial number missing|-|-|-',
   'REJECT sets rejected, stamps updated_at and closes the attempt with the trimmed reason and no lock');
 select is(pg_temp.audit_row(5131),
