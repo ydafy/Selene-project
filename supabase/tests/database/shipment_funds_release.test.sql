@@ -107,7 +107,7 @@ select is(
   (select count(*) from pg_temp.sig where n between 2101 and 2109 and v is distinct from pg_temp.ship_sig(n)),
   0::bigint, 'release: every refusal leaves its shipment unchanged');
 select is((select string_agg(r, ',' order by n) from rel_result where n in (2110, 2111)),
-  'true:CONNECT_SHIPMENT_SKIPPED_WALLET,true:CONNECT_SHIPMENT_SKIPPED_WALLET',
+  'true:SHIPMENT_COMPLETED,true:SHIPMENT_COMPLETED',
   'release: delivered exactly 48 hours ago with a resolved dispute, or with a rejected one, releases');
 select is(
   (select status::text || ':' || (completed_at = now())::text || ':' || (updated_at = now())::text

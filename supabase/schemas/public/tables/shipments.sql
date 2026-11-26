@@ -134,6 +134,9 @@ ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_label_quote_cost_cents_check" CHECK (((label_quote_cost_cents IS NULL) OR (label_quote_cost_cents >= 0)));
 
 ALTER TABLE "public"."shipments"
+  ADD CONSTRAINT "shipments_stripe_payment_intent_id_check" CHECK ((stripe_payment_intent_id ~ '^pi_\S+$'::text));
+
+ALTER TABLE "public"."shipments"
   ADD CONSTRAINT "shipments_origin_address_id_fkey" FOREIGN KEY (origin_address_id) REFERENCES public.addresses(id) ON DELETE RESTRICT;
 
 CREATE INDEX idx_shipments_auto_completion_due ON public.shipments USING btree (delivered_at)
@@ -183,7 +186,7 @@ CREATE POLICY "shipments_select_participant_or_admin" ON "public"."shipments"
 
 GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."shipments" TO "service_role";
 
-COMMENT ON COLUMN "public"."shipments"."stripe_payment_intent_id" IS 'Stripe PaymentIntent ID for this shipment (Connect-era). NULL for legacy wallet-era shipments.';
+COMMENT ON COLUMN "public"."shipments"."stripe_payment_intent_id" IS 'Stripe PaymentIntent that paid this shipment, copied from its order. Without one the shipment has no payout path: fn_release_shipment_funds and fn_confirm_shipment_delivery refuse it (SHIPMENT_NOT_CONNECT).';
 
 COMMENT ON COLUMN "public"."shipments"."stripe_payout_id" IS 'Stripe Payout ID when the seller''s Connect balance was transferred to their bank. NULL until release-connect-payout processes the completed shipment.';
 

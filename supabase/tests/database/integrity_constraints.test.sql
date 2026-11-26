@@ -2,7 +2,7 @@
 -- each rule is a constraint, and a write that breaks it fails.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(78);
+select plan(89);
 \ir ../fixtures/money.psql
 
 insert into auth.users (id, instance_id, aud, role, email)
@@ -64,11 +64,16 @@ select ok(public.is_admin(), 'an active account with the admin role is still an 
 reset role;
 
 -- S3: money tables. Rows come from the money fixtures (seller 308101, buyer
--- 308102, admin 308103; order 308110 with shipment and listing 308111).
+-- 308102, admin 308103; order 308110 with shipment and listing 308111; order
+-- 308130 with shipment 308131 and its dispute 308132; order 308190 with shipment
+-- 308191).
 select pg_temp.money_user(308101);
 select pg_temp.money_user(308102);
 select pg_temp.money_user(308103, 'admin');
 select pg_temp.money_shipment(308110, 308111, 308101, 308102);
+select pg_temp.money_shipment(308130, 308131, 308101, 308102, 'delivered', interval '3 days');
+select pg_temp.money_dispute(308132, 308131);
+select pg_temp.money_shipment(308190, 308191, 308101, 308102, 'delivered', interval '3 days');
 select pg_temp.money_payout_run(308120, 308101, 308103, array[308111]);
 insert into internal.checkout_recovery_shells (stripe_payment_intent_id, reason, charged_amount_cents)
 values ('pi_integrity_308', 'test', 100000);
@@ -114,6 +119,67 @@ select throws_ok(
 select throws_ok(
   $$update public.shipments set shipping_cost_cents = -1 where id = pg_temp.mu(308111)$$,
   '23514', null, 'a negative shipments.shipping_cost_cents is rejected');
+
+-- #59: fn_release_shipment_funds and fn_confirm_shipment_delivery treat any
+-- non-NULL stripe_payment_intent_id as a Stripe Connect payment.
+select throws_ok(
+  $$update public.shipments set stripe_payment_intent_id = '' where id = pg_temp.mu(308111)$$,
+  '23514', null, 'an empty shipments.stripe_payment_intent_id is rejected');
+
+select throws_ok(
+  $$update public.shipments set stripe_payment_intent_id = 'cs_test_308' where id = pg_temp.mu(308111)$$,
+  '23514', null, 'a shipments.stripe_payment_intent_id that is not a PaymentIntent id is rejected');
+
+select throws_ok(
+  $$update public.shipments set stripe_payment_intent_id = 'pi_' where id = pg_temp.mu(308111)$$,
+  '23514', null, 'a bare pi_ prefix is rejected');
+
+select throws_ok(
+  $$update public.shipments set stripe_payment_intent_id = 'pi_ab c' where id = pg_temp.mu(308111)$$,
+  '23514', null, 'a payment intent id with whitespace is rejected');
+
+select is(
+  (select stripe_payment_intent_id from public.shipments where id = pg_temp.mu(308111)),
+  'pi_test_308110', 'the rejected updates leave the payment intent unchanged');
+
+select lives_ok(
+  $$update public.shipments set stripe_payment_intent_id = null where id = pg_temp.mu(308131)$$,
+  'a shipment without a payment intent is still allowed');
+
+-- disputes (#59): a NULL status matches neither side of the active-dispute check
+-- `status NOT IN ('resolved', 'rejected')`, so fn_release_shipment_funds would
+-- complete the shipment and make it payable while the dispute is still open.
+select col_not_null('public', 'disputes', 'status', 'disputes.status is NOT NULL');
+
+-- The column default, not a fixture value, makes a new dispute open.
+create function pg_temp.insert_dispute_without_status() returns text language plpgsql as $$
+declare
+  v_claims text := current_setting('request.jwt.claims', true);
+  v_status text;
+begin
+  perform set_config('request.jwt.claims', '{"role": "service_role"}', true);
+  insert into public.disputes (order_id, buyer_id, seller_id, reason, description, shipment_id)
+  values (pg_temp.mu(308190), pg_temp.mu(308102), pg_temp.mu(308101), 'not_working', 'Default status',
+    pg_temp.mu(308191))
+  returning status::text into v_status;
+  perform set_config('request.jwt.claims', coalesce(v_claims, ''), true);
+  return v_status;
+end $$;
+
+select is(pg_temp.insert_dispute_without_status(), 'open', 'a dispute inserted without a status is open');
+
+select throws_ok(
+  $$insert into public.disputes (order_id, buyer_id, seller_id, reason, description, status)
+    values (pg_temp.mu(308130), pg_temp.mu(308102), pg_temp.mu(308101), 'not_working', 'Test', null)$$,
+  '23502', null, 'a dispute inserted with a NULL status is rejected');
+
+select throws_ok(
+  $$update public.disputes set status = null where id = pg_temp.mu(308132)$$,
+  '23502', null, 'a NULL disputes.status is rejected');
+
+select is(
+  (select status::text from public.disputes where id = pg_temp.mu(308132)),
+  'open', 'the rejected update leaves the dispute open');
 
 -- order_items
 select is_empty(

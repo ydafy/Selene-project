@@ -6,7 +6,7 @@
 -- scans the migration files and seed.sql for the same secret patterns.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(31);
+select plan(32);
 
 -- Same patterns as scripts/guards/migration-secrets.ts: a JWT, Stripe secret,
 -- restricted and webhook keys, and a Supabase secret key.
@@ -67,8 +67,6 @@ select hasnt_function('public', 'fn_cron_release_shipment_funds',
   'fn_cron_release_shipment_funds is gone');
 select hasnt_column('public', 'system_settings', 'connect_enabled',
   'system_settings.connect_enabled is gone');
--- Identifiers only: the result code CONNECT_SHIPMENT_SKIPPED_WALLET and log
--- text such as "deprecated wallet release" do not match.
 select is_empty(
   $$select kind || ' ' || name from (
       select 'function' as kind, nspname || '.' || proname as name, prosrc as body
@@ -83,6 +81,25 @@ select is_empty(
       || '|admin_payments_overview|connect_enabled)\M')
     order by 1$$,
   'no function or view in public or internal references a wallet object');
+-- No result code, log text or comment still names the wallet either (#442).
+select is_empty(
+  $$select kind || ' ' || name from (
+      select 'function' as kind, nspname || '.' || proname as name,
+        prosrc || ' ' || coalesce(obj_description(oid, 'pg_proc'), '') as body
+      from own_functions
+      union all
+      select 'relation comment', c.oid::regclass::text, obj_description(c.oid, 'pg_class')
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname in ('public', 'internal')
+      union all
+      select 'column comment', c.oid::regclass::text || '.' || a.attname, col_description(c.oid, a.attnum)
+      from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+      where n.nspname in ('public', 'internal')
+    ) objects
+    where body ~* 'wallet'
+    order by 1$$,
+  'no function, function comment, relation comment or column comment in public or internal mentions the wallet');
 
 -- Client table privileges -------------------------------------------------------
 

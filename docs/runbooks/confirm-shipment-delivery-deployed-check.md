@@ -28,7 +28,7 @@ Use one new disposable sandbox order containing two products. Current settlement
 
 Tracking verification is outside this harness. When tracking has already been verified independently, prepare the core fixtures in the Supabase SQL Editor instead of replaying provider events. Direct status preparation is valid only as confirmation-harness fixture setup; it must not be reported as Envia evidence.
 
-Run this transaction manually with disposable IDs only. It requires Connect-backed shipments so confirmation does not exercise the deprecated wallet branch. It also rejects completed, buyer-confirmed, or disputed fixtures.
+Run this transaction manually with disposable IDs only. It requires Connect-backed shipments, because confirmation refuses a shipment without a Stripe payment intent (`SHIPMENT_NOT_CONNECT`). It also rejects completed, buyer-confirmed, or disputed fixtures.
 
 ```sql
 begin;

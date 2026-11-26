@@ -30,7 +30,7 @@ update public.orders set evidence_purged_at = now() where evidence_purged_at is 
 --   b2 completed 119 days ago: too recent.
 --   b3 one shipment completed 200 days ago, one still shipped: not closed.
 --   b4 closed 130 days ago, open dispute: held.
---   b5 closed 130 days ago, dispute with NULL status and no shipment_id: held.
+--   b5 closed 130 days ago, dispute under review and no shipment_id: held.
 --   b6 two shipments, closed 140 days ago, one resolved dispute and one rejected
 --      order-level dispute, no objects: candidate.
 --   b7 closed 150 days ago, already purged: skipped.
@@ -110,7 +110,7 @@ values
     'e5000000-0000-4000-8000-000000000002', 'damaged', 'Resolved dispute', 'e5000000-0000-4000-8000-0000000c0006'),
   ('e5000000-0000-4000-8000-0000000d0016', 'e5000000-0000-4000-8000-0000000b0006', 'e5000000-0000-4000-8000-000000000001',
     'e5000000-0000-4000-8000-000000000002', 'damaged', 'Rejected dispute', 'e5000000-0000-4000-8000-0000000c0016');
-update public.disputes set status = null, shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0005';
+update public.disputes set status = 'under_review', shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0005';
 update public.disputes set status = 'resolved' where id = 'e5000000-0000-4000-8000-0000000d0006';
 update public.disputes set status = 'rejected', shipment_id = null where id = 'e5000000-0000-4000-8000-0000000d0016';
 insert into public.disputes (id, order_id, buyer_id, seller_id, reason, description, shipment_id)
@@ -232,7 +232,7 @@ select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0003')
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0004'), false,
   'an order with an open dispute is not marked');
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0005'), false,
-  'an order with a NULL-status dispute is not marked');
+  'an order with a dispute under review is not marked');
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0008'), false,
   'an order without shipments is not marked');
 select is(public.fn_mark_evidence_purged('e5000000-0000-4000-8000-0000000b0007'), false,

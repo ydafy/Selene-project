@@ -95,7 +95,7 @@ describe('resolveBuyerConfirmationPlan', () => {
     });
   });
 
-  it('forwards no client payment or Connect state to the canonical wallet-guarded RPC', () => {
+  it('forwards no client payment or Connect state to the canonical RPC', () => {
     const rpcInput = resolveBuyerConfirmationPlan(validContext);
 
     expect(rpcInput).toEqual({

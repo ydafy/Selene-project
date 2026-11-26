@@ -53,13 +53,13 @@ BEGIN
   SET status = 'completed', completed_at = now(), updated_at = now()
   WHERE id = p_shipment_id;
 
-  RETURN QUERY SELECT true, 'CONNECT_SHIPMENT_SKIPPED_WALLET'::text;
+  RETURN QUERY SELECT true, 'SHIPMENT_COMPLETED'::text;
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION "public"."fn_release_shipment_funds"(uuid) TO "service_role";
 
-COMMENT ON FUNCTION "public"."fn_release_shipment_funds"(uuid) IS 'DEPRECATED by Stripe Connect migration. Stripe Connect handles automatic payouts. Remove in cleanup phase.';
+COMMENT ON FUNCTION "public"."fn_release_shipment_funds"(uuid) IS 'Marks a delivered Connect shipment completed when it has no active dispute and the 48-hour grace period has passed, which makes it payable from the admin payout queue. Moves no money. Called by fn_cron_dispute_shipping_timeout.';
 
 REVOKE ALL ON FUNCTION "public"."fn_release_shipment_funds"(uuid) FROM "postgres";
 
