@@ -32,9 +32,9 @@ After go-live Selene has two remote projects. Each has its own keys, Vault secre
 
 A merged change reaches production in this order:
 
-1. From a checkout of `main`, run `supabase link --project-ref <staging ref>`, `supabase db push`, and deploy the changed functions (section 7). Test on staging.
+1. On staging, apply the manual steps the pull request added to this runbook (Vault secrets, Edge Function secrets, webhooks, Dashboard settings) before the migration or function that needs them. Then, from a checkout of `main`, run `supabase link --project-ref <staging ref>` and `supabase db push --remote`, and deploy the changed functions (section 7). Test on staging.
 2. If staging shows a defect, fix it in a new branch and pull request. Never fix staging or production in the Dashboard.
-3. From the same commit of `main`, link the production ref and repeat step 1. Apply the manual steps (secrets, webhooks, Dashboard settings) the pull request added to this runbook.
+3. From the same commit of `main`, repeat step 1 on production, with production's own secret values and the production ref.
 4. Deploy in the order database, then Edge Functions, then the app release. Installed apps update days later, so the database and functions must keep working with the previous app version. Add the new shape first, and drop the old one in a later release.
 
 Supabase does not roll back migrations. Fix a bad migration with a new one. The daily backup is the last resort.
@@ -245,7 +245,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   - Go-live blocker (maintainer): `/privacidad` and `/terminos` are only summaries of decided rules (data handling; marketplace, Seguro Selene, payouts, refunds and disputes, suspension and ban). The full privacy notice (legal text, company identity, ARCO procedure) and the full terms need legal review and must not be presented as complete until they exist; the register checkbox already links to `/terminos`. The support mailbox must exist and receive mail before the Play submission.
 - Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
 - After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
-- Auth switch-on order. Run it once at go-live, top to bottom; the bullets above hold the details. Each step names its check. The Supabase MCP is read-only and cannot read Dashboard Auth settings, so a step without an MCP check ends with a Dashboard readback recorded in "Deployed Auth settings" with its date.
+- Auth switch-on order. Run it once at go-live, top to bottom; the bullets above hold the details. Each step names its check. The Supabase MCP is read-only and cannot read Dashboard Auth settings, so a step without an MCP check ends with a Dashboard readback recorded in "Production Auth settings" (step 10) with its date.
   1. Domain: change `SELENE_DOMAIN` (section 1, "Domain") and its test, then build the app and admin-web from that commit. Check: `bun test packages/types`; the app's Settings > Legales opens `TERMS_URL` and `PRIVACY_URL` on the real domain.
   2. Sending domain: verify it in Resend with SPF, DKIM and DMARC. Check: Resend shows the domain as verified; `nslookup -type=TXT <domain>` returns the SPF and DMARC records.
   3. Custom SMTP: Authentication > Emails > SMTP Settings, From `no-reply@<domain>`, link tracking off. Check: sign up with an address outside the Supabase organization; the code arrives, and the auth logs (Supabase MCP `query_logs`) show the `/signup` request with no "Email address not authorized" error.
@@ -255,7 +255,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   7. CAPTCHA, in the four-step order of "Enable CAPTCHA" above (site keys in both builds, ship both, then the Dashboard switch with the hCaptcha secret). Check: after the switch, the auth logs show `/signup` and `/token?grant_type=password` answering 200 from the new builds and no `captcha_failed` burst; mirror it in `supabase/config.toml` `[auth.captcha]`. The local stack already runs CAPTCHA with hCaptcha's public test secret, and Bruno sends the test token (`captchaToken` in `bruno/environments/local.bru`); the Dashboard keeps the real secret.
   8. Leaked password protection (Pro plan): Authentication > Attack Protection. Check: Supabase MCP `get_advisors` (security) no longer reports `auth_leaked_password_protection`.
   9. Sessions and tokens: check that the values in "Pending Auth items" are set, and that the phone provider is off. Check: Dashboard readback.
-  10. Close: Supabase MCP `get_advisors` (security) shows no Auth finding; update "Deployed Auth settings" with the new values and the date.
+  10. Close: Supabase MCP `get_advisors` (security) shows no Auth finding. Record the production project ref, its Auth values, and the date in a new "Production Auth settings" list next to "Deployed Auth settings". Keep "Deployed Auth settings" as the staging inventory.
 
 ## 11. Mobile app signing
 
