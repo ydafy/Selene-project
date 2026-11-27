@@ -201,6 +201,8 @@ jobs:
     uses: ./.github/workflows/deploy-staging.yml # zizmor: ignore[self-repository]
     # The called job runs in the staging environment, but its environment secrets
     # arrive empty unless the caller inherits secrets (actions/runner#4453; the
-    # first deploy failed this way). The repository has no secrets of its own, and
-    # the environment accepts main only. Kept by the maintainer on 2026-11-27.
+    # first deploy failed this way). inherit also forwards every repository secret:
+    # keep the deploy credentials in the staging environment only (main only), and
+    # add no repository secret this job should not see. Kept by the maintainer on
+    # 2026-11-27.
     secrets: inherit # zizmor: ignore[secrets-inherit]
