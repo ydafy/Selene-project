@@ -196,4 +196,7 @@ jobs:
     permissions:
       contents: read
     # No secrets are passed: the called job reads them from the staging environment.
-    uses: ./.github/workflows/deploy-staging.yml
+    # zizmor's self-repository audit asks for `$/...`, which actionlint 1.7.12 rejects
+    # ("ref is missing"). Kept by the maintainer on 2026-11-26 (#314); use `$/` and
+    # drop the ignore once actionlint supports it.
+    uses: ./.github/workflows/deploy-staging.yml # zizmor: ignore[self-repository]

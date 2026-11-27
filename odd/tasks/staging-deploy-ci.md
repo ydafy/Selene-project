@@ -39,3 +39,4 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
   - R1: the drift check runs without the Supabase credentials.
   - R3: the caller job uses `!github.event.repository.fork` instead of the repository name.
   - R3 and R4: a skipped deploy emits a run warning, so staging that falls behind `main` (the newer commit's CI failed) is visible on the run.
+- L9. PR #735 `repo-checks`: zizmor 1.32.0 `self-repository` asks for `uses: $/...` in `ci.yml`, which actionlint 1.7.12 (latest) rejects. Maintainer: "Sí, ignorarlo con su motivo (Recomendado)". An inline `# zizmor: ignore[self-repository]` with its reason, to drop once actionlint supports `$/`.
