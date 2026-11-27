@@ -6,7 +6,7 @@
 -- through the client. Runs against the local database only: `supabase start`,
 -- then `bun run test:db`.
 begin;
-select plan(98);
+select plan(100);
 
 \ir ../fixtures/money.psql
 
@@ -287,6 +287,10 @@ select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, 'front.jpg'
   'P0001', 'INVALID_EVIDENCE_PATH', 'a performance proof in another listing''s folder is refused');
 select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, '../' || pg_temp.mu(79101)::text || '/front.jpg')]),
   'P0001', 'INVALID_EVIDENCE_PATH', 'a path with .. is refused');
+select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, 'front.jpg'), null]),
+  'P0001', 'INVALID_EVIDENCE_PATH', 'a NULL path inside the list is refused');
+select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, 'front.jpg')], array[''::text]),
+  'P0001', 'INVALID_EVIDENCE_PATH', 'a blank performance path is refused');
 select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, 'front.jpg'), pg_temp.path(79108, 'front.jpg')]),
   'P0001', 'DUPLICATE_EVIDENCE_PATH', 'a path listed twice is refused');
 select throws_ok(pg_temp.submit_sql(79108, array[pg_temp.path(79108, 'missing.jpg')]),
