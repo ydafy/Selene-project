@@ -1,8 +1,9 @@
 CREATE OR REPLACE FUNCTION public.fn_resolve_product_verdict (
-  p_product_id   uuid,
-  p_verdict      text,
-  p_public_note  text DEFAULT NULL::text,
-  p_private_note text DEFAULT NULL::text
+  p_product_id      uuid,
+  p_verification_id uuid,
+  p_verdict         text,
+  p_public_note     text DEFAULT NULL::text,
+  p_private_note    text DEFAULT NULL::text
 )
   RETURNS boolean
   LANGUAGE plpgsql
@@ -11,11 +12,13 @@ CREATE OR REPLACE FUNCTION public.fn_resolve_product_verdict (
   AS $function$
 DECLARE
   v_auth_user_id UUID;
+  v_verification_id UUID;
+  v_decision public.product_verification_decision;
+  v_private_note_id UUID;
   v_locked_by UUID;
   v_lock_time TIMESTAMPTZ;
   v_seller_id UUID;
   v_product_name TEXT;
-  v_status public.product_status;
   v_audit_id UUID;
   v_event_kind TEXT;
   v_notif_title TEXT;
@@ -36,53 +39,79 @@ BEGIN
   END IF;
 
   -- 3. Cargar datos del producto y bloquear la fila para actualización
-  SELECT p.locked_by, p.locked_at, p.seller_id, p.name, p.status
-  INTO v_locked_by, v_lock_time, v_seller_id, v_product_name, v_status
+  SELECT p.seller_id, p.name
+  INTO v_seller_id, v_product_name
   FROM public.products p
   WHERE p.id = p_product_id
   FOR UPDATE;
+
+  -- The lock and the decision live on the attempt the admin reviewed, which
+  -- must be the listing's open one (odd/tasks/verification-history.md S4, S5).
+  SELECT v.id, v.decision, v.locked_by, v.locked_at
+  INTO v_verification_id, v_decision, v_locked_by, v_lock_time
+  FROM public.product_verifications v
+  WHERE v.id = p_verification_id
+    AND v.product_id = p_product_id
+  FOR UPDATE;
+
+  IF v_verification_id IS NULL THEN
+    RAISE EXCEPTION 'VERIFICATION_NOT_OPEN';
+  END IF;
+
+  -- A decided attempt: repeating its decision writes nothing, unless a newer
+  -- attempt is open; anything else is refused.
+  IF v_decision IS NOT NULL THEN
+    IF NOT EXISTS (
+         SELECT 1 FROM public.product_verifications o
+         WHERE o.product_id = p_product_id
+           AND o.decision IS NULL
+       )
+       AND ((p_verdict = 'APPROVE' AND v_decision = 'approved')
+         OR (p_verdict = 'REJECT' AND v_decision = 'rejected')) THEN
+      RETURN true;
+    END IF;
+    RAISE EXCEPTION 'VERIFICATION_NOT_OPEN';
+  END IF;
 
   -- 4. Validar concurrencia: que el bloqueo siga perteneciendo al administrador y no haya expirado (10 min)
   IF v_locked_by IS NULL OR v_locked_by IS DISTINCT FROM v_auth_user_id OR v_lock_time < (now() - interval '10 minutes') THEN
     RAISE EXCEPTION 'LOCK_EXPIRED_OR_STOLEN';
   END IF;
 
-  IF (p_verdict = 'APPROVE' AND v_status = 'verified')
-     OR (p_verdict = 'REJECT' AND v_status = 'rejected') THEN
-    UPDATE public.products
-    SET locked_by = NULL,
-        locked_at = NULL
-    WHERE id = p_product_id;
-    RETURN true;
+  IF p_verdict IS DISTINCT FROM 'APPROVE' AND p_verdict IS DISTINCT FROM 'REJECT' THEN
+    RAISE EXCEPTION 'INVALID_VERDICT_VALUE';
+  END IF;
+
+  IF p_verdict = 'REJECT' AND COALESCE(trim(p_public_note), '') = '' THEN
+    RAISE EXCEPTION 'REJECTION_NOTE_REQUIRED';
   END IF;
 
   -- 5. Insertar Nota Privada de Inteligencia del Admin (Solo si fue proporcionada)
   IF p_private_note IS NOT NULL AND trim(p_private_note) <> '' THEN
     INSERT INTO public.admin_user_notes (user_id, admin_id, content)
-    VALUES (v_seller_id, v_auth_user_id, trim(p_private_note));
+    VALUES (v_seller_id, v_auth_user_id, trim(p_private_note))
+    RETURNING id INTO v_private_note_id;
   END IF;
 
-  -- 6. Actualizar Estado del Producto y liberar el lock
-  IF p_verdict = 'REJECT' THEN
-    UPDATE public.products
-    SET status = 'rejected'::public.product_status,
-        rejection_reason = trim(p_public_note),
-        locked_by = NULL,
-        locked_at = NULL,
-        updated_at = now()
-    WHERE id = p_product_id;
-  ELSIF p_verdict = 'APPROVE' THEN
-    UPDATE public.products
-    SET status = 'verified'::public.product_status,
-        rejection_reason = NULL,
-        verified_at = now(),
-        locked_by = NULL,
-        locked_at = NULL,
-        updated_at = now()
-    WHERE id = p_product_id;
-  ELSE
-    RAISE EXCEPTION 'INVALID_VERDICT_VALUE';
-  END IF;
+  -- 6. Cerrar el intento con la decisión, liberar el lock y actualizar el estado del producto
+  UPDATE public.product_verifications
+  SET decision = CASE WHEN p_verdict = 'REJECT'
+                   THEN 'rejected'::public.product_verification_decision
+                   ELSE 'approved'::public.product_verification_decision END,
+      decided_by = v_auth_user_id,
+      decided_at = now(),
+      public_note = NULLIF(trim(p_public_note), ''),
+      private_note_id = v_private_note_id,
+      locked_by = NULL,
+      locked_at = NULL
+  WHERE id = v_verification_id;
+
+  UPDATE public.products
+  SET status = CASE WHEN p_verdict = 'REJECT'
+                 THEN 'rejected'::public.product_status
+                 ELSE 'verified'::public.product_status END,
+      updated_at = now()
+  WHERE id = p_product_id;
 
   -- 7. Registrar Log de Auditoría Administrativa (Corregido: p_product_id sin castear a texto)
   INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
@@ -94,7 +123,8 @@ BEGIN
       'product_name', v_product_name,
       'seller_id', v_seller_id,
       'admin_note', trim(p_public_note),
-      'verdict', p_verdict
+      'verdict', p_verdict,
+      'verification_id', v_verification_id
     )
   )
   RETURNING id INTO v_audit_id;
@@ -141,12 +171,12 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, text, text, text) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, uuid, text, text, text) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, text, text, text) TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, uuid, text, text, text) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, text, text, text) FROM "postgres";
+REVOKE ALL ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, uuid, text, text, text) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, text, text, text) TO "postgres";
+GRANT EXECUTE ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, uuid, text, text, text) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, text, text, text) FROM PUBLIC, "anon";
+REVOKE ALL ON FUNCTION "public"."fn_resolve_product_verdict"(uuid, uuid, text, text, text) FROM PUBLIC, "anon";

@@ -91,6 +91,16 @@
     "permissionTitle": "Permission required",
     "permissionMessage": "We need camera access to verify the product."
   },
+  "errors": {
+    "notOwner": "You can only send your own listings to review.",
+    "accountNotActive": "Your account is not active, so you cannot send listings to review.",
+    "invalidStatus": "This listing cannot be sent to review in its current state.",
+    "alreadyOpen": "This listing is already under review. We will notify you when it is decided.",
+    "physicalProofRequired": "Add the photo of the product next to the paper with your username and today's date.",
+    "evidenceMissing": "We could not find one of your photos. Take it again and resubmit.",
+    "duplicateEvidence": "Each mission needs its own photo. Take a new one and resubmit.",
+    "invalidScore": "Enter the score as a whole number, for example 12500."
+  },
   "load": {
     "errorTitle": "We could not load your product",
     "errorMessage": "Check your connection and try again.",

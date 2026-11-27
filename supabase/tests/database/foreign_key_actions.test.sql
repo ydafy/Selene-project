@@ -3,7 +3,7 @@
 -- CASCADE, and user references point to public.profiles, not auth.users.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(5);
+select plan(6);
 \ir ../fixtures/money.psql
 
 -- Every single-column foreign key in public and internal, with its target and
@@ -29,8 +29,8 @@ select is_empty(
     order by 1$$,
   'no foreign key outside profiles and profiles_private references auth.users');
 
--- (b) Money and shipment history, and moderation reports (#653), cannot be
--- deleted from under their rows.
+-- (b) Money and shipment history, moderation reports (#653) and verification
+-- history (#651) cannot be deleted from under their rows.
 select is_empty(
   $$select e.tbl || '.' || e.col || coalesce(' is ' || f.action || ' -> ' || f.target, ' is missing')
     from (values
@@ -52,7 +52,6 @@ select is_empty(
       ('internal.account_closures', 'user_id', 'public.profiles'),
       ('public.reviews', 'order_id', 'public.orders'),
       ('public.reviews', 'shipment_id', 'public.shipments'),
-      ('public.products', 'locked_by', 'public.profiles'),
       ('public.admin_audit_logs', 'admin_id', 'public.profiles'),
       ('public.admin_user_notes', 'admin_id', 'public.profiles'),
       ('public.shipment_cancellation_operations', 'order_id', 'public.orders'),
@@ -65,12 +64,29 @@ select is_empty(
       ('public.reports', 'reporter_id', 'public.profiles'),
       ('public.reports', 'target_product_id', 'public.products'),
       ('public.reports', 'target_user_id', 'public.profiles'),
-      ('public.reports', 'resolved_by', 'public.profiles')
+      ('public.reports', 'resolved_by', 'public.profiles'),
+      ('public.product_verifications', 'product_id', 'public.products'),
+      ('public.product_verifications', 'submitted_by', 'public.profiles'),
+      ('public.product_verifications', 'decided_by', 'public.profiles'),
+      ('public.product_verifications', 'private_note_id', 'public.admin_user_notes'),
+      ('public.product_verifications', 'locked_by', 'public.profiles'),
+      ('public.product_verification_evidence', 'verification_id', 'public.product_verifications')
     ) as e(tbl, col, target)
     left join fk_actions f on f.tbl = e.tbl and f.col = e.col
     where f.action is distinct from 'r' or f.target is distinct from e.target
     order by 1$$,
   'money and shipment history foreign keys are ON DELETE RESTRICT');
+
+-- A listing's category is configuration: deleting a category in use fails,
+-- renaming it renames its listings (#651 S6).
+select is(
+  (select f.action || ' on update ' || c.confupdtype::text || ' -> ' || f.target
+   from fk_actions f
+   join pg_constraint c on c.conrelid = 'public.products'::regclass and c.contype = 'f'
+     and c.confrelid = 'public.category_configurations'::regclass
+   where f.tbl = 'public.products' and f.col = 'category'),
+  'r on update c -> public.category_configurations',
+  'products.category references category_configurations ON DELETE RESTRICT ON UPDATE CASCADE');
 
 -- User-owned preferences follow their profile.
 select is_empty(

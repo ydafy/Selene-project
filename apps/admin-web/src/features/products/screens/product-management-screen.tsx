@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from 'react';
-import { Package, Trash2, Lock, Search, Archive } from 'lucide-react';
+import { Package, Trash2, Search, Archive } from 'lucide-react';
 import { useAdminProduct, type ProductTab } from '../hooks/use-admin-product';
 import { useAdminProductCounts } from '../hooks/use-admin-product-counts';
 import { useDebounce } from '@/shared/hooks/use-debounce';
@@ -230,7 +230,6 @@ export const ProductManagementPage = () => {
                 </thead>
                 <tbody>
                   {products.map((product) => {
-                    const isLocked = product.locked_by !== null;
                     const isDeleted = product.deleted_at !== null;
                     return (
                       <tr
@@ -276,14 +275,6 @@ export const ProductManagementPage = () => {
                               <Package size={14} />
                               Restaurar
                             </button>
-                          ) : isLocked ? (
-                            <span
-                              className="inline-flex items-center gap-1 text-xs text-blue-light opacity-60"
-                              title={`Bloqueado por ${product.locker?.username ?? 'otro admin'}`}
-                            >
-                              <Lock size={14} />
-                              Bloqueado
-                            </span>
                           ) : (
                             <button
                               onClick={() =>

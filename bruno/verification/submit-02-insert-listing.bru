@@ -1,0 +1,61 @@
+meta {
+  name: submit-02-insert-listing
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+  Prefer: return=representation
+}
+
+script:pre-request {
+  const buffer = Number(bru.getVar("submitBuffer"));
+  const insurance = Number(bru.getVar("submitInsurance"));
+  req.setBody({
+    name: "Verification submit GPU",
+    description: "Listing waiting for its proofs",
+    price_cents: 800000,
+    category: "GPU",
+    condition: "used",
+    usage: "gaming",
+    images: ["https://placehold.co/800x800/png?text=Submit"],
+    status: "pending_verification",
+    specifications: { chipset: "NVIDIA", brand: "MSI", model: "RTX 3070", memory: "8 GB" },
+    seller_id: "00000000-0000-4000-8000-000000000002",
+    shipping_cost_cents: 10000,
+    origin_zip: "06600",
+    package_preset: "gpu_1",
+    publication_shipping_reserve_cents: 10000 + buffer + Math.ceil(800000 * insurance),
+    publication_commission_rate: Number(bru.getVar("submitCommission")),
+    publication_insurance_rate: insurance
+  });
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.getStatus() === 201) {
+    bru.setVar("submitProductId", res.getBody()[0].id);
+  }
+}
+
+tests {
+  test("the seeded seller gets a listing waiting for verification", function () {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.getBody()[0].status).to.equal("pending_verification");
+  });
+}
+
+docs {
+  A fresh listing per run, so the sequence does not change the seeded listings other requests read.
+}

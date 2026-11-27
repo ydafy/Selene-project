@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.fn_unlock_product (
   AS $function$
 DECLARE
     v_auth_user_id UUID;
-    v_rows_affected INTEGER;
+    v_verification_id UUID;
 BEGIN
     v_auth_user_id := (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
 
@@ -21,16 +21,19 @@ BEGIN
         RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
     END IF;
 
-    UPDATE public.products
+    -- The review lock lives on the listing's open verification attempt
+    -- (odd/tasks/verification-history.md S4).
+    UPDATE public.product_verifications
     SET locked_by = NULL, locked_at = NULL
-    WHERE id = p_product_id
-    AND (locked_by = v_auth_user_id OR locked_at < (now() - interval '10 minutes'));
+    WHERE product_id = p_product_id
+    AND decision IS NULL
+    AND (locked_by = v_auth_user_id OR locked_at < (now() - interval '10 minutes'))
+    RETURNING id INTO v_verification_id;
 
-    GET DIAGNOSTICS v_rows_affected = ROW_COUNT;
-
-    IF v_rows_affected > 0 THEN
+    IF v_verification_id IS NOT NULL THEN
         INSERT INTO public.admin_audit_logs (admin_id, action_type, target_id, details)
-        VALUES (v_auth_user_id, 'PRODUCT_UNLOCK', p_product_id, jsonb_build_object('timestamp', now()));
+        VALUES (v_auth_user_id, 'PRODUCT_UNLOCK', p_product_id,
+                jsonb_build_object('timestamp', now(), 'verification_id', v_verification_id));
         RETURN true;
     END IF;
 

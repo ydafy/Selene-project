@@ -1,0 +1,41 @@
+meta {
+  name: submit-10-seller-submits
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": ["{{submitProofPath}}"],
+    "p_benchmark_score": 15400
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("submitVerificationId", res.getBody());
+  }
+}
+
+tests {
+  test("the owner submits the uploaded proof and gets the attempt id", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()).to.match(/^[0-9a-f-]{36}$/);
+  });
+}
+
+docs {
+  The call the app makes when the seller sends the proofs (#651 S3).
+}

@@ -2,9 +2,11 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  buildVerificationData,
+  buildVerificationSubmission,
   canSubmitVerification,
+  readLatestAttempt,
   resolveVerificationRequirements,
+  verificationErrorMessage,
 } from './verification-submit';
 
 const FRONTEND = join(import.meta.dir, '..', '..', '..', '..');
@@ -103,69 +105,175 @@ describe('canSubmitVerification', () => {
   });
 });
 
-describe('buildVerificationData', () => {
-  const base = { submittedAt: '2026-10-21T00:00:00.000Z' };
+describe('buildVerificationSubmission', () => {
+  const productId = 'prod-1';
 
-  it('builds benchmark data for GPU', () => {
+  it('builds the submit RPC arguments for GPU with a whole-number score', () => {
     expect(
-      buildVerificationData({
-        ...base,
+      buildVerificationSubmission({
+        productId,
         category: 'GPU',
-        score: '12000',
-        physicalPath: 'p/1.jpg',
-        performancePath: 'p/2.jpg',
+        score: ' 12000 ',
+        physicalPath: 'prod-1/physical_1.jpg',
+        performancePath: 'prod-1/bench_1.jpg',
       }),
     ).toEqual({
-      proof_physical: 'p/1.jpg',
-      proof_performance: 'p/2.jpg',
-      benchmark_score: 12000,
-      submitted_at: base.submittedAt,
+      p_product_id: productId,
+      p_physical_paths: ['prod-1/physical_1.jpg'],
+      p_performance_paths: ['prod-1/bench_1.jpg'],
+      p_benchmark_score: 12000,
     });
   });
 
-  it('stores no score for info categories', () => {
+  it('sends no score for info categories', () => {
     expect(
-      buildVerificationData({
-        ...base,
+      buildVerificationSubmission({
+        productId,
         category: 'RAM',
-        score: '',
-        physicalPath: 'p/1.jpg',
-        performancePath: 'p/2.jpg',
-      }).benchmark_score,
-    ).toBeNull();
+        score: '999',
+        physicalPath: 'prod-1/physical_1.jpg',
+        performancePath: 'prod-1/info_1.jpg',
+      }),
+    ).toEqual({
+      p_product_id: productId,
+      p_physical_paths: ['prod-1/physical_1.jpg'],
+      p_performance_paths: ['prod-1/info_1.jpg'],
+    });
   });
 
-  it('refuses to write data with a missing required proof', () => {
+  it('refuses to submit with a missing required proof', () => {
     expect(() =>
-      buildVerificationData({
-        ...base,
+      buildVerificationSubmission({
+        productId,
         category: 'GPU',
         score: '1',
         physicalPath: undefined,
-        performancePath: 'p/2.jpg',
+        performancePath: 'prod-1/bench_1.jpg',
       }),
     ).toThrow('VERIFICATION_PROOF_MISSING');
     expect(() =>
-      buildVerificationData({
-        ...base,
+      buildVerificationSubmission({
+        productId,
         category: 'RAM',
         score: '',
-        physicalPath: 'p/1.jpg',
+        physicalPath: 'prod-1/physical_1.jpg',
         performancePath: undefined,
       }),
     ).toThrow('VERIFICATION_PROOF_MISSING');
   });
 
-  it('refuses a non-numeric benchmark score', () => {
-    expect(() =>
-      buildVerificationData({
-        ...base,
-        category: 'CPU',
-        score: 'abc',
-        physicalPath: 'p/1.jpg',
-        performancePath: 'p/2.jpg',
+  it('refuses a score that is not a non-negative whole number', () => {
+    for (const score of ['abc', '', '12.5', '-1', '1e3', '2147483648']) {
+      expect(() =>
+        buildVerificationSubmission({
+          productId,
+          category: 'CPU',
+          score,
+          physicalPath: 'prod-1/physical_1.jpg',
+          performancePath: 'prod-1/bench_1.jpg',
+        }),
+      ).toThrow('VERIFICATION_SCORE_INVALID');
+    }
+  });
+});
+
+describe('readLatestAttempt', () => {
+  it('reads nothing when the listing has no attempt', () => {
+    expect(readLatestAttempt(null)).toEqual({
+      rejectionReason: null,
+      benchmarkScore: null,
+      physicalPath: undefined,
+      performancePath: undefined,
+    });
+  });
+
+  it('takes the rejection reason and proofs of a rejected attempt', () => {
+    expect(
+      readLatestAttempt({
+        decision: 'rejected',
+        public_note: 'La foto está borrosa',
+        benchmark_score: 12000,
+        product_verification_evidence: [
+          { kind: 'performance', storage_path: 'prod-1/bench_1.jpg' },
+          { kind: 'physical', storage_path: 'prod-1/physical_1.jpg' },
+        ],
       }),
-    ).toThrow('VERIFICATION_SCORE_INVALID');
+    ).toEqual({
+      rejectionReason: 'La foto está borrosa',
+      benchmarkScore: 12000,
+      physicalPath: 'prod-1/physical_1.jpg',
+      performancePath: 'prod-1/bench_1.jpg',
+    });
+  });
+
+  it('shows no rejection reason for an open or approved attempt', () => {
+    for (const decision of [null, 'approved'] as const) {
+      expect(
+        readLatestAttempt({
+          decision,
+          public_note: 'note',
+          benchmark_score: null,
+          product_verification_evidence: [],
+        }).rejectionReason,
+      ).toBeNull();
+    }
+  });
+});
+
+describe('verificationErrorMessage', () => {
+  const t = (key: string) => `t(${key})`;
+  const rpcError = (message: string) => ({
+    code: 'P0001',
+    message,
+    details: null,
+    hint: null,
+  });
+  const cases: Record<string, string> = {
+    UNAUTHORIZED: 'errors.notOwner',
+    ACCOUNT_NOT_ACTIVE: 'errors.accountNotActive',
+    INVALID_STATUS_FOR_VERIFICATION: 'errors.invalidStatus',
+    VERIFICATION_ALREADY_OPEN: 'errors.alreadyOpen',
+    PHYSICAL_PROOF_REQUIRED: 'errors.physicalProofRequired',
+    INVALID_EVIDENCE_PATH: 'errors.evidenceMissing',
+    EVIDENCE_NOT_FOUND: 'errors.evidenceMissing',
+    DUPLICATE_EVIDENCE_PATH: 'errors.duplicateEvidence',
+    INVALID_BENCHMARK_SCORE: 'errors.invalidScore',
+  };
+
+  it('maps each submit RPC error code to its message', () => {
+    for (const [code, key] of Object.entries(cases)) {
+      expect(verificationErrorMessage(rpcError(code), t)).toBe(`t(${key})`);
+    }
+  });
+
+  it('maps a score the app refused to the invalid score message', () => {
+    expect(
+      verificationErrorMessage(new Error('VERIFICATION_SCORE_INVALID'), t),
+    ).toBe('t(errors.invalidScore)');
+  });
+
+  it('maps any other error to the generic message without leaking it', () => {
+    const raw = 'new row violates row-level security policy';
+    expect(verificationErrorMessage({ code: '42501', message: raw }, t)).toBe(
+      't(alerts.errorMessage)',
+    );
+    expect(
+      verificationErrorMessage({ code: '42501', message: 'UNAUTHORIZED' }, t),
+    ).toBe('t(alerts.errorMessage)');
+    expect(verificationErrorMessage(new Error('boom'), t)).toBe(
+      't(alerts.errorMessage)',
+    );
+    expect(verificationErrorMessage(undefined, t)).toBe(
+      't(alerts.errorMessage)',
+    );
+  });
+
+  it('has every message in English and Spanish', () => {
+    for (const key of new Set(Object.values(cases))) {
+      const leaf = key.replace('errors.', '');
+      expect(en.errors[leaf]).toBeString();
+      expect(es.errors[leaf]).toBeString();
+    }
   });
 });
 
@@ -176,13 +284,41 @@ describe('verification hook fails closed', () => {
     expect(hook).toContain('reload');
   });
 
-  it('aborts when the current verification data cannot be re-read', () => {
-    expect(hook).toContain('if (readError) throw readError;');
+  it('resubmits the proof paths of the attempt the form displayed, never a re-read one', () => {
+    // The only read of the latest attempt is the load; submit reuses its paths.
+    expect(hook.split('fetchLatestAttempt(').length - 1).toBe(1);
+    expect(hook).toContain(
+      'let physicalPath = displayedProofs.current.physicalPath;',
+    );
+    expect(hook).toContain(
+      'let performancePath = displayedProofs.current.performancePath;',
+    );
   });
 
-  it('treats an update that changes no row as a failure', () => {
-    expect(hook).toContain(".select('id')");
-    expect(hook).toContain("throw new Error('VERIFICATION_UPDATE_NO_ROW')");
+  it('fails the load when the latest attempt cannot be read', () => {
+    expect(hook).toContain(".from('product_verifications')");
+    expect(hook).toContain('if (attemptError)');
+  });
+
+  it('submits through the RPC, never a plain products update', () => {
+    expect(hook).toContain(".rpc( 'fn_submit_product_verification',");
+    expect(hook).not.toContain('.update(');
+  });
+
+  it('treats an RPC that returns no attempt as a failure', () => {
+    expect(hook).toContain("throw new Error('VERIFICATION_SUBMIT_NO_ATTEMPT')");
+  });
+
+  it('no longer reads or writes the dropped products columns', () => {
+    for (const column of [
+      'verification_data',
+      'rejection_reason',
+      'verified_at',
+      'locked_by',
+      'locked_at',
+    ]) {
+      expect(hook).not.toContain(column);
+    }
   });
 
   it('guards submit against concurrent taps with a ref', () => {
@@ -212,6 +348,12 @@ describe('verification screen', () => {
 
   it('shows success only for a confirmed submission', () => {
     expect(screen).toContain("if (result !== 'SUCCESS') return;");
+  });
+
+  it('shows the mapped submit error instead of a generic one', () => {
+    expect(screen).toContain(
+      'description: verificationErrorMessage(error, t),',
+    );
   });
 
   it('translates the camera permission dialog', () => {

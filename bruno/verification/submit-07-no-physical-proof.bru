@@ -1,0 +1,35 @@
+meta {
+  name: submit-07-no-physical-proof
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": []
+  }
+}
+
+tests {
+  test("a submission needs a physical proof", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("PHYSICAL_PROOF_REQUIRED");
+  });
+}
+
+docs {
+  #651 S3.
+}

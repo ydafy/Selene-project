@@ -30,12 +30,6 @@ ALTER TABLE "public"."products"
   ADD COLUMN "aspect_ratio" double precision NOT NULL DEFAULT 1.0;
 
 ALTER TABLE "public"."products"
-  ADD COLUMN "verification_data" jsonb;
-
-ALTER TABLE "public"."products"
-  ADD COLUMN "rejection_reason" text;
-
-ALTER TABLE "public"."products"
   ADD COLUMN "shipping_cost_cents" bigint NOT NULL DEFAULT 0;
 
 ALTER TABLE "public"."products"
@@ -52,15 +46,6 @@ ALTER TABLE "public"."products"
 
 ALTER TABLE "public"."products"
   ADD COLUMN "reserved_at" timestamp WITH time zone;
-
-ALTER TABLE "public"."products"
-  ADD COLUMN "verified_at" timestamp WITH time zone;
-
-ALTER TABLE "public"."products"
-  ADD COLUMN "locked_by" uuid;
-
-ALTER TABLE "public"."products"
-  ADD COLUMN "locked_at" timestamp WITH time zone;
 
 ALTER TABLE "public"."products"
   ADD COLUMN "fts" tsvector;
@@ -105,7 +90,7 @@ ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_shipping_payer_check" CHECK ((shipping_payer = ANY (ARRAY['buyer'::text, 'seller'::text])));
 
 ALTER TABLE "public"."products"
-  ADD CONSTRAINT "products_locked_by_fkey" FOREIGN KEY (locked_by) REFERENCES public.profiles(id) ON DELETE RESTRICT;
+  ADD CONSTRAINT "products_category_fkey" FOREIGN KEY (category) REFERENCES public.category_configurations(category_name) ON UPDATE CASCADE ON DELETE RESTRICT;
 
 ALTER TABLE "public"."products"
   ADD CONSTRAINT "products_seller_id_fkey" FOREIGN KEY (seller_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
@@ -117,7 +102,7 @@ CREATE INDEX idx_products_reserved_status_reserved_at ON public.products USING b
 
 CREATE INDEX idx_products_specifications ON public.products USING gin (specifications);
 
-CREATE INDEX ix_products_locked_by ON public.products USING btree (locked_by);
+CREATE INDEX ix_products_category ON public.products USING btree (category);
 
 CREATE INDEX ix_products_seller_id ON public.products USING btree (seller_id);
 
@@ -159,8 +144,8 @@ CREATE POLICY "products_insert" ON "public"."products"
   TO "authenticated"
   WITH
     CHECK
-    (((( SELECT auth.uid() AS uid) = seller_id) AND (status = 'pending_verification'::public.product_status) AND (verified_at IS NULL) AND (deleted_at IS NULL) AND
-    (reserved_at IS NULL) AND (locked_by IS NULL) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
+    (((( SELECT auth.uid() AS uid) = seller_id) AND (status = 'pending_verification'::public.product_status) AND (deleted_at IS NULL) AND
+    (reserved_at IS NULL) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active)));
 
 CREATE POLICY "products_select_owner_or_admin" ON "public"."products"
   FOR SELECT
@@ -177,8 +162,7 @@ CREATE POLICY "products_update_owner_or_admin" ON "public"."products"
   WITH
     CHECK
     ((( SELECT public.is_admin() AS is_admin) OR ((seller_id = ( SELECT auth.uid() AS uid)) AND (status = ANY (ARRAY['pending_verification'::public.product_status, 'verified'::public.product_status,
-    'hidden'::public.product_status,
-    'in_review'::public.product_status])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))));
+    'hidden'::public.product_status])) AND (status_before_account_hold IS NULL) AND ( SELECT public.fn_current_account_is_active() AS fn_current_account_is_active))));
 
 REVOKE ALL ON TABLE "public"."products" FROM "anon", "authenticated";
 

@@ -1,0 +1,34 @@
+meta {
+  name: submit-04-anon-denied
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": ["{{submitProofPath}}"]
+  }
+}
+
+tests {
+  test("an anonymous caller is denied", function () {
+    expect(res.getStatus()).to.equal(401);
+    expect(res.getBody().code).to.equal("42501");
+    expect(res.getBody().message).to.equal("permission denied for function fn_submit_product_verification");
+  });
+}
+
+docs {
+  anon has no EXECUTE on fn_submit_product_verification (#651 S3).
+}

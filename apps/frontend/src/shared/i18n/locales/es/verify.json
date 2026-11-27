@@ -89,6 +89,16 @@
     "permissionTitle": "Permiso requerido",
     "permissionMessage": "Necesitamos acceso a la cámara para verificar el producto."
   },
+  "errors": {
+    "notOwner": "Solo puedes enviar a revisión tus propios anuncios.",
+    "accountNotActive": "Tu cuenta no está activa, así que no puedes enviar anuncios a revisión.",
+    "invalidStatus": "Este anuncio no se puede enviar a revisión en su estado actual.",
+    "alreadyOpen": "Este anuncio ya está en revisión. Te avisaremos cuando tengamos una decisión.",
+    "physicalProofRequired": "Agrega la foto del producto junto al papel con tu nombre de usuario y la fecha de hoy.",
+    "evidenceMissing": "No encontramos una de tus fotos. Tómala de nuevo y vuelve a enviar.",
+    "duplicateEvidence": "Cada misión necesita su propia foto. Toma una nueva y vuelve a enviar.",
+    "invalidScore": "Escribe el puntaje como número entero, por ejemplo 12500."
+  },
   "load": {
     "errorTitle": "No pudimos cargar tu producto",
     "errorMessage": "Revisa tu conexión e intenta de nuevo.",

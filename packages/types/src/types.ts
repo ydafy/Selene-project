@@ -385,11 +385,12 @@ export interface EdgeFunctionRegistry {
 
 export type ProductCategory = 'GPU' | 'CPU' | 'Motherboard' | 'RAM';
 
-export interface VerificationData {
-  proof_physical: string;
-  proof_performance?: string;
-  benchmark_score?: number;
-  submitted_at: string;
+export type VerificationEvidenceKind = Enums<'verification_evidence_kind'>;
+
+/** One proof of a verification attempt, as `admin_product_queue_view.evidence` lists it. */
+export interface VerificationEvidence {
+  kind: VerificationEvidenceKind;
+  storage_path: string;
 }
 
 export interface BuyerEvidence {
@@ -487,7 +488,11 @@ export interface EnrichedOrder extends Omit<Order, 'shipping_address'> {
 
 // --- 6. INTERFACES ENRIQUECIDAS PARA ADMIN (Phase 2) ---
 
-export interface PendingProduct extends Omit<Product, 'verification_data'> {
+/** A listing in the verification queue: its open attempt from `admin_product_queue_view`. */
+export interface PendingProduct extends Omit<
+  Tables<'admin_product_queue_view'>,
+  'evidence'
+> {
   seller: Profile | null;
   seller_stats: {
     verified: number;
@@ -495,7 +500,7 @@ export interface PendingProduct extends Omit<Product, 'verification_data'> {
     sold: number;
     ratio: number;
   };
-  verification_data: VerificationData;
+  evidence: VerificationEvidence[];
   internal_notes: Array<{
     content: string;
     created_at: string;

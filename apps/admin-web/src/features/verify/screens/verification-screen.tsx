@@ -36,7 +36,7 @@ export const VerificationPage = () => {
     if (selectedId === product.id) return;
 
     // 1. Intentamos bloquear el nuevo producto primero
-    const success = await acquireLock(product.id);
+    const success = await acquireLock(product.id, product.verification_id);
     if (success) {
       // 2. Si lo conseguimos, liberamos el anterior y actualizamos la UI
       if (selectedId) await releaseLock(selectedId);

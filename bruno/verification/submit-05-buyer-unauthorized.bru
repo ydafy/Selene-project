@@ -1,0 +1,35 @@
+meta {
+  name: submit-05-buyer-unauthorized
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{buyerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": ["{{submitProofPath}}"]
+  }
+}
+
+tests {
+  test("a buyer cannot submit another seller's listing", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("UNAUTHORIZED");
+  });
+}
+
+docs {
+  Only the owner submits a verification (#651 S3).
+}

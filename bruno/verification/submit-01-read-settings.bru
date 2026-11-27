@@ -1,0 +1,38 @@
+meta {
+  name: submit-01-read-settings
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/system_settings?id=eq.1&select=shipping_buffer_cents,insurance_rate,service_fee_pct
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{secretKey}}
+  Authorization: Bearer {{secretKey}}
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const s = res.getBody()[0];
+    bru.setVar("submitBuffer", s.shipping_buffer_cents);
+    bru.setVar("submitInsurance", s.insurance_rate);
+    bru.setVar("submitCommission", s.service_fee_pct);
+  }
+}
+
+tests {
+  test("reads the settings the test listing freezes at publication", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].shipping_buffer_cents).to.be.a("number");
+  });
+}
+
+docs {
+  Local stack only. #651 S3-S5: submit-01 to submit-18 submit a verification through the server, then an
+  admin locks and rejects it. Run after auth/login-seller, auth/login-buyer and auth/login-admin.
+  submit-18 soft-deletes the test listing.
+}

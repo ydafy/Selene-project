@@ -46,16 +46,11 @@ export const buildPreviewProduct = (
   aspect_ratio: 1,
   deleted_at: null,
   fts: null,
-  locked_at: null,
-  locked_by: null,
   origin_zip: draft.origin_zip || '',
   package_preset: draft.package_preset || '',
-  rejection_reason: null,
   reserved_at: null,
   shipping_cost_cents: tryPesosToCents(draft.shipping_cost || '0') ?? 0,
   shipping_payer: draft.shipping_payer || 'buyer',
-  verification_data: null,
-  verified_at: null,
   // Frozen by usePublishProduct at publish time. The preview card never reads
   // them; a draft without accepted economics shows 0.
   publication_commission_rate: draft.publicationEconomics?.commissionRate ?? 0,

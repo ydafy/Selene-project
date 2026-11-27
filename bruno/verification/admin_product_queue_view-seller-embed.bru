@@ -1,0 +1,30 @@
+meta {
+  name: admin_product_queue_view-seller-embed
+  type: http
+  seq: 30
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_product_queue_view?select=id,name,price_cents,category,condition,images,description,specifications,status,created_at,seller_id,aspect_ratio,views,verification_id,submitted_at,benchmark_score,locked_by,locked_at,last_rejection_note,evidence,seller:profiles!products_seller_id_fkey(username,avatar_url,id,is_verified_seller)&id=eq.00000000-0000-4000-8000-0000000000b6
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("the admin-web queue select embeds the seller through the view", function () {
+    expect(res.getStatus()).to.equal(200);
+    const rows = res.getBody();
+    expect(rows).to.have.lengthOf(1);
+    const row = rows[0];
+    expect(row.verification_id).to.equal("00000000-0000-4000-8000-0000000000c6");
+    expect(row.evidence).to.be.an("array").that.is.not.empty;
+    expect(row.seller).to.be.an("object");
+    expect(row.seller.id).to.equal(row.seller_id);
+    expect(row.seller.username).to.be.a("string");
+  });
+}

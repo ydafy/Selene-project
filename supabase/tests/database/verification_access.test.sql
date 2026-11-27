@@ -2,8 +2,9 @@
 -- Storage bucket `verification`: `<product_id>/<file>`. An admin or the seller
 -- of the listing named by the first folder reads a file; only that seller
 -- uploads one. Nobody updates or deletes through the client.
--- admin_product_queue_view and seller_trust_stats run with the caller's rights
--- and return rows only to admins, even to a seller who can read the listings.
+-- admin_product_queue_view (open verification attempts of listings in review)
+-- and seller_trust_stats run with the caller's rights and return rows only to
+-- admins, even to a seller who can read the listings.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
 select plan(28);
@@ -145,6 +146,12 @@ select is(pg_temp.files(), '78101/admin-note.pdf,78101/front.jpg,78102/b.jpg',
   'the seller''s delete removed no verification file');
 
 -- admin_product_queue_view ----------------------------------------------------------
+-- Open attempts on 78101 (pending, not in review) and 78107 (in review), a
+-- decided one on 78104; only 78107 is in the queue.
+insert into public.product_verifications (product_id, submitted_by)
+values (pg_temp.mu(78101), pg_temp.mu(78001)), (pg_temp.mu(78107), pg_temp.mu(78001));
+insert into public.product_verifications (product_id, submitted_by, decision, decided_by, decided_at)
+values (pg_temp.mu(78104), pg_temp.mu(78001), 'approved', pg_temp.mu(78004), now());
 create function pg_temp.queue() returns text language sql as $$
   select coalesce(string_agg(name, ',' order by name), '') from public.admin_product_queue_view
   where seller_id in (pg_temp.mu(78001), pg_temp.mu(78002))
@@ -155,8 +162,8 @@ select is(
   'admin_product_queue_view runs with the caller''s rights');
 select pg_temp.as_user(78004);
 set local role authenticated;
-select is(pg_temp.queue(), 'va-78101,va-78102',
-  'an admin sees the non-deleted listings pending verification');
+select is(pg_temp.queue(), 'va-78107',
+  'an admin sees the open attempts of non-deleted listings in review');
 select pg_temp.as_user(78001);
 select is(
   (select count(*) from public.products where id = pg_temp.mu(78101)), 1::bigint,

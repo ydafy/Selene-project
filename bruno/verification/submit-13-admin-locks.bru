@@ -1,0 +1,34 @@
+meta {
+  name: submit-13-admin-locks
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_lock_product
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_verification_id": "{{submitVerificationId}}"
+  }
+}
+
+tests {
+  test("the admin takes the review lock on the open attempt", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody()[0].success).to.equal(true);
+  });
+}
+
+docs {
+  #651 S4: the admin locks the attempt the queue shows, the id submit-10 returned.
+}

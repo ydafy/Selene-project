@@ -17,7 +17,8 @@ headers {
 
 body:json {
   {
-    "p_product_id": "00000000-0000-4000-8000-0000000000b4"
+    "p_product_id": "00000000-0000-4000-8000-0000000000b6",
+    "p_verification_id": "00000000-0000-4000-8000-0000000000c6"
   }
 }
 
@@ -30,5 +31,6 @@ tests {
 
 docs {
   Run after auth/login-admin, auth/login-buyer. Precondition for the fn_unlock_product checks (#66):
-  the admin holds the review lock on the seeded listing b4. unlock-product-09 releases it.
+  the admin holds the review lock on the open verification attempt of the seeded listing b6 (in_review).
+  unlock-product-09 releases it, so the in_review reads that use b6 see it unlocked again.
 }

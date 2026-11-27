@@ -1,0 +1,33 @@
+meta {
+  name: submit-11-queue-lists-attempt
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/rest/v1/admin_product_queue_view?id=eq.{{submitProductId}}
+  body: none
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+tests {
+  test("the listing is in review with the open attempt and its proof", function () {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.getBody().length).to.equal(1);
+    const row = res.getBody()[0];
+    expect(row.status).to.equal("in_review");
+    expect(row.verification_id).to.equal(bru.getVar("submitVerificationId"));
+    expect(row.benchmark_score).to.equal(15400);
+    expect(row.locked_by).to.equal(null);
+    expect(row.evidence).to.deep.equal([{ kind: "physical", storage_path: bru.getVar("submitProofPath") }]);
+  });
+}
+
+docs {
+  The admin queue reads the attempt submit-10 opened (#651 S3, S4).
+}

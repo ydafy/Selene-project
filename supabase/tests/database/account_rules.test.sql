@@ -8,6 +8,12 @@
 begin;
 select plan(53);
 
+-- products.category references category_configurations; this file does not
+-- depend on the seed's rows.
+insert into public.category_configurations (category_name, sell_fields, filter_fields)
+values ('GPU', '[]'::jsonb, '[]'::jsonb)
+on conflict (category_name) do nothing;
+
 -- Snapshot values under the current settings (authenticated cannot read them).
 create function pg_temp.fresh_reserve() returns bigint language sql security definer as $$
   select 10000::bigint + s.shipping_buffer_cents

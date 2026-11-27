@@ -33,7 +33,6 @@ script:pre-request {
     shipping_cost_cents: 10000,
     origin_zip: "06600",
     package_preset: "gpu_1",
-    verified_at: new Date().toISOString(),
     publication_shipping_reserve_cents: 10000 + buffer + Math.ceil(800000 * insurance),
     publication_commission_rate: Number(bru.getVar("staleEconCommission")),
     publication_insurance_rate: insurance

@@ -46,11 +46,12 @@ insert into expected_grants values
   ('authenticated', 'public.fn_current_account_is_active()'), -- RLS policies
   ('authenticated', 'public.fn_get_location_by_zip(text)'),
   ('authenticated', 'public.fn_get_shipment_cancellation_summary(uuid)'),
-  ('authenticated', 'public.fn_lock_product(uuid)'),
+  ('authenticated', 'public.fn_lock_product(uuid, uuid)'),
   ('authenticated', 'public.fn_product_seller_payment_readiness(uuid[])'),
   ('authenticated', 'public.fn_register_push_token(text, text)'),
-  ('authenticated', 'public.fn_resolve_product_verdict(uuid, text, text, text)'),
+  ('authenticated', 'public.fn_resolve_product_verdict(uuid, uuid, text, text, text)'),
   ('authenticated', 'public.fn_seller_submit_return_evidence(uuid, text[], text)'),
+  ('authenticated', 'public.fn_submit_product_verification(uuid, text[], text[], integer)'),
   ('authenticated', 'public.fn_unlock_product(uuid)'),
   ('authenticated', 'public.fn_unregister_push_token(text)'),
   ('authenticated', 'public.is_admin()'); -- RLS and storage policies, admin views

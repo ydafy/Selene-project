@@ -20,4 +20,28 @@ tests {
     expect(res.getStatus()).to.equal(200);
     expect(res.getBody()).to.be.an("array");
   });
+
+  test("the queue lists only listings in review, each with its open attempt", function () {
+    const rows = res.getBody();
+    rows.forEach(function (row) {
+      expect(row.status).to.equal("in_review");
+      expect(row.verification_id).to.be.a("string");
+    });
+    expect(rows.map(function (row) { return row.id; })).to.not.include("00000000-0000-4000-8000-0000000000b5");
+  });
+
+  test("the seeded listing in review shows its open attempt and evidence", function () {
+    const row = res.getBody().find(function (r) { return r.id === "00000000-0000-4000-8000-0000000000b6"; });
+    expect(row).to.not.equal(undefined);
+    expect(row.verification_id).to.equal("00000000-0000-4000-8000-0000000000c6");
+    expect(row.benchmark_score).to.equal(21800);
+    expect(row.evidence.length).to.equal(2);
+    expect(row).to.have.property("last_rejection_note");
+    expect(row).to.have.property("locked_by");
+  });
+}
+
+docs {
+  Run after auth/login-admin. The view lists open verification attempts of listings in review (#651 S4,
+  S5); the seed gives b6 the open attempt c6 with two proofs, and b5 (pending_verification) has none.
 }

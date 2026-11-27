@@ -1,0 +1,35 @@
+meta {
+  name: submit-12-resubmit-refused
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_submit_product_verification
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{sellerToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_physical_paths": ["{{submitProofPath}}"]
+  }
+}
+
+tests {
+  test("a second submission while the first is in review is refused", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("INVALID_STATUS_FOR_VERIFICATION");
+  });
+}
+
+docs {
+  #651 S3: one open attempt per listing.
+}
