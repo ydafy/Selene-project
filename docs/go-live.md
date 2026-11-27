@@ -14,11 +14,52 @@ Open launch dependencies: every issue in the GitHub milestone [`Go-live`](https:
 
 ## 1. Project
 
-1. Choose the plan before the first real payment. Recommended: Pro (about USD 25 a month). Free runs the app, but it has no downloadable backups, pauses a project after a week without activity, does not offer leaked password protection, and its database and Storage quotas are small for dispute videos (current limits: https://supabase.com/pricing). Launching on Free is acceptable only with a daily off-site database backup in place (`supabase db dump --remote` on a schedule, stored outside Supabase; it does not cover Storage files) and someone watching the quotas. Upgrade to Pro at the first of: real payments flowing every week, the database or Storage near its quota, or any data incident. Point-in-time recovery (add-on, about USD 100 a month) can wait until there is real volume. Decided with the maintainer on 2026-11-08.
-2. Create the project in the target region and organization.
+1. Create a new organization on the Pro plan for production, and keep only the production project in it. Supabase bills per organization. Pro costs USD 25 a month and includes USD 10 of compute credits, which cover one Micro project. Every other project in the organization adds its own compute (two Micro projects cost USD 35 a month). The current project (`acoiclkeymgtlwcxilun`) stays in its Free organization as staging ("Staging and production" below). Decided with the maintainer on 2026-11-26 (#313). It replaces the 2026-11-08 option of launching on Free with an off-site dump. Free does not fit production: it gives 500 MB of database and 1 GB of Storage (the `evidence` bucket accepts 50 MiB videos), pauses a project after a week of low activity, keeps no backups, and has no leaked password protection or session controls. Prices read on 2026-11-26 from https://supabase.com/pricing.
+   - Backups: Pro keeps a daily database backup for 7 days. Database backups do not include Storage objects, only their metadata (https://supabase.com/docs/guides/platform/backups). Selene launches without a separate Storage backup. Deleting a project also deletes its backups, so never delete the production project to start over.
+   - Point-in-time recovery: not at launch. It costs USD 100 a month for 7 days, and turning it on replaces the daily backups. Add it at the first of: real payments flowing every week, or any data incident.
+   - Spend cap: keep it on (the Pro default). It does not cover compute or point-in-time recovery. When usage nears a quota, decide whether to turn it off before the cap restricts the project.
+2. Create the project in the target region and organization. The region cannot change later.
 3. Record the new project ref and update the Supabase MCP URL.
 4. Use the new API keys from day one: `sb_publishable_...` in the apps (`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS environments, `VITE_SUPABASE_PUBLISHABLE_KEY` in the admin-web build env) and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
 5. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
+
+### Staging and production
+
+After go-live Selene has two remote projects. Each has its own keys, Vault secrets, Edge Function secrets, webhooks, and Dashboard settings. Never copy a value from one to the other.
+
+- Staging: the current project `acoiclkeymgtlwcxilun`, Free organization, Stripe sandbox, and Envia sandbox. Its rows are test data. The agents' Supabase MCP and the worktree `.env` files point only at staging.
+- Production: the new project of step 1, Stripe live, and real users. Nobody changes it by hand. The schema changes only through migrations from `main`, and Dashboard settings follow this runbook.
+
+A merged change reaches production in this order:
+
+1. On staging, apply the manual steps the pull request added to this runbook (Vault secrets, Edge Function secrets, webhooks, Dashboard settings) before the migration or function that needs them. Then, from a checkout of `main`, run `supabase link --project-ref <staging ref>` and `supabase db push --remote`, and deploy the changed functions (section 7). Test on staging.
+2. If staging shows a defect, fix it in a new branch and pull request. Never fix staging or production in the Dashboard.
+3. From the same commit of `main`, repeat step 1 on production, with production's own secret values and the production ref.
+4. Deploy in the order database, then Edge Functions, then the app release. Installed apps update days later, so the database and functions must keep working with the previous app version. Add the new shape first, and drop the old one in a later release.
+
+Supabase does not roll back migrations. Fix a bad migration with a new one. The daily backup is the last resort.
+
+Once production holds real users, the root `AGENTS.md` rule that Supabase rows are disposable test data applies only to staging. Update that rule in the same pull request that records the production project ref: every migration on production must preserve existing rows.
+
+### Account and organization
+
+Apply these now on the current organization, and again when you create the production organization.
+
+1. Every member of a Supabase organization turns on multi-factor authentication on their Supabase account (Account > Security, TOTP). Each member stores the 10 recovery codes outside the phone that holds the authenticator.
+2. On the production organization, turn on MFA enforcement for members (Organization settings, Pro and above). A member without MFA then loses access to the organization.
+3. Every member of the GitHub repository `ydafy/Selene-project` turns on GitHub two-factor authentication. A GitHub sign-in to Supabase relies on it.
+4. Add only people who deploy or operate the database as organization members. Admin-web admins need no Supabase account: they sign in to the admin-web with their Selene account (#191 adds their second factor). Roles: Owner for people who manage billing and members, Developer for people who only deploy. Read-only roles need the Team plan.
+5. Give the production organization at least two Owners, so losing one account does not lock Selene out of billing and settings (production checklist, https://supabase.com/docs/guides/security/production-checklist).
+
+### Database and Data API settings
+
+Set these in the production project's Dashboard before the first `supabase db push` (section 3). The Supabase documentation linked below was read on 2026-11-26.
+
+- SSL enforcement: on (Database Settings > SSL Configuration > **Enforce SSL on incoming connections**). It applies to direct Postgres and pooler connections. The HTTP APIs always use TLS. Turning it on closes existing connections without SSL, so turn it on before anything connects. Use `sslmode=verify-full` for any direct connection (https://supabase.com/docs/guides/platform/ssl-enforcement).
+- Network restrictions: off. They limit only direct Postgres and pooler connections, not the Data API, Auth, or Storage. The maintainer's IP address changes, and the CI deploy of #314 would run from changing runner addresses. Revisit if a database password leaks or deploys run from a fixed address (https://supabase.com/docs/guides/platform/network-restrictions).
+- Data API exposed schemas: `public` only. `anon` and `authenticated` have no USAGE on `internal` (`supabase/AGENTS.md`, "Declarative schema"), and the Data API must not expose it either. No client uses GraphQL, so leave `graphql_public` and the `pg_graphql` extension off.
+- **Automatically expose new tables**: off (the default for new projects since 2026-05-30). Every table gets explicit grants in its schema file (`supabase/schemas/public/default_privileges.sql` gives clients nothing by default), so a missing grant fails with `42501` instead of exposing a table by accident (https://supabase.com/changelog/45329-breaking-change-tables-not-exposed-to-data-and-graphql-api-automatically).
+- Data API max rows: keep the default, 1000. A query that needs more rows must page through them.
 
 ### Moving an existing project to the new API keys
 
@@ -189,6 +230,8 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   - Provider linking: Supabase automatic linking by verified email (a Google sign-in whose verified email matches an existing user links to that user); manual linking (`linkIdentity`) disabled and unused.
 - Pending Auth items:
   - Enable leaked password protection once the project is on the Pro plan.
+  - Sessions and tokens, decided 2026-11-26 (#313). Every value is the Supabase default (https://supabase.com/docs/guides/auth/sessions): JWT expiry 3600 s, refresh token rotation on, reuse interval 10 s, and reuse detection on. Leave **Time-box user sessions**, **Inactivity timeout**, and **Single session per user** off (Pro). Mobile users expect to stay signed in, and these settings apply to every user, not only to admins. Admin accounts get their second factor from #191. A shorter JWT expiry adds token refreshes against the `token_refresh` rate limit of 150 and gains little.
+  - Phone provider and SMS: off, with no test phone numbers. Selene signs in by email and Google only.
   - Enable CAPTCHA (hCaptcha) before launch, in this order, because turning it on first rejects every sign-up and sign-in: (1) set `EXPO_PUBLIC_HCAPTCHA_SITE_KEY` (the real hCaptcha site key, never the test key) in the EAS/production env, and the same site key as `VITE_HCAPTCHA_SITE_KEY` in the admin-web build env (Vite inlines it at build time; empty means no widget and no token); (2) ship the mobile build (new native dependencies `react-native-webview` and `@hcaptcha/react-native-hcaptcha`); (3) deploy the admin-web build with `VITE_HCAPTCHA_SITE_KEY` set (login sends `captchaToken`); (4) then enable CAPTCHA in the Dashboard (Authentication > Attack Protection: provider hCaptcha, the hCaptcha secret). Token senders: mobile `signUp`, `signInWithPassword`, `resend` (verify code), `resetPasswordForEmail` (forgot password and reset resend), the delete-account re-sign-in, and the admin-web login. Exempt on the server: Google `signInWithIdToken`, `verifyOtp`, session refresh and `updateUser`. A switch to Turnstile replaces only the provider component (mobile `apps/frontend/src/features/auth/components/captcha-provider.tsx`, admin-web `apps/admin-web/src/features/auth/hooks/use-captcha.tsx`), the site keys and the Dashboard secret.
 - URLs, provider and templates (recorded 2026-10-26 from the Dashboard, auth T6a):
   - Site URL: `http://localhost:5173` (the local admin-web). Production: the public web URL (`SELENE_WEB_URL`, section 1 "Domain").
@@ -202,7 +245,7 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   - Go-live blocker (maintainer): `/privacidad` and `/terminos` are only summaries of decided rules (data handling; marketplace, Seguro Selene, payouts, refunds and disputes, suspension and ban). The full privacy notice (legal text, company identity, ARCO procedure) and the full terms need legal review and must not be presented as complete until they exist; the register checkbox already links to `/terminos`. The support mailbox must exist and receive mail before the Play submission.
 - Custom SMTP is required before the first real user. The built-in Supabase mailer only delivers to members of the project's organization (other addresses fail with "Email address not authorized"), has a low hourly limit and no delivery guarantee, so signup codes would never reach real users. Configure Resend (or another SMTP provider) under Authentication > Emails > SMTP Settings: verify the sending domain with SPF and DKIM (and DMARC), use a dedicated From address such as `no-reply@<auth domain>`, and disable link tracking. No app code changes are needed.
 - After enabling custom SMTP, raise "Rate limit for sending emails" under Authentication > Rate Limits (it starts at 30 per hour) to the expected signup volume.
-- Auth switch-on order. Run it once at go-live, top to bottom; the bullets above hold the details. Each step names its check. The Supabase MCP is read-only and cannot read Dashboard Auth settings, so a step without an MCP check ends with a Dashboard readback recorded in "Deployed Auth settings" with its date.
+- Auth switch-on order. Run it once at go-live, top to bottom; the bullets above hold the details. Each step names its check. The Supabase MCP is read-only and cannot read Dashboard Auth settings, so a step without an MCP check ends with a Dashboard readback recorded in "Production Auth settings" (step 10) with its date.
   1. Domain: change `SELENE_DOMAIN` (section 1, "Domain") and its test, then build the app and admin-web from that commit. Check: `bun test packages/types`; the app's Settings > Legales opens `TERMS_URL` and `PRIVACY_URL` on the real domain.
   2. Sending domain: verify it in Resend with SPF, DKIM and DMARC. Check: Resend shows the domain as verified; `nslookup -type=TXT <domain>` returns the SPF and DMARC records.
   3. Custom SMTP: Authentication > Emails > SMTP Settings, From `no-reply@<domain>`, link tracking off. Check: sign up with an address outside the Supabase organization; the code arrives, and the auth logs (Supabase MCP `query_logs`) show the `/signup` request with no "Email address not authorized" error.
@@ -211,7 +254,8 @@ The development project's cron jobs sent the anon JWT, or a service-role JWT for
   6. Site URL and redirect URLs: Site URL = `SELENE_WEB_URL`; keep `selene://` and `selene://profile/settings`, add the deployed admin-web URL, remove `http://localhost:5173/**` and `selene://auth-verified` (#49). Check: an email change confirmed from the link lands in the app's Settings; Dashboard readback.
   7. CAPTCHA, in the four-step order of "Enable CAPTCHA" above (site keys in both builds, ship both, then the Dashboard switch with the hCaptcha secret). Check: after the switch, the auth logs show `/signup` and `/token?grant_type=password` answering 200 from the new builds and no `captcha_failed` burst; mirror it in `supabase/config.toml` `[auth.captcha]`. The local stack already runs CAPTCHA with hCaptcha's public test secret, and Bruno sends the test token (`captchaToken` in `bruno/environments/local.bru`); the Dashboard keeps the real secret.
   8. Leaked password protection (Pro plan): Authentication > Attack Protection. Check: Supabase MCP `get_advisors` (security) no longer reports `auth_leaked_password_protection`.
-  9. Close: Supabase MCP `get_advisors` (security) shows no Auth finding; update "Deployed Auth settings" with the new values and the date.
+  9. Sessions and tokens: check that the values in "Pending Auth items" are set, and that the phone provider is off. Check: Dashboard readback.
+  10. Close: Supabase MCP `get_advisors` (security) shows no Auth finding. Record the production project ref, its Auth values, and the date in a new "Production Auth settings" list next to "Deployed Auth settings". Keep "Deployed Auth settings" as the staging inventory.
 
 ## 11. Mobile app signing
 
