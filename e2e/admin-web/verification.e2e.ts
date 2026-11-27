@@ -239,6 +239,9 @@ test('verification queue shows the open attempt, its proofs and the previous rej
   const benchmark = page.getByRole('img', { name: 'Benchmark 1' });
   await expect(physical).toBeVisible();
   await expect(benchmark).toBeVisible();
+  // Each labeled image shows the proof of its own kind.
+  expect(await physical.getAttribute('src')).toContain(physicalPath);
+  expect(await benchmark.getAttribute('src')).toContain(performancePath);
   await expect
     .poll(() => physical.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0);
