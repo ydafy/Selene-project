@@ -20,7 +20,7 @@ body:json {
 }
 
 tests {
-  test("a valid JWT without the cron secret is refused by the handler", function () {
+  test("a publishable key bearer without the cron secret is refused by the handler", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody()).to.equal("Unauthorized");
   });
