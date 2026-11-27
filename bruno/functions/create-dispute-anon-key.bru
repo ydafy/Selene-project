@@ -29,7 +29,7 @@ body:json {
 }
 
 tests {
-  test("a valid JWT that is not a user session is refused with the stable code", function () {
+  test("a publishable key sent as a bearer token is not a user session and is refused with the stable code", function () {
     expect(res.getStatus()).to.equal(401);
     expect(res.getBody()).to.deep.equal({ error: "AUTH_REQUIRED" });
   });
