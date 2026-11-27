@@ -128,7 +128,7 @@ COMMENT ON COLUMN "public"."orders"."service_fee_amount_cents" IS 'Sum of the Se
 
 COMMENT ON COLUMN "public"."orders"."stripe_charge_id" IS 'Stripe Charge ID captured from the platform PaymentIntent on payment success. NULL until the webhook persists it.';
 
-COMMENT ON COLUMN "public"."orders"."stripe_payment_intent_id" IS 'Single PaymentIntent ID for legacy wallet-era orders. NULL for Connect-era orders (see shipments.stripe_payment_intent_id per shipment).';
+COMMENT ON COLUMN "public"."orders"."stripe_payment_intent_id" IS 'Stripe PaymentIntent that paid the whole order. fn_create_shipments_from_single_payment writes it and uses it as the idempotency key; each shipment of the order stores the same id in shipments.stripe_payment_intent_id.';
 
 COMMENT ON COLUMN "public"."orders"."stripe_transfer_group" IS 'Stripe transfer_group used to group per-shipment platform->seller Transfers on manual release. NULL for legacy per-seller orders.';
 

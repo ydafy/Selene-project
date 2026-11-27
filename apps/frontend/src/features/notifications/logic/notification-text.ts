@@ -2,7 +2,12 @@ import { z } from 'zod';
 import type { Notification } from '@selene/types';
 import { getVerifiedEventIdentity } from './notification-presentation';
 
-type Translate = (key: string, values?: Record<string, unknown>) => string;
+// Two call shapes instead of one optional parameter: i18next 27 types TFunction
+// as a union of argument tuples, and an optional `values` matches none of them.
+type Translate = {
+  (key: string): string;
+  (key: string, values: Record<string, unknown>): string;
+};
 /** Formats integer cents as a currency string for the active locale. */
 type FormatAmount = (cents: number) => string;
 

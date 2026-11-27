@@ -18,7 +18,7 @@ Preconditions: fresh seed; the seeded buyer has no orders or disputes (`supabase
 
 - `bun run api:test` runs the whole collection (116/116 on a fresh seed), including `delete-account-*` and `account-closure-cleanup-*` in `seq` order (setup, action, row check, cleanup; throwaway users come from the Auth admin API). `run functions` alone fails 15 requests on missing tokens: the login requests live in `auth/`.
 - `run auth/login-buyer.bru auth/close-account-as-anon-denied.bru auth/close-account-as-buyer-denied.bru auth/close-account-as-service-role-not-found.bru --env local` for the RPC per role.
-- `delete-account-blocked` gives the seeded buyer a pending legacy wallet balance, expects a refusal, and `delete-account-blocked-cleanup` restores it.
+- `delete-account-blocked-setup` gives the seeded buyer one pending obligation (an unfinished order), `delete-account-blocked` expects a refusal, and `delete-account-blocked-cleanup` removes it.
 
 ## Gotchas
 

@@ -25,7 +25,7 @@ ALTER TABLE "public"."disputes"
   ADD COLUMN "seller_evidence" jsonb DEFAULT '{"images": [], "video_url": null}'::jsonb;
 
 ALTER TABLE "public"."disputes"
-  ADD COLUMN "status" public.dispute_status DEFAULT 'open'::public.dispute_status;
+  ADD COLUMN "status" public.dispute_status NOT NULL DEFAULT 'open'::public.dispute_status;
 
 ALTER TABLE "public"."disputes"
   ADD COLUMN "admin_notes" text;

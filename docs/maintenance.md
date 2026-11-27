@@ -4,6 +4,8 @@ The weekly and monthly review of the repository's state. An agent collects the d
 
 Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides, with two exceptions: the agent starts a missing dependency workflow run, and it opens Finding or Idea issues as `AGENTS.md`, "Findings outside the current work", allows.
 
+The dependency routine is a separate session with its own rule. When the maintainer says "la rutina de dependencias", the agent applies the dependency report without asking about each package, and pushes and opens the pull request. The maintainer still decides the merge. The steps are in `docs/dependencies.md`, "Run the dependency routine". Inside this page's routine, systems A to D only report dependencies.
+
 ## When to run it
 
 - **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to D. It takes about 45 minutes.
@@ -164,7 +166,7 @@ Needs a decision for a skill with zero reads in three monthly runs in a row and 
 
 ### Dependencies by hand
 
-Run the monthly steps of `docs/dependencies.md`, "Follow the cadence": `bun outdated --filter @selene/frontend`, `bun outdated --filter admin-web`, Node and Bun, and Docker Desktop. The agent cannot see Docker Desktop updates. `docker version --format '{{.Server.Version}}'` shows the local version. Ask the maintainer to look at **Settings** > **Software updates**.
+Run the monthly steps of `docs/dependencies.md`, "Follow the cadence": `bun outdated --filter @selene/frontend`, `bun outdated --filter admin-web`, Node and Bun, and Docker Desktop. Report the package updates. The maintainer applies them with the dependency routine (`docs/dependencies.md`, "Run the dependency routine"). The agent cannot see Docker Desktop updates. `docker version --format '{{.Server.Version}}'` shows the local version. Ask the maintainer to look at **Settings** > **Software updates**.
 
 Also compare `supabase --version` with the `version:` of the setup-cli step in `.github/workflows/ci.yml`, run `supabase stack outdated` in the main checkout (an update follows `supabase/AGENTS.md`, "Local stack"), and check whether each `HELD_BACK` blocker in `scripts/ci/dependency-report.ts` is gone.
 

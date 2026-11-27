@@ -11,6 +11,8 @@ metadata:
 
 Load when the maintainer asks what to do with the majors in the weekly dependency report (issue **Reporte de dependencias**), with one major, or with a new Expo SDK. Read `docs/dependencies.md` once: it owns the semver rules, "When not to update", and the update procedure. This skill only decides what is worth updating and why.
 
+Inside the dependency routine (`docs/dependencies.md`, "Run the dependency routine"), your recommendation is the decision. The routine applies it, so do not stop and wait for the maintainer.
+
 Skip for patch and minor updates (`docs/dependencies.md` covers them) and for the update itself.
 
 ## Hard Rules

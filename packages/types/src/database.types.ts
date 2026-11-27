@@ -637,7 +637,7 @@ export type Database = {
           seller_evidence: Json | null;
           seller_id: string;
           shipment_id: string | null;
-          status: Database['public']['Enums']['dispute_status'] | null;
+          status: Database['public']['Enums']['dispute_status'];
           updated_at: string | null;
         };
         ComputedFields: never;
@@ -663,7 +663,7 @@ export type Database = {
           seller_evidence?: Json | null;
           seller_id: string;
           shipment_id?: string | null;
-          status?: Database['public']['Enums']['dispute_status'] | null;
+          status?: Database['public']['Enums']['dispute_status'];
           updated_at?: string | null;
         };
         Update: {
@@ -688,7 +688,7 @@ export type Database = {
           seller_evidence?: Json | null;
           seller_id?: string;
           shipment_id?: string | null;
-          status?: Database['public']['Enums']['dispute_status'] | null;
+          status?: Database['public']['Enums']['dispute_status'];
           updated_at?: string | null;
         };
         Relationships: [
@@ -3231,7 +3231,7 @@ export type Database = {
           dispute_date: string | null;
           dispute_description_preview: string | null;
           dispute_id: string;
-          dispute_status: Database['public']['Enums']['dispute_status'] | null;
+          dispute_status: Database['public']['Enums']['dispute_status'];
           order_id: string | null;
           order_status: Database['public']['Enums']['order_status'] | null;
           resolution_type: string | null;
