@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -318,5 +324,88 @@ describe('staging-drift CLI', () => {
     expect(run.stderr.toString()).toBe(
       'Usage: bun scripts/ci/staging-drift.ts --migrations <list.json> --functions <list.json> [--root <dir>]\n',
     );
+  });
+});
+
+describe('staging-drift CLI, more fail-closed cases', () => {
+  it('exits 2 on a repository migration without a version prefix', () => {
+    const root = repository();
+    writeFileSync(
+      join(root, 'supabase', 'migrations', 'baseline.sql'),
+      'select 1;\n',
+    );
+    expect(
+      check(root, migrationList(applied(VERSIONS)), functionList(SLUGS)),
+    ).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr:
+        'staging-drift: supabase/migrations/baseline.sql has no <version>_<name>.sql name\n',
+    });
+  });
+
+  it('exits 2 on a function row without a slug', () => {
+    expect(
+      check(repository(), migrationList(applied(VERSIONS)), {
+        functions: [{ id: 'x' }],
+      }),
+    ).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr:
+        'staging-drift: the function list is not the output of `supabase functions list --output-format json`.\n',
+    });
+  });
+
+  it('prints usage and exits 2 on an unknown flag', () => {
+    const run = Bun.spawnSync(
+      [
+        'bun',
+        SCRIPT,
+        '--migrations',
+        'a.json',
+        '--functions',
+        'b.json',
+        '--prune',
+        'x',
+      ],
+      { stdout: 'pipe', stderr: 'pipe' },
+    );
+    expect(run.exitCode).toBe(2);
+    expect(run.stderr.toString()).toStartWith(
+      'Usage: bun scripts/ci/staging-drift.ts',
+    );
+  });
+});
+
+describe('deploy-staging workflow', () => {
+  const workflow = readFileSync(
+    join(
+      import.meta.dir,
+      '..',
+      '..',
+      '.github',
+      'workflows',
+      'deploy-staging.yml',
+    ),
+    'utf8',
+  );
+
+  it('takes the drift check from main on a rollback, since an older commit may lack it', () => {
+    expect(workflow).toMatch(
+      /git archive origin\/main supabase\/migrations supabase\/functions scripts\/ci\/staging-drift\.ts/,
+    );
+    expect(workflow).toContain(
+      'bun "$root/scripts/ci/staging-drift.ts" --root "$root"',
+    );
+  });
+
+  it('never prunes functions or pushes the config', () => {
+    const commands = workflow
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n');
+    expect(commands).not.toContain('--prune');
+    expect(commands).not.toContain('config push');
   });
 });

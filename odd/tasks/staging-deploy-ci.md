@@ -16,10 +16,10 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
 
 ## Tasks
 
-- T1. S3: drift comparison script and its unit tests. Route: worker. Commit: 22be39ca.
-- T2. S1, S2, S4, S5, S6: workflow `deploy-staging.yml` and the docs. Route: worker. Risk: items 2 and 5 (credentials, deploy). Own commit. Commit: `ci(deploy): deploy staging from CI on merge to main`.
+- T1. S3: drift comparison script and its unit tests. Route: worker. Commit: a512c412.
+- T2. S1, S2, S4, S5, S6: workflow `deploy-staging.yml` and the docs. Route: worker. Risk: items 2 and 5 (credentials, deploy). Own commit. Commit: 61a7e3d5, then the verify fixes in the next commit.
 - T3. S7: maintainer setup, first run, readback through the Supabase MCP. Route: inline, with the maintainer. Commit: none.
-- T4. S8: Idea issue. Route: inline. Commit: none.
+- T4. S8: Idea issue #732. Route: inline. Commit: none.
 
 ## Log
 
@@ -29,3 +29,9 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
 - L4. Research (2026-11-26): Supabase's "Managing Environments" guide uses two projects and GitHub Actions, "rather than deploying from your local machine", with `supabase link` and `supabase db push --yes --remote`, a scoped personal access token, and no approval step. Trunk-based teams promote the same commit from staging to production, with approval on production through GitHub environments.
 - L5. Maintainer: staging "Solo, tras el CI verde (Recomendado)" (replaces the approval choice in L3); plan "Sí, empezá".
 - L6. The parent's readback of T2 added a guard for fork repositories and skipped runs for a commit behind the head of `main`. zizmor reports `workflow_run` as `dangerous-triggers`, so the parent proposed a reusable workflow called from `ci.yml` instead. Maintainer: "Workflow reutilizable llamado desde ci.yml (Recomendado)". That is also the maintainer's approval for the `ci.yml` change: a final `deploy-staging` job, and `cancel-in-progress` only for pull requests.
+- L7. Independent verification of `61a7e3d5` (2026-11-26) found 2 blockers.
+  - B1: a rollback to a commit without `scripts/ci/staging-drift.ts` always failed. The drift check now comes from `origin/main`.
+  - B2: `docs/go-live.md` said a merge keeps every needed order. A function and the cron job that calls it now go in separate pull requests.
+  - Non-blocking fixes: a fork guard on the caller job; `docs/findings.md` cites step 4 only; the production bootstrap pushes through the production workflow. Tests added: 3 fail-closed CLI cases and 2 workflow-text guards.
+  - Accepted: a manual run at the head of `main` deploys without waiting for CI (write access only, `main` only). Pending runs can be replaced by newer ones (GitHub concurrency).
+  - Recorded as Ideas: #733 (missing settings) and #734 (second developer).

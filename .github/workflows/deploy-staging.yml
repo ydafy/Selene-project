@@ -148,12 +148,13 @@ jobs:
           if [ "$ROLLBACK" = true ]; then
             root="$RUNNER_TEMP/main"
             mkdir -p "$root"
-            git archive origin/main supabase/migrations supabase/functions | tar -x -C "$root"
+            # The check itself also comes from main: an older commit may not have it.
+            git archive origin/main supabase/migrations supabase/functions scripts/ci/staging-drift.ts | tar -x -C "$root"
           fi
           supabase migration list --remote --output-format json > "$RUNNER_TEMP/migrations.json"
           supabase functions list --output-format json > "$RUNNER_TEMP/functions.json"
           status=0
-          bun scripts/ci/staging-drift.ts --root "$root" \
+          bun "$root/scripts/ci/staging-drift.ts" --root "$root" \
             --migrations "$RUNNER_TEMP/migrations.json" \
             --functions "$RUNNER_TEMP/functions.json" > "$RUNNER_TEMP/drift.txt" 2>&1 || status=$?
           cat "$RUNNER_TEMP/drift.txt"

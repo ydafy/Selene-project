@@ -104,7 +104,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 3. Database
 
-1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run `supabase db push --remote`. It applies the baseline and every later migration in version order and records them in the remote migration history.
+1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run the first push through the production deploy workflow ("Staging and production"), which runs `supabase db push --remote`. It applies the baseline and every later migration in version order and records them in the remote migration history.
 2. Run `get_advisors` (security and performance) and resolve new findings.
 3. Run the schema drift check (`supabase/AGENTS.md`, "Schema drift check"). The types need no step: `bun run db:types` generates them from the local database, and CI checks them against the migrations.
 
@@ -155,7 +155,7 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 
 Functions deploy only from `main`, through the deploy workflow ("Staging and production"), never from a worktree or an unmerged branch: the deployed code must match the repository. Each run deploys every function with `supabase functions deploy --use-api --yes`. The deployed set must be exactly the directories in `supabase/functions/`, except `supabase/functions/_shared/` and `supabase/functions/__tests__/`. Every function is deployed with `verify_jwt = false` from `supabase/config.toml` and authenticates its caller in code (#399); the CLI applies the flags. The workflow never passes `--prune`, so remove a retired function with `supabase functions delete <name>`, as the notes below say. Its drift check (`scripts/ci/staging-drift.ts`) fails the run when the deployed set differs from the repository (`supabase/functions/AGENTS.md`, "Deploy and drift check").
 
-The notes below say which migration a function needs first. The workflow pushes every pending migration before it deploys the functions, so a merge keeps that order by itself.
+The notes below say which migration a function needs first. The workflow pushes every pending migration before it deploys the functions, so a merge keeps that order by itself. The opposite order does not happen by itself: when a migration creates a cron job that calls a new function, merge the function in one pull request and the cron job in a later one. In the same pull request, the job would call a missing function until the deploy step finishes.
 
 `create-payment-intent` was retired (replaced by `create-connect-payment`; it no longer exists in the repository). Its deployed copy was deleted from the development project on 2026-10-25, so a project still listing it is out of date: remove it with `supabase functions delete create-payment-intent`.
 
