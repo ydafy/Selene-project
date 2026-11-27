@@ -35,3 +35,7 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
   - Non-blocking fixes: a fork guard on the caller job; `docs/findings.md` cites step 4 only; the production bootstrap pushes through the production workflow. Tests added: 3 fail-closed CLI cases and 2 workflow-text guards.
   - Accepted: a manual run at the head of `main` deploys without waiting for CI (write access only, `main` only). Pending runs can be replaced by newer ones (GitHub concurrency).
   - Recorded as Ideas: #733 (missing settings) and #734 (second developer).
+- L8. Native review `review-03fca9c4fddc5b18` approved commits `61a7e3d5` and `29ff153b`, with 4 advisory findings. Follow-up commit:
+  - R1: the drift check runs without the Supabase credentials.
+  - R3: the caller job uses `!github.event.repository.fork` instead of the repository name.
+  - R3 and R4: a skipped deploy emits a run warning, so staging that falls behind `main` (the newer commit's CI failed) is visible on the run.

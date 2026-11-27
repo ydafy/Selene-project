@@ -76,6 +76,9 @@ jobs:
               rollback=true
             else
               skip=true
+              # Visible on the run: if the newer commit's CI fails, staging stays
+              # behind main until the next green merge.
+              echo "::warning::Deploy skipped: $sha is behind the head of main ($head). Staging updates when that commit's CI passes."
             fi
           fi
           echo "rollback=$rollback" >> "$GITHUB_OUTPUT"
@@ -154,7 +157,9 @@ jobs:
           supabase migration list --remote --output-format json > "$RUNNER_TEMP/migrations.json"
           supabase functions list --output-format json > "$RUNNER_TEMP/functions.json"
           status=0
-          bun "$root/scripts/ci/staging-drift.ts" --root "$root" \
+          # The drift check needs no credentials: drop them from its environment.
+          env -u SUPABASE_ACCESS_TOKEN -u SUPABASE_DB_PASSWORD \
+            bun "$root/scripts/ci/staging-drift.ts" --root "$root" \
             --migrations "$RUNNER_TEMP/migrations.json" \
             --functions "$RUNNER_TEMP/functions.json" > "$RUNNER_TEMP/drift.txt" 2>&1 || status=$?
           cat "$RUNNER_TEMP/drift.txt"

@@ -191,7 +191,7 @@ jobs:
   # (.github/workflows/deploy-staging.yml). Pull requests never reach this job.
   deploy-staging:
     # Forks have no staging environment; their pushes to main skip this job.
-    if: github.repository == 'ydafy/Selene-project' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: ${{ !github.event.repository.fork && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     needs: [test, repo-checks, db-test, e2e]
     permissions:
       contents: read
