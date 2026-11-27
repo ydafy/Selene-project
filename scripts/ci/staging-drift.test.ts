@@ -378,6 +378,7 @@ describe('staging-drift CLI, more fail-closed cases', () => {
   });
 });
 
+// source-text: the workflow runs only on GitHub against staging, so its text is the contract tested here.
 describe('deploy-staging workflow', () => {
   const workflow = readFileSync(
     join(
