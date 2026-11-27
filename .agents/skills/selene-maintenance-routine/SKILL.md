@@ -1,6 +1,6 @@
 ---
 name: selene-maintenance-routine
-description: 'Trigger: rutina del lunes, rutina mensual, weekly routine, monthly routine, "Hoy es lunes, hagamos la rutina". Run the checks in docs/maintenance.md and report what needs a decision.'
+description: 'Trigger: rutina del lunes, rutina mensual, weekly routine, monthly routine, "Hoy es lunes, hagamos la rutina", la rutina de dependencias, rutina de dependencias, dependency routine. Run the checks in docs/maintenance.md and report what needs a decision, or apply the dependency report as docs/dependencies.md says.'
 license: MIT
 metadata:
   author: 'school-portal'
@@ -14,7 +14,7 @@ Load when the maintainer asks for the weekly or monthly routine, for example "Ho
 ## Hard Rules
 
 - `AGENTS.md` wins over this skill.
-- Change nothing until the maintainer decides: no dependency updates, no issue edits, closes, or label changes, and no branches, commits, or PRs. There are two exceptions:
+- Outside the dependency routine (below), change nothing until the maintainer decides: no dependency updates, no issue edits, closes, or label changes, and no branches, commits, or PRs. There are two exceptions:
   - start the dependency workflows when this Monday's run is missing (`docs/dependencies.md`);
   - open Finding or Idea issues, as `AGENTS.md`, "Findings outside the current work", allows.
 - Read the remote Supabase project only through the read-only MCP tools that `docs/maintenance.md` names. Never use `execute_sql`.
@@ -32,6 +32,10 @@ Load when the maintainer asks for the weekly or monthly routine, for example "Ho
 6. Walk the decisions with the maintainer, one at a time.
 7. Record each decision as the page says.
 
+## Dependency routine
+
+When the maintainer says "la rutina de dependencias", "rutina de dependencias", or "dependency routine", follow `docs/dependencies.md`, "Run the dependency routine". That section owns the steps. In this routine you apply the report without asking about each package, then push and open the pull request. The maintainer decides the merge.
+
 ## Output
 
-The report from `docs/maintenance.md`, "Report format". Then stop and wait for the maintainer.
+The report from `docs/maintenance.md`, "Report format". Then stop and wait for the maintainer. The dependency routine ends with the pull request instead.

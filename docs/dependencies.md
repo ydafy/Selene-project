@@ -18,7 +18,7 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 ## Follow the cadence
 
 - **Weekly, automatic.** The `Dependency audit` workflow (`.github/workflows/dependency-audit.yml`) runs `bun audit --audit-level=high` every Monday. It fails on high or critical vulnerabilities.
-- **Monthly, by hand.** Run `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web`. Update the in-range updates together in one commit. Update each major in its own commit after reading its changelog. Check Node and Bun too ("Keep Node and Bun current"), and update Docker Desktop ("Keep the Supabase CLI and Docker current"). The monthly routine in `docs/maintenance.md` runs these steps with you.
+- **Monthly, by hand.** Apply the report with "Run the dependency routine" below. It owns the steps for the in-range updates, the Expo-pinned fixes, and the majors. `bun outdated --filter @selene/frontend` and `bun outdated --filter admin-web` list the same packages without the report. Check Node and Bun too ("Keep Node and Bun current"), and update Docker Desktop ("Keep the Supabase CLI and Docker current"). The monthly routine in `docs/maintenance.md` runs these steps with you.
 - **Expo SDK, 4 to 8 weeks after a release.** Upgrade one SDK at a time, in its own worktree. Merge to `main` only when the whole upgrade passes. Follow `odd/tasks/expo-sdk-upgrade.md` and run its device checklist (L12, updated by L21) on a new development build.
 
 **The weekly report does the looking for you.** The `Dependency report` workflow (`.github/workflows/dependency-report.yml`) runs every Monday after the audit. It runs `bun scripts/ci/dependency-report.ts` and writes the result into one open issue, **Reporte de dependencias**, then comments a one-line summary so you get an email. The report lists safe updates, majors with changelog links, majors held back on purpose with the reason, the Expo SDK status, packages off the SDK, Expo-pinned packages with a newer major (they move with the SDK upgrade, not one by one; the pin list is `apps/frontend/node_modules/expo/bundledNativeModules.json`), the Node and Bun runtimes, the Supabase CLI, the Stripe API version against the pinned SDK, the GitHub Actions pins, and the audit. It never opens pull requests. Run the script locally for the same report, or start the workflow from the **Actions** tab.
@@ -26,6 +26,52 @@ A package below `1.0.0` can break on a minor. Treat its minor like a major.
 GitHub can delay a scheduled run by hours or skip it, and a skipped audit sends no email, the same as a clean one. Each workflow has a backup cron for that case: the audit at 20:23 UTC and the report at 20:53 UTC, about six hours after the primary crons. The first job of each workflow runs `bun scripts/ci/scheduled-backup.ts`. A run started by the backup cron does its work only when no other scheduled run of the same workflow started in the last 24 hours, whatever its conclusion, so a failed audit does not email twice. If the script cannot list the earlier runs, the backup runs anyway. The primary cron, a manual start, and the audit's push on `bun.lock` always run. If both crons were dropped and the Monday comment on the report issue has not arrived by Monday night, start both workflows by hand, the audit first: `gh workflow run dependency-audit.yml`, then `gh workflow run dependency-report.yml`.
 
 When you hold a major back, add it to `HELD_BACK` in `scripts/ci/dependency-report.ts` with its reason, and write the case in "When not to update" below. Remove the entry when the blocker is gone. `@types/node` is the exception: the report derives its hold from `.nvmrc`, so it needs no entry.
+
+## Run the dependency routine
+
+The maintainer starts this routine with "la rutina de dependencias" (also "rutina de dependencias" or "dependency routine"). The agent then applies the dependency report end to end. It does not ask about each package. It decides with the rules on this page and with the `selene-dependency-review` skill, pushes the branch, and opens the pull request. The maintainer decides the merge.
+
+This routine is the one exception to the rule in `docs/maintenance.md` that nothing changes until the maintainer decides. The weekly routine (systems A to D) still only reports dependencies.
+
+Run the steps in this order:
+
+1. Post the plan. Check the open worktrees first (`docs/maintenance.md`, "Check the open worktrees before you act"): if an active branch also changes `bun.lock` or a `package.json`, wait for it or agree the order with the maintainer, because both lockfile changes would conflict. Read the latest report: run `bun scripts/ci/dependency-report.ts`, or read the **Reporte de dependencias** issue. Post one message to the maintainer that says what goes in, what stays held, and whether a development build will be needed because a native package changes. The message informs. Do not ask about each package.
+2. Run the mechanical lane on one branch.
+   1. Commit 1 updates every row under "Safe updates (patch and minor)".
+   2. Commit 2 runs `npx expo install --fix` from `apps/frontend` for the rows under "Expo-pinned packages with a newer version in range".
+
+   Never change an Expo-pinned package outside `npx expo install --fix`. Never change a held-back package.
+
+3. Run the judgment lane. Review each major with `selene-dependency-review`. An Expo SDK upgrade is also reviewed there, but it keeps its own procedure (`odd/tasks/expo-sdk-upgrade.md`) and its own worktree.
+   - If the recommendation is "update now", make one commit per major. Packages that must move together share one commit. Fix every breaking change the changelog lists.
+   - If the recommendation is "wait", hold the major with its reason: add it to `HELD_BACK` in `scripts/ci/dependency-report.ts` and write the case in "When not to update".
+4. Run the checks once over the whole branch. Run the full set every time. Judge each check by its exit code and read every error it prints: a check read through `tail` can hide errors above the cut.
+   - `bun run format:check`
+   - `bun run typecheck`
+   - `bun run lint`
+   - `bun run knip`
+   - `bun audit --audit-level=high` exactly as `.github/workflows/dependency-audit.yml` runs it
+   - `bun test`
+   - `bun run --filter admin-web build`, when an `apps/admin-web` package moved
+
+   Then run one independent verification over the whole commit range, not one per lane. Run native review only when its assess step says it is due.
+
+5. Build once at the end, only when a native package changed. A native package is an Expo-pinned package, or a package with native code or a config plugin. The report does not mark them yet (#723), so check each changed package. Run `bun run dev:install`, then ask the maintainer to run "Smoke-test a development build after a native change" on the new build. That device check is the only step the maintainer does.
+6. Push the branch and open the pull request. An Expo SDK upgrade gets its own pull request from its worktree. CI is the gate. The maintainer merges.
+
+## Smoke-test a development build after a native change
+
+Run this list on a new Android development build after any native dependency change, including an Expo SDK upgrade. The SDK procedure (`odd/tasks/expo-sdk-upgrade.md`) may add its own items.
+
+- The app starts. The splash screen, fonts, and icons render.
+- Navigate the tabs and open a product (router).
+- Sign in with Google, then re-authenticate.
+- Open the terms or the privacy policy in the in-app browser.
+- Start Stripe Connect seller onboarding. The Stripe page opens, and returning from it lands back in the app.
+- Play a product video and receive a notification, when possible.
+- On iOS, run the same list once the Apple Developer Program is available (#217). Until then, say in the pull request that iOS is unproven.
+
+When a changelog points at a flow that is not on the list, check that flow too. The Stripe Connect item came this way: `expo-web-browser` 58.0.8 changed how the browser tab opens with App Links.
 
 ## Keep Node and Bun current
 
@@ -183,7 +229,7 @@ Answer these before running `bun add`. If an answer is bad, do not add the packa
    - `bun run typecheck`
    - `bun test`
    - `bun audit --audit-level=high` exactly as `.github/workflows/dependency-audit.yml` runs it, with its `--ignore` flags if it has any
-   - A device check when the package is native (see the Expo SDK rule above), on a new development build from `bun run dev:install`.
+   - A device check when the package is native (see the Expo SDK rule above), on a new development build from `bun run dev:install`. Run "Smoke-test a development build after a native change".
 5. Commit only when every check passes.
 
 `bunfig.toml` sets `minimumReleaseAge = 259200` (3 days). Bun refuses to install a version published less than 3 days ago. If an install fails for that reason, pick the previous version. Never change the setting.
