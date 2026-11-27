@@ -401,6 +401,19 @@ describe('deploy-staging workflow', () => {
     );
   });
 
+  it('is called by ci.yml with inherited credentials, which the staging environment needs', () => {
+    const ci = readFileSync(
+      join(import.meta.dir, '..', '..', '.github', 'workflows', 'ci.yml'),
+      'utf8',
+    );
+    const rest = ci.slice(ci.indexOf('\n  deploy-staging:') + 1);
+    const next = rest.slice(1).search(/^ {2}[a-z][\w-]*:/m);
+    const job = next === -1 ? rest : rest.slice(0, next + 1);
+    expect(job).toContain('uses: ./.github/workflows/deploy-staging.yml');
+    expect(job).toMatch(/^ {4}secrets: inherit\b/m);
+    expect(workflow).toContain('environment: staging');
+  });
+
   it('never prunes functions or pushes the config', () => {
     const commands = workflow
       .split('\n')

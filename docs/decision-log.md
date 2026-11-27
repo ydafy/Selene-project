@@ -388,6 +388,7 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 **Decision (maintainer, 2026-11-26):**
 
 - `.github/workflows/deploy-staging.yml` deploys staging with no manual approval. `.github/workflows/ci.yml` calls it as its last job (`deploy-staging`) on a push to `main`, after every other job passed, so it deploys the commit CI checked. Its runs on `main` are no longer cancelled by a newer push, so a deploy never stops midway, and a run for a commit behind the head of `main` skips the deploy. It writes the migration dry run to the run's summary, runs `supabase db push --remote --yes`, deploys every function, and fails on drift (`scripts/ci/staging-drift.ts`). It never passes `--prune` and never runs `supabase config push`.
+- The caller job passes `secrets: inherit`: without it the environment secrets reach the called job empty (actions/runner#4453), which failed the first deploy on 2026-11-27. The repository keeps no secrets of its own, so only the `staging` environment's secrets reach the job.
 - The credentials live in the GitHub environment `staging`, which accepts deployments from `main` only: a personal access token scoped to staging, the staging database password, and the project ref. One deploy runs at a time.
 - A manual run of an earlier commit of `main` rolls functions back and pushes no migration. A bad migration is fixed with a new one.
 - A pull request that adds a secret, Vault value, webhook, or Dashboard setting applies it on staging before the merge.
