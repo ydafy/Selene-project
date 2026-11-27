@@ -43,8 +43,9 @@ Supabase does not roll back migrations. Fix a bad migration with a new one. The 
 At go-live, add the production deploy before the first production push:
 
 1. Create a GitHub environment `production` with required reviewers, so every production deploy waits for an approval. Allow deployments from `main` only.
-2. Store production's own secrets in that environment: a Supabase personal access token scoped to the production project only, the production database password, and the production project ref. Never reuse staging's token or password.
-3. Add a production deploy workflow that reuses the staging steps and references only the `production` environment. It deploys a commit of `main` that staging already runs.
+2. Store production's own secrets in that environment: a Supabase personal access token scoped to the production project only, the production database password, and the production project ref. Never reuse staging's token or password. Give the token exactly the permissions staging's deploy token proved on 2026-11-27: Project Settings, API Keys, and API Key Secrets at Read; Edge Functions at Read-write; and the database pooling config at Read. The last one is easy to miss. GitHub runners have no IPv6, so `supabase link` must save the pooler connection, which it reads with that permission. Without it, `link` still succeeds, and the dry run fails with "IPv6 is not supported on your current network".
+3. Store the secrets as environment secrets, not repository secrets. The caller job passes `secrets: inherit`, because environment secrets reach a reusable workflow empty otherwise (actions/runner#4453).
+4. Add a production deploy workflow that reuses the staging steps and references only the `production` environment. It deploys a commit of `main` that staging already runs.
 
 Once production holds real users, the root `AGENTS.md` rule that Supabase rows are disposable test data applies only to staging. Update that rule in the same pull request that records the production project ref: every migration on production must preserve existing rows.
 
