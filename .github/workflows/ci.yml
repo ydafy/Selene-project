@@ -11,9 +11,12 @@ on:
 permissions:
   contents: read
 
+# A new push cancels the previous run of a pull request. Runs on main are never
+# cancelled: their last job deploys staging, and stopping a deploy midway leaves
+# staging half-deployed.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -183,3 +186,17 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # Deploys staging once every other job passed on a push to main
+  # (.github/workflows/deploy-staging.yml). Pull requests never reach this job.
+  deploy-staging:
+    # Forks have no staging environment; their pushes to main skip this job.
+    if: ${{ !github.event.repository.fork && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [test, repo-checks, db-test, e2e]
+    permissions:
+      contents: read
+    # No secrets are passed: the called job reads them from the staging environment.
+    # zizmor's self-repository audit asks for `$/...`, which actionlint 1.7.12 rejects
+    # ("ref is missing"). Kept by the maintainer on 2026-11-26 (#314); use `$/` and
+    # drop the ignore once actionlint supports it.
+    uses: ./.github/workflows/deploy-staging.yml # zizmor: ignore[self-repository]

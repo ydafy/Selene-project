@@ -21,7 +21,7 @@ Open launch dependencies: every issue in the GitHub milestone [`Go-live`](https:
 2. Create the project in the target region and organization. The region cannot change later.
 3. Record the new project ref and update the Supabase MCP URL.
 4. Use the new API keys from day one: `sb_publishable_...` in the apps (`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in the EAS environments, `VITE_SUPABASE_PUBLISHABLE_KEY` in the admin-web build env) and `sb_secret_...` in server components, and keep the legacy `anon`/`service_role` JWT keys disabled. The legacy `service_role` key of the development project was exposed on 2026-10-19 (it was embedded in a Dashboard-created trigger); never reuse it or copy any key from that project.
-5. Decide whether migrations deploy through the Supabase GitHub integration (applies pending `supabase/migrations/` on every push to the production branch). It was connected to the development project on 2026-10-21 and disconnected the same day: its first run failed with `column "refund_id" ... already exists` because two migrations had been applied by hand and were missing from the remote history (nothing was applied). Enable it only on a project whose migration history matches the repository, and only once every branch that pushes to `main` is meant to reach production; then update the "The repository does not deploy itself" rule in `AGENTS.md`.
+5. Do not connect the Supabase GitHub integration to either project. A GitHub Actions workflow is the only deploy path: `.github/workflows/deploy-staging.yml` for staging, and the production workflow below ("Staging and production"). The integration was connected to the development project on 2026-10-21. Its first run failed with `column "refund_id" ... already exists`, because two migrations had been applied by hand and were missing from the remote history. On 2026-11-26 its GitHub app still posted the "Supabase Preview" check on pull requests, so disconnect it before the first CI deploy (#314).
 
 ### Staging and production
 
@@ -30,14 +30,21 @@ After go-live Selene has two remote projects. Each has its own keys, Vault secre
 - Staging: the current project `acoiclkeymgtlwcxilun`, Free organization, Stripe sandbox, and Envia sandbox. Its rows are test data. The agents' Supabase MCP and the worktree `.env` files point only at staging.
 - Production: the new project of step 1, Stripe live, and real users. Nobody changes it by hand. The schema changes only through migrations from `main`, and Dashboard settings follow this runbook.
 
-A merged change reaches production in this order:
+A change reaches staging and then production in this order:
 
-1. On staging, apply the manual steps the pull request added to this runbook (Vault secrets, Edge Function secrets, webhooks, Dashboard settings) before the migration or function that needs them. Then, from a checkout of `main`, run `supabase link --project-ref <staging ref>` and `supabase db push --remote`, and deploy the changed functions (section 7). Test on staging.
-2. If staging shows a defect, fix it in a new branch and pull request. Never fix staging or production in the Dashboard.
-3. From the same commit of `main`, repeat step 1 on production, with production's own secret values and the production ref.
-4. Deploy in the order database, then Edge Functions, then the app release. Installed apps update days later, so the database and functions must keep working with the previous app version. Add the new shape first, and drop the old one in a later release.
+1. A pull request that adds a secret, Vault value, webhook, or Dashboard setting applies it on staging before the merge. The migration or function that needs it deploys on the merge, so the setting must already exist.
+2. Merge the pull request. After CI passes on `main`, `.github/workflows/deploy-staging.yml` deploys that commit to staging: the migration dry run in the run's summary, `supabase db push --remote --yes`, every Edge Function (section 7), and the drift check. Test on staging.
+3. If staging shows a defect, fix it in a new branch and pull request. Never fix staging or production in the Dashboard.
+4. Deploy the same commit of `main` to production, with production's own secret values. Apply the pull request's manual steps there first.
+5. Deploy in the order database, then Edge Functions, then the app release. Installed apps update days later, so the database and functions must keep working with the previous app version. Add the new shape first, and drop the old one in a later release.
 
-Supabase does not roll back migrations. Fix a bad migration with a new one. The daily backup is the last resort.
+Supabase does not roll back migrations. Fix a bad migration with a new one. The daily backup is the last resort. To roll back functions, run the deploy workflow by hand with an earlier commit of `main` (`supabase/functions/AGENTS.md`, "Deploy and drift check").
+
+At go-live, add the production deploy before the first production push:
+
+1. Create a GitHub environment `production` with required reviewers, so every production deploy waits for an approval. Allow deployments from `main` only.
+2. Store production's own secrets in that environment: a Supabase personal access token scoped to the production project only, the production database password, and the production project ref. Never reuse staging's token or password.
+3. Add a production deploy workflow that reuses the staging steps and references only the `production` environment. It deploys a commit of `main` that staging already runs.
 
 Once production holds real users, the root `AGENTS.md` rule that Supabase rows are disposable test data applies only to staging. Update that rule in the same pull request that records the production project ref: every migration on production must preserve existing rows.
 
@@ -97,7 +104,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 3. Database
 
-1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run `supabase db push --remote`. It applies the baseline and every later migration in version order and records them in the remote migration history.
+1. Link the new project. Before the first deploy, create the Vault secrets (section 5) and set the Edge Function secrets (section 6). Then run the first deploy through the production deploy workflow ("Staging and production"). It runs `supabase db push --remote`, which applies the baseline and every later migration in version order, records them in the remote migration history, and creates the cron jobs (section 8). Then it deploys the functions (section 7). Until the function step finishes, the HTTP cron jobs call functions that do not exist yet and fail. The window lasts as long as the function step, which the run shows. A new project has no users, so accept that window. After the run, check that the next runs of each job answer 2xx (section 8, "HTTP job results").
 2. Run `get_advisors` (security and performance) and resolve new findings.
 3. Run the schema drift check (`supabase/AGENTS.md`, "Schema drift check"). The types need no step: `bun run db:types` generates them from the local database, and CI checks them against the migrations.
 
@@ -146,7 +153,9 @@ Production uses live Stripe keys and `ENVIA_MODE` set to production.
 
 ## 7. Edge Functions
 
-Deploy only from a checkout of `main`, never from a worktree or an unmerged branch: the deployed code must match the repository. The deployed set must be exactly the directories in `supabase/functions/`, except `supabase/functions/_shared/` and `supabase/functions/__tests__/`. Every function is deployed with `verify_jwt = false` from `supabase/config.toml` and authenticates its caller in code (#399); deploy with the CLI so the flags apply. `supabase/functions/AGENTS.md`, "Deploy and drift check", compares the deployed set with the repository.
+Functions deploy only from `main`, through the deploy workflow ("Staging and production"), never from a worktree or an unmerged branch: the deployed code must match the repository. Each run deploys every function with `supabase functions deploy --use-api --yes`. The deployed set must be exactly the directories in `supabase/functions/`, except `supabase/functions/_shared/` and `supabase/functions/__tests__/`. Every function is deployed with `verify_jwt = false` from `supabase/config.toml` and authenticates its caller in code (#399); the CLI applies the flags. The workflow never passes `--prune`, so remove a retired function with `supabase functions delete <name>`, as the notes below say. Its drift check (`scripts/ci/staging-drift.ts`) fails the run when the deployed set differs from the repository (`supabase/functions/AGENTS.md`, "Deploy and drift check").
+
+The notes below say which migration a function needs first. The workflow pushes every pending migration before it deploys the functions, so a merge keeps that order by itself. The opposite order does not happen by itself: when a migration creates a cron job that calls a new function, merge the function in one pull request and the cron job in a later one. In the same pull request, the job would call a missing function until the deploy step finishes.
 
 `create-payment-intent` was retired (replaced by `create-connect-payment`; it no longer exists in the repository). Its deployed copy was deleted from the development project on 2026-10-25, so a project still listing it is out of date: remove it with `supabase functions delete create-payment-intent`.
 
