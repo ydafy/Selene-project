@@ -1,7 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { useAuthStore } from '@/shared/store/use-auth-store';
 import { toast } from 'sonner';
+import {
+  VERIFICATION_NOT_OPEN_MESSAGE,
+  isVerificationNotOpen,
+} from '../logic/resolve-verdict';
 
 interface LockStatus {
   isLockedByOther: boolean;
@@ -11,6 +16,7 @@ interface LockStatus {
 
 export const useProductLock = () => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const adminIdRef = useRef<string | null>(null);
   const [lockStatus, setLockStatus] = useState<LockStatus>({
     isLockedByOther: false,
@@ -19,13 +25,19 @@ export const useProductLock = () => {
   });
   const [isLocking, setIsLocking] = useState(false);
 
+  // The attempt the queue showed was decided or replaced: refresh the queue.
+  const reportNotOpen = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['pending-products'] });
+    toast.warning(VERIFICATION_NOT_OPEN_MESSAGE);
+  }, [queryClient]);
+
   /**
-   * Intenta adquirir el bloqueo del producto.
+   * Intenta adquirir el bloqueo del intento de verificación que muestra la cola.
    * @returns Promise<boolean> True si el bloqueo es nuestro, False si es de otro.
    */
   const acquireLock = useCallback(
-    async (productId: string): Promise<boolean> => {
-      if (!user?.id || !productId) {
+    async (productId: string, verificationId: string): Promise<boolean> => {
+      if (!user?.id || !productId || !verificationId) {
         return false;
       }
 
@@ -33,9 +45,14 @@ export const useProductLock = () => {
       try {
         const { data, error } = await supabase.rpc('fn_lock_product', {
           p_product_id: productId,
+          p_verification_id: verificationId,
         });
 
         if (error) {
+          if (isVerificationNotOpen(error)) {
+            reportNotOpen();
+            return false;
+          }
           throw error;
         }
 
@@ -72,7 +89,7 @@ export const useProductLock = () => {
         setIsLocking(false);
       }
     },
-    [user],
+    [user, reportNotOpen],
   );
 
   const releaseLock = useCallback(async (productId: string) => {

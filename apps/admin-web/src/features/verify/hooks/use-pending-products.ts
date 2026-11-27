@@ -2,10 +2,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/shared/lib/supabase';
 import { toast } from 'sonner';
+import type { PendingProduct } from '@selene/types';
 import {
+  VERIFICATION_NOT_OPEN_MESSAGE,
+  isVerificationNotOpen,
   resolveVerdictPayload,
   type ProductVerdict,
 } from '../logic/resolve-verdict';
+
+const notOpenError = () =>
+  Object.assign(new Error(VERIFICATION_NOT_OPEN_MESSAGE), {
+    code: 'VERIFICATION_NOT_OPEN',
+  });
 
 export const usePendingProducts = () => {
   const queryClient = useQueryClient();
@@ -74,20 +82,25 @@ export const usePendingProducts = () => {
       id,
       verdict,
       note,
+      product,
     }: {
       id: string;
       verdict: ProductVerdict;
       note?: string;
+      product: PendingProduct;
     }) => {
+      // The verdict decides the attempt the queue showed, never a newer one.
       // Llamada atómica y segura a la base de datos que orquesta toda la aprobación
       const { data, error } = await supabase.rpc('fn_resolve_product_verdict', {
         p_product_id: id,
+        p_verification_id: product.verification_id,
         ...resolveVerdictPayload(verdict, note),
         p_private_note: undefined,
       });
 
       if (error) {
         // Mapeo amigable de errores de negocio que devuelve Postgres
+        if (isVerificationNotOpen(error)) throw notOpenError();
         if (error.message.includes('LOCK_EXPIRED_OR_STOLEN')) {
           throw new Error(
             'Tu sesión de revisión expiró o el producto fue bloqueado por otro administrador.',
@@ -106,6 +119,9 @@ export const usePendingProducts = () => {
       toast.success('Veredicto enviado correctamente');
     },
     onError: (error: any) => {
+      if (error?.code === 'VERIFICATION_NOT_OPEN') {
+        queryClient.invalidateQueries({ queryKey: ['pending-products'] });
+      }
       toast.error(`Error: ${error.message}`);
     },
   });

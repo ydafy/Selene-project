@@ -1,7 +1,8 @@
 // Admin verification screen against a mocked backend (odd/tasks/verification-history.md
-// S8): the queue reads the open attempts from admin_product_queue_view, selecting a
-// listing takes the lock, the detail shows the previous rejection note and the proofs
-// of the open attempt, and a rejection goes through fn_resolve_product_verdict.
+// S4, S8): the queue reads the open attempts from admin_product_queue_view,
+// selecting a listing takes the lock on the attempt it shows, the detail shows the
+// previous rejection note and the proofs of the open attempt, and a rejection of
+// that attempt goes through fn_resolve_product_verdict.
 
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
@@ -225,7 +226,9 @@ test('verification queue shows the open attempt, its proofs and the previous rej
 
   await listItem.click();
   await expect(page.getByText('Detalles de Verificación')).toBeVisible();
-  expect(recorded.lockBodies).toEqual([{ p_product_id: productId }]);
+  expect(recorded.lockBodies).toEqual([
+    { p_product_id: productId, p_verification_id: verificationId },
+  ]);
 
   await expect(page.getByText('Motivo de rechazo anterior:')).toBeVisible();
   await expect(
@@ -270,7 +273,12 @@ test('verification queue shows the open attempt, its proofs and the previous rej
 
   await expect(page.getByText('Veredicto enviado correctamente')).toBeVisible();
   expect(recorded.verdictBodies).toEqual([
-    { p_product_id: productId, p_verdict: 'REJECT', p_public_note: newNote },
+    {
+      p_product_id: productId,
+      p_verification_id: verificationId,
+      p_verdict: 'REJECT',
+      p_public_note: newNote,
+    },
   ]);
   await expect(page.getByText('¡Todo al día en Moderación!')).toBeVisible();
 
