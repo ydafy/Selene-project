@@ -1,0 +1,37 @@
+meta {
+  name: submit-17-decided-attempt-refused
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/rest/v1/rpc/fn_resolve_product_verdict
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{publishableKey}}
+  Authorization: Bearer {{adminToken}}
+}
+
+body:json {
+  {
+    "p_product_id": "{{submitProductId}}",
+    "p_verification_id": "{{submitVerificationId}}",
+    "p_verdict": "APPROVE"
+  }
+}
+
+tests {
+  test("a verdict on an attempt already decided otherwise is refused", function () {
+    expect(res.getStatus()).to.equal(400);
+    expect(res.getBody().code).to.equal("P0001");
+    expect(res.getBody().message).to.equal("VERIFICATION_NOT_OPEN");
+  });
+}
+
+docs {
+  A stale queue still shows the attempt submit-15 rejected: approving it is refused and writes nothing
+  (#651 S4, S5). submit-16 already read the closed attempt.
+}

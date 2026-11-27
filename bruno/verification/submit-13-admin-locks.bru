@@ -17,7 +17,8 @@ headers {
 
 body:json {
   {
-    "p_product_id": "{{submitProductId}}"
+    "p_product_id": "{{submitProductId}}",
+    "p_verification_id": "{{submitVerificationId}}"
   }
 }
 
@@ -29,5 +30,5 @@ tests {
 }
 
 docs {
-  #651 S4: fn_lock_product keeps its signature and result.
+  #651 S4: the admin locks the attempt the queue shows, the id submit-10 returned.
 }

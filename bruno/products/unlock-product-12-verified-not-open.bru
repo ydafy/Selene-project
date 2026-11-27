@@ -17,7 +17,8 @@ headers {
 
 body:json {
   {
-    "p_product_id": "00000000-0000-4000-8000-0000000000b4"
+    "p_product_id": "00000000-0000-4000-8000-0000000000b4",
+    "p_verification_id": "00000000-0000-4000-8000-0000000000c4"
   }
 }
 
@@ -30,6 +31,6 @@ tests {
 }
 
 docs {
-  Run after auth/login-admin. The seeded listing b4 is verified and its only attempt is approved, so there
-  is nothing to review (#651 S4).
+  Run after auth/login-admin. The seeded listing b4 is verified and its only attempt c4 is approved, so
+  there is nothing to review and the decided attempt cannot be locked (#651 S4).
 }

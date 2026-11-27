@@ -1,5 +1,6 @@
 CREATE OR REPLACE FUNCTION public.fn_lock_product (
-  p_product_id uuid
+  p_product_id      uuid,
+  p_verification_id uuid
 )
   RETURNS TABLE (
     success            boolean,
@@ -27,12 +28,14 @@ BEGIN
         RAISE EXCEPTION 'UNAUTHORIZED_ADMIN_ONLY';
     END IF;
 
-    -- The review lock lives on the listing's open verification attempt
+    -- The review lock lives on the listing's open verification attempt, and
+    -- only the attempt the admin reviewed may take it
     -- (odd/tasks/verification-history.md S4).
     SELECT v.id, v.locked_by, v.locked_at
     INTO v_verification_id, v_locker_id, v_lock_time
     FROM public.product_verifications v
-    WHERE v.product_id = p_product_id
+    WHERE v.id = p_verification_id
+      AND v.product_id = p_product_id
       AND v.decision IS NULL
     FOR UPDATE;
 
@@ -62,12 +65,12 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid) TO "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid, uuid) TO "authenticated";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid) TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid, uuid) TO "service_role";
 
-REVOKE ALL ON FUNCTION "public"."fn_lock_product"(uuid) FROM "postgres";
+REVOKE ALL ON FUNCTION "public"."fn_lock_product"(uuid, uuid) FROM "postgres";
 
-GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid) TO "postgres";
+GRANT EXECUTE ON FUNCTION "public"."fn_lock_product"(uuid, uuid) TO "postgres";
 
-REVOKE ALL ON FUNCTION "public"."fn_lock_product"(uuid) FROM PUBLIC, "anon";
+REVOKE ALL ON FUNCTION "public"."fn_lock_product"(uuid, uuid) FROM PUBLIC, "anon";

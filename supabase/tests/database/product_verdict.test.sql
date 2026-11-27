@@ -1,15 +1,17 @@
 -- fn_resolve_product_verdict: an active admin who holds a fresh review lock
--- (10 minutes or less) on a listing's open verification attempt approves or
--- rejects it. It refuses a call without a session, from a non-admin, without
--- that lock, without an open attempt, and a rejection without a public note.
--- APPROVE on a verified listing or REJECT on a rejected one only releases the
--- lock; repeated after the attempt was decided, it writes nothing. A verdict
--- closes the attempt (decision, reviewer, notes), writes the listing status,
--- one admin audit row naming the attempt and one seller notice whose
--- source_event_key ends in the audit row id. A refusal changes nothing.
+-- (10 minutes or less) on the verification attempt they reviewed approves or
+-- rejects it, only when that attempt is the listing's open one. It refuses a
+-- call without a session, from a non-admin, without that lock, an attempt that
+-- is not the listing's open one (unknown, another listing's, or decided while a
+-- newer one is open), and a rejection without a public note. A verdict closes
+-- the attempt (decision, reviewer, notes), writes the listing status, one admin
+-- audit row naming the attempt and one seller notice whose source_event_key
+-- ends in the audit row id, even when the listing already has that status.
+-- Repeating the decision of an attempt already decided with it writes nothing;
+-- another verdict on it is refused. A refusal changes nothing.
 -- Runs against the local database only: `supabase start`, then `bun run test:db`.
 begin;
-select plan(46);
+select plan(51);
 
 \ir ../fixtures/money.psql
 
@@ -135,7 +137,20 @@ select pg_temp.listing(5130, 'in_review', 5101, interval '1 minute');
 select pg_temp.listing(5131, 'in_review', 5101, interval '1 minute');
 select pg_temp.listing(5132, 'pending_verification', 5101, interval '1 minute');
 select pg_temp.listing(5133, 'in_review', null, null, false);
-select pg_temp.remember(array[5121, 5122, 5123, 5124, 5126, 5127, 5128, 5132, 5133]);
+-- 5134: a rejected first attempt pg_temp.mu(7134) and a newer open attempt
+-- pg_temp.mu(6134) locked by admin 5101.
+select pg_temp.listing(5134, 'in_review', 5101, interval '1 minute');
+insert into public.product_verifications (
+  id, product_id, submitted_by, submitted_at, decision, decided_by, decided_at, public_note
+) values (pg_temp.mu(7134), pg_temp.mu(5134), pg_temp.mu(5102), now() - interval '3 hours',
+  'rejected', pg_temp.mu(5101), now() - interval '2 hours', 'Old reason');
+create function pg_temp.old_attempt() returns text language sql as $$
+  select v.decision::text || '|' || v.decided_by::text || '|' || v.decided_at::text || '|' || v.public_note
+    || '|' || coalesce(v.private_note_id::text, '-') || '|' || coalesce(v.locked_by::text, '-')
+  from public.product_verifications v where v.id = pg_temp.mu(7134)
+$$;
+create table pg_temp.old_attempt_before as select pg_temp.old_attempt() as v;
+select pg_temp.remember(array[5121, 5122, 5123, 5124, 5126, 5127, 5128, 5132, 5133, 5134]);
 
 -- Refusals ---------------------------------------------------------------------
 -- No session: the claims carry no sub. Listing 5121 is locked by plain user
@@ -143,13 +158,13 @@ select pg_temp.remember(array[5121, 5122, 5123, 5124, 5126, 5127, 5128, 5132, 51
 select set_config('request.jwt.claims', '{"role": "authenticated"}', true);
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5121)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5121), pg_temp.mu(6121)),
   'P0001', 'UNAUTHORIZED_NO_SESSION', 'a call without a session is refused');
 reset role;
 select set_config('request.jwt.claims', format('{"sub": "%s", "role": "authenticated"}', pg_temp.mu(5104)), true);
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5121)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5121), pg_temp.mu(6121)),
   'P0001', 'UNAUTHORIZED_ADMIN_ONLY', 'a non-admin is refused, even holding the lock');
 reset role;
 select ok(pg_temp.unchanged(5121),
@@ -158,84 +173,112 @@ select ok(pg_temp.unchanged(5121),
 select set_config('request.jwt.claims', format('{"sub": "%s", "role": "authenticated"}', pg_temp.mu(5101)), true);
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5122)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5122), pg_temp.mu(6122)),
   'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'a lock held by another admin is refused');
 reset role;
 select ok(pg_temp.unchanged(5122), 'a refused stolen lock changes nothing');
 
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5123)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5123), pg_temp.mu(6123)),
   'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'an unlocked attempt is refused');
 reset role;
 select ok(pg_temp.unchanged(5123), 'a refused unlocked attempt changes nothing');
 
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5124)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5124), pg_temp.mu(6124)),
   'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'the caller''s own lock older than 10 minutes is refused');
 reset role;
 select ok(pg_temp.unchanged(5124), 'a refused expired lock changes nothing');
 
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(5133)),
-  'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'a listing in review without an open attempt is refused');
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5133), pg_temp.mu(6133)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a listing in review without an open attempt is refused');
 reset role;
 select ok(pg_temp.unchanged(5133), 'a refused listing without an open attempt changes nothing');
 
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'MAYBE', 'Note', 'Private note')$$, pg_temp.mu(5128)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'MAYBE', 'Note', 'Private note')$$, pg_temp.mu(5128), pg_temp.mu(6128)),
   'P0001', 'INVALID_VERDICT_VALUE', 'an unknown verdict is refused');
 reset role;
 select ok(pg_temp.unchanged(5128), 'an unknown verdict writes no status, decision, audit row, notice or private note');
 
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'REJECT')$$, pg_temp.mu(5132)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT')$$, pg_temp.mu(5132), pg_temp.mu(6132)),
   'P0001', 'REJECTION_NOTE_REQUIRED', 'REJECT without a public note is refused');
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'REJECT', '   ', 'Private note')$$, pg_temp.mu(5132)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', '   ', 'Private note')$$, pg_temp.mu(5132), pg_temp.mu(6132)),
   'P0001', 'REJECTION_NOTE_REQUIRED', 'REJECT with a blank public note is refused');
 reset role;
 select ok(pg_temp.unchanged(5132), 'a refused rejection without a note writes nothing');
 
+-- A stale queue shows the first attempt while a newer one is open and locked by
+-- the same admin; another listing's open attempt is locked by the caller too.
+set local role authenticated;
+select throws_ok(
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', 'Stale')$$, pg_temp.mu(5134), pg_temp.mu(7134)),
+  'P0001', 'VERIFICATION_NOT_OPEN',
+  'repeating the decided first attempt''s rejection is refused while a newer attempt is open');
+select throws_ok(
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(5128), pg_temp.mu(6134)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a verdict through another listing''s open attempt is refused');
+reset role;
+select ok(pg_temp.unchanged(5134) and pg_temp.unchanged(5128),
+  'the refused verdicts leave both listings, the newer attempt and its lock, audit rows, notices and notes unchanged');
+select is(pg_temp.old_attempt(), (select v from pg_temp.old_attempt_before),
+  'the refused stale verdict leaves the decided first attempt unchanged');
+
 -- The 10-minute boundary: a lock exactly 10 minutes old is still valid ---------
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5125), 'APPROVE'), true,
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5125), pg_temp.mu(6125), 'APPROVE'), true,
   'a lock exactly 10 minutes old still allows the verdict');
 reset role;
 select is((select status::text from public.products where id = pg_temp.mu(5125)), 'verified',
   'the verdict under a 10-minute-old lock is written');
 
--- Same-status guard: only the attempt's lock is released ------------------------
+-- A listing that already has the verdict's status: the open attempt still closes
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5126), 'APPROVE', 'Note'), true,
-  'APPROVE on a verified listing returns true');
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5126), pg_temp.mu(6126), 'APPROVE', 'Note'), true,
+  'APPROVE on a verified listing with an open attempt returns true');
 reset role;
-select is(pg_temp.lock_of(5126), '-|-', 'APPROVE on a verified listing releases the attempt''s lock');
-select is(pg_temp.core(5126) || '|' || pg_temp.attempt(5126),
-  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|open|-|-|-|-' from pg_temp.sig where n = 5126),
-  'APPROVE on a verified listing leaves the listing untouched and the attempt open');
-select is(pg_temp.audits(5126), 0::bigint, 'APPROVE on a verified listing writes no audit row');
-select is(pg_temp.notices(5126), 0::bigint, 'APPROVE on a verified listing sends no notice');
+select is(pg_temp.core(5126), 'verified|' || now()::text,
+  'APPROVE on a verified listing keeps verified and stamps updated_at');
+select is(pg_temp.attempt(5126) || '|' || pg_temp.lock_of(5126),
+  'approved|' || pg_temp.mu(5101)::text || '|true|Note|-|-|-',
+  'APPROVE on a verified listing closes the attempt with the reviewer and the note and clears its lock');
+select is(pg_temp.audit_row(5126),
+  pg_temp.mu(5101)::text || '|PRODUCT_APPROVE|' || pg_temp.details(5126, 'Note', 'APPROVE'),
+  'APPROVE on a verified listing writes one PRODUCT_APPROVE audit row naming the attempt');
+select is(pg_temp.notice_row(5126),
+  pg_temp.mu(5102)::text || '|product.approved_with_note|warning|Producto Verificado|'
+    || '¡Listo! Tu producto "Test GPU" ya está a la venta. Nota del administrador: Note|/product/'
+    || pg_temp.mu(5126)::text || '|read:false|' || pg_temp.payload(5126) || '|key_ok:true',
+  'APPROVE on a verified listing sends the seller one notice keyed by the audit row');
 
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5127), 'REJECT', 'New reason'), true,
-  'REJECT on a rejected listing returns true');
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5127), pg_temp.mu(6127), 'REJECT', 'New reason'), true,
+  'REJECT on a rejected listing with an open attempt returns true');
 reset role;
-select is(pg_temp.lock_of(5127), '-|-', 'REJECT on a rejected listing releases the attempt''s lock');
-select is(pg_temp.core(5127) || '|' || pg_temp.attempt(5127),
-  (select split_part(v, '|', 1) || '|' || split_part(v, '|', 2) || '|open|-|-|-|-' from pg_temp.sig where n = 5127),
-  'REJECT on a rejected listing leaves the listing untouched and records no reason');
-select is(pg_temp.audits(5127) + pg_temp.notices(5127), 0::bigint,
-  'REJECT on a rejected listing writes no audit row and sends no notice');
+select is(pg_temp.core(5127) || '|' || pg_temp.attempt(5127) || '|' || pg_temp.lock_of(5127),
+  'rejected|' || now()::text || '|rejected|' || pg_temp.mu(5101)::text || '|true|New reason|-|-|-',
+  'REJECT on a rejected listing stamps updated_at and closes the attempt with the reason and no lock');
+select is(pg_temp.audit_row(5127),
+  pg_temp.mu(5101)::text || '|PRODUCT_REJECT|' || pg_temp.details(5127, 'New reason', 'REJECT'),
+  'REJECT on a rejected listing writes one PRODUCT_REJECT audit row naming the attempt');
+select is(pg_temp.notice_row(5127),
+  pg_temp.mu(5102)::text || '|product.rejected|error|Producto Rechazado|'
+    || 'Tu producto "Test GPU" ha sido rechazado. Motivo: New reason|/verify/'
+    || pg_temp.mu(5127)::text || '|read:false|' || pg_temp.payload(5127) || '|key_ok:true',
+  'REJECT on a rejected listing sends the seller one product.rejected notice');
 
 -- APPROVE without a public note; a blank private note is not stored -------------
 select pg_temp.remember(array[5129]);
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), 'APPROVE', null, '   '), true,
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), pg_temp.mu(6129), 'APPROVE', null, '   '), true,
   'APPROVE returns true');
 reset role;
 select is(pg_temp.core(5129), 'verified|' || now()::text,
@@ -255,22 +298,23 @@ select is(pg_temp.notice_row(5129),
 select is(pg_temp.seller_notes(), (select substring(v from 'notes:(\d+)$')::bigint from pg_temp.sig where n = 5129),
   'a blank private note is not stored');
 
--- Repeated after the decision: no open attempt, nothing written ----------------
+-- Repeated on the decided attempt: nothing written ------------------------------
 select pg_temp.remember(array[5129]);
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), 'APPROVE', 'Again', 'Again'), true,
-  'APPROVE repeated on the decided listing returns true');
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5129), pg_temp.mu(6129), 'APPROVE', 'Again', 'Again'), true,
+  'APPROVE repeated on the approved attempt returns true');
 reset role;
 select ok(pg_temp.unchanged(5129), 'the repeated APPROVE writes no attempt, status, audit row, notice or note');
 set local role authenticated;
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'REJECT', 'Too late')$$, pg_temp.mu(5129)),
-  'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'a different verdict on the decided listing is refused');
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', 'Too late')$$, pg_temp.mu(5129), pg_temp.mu(6129)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a different verdict on the approved attempt is refused');
 reset role;
+select ok(pg_temp.unchanged(5129), 'the refused different verdict writes nothing');
 
 -- APPROVE with a public note and a private note --------------------------------
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5130), 'APPROVE', '  Check the fan  ', '  Blurry photos  '), true,
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5130), pg_temp.mu(6130), 'APPROVE', '  Check the fan  ', '  Blurry photos  '), true,
   'APPROVE with notes returns true');
 reset role;
 select is(pg_temp.audit_row(5130),
@@ -291,7 +335,7 @@ select is(pg_temp.attempt(5130), 'approved|' || pg_temp.mu(5101)::text || '|true
 
 -- REJECT with a public note ----------------------------------------------------
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(5131), 'REJECT', '  Serial number missing  '), true,
+select is(public.fn_resolve_product_verdict(pg_temp.mu(5131), pg_temp.mu(6131), 'REJECT', '  Serial number missing  '), true,
   'REJECT returns true');
 reset role;
 select is(pg_temp.core(5131) || '|' || pg_temp.attempt(5131) || '|' || pg_temp.lock_of(5131),

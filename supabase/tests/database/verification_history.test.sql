@@ -6,7 +6,7 @@
 -- through the client. Runs against the local database only: `supabase start`,
 -- then `bun run test:db`.
 begin;
-select plan(100);
+select plan(108);
 
 \ir ../fixtures/money.psql
 
@@ -366,7 +366,8 @@ where id = pg_temp.open_id(79101);
 -- Lock on the open attempt ----------------------------------------------------------
 select pg_temp.as_user(79004);
 set local role authenticated;
-select is((select success from public.fn_lock_product(pg_temp.mu(79101))), true, 'the admin locks the open attempt');
+select is((select success from public.fn_lock_product(pg_temp.mu(79101), pg_temp.open_id(79101))), true,
+  'the admin locks the open attempt');
 reset role;
 select is(
   (select v.locked_by::text || '|' || (v.locked_at = now())::text from public.product_verifications v
@@ -376,24 +377,36 @@ select pg_temp.as_user(79006);
 set local role authenticated;
 select is(
   (select success::text || '|' || locked_by_username || '|' || (locked_at = now())::text
-   from public.fn_lock_product(pg_temp.mu(79101))),
+   from public.fn_lock_product(pg_temp.mu(79101), pg_temp.open_id(79101))),
   'false|money_79004|true', 'a second admin cannot take a fresh lock and learns who holds it');
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'APPROVE')$$, pg_temp.mu(79101)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$, pg_temp.mu(79101), pg_temp.open_id(79101)),
   'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'a second admin cannot decide an attempt locked by another');
 reset role;
 select is((select locked_by from public.product_verifications where id = pg_temp.open_id(79101)),
   pg_temp.mu(79004), 'the refused lock and verdict leave the first admin''s lock');
 select pg_temp.as_user(79004);
 set local role authenticated;
-select throws_ok(format($$select * from public.fn_lock_product(%L)$$, pg_temp.mu(79104)),
-  'P0001', 'VERIFICATION_NOT_OPEN', 'a listing without an open attempt cannot be locked');
+select throws_ok(format($$select * from public.fn_lock_product(%L, %L)$$, pg_temp.mu(79104), pg_temp.open_id(79103)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a listing without an open attempt cannot be locked through another listing''s attempt');
+select throws_ok(format($$select * from public.fn_lock_product(%L, %L)$$, pg_temp.mu(79101), pg_temp.open_id(79103)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a listing cannot be locked through another listing''s open attempt');
+reset role;
+select is(
+  (select coalesce(v.locked_by::text, '-') || '|' || coalesce(v.locked_at::text, '-')
+   from public.product_verifications v where v.id = pg_temp.open_id(79103))
+    || '|' || (select locked_by::text from public.product_verifications where id = pg_temp.open_id(79101)),
+  '-|-|' || pg_temp.mu(79004)::text,
+  'a lock refused for another listing''s attempt leaves both attempts as they were');
+select pg_temp.as_user(79004);
+set local role authenticated;
 
 -- Rejection -----------------------------------------------------------------------
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'REJECT', '   ')$$, pg_temp.mu(79101)),
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', '   ')$$, pg_temp.mu(79101), pg_temp.open_id(79101)),
   'P0001', 'REJECTION_NOTE_REQUIRED', 'a rejection without a public note is refused');
-select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), 'REJECT', '  Serial unreadable  ', '  Watch this seller  '),
+select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), pg_temp.open_id(79101), 'REJECT',
+  '  Serial unreadable  ', '  Watch this seller  '),
   true, 'the admin rejects the attempt');
 reset role;
 create table pg_temp.first_attempt as
@@ -429,11 +442,58 @@ select is(pg_temp.attempts(79101), 'rejected,open', 'the rejected attempt stays 
 select is(pg_temp.evidence(pg_temp.open_id(79101)), 'physical:front.jpg',
   'the new attempt has its own evidence row for the reused path');
 create table pg_temp.second_attempt as select pg_temp.open_id(79101) as id;
+-- The admin's calls below name both attempts.
+grant select on pg_temp.first_attempt, pg_temp.second_attempt to authenticated;
+
+-- A stale queue still shows the first attempt: neither the lock nor the
+-- verdict reach the new one through it (S4).
+-- status|attempts|lock of the new attempt|audit rows|notices of listing 79101.
+create function pg_temp.review_sig() returns text language sql as $$
+  select (select status::text || '|' || coalesce(updated_at::text, '-') from public.products where id = pg_temp.mu(79101))
+    || '|' || pg_temp.attempts(79101) || '|' || (
+      select coalesce(v.locked_by::text, '-') || '|' || coalesce(v.locked_at::text, '-')
+      from public.product_verifications v where v.id = (select id from pg_temp.second_attempt))
+    || '|' || (select v.decision::text || '|' || v.decided_at::text || '|' || v.public_note
+      from public.product_verifications v where v.id = (select id from pg_temp.first_attempt))
+    || '|' || (select count(*) from public.admin_audit_logs where target_id = pg_temp.mu(79101))
+    || '|' || (select count(*) from public.notifications where event_payload->>'product_id' = pg_temp.mu(79101)::text)
+    || '|' || (select count(*) from public.admin_user_notes where user_id = pg_temp.mu(79001))
+$$;
+create table pg_temp.before_stale as select pg_temp.review_sig() as v;
+select pg_temp.as_user(79004);
+set local role authenticated;
+select throws_ok(
+  format($$select * from public.fn_lock_product(%L, %L)$$, pg_temp.mu(79101), (select id from pg_temp.first_attempt)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'the decided first attempt cannot be locked while the new one is open');
+reset role;
+select is(pg_temp.review_sig(), (select v from pg_temp.before_stale),
+  'the refused stale lock leaves the new attempt unlocked and writes nothing');
+select pg_temp.as_user(79004);
+set local role authenticated;
+select is((select success from public.fn_lock_product(pg_temp.mu(79101), (select id from pg_temp.second_attempt))),
+  true, 'the admin locks the new attempt');
+reset role;
+update pg_temp.before_stale set v = pg_temp.review_sig();
+select pg_temp.as_user(79004);
+set local role authenticated;
+select throws_ok(
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', 'Stale')$$,
+    pg_temp.mu(79101), (select id from pg_temp.first_attempt)),
+  'P0001', 'VERIFICATION_NOT_OPEN',
+  'repeating the first attempt''s rejection is refused while the new attempt is open and locked by the same admin');
+select throws_ok(
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE', 'Stale', 'Stale')$$,
+    pg_temp.mu(79101), (select id from pg_temp.first_attempt)),
+  'P0001', 'VERIFICATION_NOT_OPEN',
+  'approving through the first attempt is refused while the new attempt is open and locked by the same admin');
+reset role;
+select is(pg_temp.review_sig(), (select v from pg_temp.before_stale),
+  'the refused stale verdicts leave the new attempt open and locked, the listing, audit rows, notices and notes unchanged');
 
 select pg_temp.as_user(79004);
 set local role authenticated;
-select is((select success from public.fn_lock_product(pg_temp.mu(79101))), true, 'the admin locks the new attempt');
-select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), 'APPROVE', '  Clean card  '), true,
+select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), (select id from pg_temp.second_attempt),
+  'APPROVE', '  Clean card  '), true,
   'the admin approves the new attempt');
 reset role;
 select is(
@@ -457,11 +517,16 @@ select is(pg_temp.attempts(79101), 'rejected,approved', 'both decisions are kept
 -- A repeated identical verdict after the decision writes nothing.
 select pg_temp.as_user(79004);
 set local role authenticated;
-select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), 'APPROVE'), true,
-  'repeating APPROVE on the decided listing returns true');
+select is(public.fn_resolve_product_verdict(pg_temp.mu(79101), (select id from pg_temp.second_attempt), 'APPROVE'),
+  true, 'repeating APPROVE on the approved attempt returns true');
 select throws_ok(
-  format($$select public.fn_resolve_product_verdict(%L, 'REJECT', 'Late')$$, pg_temp.mu(79101)),
-  'P0001', 'LOCK_EXPIRED_OR_STOLEN', 'a different verdict without an open attempt is refused');
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'REJECT', 'Late')$$,
+    pg_temp.mu(79101), (select id from pg_temp.second_attempt)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a different verdict on the approved attempt is refused');
+select throws_ok(
+  format($$select public.fn_resolve_product_verdict(%L, %L, 'APPROVE')$$,
+    pg_temp.mu(79101), pg_temp.mu(79199)),
+  'P0001', 'VERIFICATION_NOT_OPEN', 'a verdict on an unknown attempt is refused');
 reset role;
 select is(
   pg_temp.attempts(79101) || '|' || (select count(*) from public.admin_audit_logs where target_id = pg_temp.mu(79101))

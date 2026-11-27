@@ -4130,7 +4130,7 @@ export type Database = {
         }[];
       };
       fn_lock_product: {
-        Args: { p_product_id: string };
+        Args: { p_product_id: string; p_verification_id: string };
         Returns: {
           locked_at: string;
           locked_by_username: string;
@@ -4451,6 +4451,7 @@ export type Database = {
           p_product_id: string;
           p_public_note?: string;
           p_verdict: string;
+          p_verification_id: string;
         };
         Returns: boolean;
       };
