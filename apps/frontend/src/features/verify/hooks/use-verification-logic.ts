@@ -34,6 +34,12 @@ export const useVerificationLogic = (productId?: string) => {
   const [score, setScore] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const submittingRef = useRef(false);
+  // Stored paths of the proofs the form shows; an untouched proof is resubmitted
+  // with these, so the attempt records exactly what the seller saw.
+  const displayedProofs = useRef<{
+    physicalPath: string | undefined;
+    performancePath: string | undefined;
+  }>({ physicalPath: undefined, performancePath: undefined });
   const [status, setStatus] = useState<ProductStatus>('pending_verification');
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
 
@@ -74,6 +80,10 @@ export const useVerificationLogic = (productId?: string) => {
       }
 
       const latest = readLatestAttempt(attempt);
+      displayedProofs.current = {
+        physicalPath: latest.physicalPath,
+        performancePath: latest.performancePath,
+      };
       setCategory(data.category as ProductCategory);
       setStatus(data.status as ProductStatus);
       setRejectionReason(latest.rejectionReason);
@@ -137,19 +147,13 @@ export const useVerificationLogic = (productId?: string) => {
     setIsUploading(true);
     try {
       // Remote (http) URIs are proofs already stored; only new local files are uploaded.
-      // The latest attempt is re-read so an untouched proof keeps its path.
-      const { data: attempt, error: readError } =
-        await fetchLatestAttempt(productId);
-      if (readError) throw readError;
-      const previous = readLatestAttempt(attempt);
-
-      let physicalPath = previous.physicalPath;
+      let physicalPath = displayedProofs.current.physicalPath;
       if (physicalUri && !physicalUri.startsWith('http')) {
         physicalPath = await uploadProof(physicalUri, 'physical');
       }
 
       const { requiresBenchmark } = resolveVerificationRequirements(category);
-      let performancePath = previous.performancePath;
+      let performancePath = displayedProofs.current.performancePath;
       if (performanceUri && !performanceUri.startsWith('http')) {
         performancePath = await uploadProof(
           performanceUri,

@@ -284,8 +284,15 @@ describe('verification hook fails closed', () => {
     expect(hook).toContain('reload');
   });
 
-  it('aborts when the latest attempt cannot be re-read', () => {
-    expect(hook).toContain('if (readError) throw readError;');
+  it('resubmits the proof paths of the attempt the form displayed, never a re-read one', () => {
+    // The only read of the latest attempt is the load; submit reuses its paths.
+    expect(hook.split('fetchLatestAttempt(').length - 1).toBe(1);
+    expect(hook).toContain(
+      'let physicalPath = displayedProofs.current.physicalPath;',
+    );
+    expect(hook).toContain(
+      'let performancePath = displayedProofs.current.performancePath;',
+    );
   });
 
   it('fails the load when the latest attempt cannot be read', () => {
