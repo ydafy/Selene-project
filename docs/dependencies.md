@@ -155,7 +155,7 @@ The Supabase CLI and Docker Desktop run the local stack that every SQL, Edge Fun
 
 ### Supabase CLI
 
-The source of truth is the `version:` of the Supabase setup-cli step in `.github/workflows/ci.yml` (job `db-test`). Your machine runs the same version, installed with Scoop. Check it with `supabase --version`. Run `scoop hold supabase` once, so `scoop update *` never moves the CLI to a new major behind your back.
+The source of truth is the `version:` of the Supabase setup-cli step in `.github/workflows/ci.yml` (job `db-test`). `.github/workflows/deploy-staging.yml` pins the same version. Your machine runs the same version, installed with Scoop. Check it with `supabase --version`. Run `scoop hold supabase` once, so `scoop update *` never moves the CLI to a new major behind your back.
 
 The weekly report's **Supabase CLI** section compares the pin with the latest release on npm. It flags a release once it is 3 days old, links its release notes, and marks a new major. It fails when no setup-cli step pins an exact version, or when two steps pin different ones.
 
@@ -164,7 +164,7 @@ To change the CLI version:
 1. Read the release notes. For a major, also read the migration guide the notes link, and do the upgrade in its own worktree and commit.
 2. Search the repository for every command and flag the notes change: `git grep -n "supabase "`. Fix the scripts and docs in the same commit.
 3. For a major, run `supabase stop` in every worktree first. A major can rename the local containers, and the old stack would keep running beside the new one.
-4. Change the `version:` in `.github/workflows/ci.yml`.
+4. Change the `version:` in `.github/workflows/ci.yml` and `.github/workflows/deploy-staging.yml`.
 5. Install the same version locally: `scoop unhold supabase`, `scoop update supabase`, `scoop hold supabase`. If the latest release is newer than the one you pinned, run `scoop uninstall supabase` and `scoop install supabase@<version>` instead.
 6. Run `supabase start`, `supabase db reset` and `bun run test:db`. CI's `db-test` job proves the pin on the pull request.
 

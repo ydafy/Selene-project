@@ -34,11 +34,15 @@ A cron-invoked function runs with `verify_jwt = false` in `supabase/config.toml`
 
 ## Deploy and drift check
 
-Deploy Edge Functions only from `main`, never from a worktree or an unmerged branch: the deployed code must match the repository. The maintainer deploys (root `AGENTS.md`, "Never"). The one exception is a vulnerability fix, deployed from the advisory's private fork just before it merges (`docs/findings.md`, "Report a vulnerability").
+Edge Functions reach staging only through `.github/workflows/deploy-staging.yml`. After CI passes on a push to `main`, it runs `supabase functions deploy --use-api --yes` with no function name, which deploys every directory in `supabase/functions/` with the `verify_jwt` flags of `supabase/config.toml`. A `_shared/` change therefore reaches every function. Never deploy a function by hand (root `AGENTS.md`, "Never"). The one exception is a vulnerability fix, which the maintainer deploys from the advisory's private fork just before it merges (`docs/findings.md`, "Report a vulnerability").
 
-Check the remote against the repository through the Supabase MCP (read-only):
+To roll back, run the workflow from the **Actions** tab (**Run workflow**) with an earlier commit of `main` in `ref`. That run deploys the commit's functions and pushes no migration. Fix a bad migration with a new one.
 
-1. `list_edge_functions`: the slugs must be exactly the directories in `supabase/functions/` except `_shared/` and `__tests__/`, and each `verify_jwt` must match `supabase/config.toml` (a function missing there has `verify_jwt = true`).
+The workflow never passes `--prune`, so a function removed from the repository stays deployed until the maintainer deletes it with `supabase functions delete <name>`. Until then, the drift check fails every run.
+
+After the deploy, the drift check (`scripts/ci/staging-drift.ts`) fails the run when the deployed slugs differ from the directories in `supabase/functions/` except `_shared/` and `__tests__/`, or the remote migration history differs from `supabase/migrations/`. It does not compare `verify_jwt` or cron jobs. Check those through the Supabase MCP (read-only):
+
+1. `list_edge_functions`: each `verify_jwt` must match `supabase/config.toml` (a function missing there has `verify_jwt = true`).
 2. `execute_sql` with `select jobname, schedule, active from cron.job order by jobname`: the names and schedules must match the jobs in `supabase/schemas/_cluster/misc.sql`, and every job is active.
 
 Classify a difference as `../AGENTS.md`, "Schema drift check", step 3, describes.

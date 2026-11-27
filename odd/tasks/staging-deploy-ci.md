@@ -5,7 +5,7 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
 
 ## Specs
 
-- S1. Issue #314 scope: "A GitHub Actions job on merge to `main`, behind a protected environment with manual approval: `supabase link`, `supabase db push`, `supabase functions deploy`, with the pinned CLI." Done when: "A merge to `main` deploys exactly what the repository holds, and nothing is deployed by hand." For staging the maintainer chose "Solo, tras el CI verde (Recomendado)" (L5): the job starts when the `CI` workflow succeeds on a push to `main`, with no manual approval. The environment `staging` accepts deployments from `main` only. Manual approval applies to production, at go-live.
+- S1. Issue #314 scope: "A GitHub Actions job on merge to `main`, behind a protected environment with manual approval: `supabase link`, `supabase db push`, `supabase functions deploy`, with the pinned CLI." Done when: "A merge to `main` deploys exactly what the repository holds, and nothing is deployed by hand." For staging the maintainer chose "Solo, tras el CI verde (Recomendado)" (L5), and "Workflow reutilizable llamado desde ci.yml (Recomendado)" (L6): `ci.yml` calls the reusable `deploy-staging.yml` as its last job on a push to `main`, after every other job passed, with no manual approval and no `workflow_run` trigger. Runs of `ci.yml` on `main` are never cancelled midway. The environment `staging` accepts deployments from `main` only. Manual approval applies to production, at go-live.
 - S2. Every run deploys every function in `supabase/functions/` (maintainer: "Todas (Recomendado)", L3), so a `_shared` change reaches every function. It never passes `--prune` and never runs `supabase config push`.
 - S3. Each run writes its migration dry run to the job summary before `supabase db push --remote --yes`. After the deploy, a check fails the run when the remote migration versions differ from the files in `supabase/migrations/`, or the deployed function slugs differ from the function directories (excluding `_shared` and `__tests__`). The comparison logic has unit tests.
 - S4. The workflow also runs by hand (`workflow_dispatch`) for a chosen commit of `main`, which redeploys an earlier commit's functions (rollback). A bad migration is fixed with a new migration, never reverted by the workflow.
@@ -16,8 +16,8 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
 
 ## Tasks
 
-- T1. S3: drift comparison script and its unit tests. Route: worker. Commit: pending.
-- T2. S1, S2, S4, S5, S6: workflow `deploy-staging.yml` and the docs. Route: worker. Risk: items 2 and 5 (credentials, deploy). Own commit. Commit: pending.
+- T1. S3: drift comparison script and its unit tests. Route: worker. Commit: 22be39ca.
+- T2. S1, S2, S4, S5, S6: workflow `deploy-staging.yml` and the docs. Route: worker. Risk: items 2 and 5 (credentials, deploy). Own commit. Commit: `ci(deploy): deploy staging from CI on merge to main`.
 - T3. S7: maintainer setup, first run, readback through the Supabase MCP. Route: inline, with the maintainer. Commit: none.
 - T4. S8: Idea issue. Route: inline. Commit: none.
 
@@ -28,3 +28,4 @@ Staging is the current project `acoiclkeymgtlwcxilun`. Production is a new proje
 - L3. Maintainer decisions: integration "Desconectarla (Recomendado)"; trigger "Tras el CI verde de main + tu aprobación (Recomendado)"; functions "Todas (Recomendado)".
 - L4. Research (2026-11-26): Supabase's "Managing Environments" guide uses two projects and GitHub Actions, "rather than deploying from your local machine", with `supabase link` and `supabase db push --yes --remote`, a scoped personal access token, and no approval step. Trunk-based teams promote the same commit from staging to production, with approval on production through GitHub environments.
 - L5. Maintainer: staging "Solo, tras el CI verde (Recomendado)" (replaces the approval choice in L3); plan "Sí, empezá".
+- L6. The parent's readback of T2 added a guard for fork repositories and skipped runs for a commit behind the head of `main`. zizmor reports `workflow_run` as `dangerous-triggers`, so the parent proposed a reusable workflow called from `ci.yml` instead. Maintainer: "Workflow reutilizable llamado desde ci.yml (Recomendado)". That is also the maintainer's approval for the `ci.yml` change: a final `deploy-staging` job, and `cancel-in-progress` only for pull requests.

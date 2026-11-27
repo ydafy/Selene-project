@@ -380,3 +380,19 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 - `repo-checks` joins the required checks of the `main` ruleset; the maintainer adds it. This extends the 2026-11-09 entry, which requires every job in `.github/workflows/ci.yml`.
 
 **Consequence:** A workflow change that adds a risky pattern fails CI on its pull request. A layer that catches nothing real in its first 2-3 months is removed, as the roadmap rule for new test layers says. The weekly report does not track the two binaries yet (#687).
+
+## 2026-11-26: Staging Deploys From CI on Every Merge to `main`
+
+**Context:** Migrations reached staging through `supabase db push` run by the agent after a green light (2026-11-10), and Edge Functions were deployed by hand. On 2026-11-26 the staging migrations matched the repository, but many functions had been deployed on 2026-11-12 and 2026-11-13 from a worktree or `/tmp` paths, before `supabase/functions/_shared/` changed, so staging did not run the code of `main`. The Supabase GitHub integration was still installed, although `docs/go-live.md` said it had been disconnected. Supabase's "Managing Environments" guide deploys from GitHub Actions with `supabase link` and `supabase db push`, rather than from a local machine (#314).
+
+**Decision (maintainer, 2026-11-26):**
+
+- `.github/workflows/deploy-staging.yml` deploys staging with no manual approval. `.github/workflows/ci.yml` calls it as its last job (`deploy-staging`) on a push to `main`, after every other job passed, so it deploys the commit CI checked. Its runs on `main` are no longer cancelled by a newer push, so a deploy never stops midway, and a run for a commit behind the head of `main` skips the deploy. It writes the migration dry run to the run's summary, runs `supabase db push --remote --yes`, deploys every function, and fails on drift (`scripts/ci/staging-drift.ts`). It never passes `--prune` and never runs `supabase config push`.
+- The credentials live in the GitHub environment `staging`, which accepts deployments from `main` only: a personal access token scoped to staging, the staging database password, and the project ref. One deploy runs at a time.
+- A manual run of an earlier commit of `main` rolls functions back and pushes no migration. A bad migration is fixed with a new one.
+- A pull request that adds a secret, Vault value, webhook, or Dashboard setting applies it on staging before the merge.
+- The Supabase GitHub integration is disconnected. The workflow is the only deploy path, and agents never deploy by hand.
+- A reusable workflow called from `.github/workflows/ci.yml` replaces a `workflow_run` trigger. zizmor reports `workflow_run` as `dangerous-triggers`, because a pull request from a fork can reach a job that holds secrets. With `workflow_call`, pull requests never reach the deploy job, and no finding needs an exception.
+- Production gets its own environment `production` at go-live, with required reviewers and its own scoped token, password, and ref (`docs/go-live.md`, "Staging and production").
+
+**Consequence:** Staging runs exactly what `main` holds, and the run's summary records each deploy. This replaces the 2026-11-10 entry for staging: the agent no longer asks for a green light to push a merged migration. A vulnerability fix is still deployed by hand from the advisory's fork (`docs/findings.md`, "Report a vulnerability").

@@ -81,7 +81,8 @@ Ask first:
 Never:
 
 - Point Bruno, `stripe:listen`, or data-mutating SQL at the remote project.
-- Apply migrations, deploy functions, change secrets, or configure cron or webhooks, unless the maintainer asks for that specific action.
+- Apply migrations or deploy functions by hand. `.github/workflows/deploy-staging.yml` deploys `main` to staging after CI passes. A vulnerability fix follows `docs/findings.md`, "Report a vulnerability".
+- Change secrets or configure cron or webhooks, unless the maintainer asks for that specific action.
 - Add AI attribution or `Co-Authored-By` lines to PRs or issues (`scripts/ci/check-commit-msg.ts` rejects them in commits).
 
 ## Skills

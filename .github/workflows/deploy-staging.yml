@@ -1,0 +1,166 @@
+# Deploys main to the staging project. ci.yml calls it as its last job on a push
+# to main, after every other job passed, so it deploys the commit CI checked:
+# the migration dry run, `supabase db push`, every Edge Function, then the drift
+# check (scripts/ci/staging-drift.ts). A manual run of an earlier commit of main
+# redeploys that commit's functions (rollback) and pushes no migration: a bad
+# migration is fixed with a new one. Never add --prune or `supabase config push`
+# here (odd/tasks/staging-deploy-ci.md).
+name: Deploy staging
+
+on:
+  # ci.yml passes no input, so a called run deploys the commit CI checked.
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit of main to deploy. Empty deploys the commit CI checked.
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit of main to deploy (SHA or ref). Empty deploys the head of main.
+        required: false
+        type: string
+
+permissions: {}
+
+jobs:
+  deploy:
+    # A called run inherits the caller's event (a push to main); a manual run
+    # must start from main. The environment also accepts main only.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The environment holds the secrets and accepts deployments from main only.
+    environment: staging
+    permissions:
+      contents: read
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    defaults:
+      run:
+        # Explicit bash runs every script with -e and pipefail.
+        shell: bash
+    steps:
+      # Full history, so the next step can check that the commit is on main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      # A manual run of a commit behind the head of main is a rollback. A run
+      # called by CI for a commit behind the head of main is skipped: a later
+      # merge's CI run deploys that newer commit.
+      - name: Check that the commit is on main
+        id: target
+        env:
+          EVENT: ${{ github.event_name }}
+          TARGET: ${{ inputs.ref || github.sha }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse --verify --end-of-options "${TARGET}^{commit}")
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$TARGET is not a commit of main."
+            exit 1
+          fi
+          if [ "$sha" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::The checkout is not $sha."
+            exit 1
+          fi
+          head=$(git rev-parse origin/main)
+          rollback=false
+          skip=false
+          if [ "$sha" != "$head" ]; then
+            if [ "$EVENT" = workflow_dispatch ]; then
+              rollback=true
+            else
+              skip=true
+            fi
+          fi
+          echo "rollback=$rollback" >> "$GITHUB_OUTPUT"
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+          {
+            if [ "$skip" = true ]; then
+              echo "Skipped: \`$sha\` is behind the head of main (\`$head\`), whose run deploys it."
+            else
+              echo "Deploying \`$sha\`."
+            fi
+            if [ "$rollback" = true ]; then
+              echo "Rollback: this run deploys the functions of this commit and pushes no migration."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      # Same CLI version as ci.yml (docs/dependencies.md, "Supabase CLI").
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.1.0
+      # The drift check imports nothing from node_modules, so no install step.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          no-cache: true
+      - name: Link the staging project
+        if: steps.target.outputs.skip != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Migration dry run
+        if: steps.target.outputs.skip != 'true' && steps.target.outputs.rollback != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          status=0
+          supabase db push --remote --dry-run > "$RUNNER_TEMP/dry-run.txt" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/dry-run.txt"
+          {
+            echo '## Migration dry run'
+            echo '```'
+            cat "$RUNNER_TEMP/dry-run.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - name: Apply migrations
+        if: steps.target.outputs.skip != 'true' && steps.target.outputs.rollback != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push --remote --yes
+      # No name deploys every function in supabase/functions/; each verify_jwt
+      # comes from supabase/config.toml. --use-api bundles on Supabase's side,
+      # without Docker.
+      - name: Deploy every Edge Function
+        if: steps.target.outputs.skip != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy --use-api --yes
+      # A rollback compares with the head of main: the remote keeps main's
+      # migrations, and functions added after the rolled-back commit stay deployed.
+      - name: Check drift
+        if: steps.target.outputs.skip != 'true'
+        env:
+          ROLLBACK: ${{ steps.target.outputs.rollback }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          root=.
+          if [ "$ROLLBACK" = true ]; then
+            root="$RUNNER_TEMP/main"
+            mkdir -p "$root"
+            git archive origin/main supabase/migrations supabase/functions | tar -x -C "$root"
+          fi
+          supabase migration list --remote --output-format json > "$RUNNER_TEMP/migrations.json"
+          supabase functions list --output-format json > "$RUNNER_TEMP/functions.json"
+          status=0
+          bun scripts/ci/staging-drift.ts --root "$root" \
+            --migrations "$RUNNER_TEMP/migrations.json" \
+            --functions "$RUNNER_TEMP/functions.json" > "$RUNNER_TEMP/drift.txt" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/drift.txt"
+          {
+            echo '## Drift check'
+            echo '```'
+            cat "$RUNNER_TEMP/drift.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
