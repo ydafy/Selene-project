@@ -40,11 +40,11 @@ Run the steps in this order:
    1. Commit 1 updates every row under "Safe updates (patch and minor)".
    2. Commit 2 runs `npx expo install --fix` from `apps/frontend` for the rows under "Expo-pinned packages with a newer version in range".
 
-   Never change an Expo-pinned package outside `npx expo install --fix`. Never change a held-back package.
+   Never change an Expo-pinned package outside `npx expo install --fix`. Never apply a held-back major. A held-back package still gets its patch and minor updates in commit 1.
 
 3. Run the judgment lane. Review each major with `selene-dependency-review`. An Expo SDK upgrade is also reviewed there, but it keeps its own procedure (`odd/tasks/expo-sdk-upgrade.md`) and its own worktree.
    - If the recommendation is "update now", make one commit per major. Packages that must move together share one commit. Fix every breaking change the changelog lists.
-   - If the recommendation is "wait", hold the major with its reason: add it to `HELD_BACK` in `scripts/ci/dependency-report.ts` and write the case in "When not to update".
+   - If the recommendation is "wait", hold the major with its reason: add it to `HELD_BACK` in `scripts/ci/dependency-report.ts` and write the case in "When not to update". `@types/node` needs no entry: its hold follows `.nvmrc`.
 4. Run the checks once over the whole branch. Run the full set every time. Judge each check by its exit code and read every error it prints: a check read through `tail` can hide errors above the cut.
    - `bun run format:check`
    - `bun run typecheck`
