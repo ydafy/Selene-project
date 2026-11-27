@@ -104,7 +104,7 @@ Install `pg_net` in the `extensions` schema, not `public` (security advisor `ext
 
 ## 3. Database
 
-1. Link the new project. Before the first `supabase db push`, create the Vault secrets (section 5), set the Edge Function secrets (section 6), and deploy the functions (section 7): the push also creates the cron jobs (section 8), which read Vault by name and call the functions. Then run the first push through the production deploy workflow ("Staging and production"), which runs `supabase db push --remote`. It applies the baseline and every later migration in version order and records them in the remote migration history.
+1. Link the new project. Before the first deploy, create the Vault secrets (section 5) and set the Edge Function secrets (section 6). Then run the first deploy through the production deploy workflow ("Staging and production"). It runs `supabase db push --remote`, which also creates the cron jobs (section 8), and then deploys the functions (section 7). Until the function step finishes, a few minutes, the HTTP cron jobs call functions that do not exist yet and fail. A new project has no users, so accept that window. After the run, check that the next runs of each job answer 2xx (section 8, "HTTP job results"). It applies the baseline and every later migration in version order and records them in the remote migration history.
 2. Run `get_advisors` (security and performance) and resolve new findings.
 3. Run the schema drift check (`supabase/AGENTS.md`, "Schema drift check"). The types need no step: `bun run db:types` generates them from the local database, and CI checks them against the migrations.
 
