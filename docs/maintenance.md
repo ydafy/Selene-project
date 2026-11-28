@@ -80,17 +80,26 @@ Each system says where its data comes from, which commands to run, and when it n
 
 The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-review`.
 
-1. Check that both workflows ran since Sunday:
+1. Check that both workflows did their work since Sunday. List the scheduled and the manual runs separately, so the audit's `push` runs never hide them:
 
    ```bash
-   gh run list --workflow dependency-audit.yml -L 10 --json event,createdAt,status,conclusion
-   gh run list --workflow dependency-report.yml -L 5 --json event,createdAt,status,conclusion
+   for wf in dependency-audit.yml dependency-report.yml; do
+     for ev in schedule workflow_dispatch; do
+       gh run list --workflow "$wf" --event "$ev" -L 3 --json databaseId,createdAt,status
+     done
+   done
    ```
 
-   Compare each `createdAt` (UTC) with this week's Sunday. Only a `schedule` run or a manual `workflow_dispatch` run counts; the audit's `push` runs do not. A manual run counts too, so a second session the same week does not start the workflows again.
+   For each run created since this week's Sunday (compare `createdAt`, in UTC), read its jobs:
+
+   ```bash
+   gh run view <databaseId> --json jobs --jq '.jobs[] | {name, conclusion}'
+   ```
+
+   A run counts only when its work job (`audit` or `report`) ran. A backup run that found an earlier run skips that job and still ends in `success`, so never judge a run by its own conclusion. A manual run counts too, so a second session the same week does not start the workflows again.
    - If a run is still `in_progress` or `queued`, wait for it.
-   - If either workflow has no counting run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
-   - If the report's latest counting run did not end in `success`, start it again and wait for it: a failed run leaves last week's report in the issue. A failed audit is a decision, not a rerun.
+   - If a workflow has no run since Sunday whose work job ran, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   - If the latest `report` job did not end in `success`, start the report again and wait for it: a failed run leaves last week's report in the issue. A failed `audit` job is a decision, not a rerun.
 
 2. Read the report issue:
 
