@@ -8,10 +8,10 @@ on:
   schedule:
     # Off the top of the hour: GitHub delays or drops scheduled runs under load,
     # most often at minute 0.
-    - cron: '17 14 * * 1' # Mondays 14:17 UTC (08:17 in Mexico City)
+    - cron: '17 14 * * 0' # Sundays 14:17 UTC (08:17 in Mexico City); GitHub has started it 5 to 12 hours late
     # Backup: runs the audit only when no other scheduled run started in the last
     # 24 hours (scripts/ci/scheduled-backup.ts). Keep it equal to BACKUP_CRON below.
-    - cron: '23 20 * * 1' # Mondays 20:23 UTC (14:23 in Mexico City)
+    - cron: '23 20 * * 0' # Sundays 20:23 UTC (14:23 in Mexico City)
   workflow_dispatch:
   push:
     branches: [main]
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  BACKUP_CRON: '23 20 * * 1'
+  BACKUP_CRON: '23 20 * * 0'
 
 jobs:
   # Every trigger except the backup cron always runs the audit.
