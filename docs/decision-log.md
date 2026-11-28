@@ -400,7 +400,7 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 
 ## 2026-11-27: Weekly Dependency Workflows Run on Sunday
 
-**Context:** `.github/workflows/dependency-audit.yml` and `.github/workflows/dependency-report.yml` were scheduled for Monday 14:17 and 14:47 UTC (08:17 and 08:47 in Mexico City). From 2026-10-26 to 2026-11-23 GitHub started every primary run 5 to 12 hours late, between 13:46 and 19:42 Mexico City time on Monday, and dropped none. The Monday morning routine found no run and started both by hand, and the late scheduled run then emailed a second time (#718).
+**Context:** `.github/workflows/dependency-audit.yml` and `.github/workflows/dependency-report.yml` were scheduled for Monday 14:17 and 14:47 UTC (08:17 and 08:47 in Mexico City). From 2026-10-26 to 2026-11-23 GitHub started every scheduled primary run of the audit 5 to 12 hours late, between 13:46 and 19:42 Mexico City time on Monday. The report's primaries were as late (19:54 on 2026-11-23), and its 2026-11-02 primary was dropped. A routine that ran before them found no run and started both by hand, and the late scheduled run then emailed a second time (2026-11-16, #718).
 
 **Decision (maintainer, 2026-11-27):** All four crons move to Sunday at the same UTC times: the primaries at 14:17 and 14:47, the backups at 20:23 and 20:53. The backup check (`scripts/ci/scheduled-backup.ts`) is unchanged.
 
