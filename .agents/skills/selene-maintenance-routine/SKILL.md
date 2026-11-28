@@ -30,7 +30,7 @@ Load when the maintainer asks for the weekly or monthly routine, for example "Ho
 4. Run the weekly checks A to E. Run independent checks in parallel. Add the monthly checks when they apply.
 5. Pick the topic of the week as the page says.
 6. Write the report in the page's format: decisions first, detail below.
-7. Ask the decisions as the page's "Run a session", step 4, says: the ones easy to undo together in one questionnaire, the ones hard to undo on their own.
+7. Ask the decisions as the page's "Run a session", step 4, says: the ones easy to undo together in questionnaires of up to four questions, the ones hard to undo on their own.
 8. Record each decision as the page says.
 
 ## Dependency routine

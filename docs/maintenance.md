@@ -16,7 +16,7 @@ The dependency routine is a separate session with its own rule. When the maintai
 1. Check the tools. Run "Check the tools before you collect" before any other check.
 2. Collect. Run every check below in order, then look at the topic of the week ("Pick the topic of the week"). Change nothing.
 3. Report. Write the report in the format of "Report format", with the topic's observations in it.
-4. Decide. Ask the decisions that are easy to undo together, in one questionnaire of up to four questions. Ask a decision that is hard to undo on its own: one that costs more than a revert PR to undo, touches security, money, a merge, or a deletion, or affects another active worktree. If a decision in a questionnaire turns out to be hard to undo, take it out and ask it on its own. A question the maintainer leaves unanswered means wait, never act.
+4. Decide. Ask the decisions that are easy to undo together, in questionnaires of up to four questions each. A fifth easy decision goes in a second questionnaire, never into a deferred issue. Ask a decision that is hard to undo on its own: one that costs more than a revert PR to undo, touches security, money, a merge, or a deletion, or affects another active worktree. If a decision in a questionnaire turns out to be hard to undo, take it out and ask it on its own. A question the maintainer leaves unanswered means wait, never act.
 5. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
 
 ## Check the tools before you collect
@@ -181,24 +181,24 @@ untaken=$(date -d '14 days ago' +%F)
 1. List the agent mistakes of the week, then read each one with `gh issue view <number> --comments`:
 
    ```bash
-   gh issue list --state all --label agent-mistake --search "updated:>=$since" --json number,title,state,createdAt
+   gh issue list --state all --label agent-mistake --search "updated:>=$since" --limit 200 --json number,title,state,createdAt
    ```
 
-   A new issue is a first occurrence. A new comment on an older issue means the mistake repeated.
+   An issue without comments is a first occurrence. A comment with new evidence means the mistake repeated, even on an issue opened this week. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
 
 2. List the repeated mistakes whose guard is still missing:
 
    ```bash
-   gh issue list --state open --label agent-mistake --search "-linked:pr" --json number,title,comments
+   gh issue list --state open --label agent-mistake --search "-linked:pr" --limit 200 --json number,title,comments
    ```
 
-   An issue with a comment has repeated. Its guard has not landed while no PR links it. This closes the loop on the guards earlier sessions approved.
+   An issue with a comment with new evidence has repeated. Its guard has not landed while no PR links it. Step 1 covers the repeated issues that already have a linked PR. This closes the loop on the guards earlier sessions approved.
 
 3. List the tooling findings of the week, and the ones nobody took in 14 days:
 
    ```bash
-   gh issue list --state open --label finding --label area:tooling --search "created:>=$since" --json number,title
-   gh issue list --state open --label finding --label area:tooling --search "-linked:pr created:<$untaken" --json number,title,createdAt
+   gh issue list --state open --label finding --label area:tooling --search "created:>=$since" --limit 200 --json number,title
+   gh issue list --state open --label finding --label area:tooling --search "-linked:pr created:<$untaken" --limit 200 --json number,title,createdAt
    ```
 
 4. Ask the maintainer: "¿Qué error de un agente corregiste más de una vez esta semana?" No command sees these. For each answer with no `agent-mistake` issue, open one as `docs/findings.md` describes.
