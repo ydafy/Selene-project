@@ -83,11 +83,11 @@ The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-
 1. Check that both workflows ran since Sunday:
 
    ```bash
-   gh run list --workflow dependency-audit.yml -L 1
-   gh run list --workflow dependency-report.yml -L 1
+   gh run list --workflow dependency-audit.yml --event schedule -L 2 --json createdAt,conclusion
+   gh run list --workflow dependency-report.yml --event schedule -L 2 --json createdAt,conclusion
    ```
 
-   If either has no scheduled run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   Compare each `createdAt` (UTC) with this week's Sunday. A manual run or the audit's push run does not count. If either has no scheduled run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
 
 2. Read the report issue:
 
