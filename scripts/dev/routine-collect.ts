@@ -492,6 +492,341 @@ export async function collectBacklog(
   return section.done();
 }
 
+const REPO_API = 'repos/ydafy/Selene-project';
+// `gh api` without --paginate returns one page of up to 30 items.
+const API_PAGE = 30;
+const LIST_LIMIT = 200;
+const PAGE_REACHED = `the list reached GitHub's page size of ${API_PAGE}; add --paginate.`;
+const LIMIT_REACHED = `the list reached its limit of ${LIST_LIMIT}; raise --limit.`;
+
+function plural(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}
+
+// Whole UTC days from a timestamp to a date.
+function daysBetween(from: string, to: string): number {
+  const time = Date.parse(from);
+  if (Number.isNaN(time)) throw new Error(`${from} is not a date`);
+  return Math.round(
+    (Date.parse(to) - Date.parse(isoDate(new Date(time)))) / DAY_MS,
+  );
+}
+
+// Fails closed: a list as long as its limit may have been cut.
+function capped<T>(
+  limit: number,
+  reached: string,
+  parse: (output: string) => T[],
+): (output: string) => T[] {
+  return (output) => {
+    const items = parse(output);
+    if (items.length >= limit) throw new Error(reached);
+    return items;
+  };
+}
+
+function parseCount(output: string): number {
+  const value = output.trim();
+  if (!/^\d+$/.test(value)) throw new Error('the output is not a count');
+  return Number(value);
+}
+
+// docs/maintenance.md, "B. Security". The --jq filter keeps only the ID, the
+// severity, and the creation date, so an advisory description never reaches
+// this script.
+export async function collectSecurity(
+  run: Runner,
+  dates: RoutineDates,
+): Promise<Section> {
+  const section = new SectionBuilder(run);
+  const drafts = await section.read(
+    [
+      'gh',
+      'api',
+      `${REPO_API}/security-advisories?state=draft`,
+      '--jq',
+      '[.[] | {ghsa_id, severity, created_at}]',
+    ],
+    capped(API_PAGE, PAGE_REACHED, (output) =>
+      jsonList(jsonValue(output)).map((draft) => {
+        const severity =
+          typeof draft.severity === 'string' ? draft.severity : 'no severity';
+        const age = daysBetween(text(draft, 'created_at'), dates.today);
+        return `${text(draft, 'ghsa_id')} (${severity}, ${age} days old)`;
+      }),
+    ),
+  );
+  if (drafts) section.list('Draft advisories', drafts);
+
+  const alerts = await section.read(
+    [
+      'gh',
+      'api',
+      `${REPO_API}/secret-scanning/alerts?state=open`,
+      '--jq',
+      'length',
+    ],
+    (output) => {
+      const value = parseCount(output);
+      if (value >= API_PAGE) throw new Error(PAGE_REACHED);
+      return value;
+    },
+  );
+  if (alerts !== undefined)
+    section.lines.push(`Open secret scanning alerts: ${alerts}.`);
+  return section.done();
+}
+
+// docs/maintenance.md, "D. App health", step 1. A failed run is explained when a
+// later run of the same workflow on main succeeded; reading the failed logs
+// stays with the agent.
+export async function collectAppHealth(
+  run: Runner,
+  dates: RoutineDates,
+): Promise<Section> {
+  const section = new SectionBuilder(run);
+  const runs = await section.read(
+    [
+      'gh',
+      'run',
+      'list',
+      '--branch',
+      'main',
+      '--created',
+      `>=${dates.since}`,
+      '--limit',
+      String(LIST_LIMIT),
+      '--json',
+      'databaseId,workflowName,displayTitle,createdAt,conclusion',
+    ],
+    capped(LIST_LIMIT, LIMIT_REACHED, (output) =>
+      jsonList(jsonValue(output))
+        .map((item) => ({
+          id: count(item, 'databaseId'),
+          workflow: text(item, 'workflowName'),
+          title: text(item, 'displayTitle'),
+          createdAt: text(item, 'createdAt'),
+          // An unfinished run has an empty conclusion.
+          conclusion:
+            typeof item.conclusion === 'string' ? item.conclusion : '',
+        }))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    ),
+  );
+  if (runs)
+    section.list(
+      `Failed runs on main since ${dates.since}`,
+      runs
+        .filter((item) => item.conclusion === 'failure')
+        .map((failed) => {
+          const green = runs.find(
+            (item) =>
+              item.workflow === failed.workflow &&
+              item.createdAt > failed.createdAt &&
+              item.conclusion === 'success',
+          );
+          const head = `${failed.workflow}: run ${failed.id} failed (${failed.createdAt}, "${failed.title}")`;
+          return green
+            ? `${head}; run ${green.id} succeeded later (${green.createdAt}).`
+            : `${head}; no later run succeeded. Needs a decision; read gh run view ${failed.id} --log-failed.`;
+        }),
+    );
+  return section.done();
+}
+
+// Lists issues with one `gh issue list` and a short description per issue.
+async function listIssues(
+  section: SectionBuilder,
+  title: string,
+  filters: string[],
+  json: string,
+  describe: (issue: Json) => string,
+): Promise<void> {
+  const items = await section.read(
+    [
+      'gh',
+      'issue',
+      'list',
+      ...filters,
+      '--limit',
+      String(LIST_LIMIT),
+      '--json',
+      json,
+    ],
+    capped(LIST_LIMIT, LIMIT_REACHED, (output) =>
+      byNumber(
+        jsonList(jsonValue(output)).map((issue) => ({
+          number: count(issue, 'number'),
+          line: `#${count(issue, 'number')} ${text(issue, 'title')}${describe(issue)}`,
+        })),
+      ),
+    ),
+  );
+  if (items)
+    section.list(
+      title,
+      items.map((item) => item.line),
+    );
+}
+
+// docs/maintenance.md, "E. Workflow", steps 1 to 3. It counts comments but never
+// prints them: whether a comment is new evidence is the agent's call.
+export async function collectWorkflow(
+  run: Runner,
+  dates: RoutineDates,
+): Promise<Section> {
+  const section = new SectionBuilder(run);
+  const sinceStart = `${dates.since}T00:00:00Z`;
+  const comments = (issue: Json) => jsonList(issue.comments ?? []);
+  const mistake = ['--label', 'agent-mistake', '--search'];
+  const tooling = [
+    '--state',
+    'open',
+    '--label',
+    'finding',
+    '--label',
+    'area:tooling',
+    '--search',
+  ];
+
+  await listIssues(
+    section,
+    `Agent mistakes updated since ${dates.since}`,
+    ['--state', 'all', ...mistake, `updated:>=${dates.since}`],
+    'number,title,state,createdAt,comments',
+    (issue) => {
+      const state = text(issue, 'state').toLowerCase();
+      if (text(issue, 'createdAt') >= sinceStart)
+        return ` (${state}): first occurrence`;
+      const recent = comments(issue).filter(
+        (comment) => text(comment, 'createdAt') >= sinceStart,
+      ).length;
+      return ` (${state}): ${plural(recent, 'comment')} since ${dates.since}`;
+    },
+  );
+  await listIssues(
+    section,
+    'Open agent mistakes without a linked PR',
+    ['--state', 'open', ...mistake, '-linked:pr'],
+    'number,title,comments',
+    (issue) => ` (${plural(comments(issue).length, 'comment')})`,
+  );
+  await listIssues(
+    section,
+    `Tooling findings created since ${dates.since}`,
+    [...tooling, `created:>=${dates.since}`],
+    'number,title',
+    () => '',
+  );
+  await listIssues(
+    section,
+    `Tooling findings without a linked PR, created before ${dates.untaken}`,
+    [...tooling, `-linked:pr created:<${dates.untaken}`],
+    'number,title,createdAt',
+    (issue) => ` (created ${text(issue, 'createdAt').slice(0, 10)})`,
+  );
+  return section.done();
+}
+
+type Worktree = { path: string; branch: string; prunable: boolean };
+
+function parseWorktrees(output: string): Worktree[] {
+  return output
+    .split(/\r?\n\r?\n/)
+    .map((block) => block.split(/\r?\n/).filter((line) => line !== ''))
+    .filter((lines) => lines.length > 0)
+    .map((lines) => {
+      const field = (key: string) =>
+        lines
+          .find((line) => line === key || line.startsWith(`${key} `))
+          ?.slice(key.length + 1);
+      const path = field('worktree');
+      if (!path) throw new Error('a worktree entry has no worktree line');
+      return {
+        path,
+        branch:
+          field('branch')?.replace(/^refs\/heads\//, '') ??
+          (field('detached') !== undefined ? 'detached HEAD' : 'no branch'),
+        prunable: field('prunable') !== undefined,
+      };
+    });
+}
+
+const nonEmptyLines = (output: string) =>
+  output.split(/\r?\n/).filter((line) => line.trim() !== '');
+const LOCKFILE = /(^|\/)(bun\.lock|package\.json)$/;
+const CANDIDATE_VIEWS = '/.git/gentle-ai/candidate-views/';
+const ACTIVE_DAYS = 3;
+
+// docs/maintenance.md, "Worktrees". A worktree is active when it has
+// uncommitted files, commits ahead of origin/main, or a recent commit.
+export async function collectWorktrees(
+  run: Runner,
+  dates: RoutineDates,
+): Promise<Section> {
+  const section = new SectionBuilder(run);
+  const normal = (path: string) => path.replace(/\\/g, '/').toLowerCase();
+  const top = await section.read(
+    ['git', 'rev-parse', '--show-toplevel'],
+    (output) => normal(output.trim()),
+  );
+  const trees = await section.read(
+    ['git', 'worktree', 'list', '--porcelain'],
+    parseWorktrees,
+  );
+  if (top === undefined || !trees) return section.done();
+
+  const active: string[] = [];
+  const inactive: string[] = [];
+  for (const tree of trees) {
+    if (
+      normal(tree.path) === top ||
+      normal(tree.path).includes(CANDIDATE_VIEWS)
+    )
+      continue;
+    const name = `${tree.path} (${tree.branch})`;
+    if (tree.prunable) {
+      inactive.push(`${name}: prunable, its directory is gone`);
+      continue;
+    }
+    const git = (...args: string[]) => ['git', '-C', tree.path, ...args];
+    const status = await section.read(git('status', '--short'), nonEmptyLines);
+    const ahead = await section.read(
+      git('rev-list', '--count', 'origin/main..HEAD'),
+      parseCount,
+    );
+    const age = await section.read(
+      git('log', '-1', '--format=%cI'),
+      (output) => ({
+        day: isoDate(new Date(output.trim())),
+        days: daysBetween(output.trim(), dates.today),
+      }),
+    );
+    const changed = await section.read(
+      git('diff', '--name-only', 'origin/main...HEAD'),
+      nonEmptyLines,
+    );
+    if (!status || ahead === undefined || !age || !changed) continue;
+
+    const files = [
+      ...changed,
+      ...status.map((line) => line.slice(3).split(' -> ').pop() ?? ''),
+    ];
+    const lockfiles = [
+      ...new Set(files.filter((file) => LOCKFILE.test(file))),
+    ].sort();
+    const summary = `${name}: ${plural(status.length, 'uncommitted file')}, ${plural(ahead, 'commit')} ahead of origin/main, last commit ${age.day} (${plural(age.days, 'day')} ago)`;
+    if (status.length > 0 || ahead > 0 || age.days <= ACTIVE_DAYS)
+      active.push(
+        `${summary}; lockfiles changed: ${lockfiles.join(', ') || 'none'}`,
+      );
+    else inactive.push(summary);
+  }
+  section.list('Active worktrees', active);
+  section.list('Inactive worktrees', inactive);
+  return section.done();
+}
+
 // ---------------------------------------------------------------- report
 
 export async function collectRoutine(
@@ -501,7 +836,11 @@ export async function collectRoutine(
   const dates = routineDates(now);
   const sections: [string, Promise<Section>][] = [
     ['A. Dependencies', collectDependencies(run, dates)],
+    ['B. Security', collectSecurity(run, dates)],
     ['C. Backlog', collectBacklog(run, dates)],
+    ['D. App health', collectAppHealth(run, dates)],
+    ['E. Workflow', collectWorkflow(run, dates)],
+    ['Worktrees', collectWorktrees(run, dates)],
   ];
   const lines = [
     `# Routine data, ${dates.today}, ISO week ${dates.isoWeek}`,

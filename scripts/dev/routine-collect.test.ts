@@ -2,9 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 import {
+  collectAppHealth,
   collectBacklog,
   collectDependencies,
   collectRoutine,
+  collectSecurity,
+  collectWorkflow,
+  collectWorktrees,
   routineDates,
   type Runner,
 } from './routine-collect';
@@ -412,12 +416,344 @@ describe('collectBacklog', () => {
   });
 });
 
+const ADVISORIES =
+  'gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq [.[] | {ghsa_id, severity, created_at}]';
+const SECRETS =
+  'gh api repos/ydafy/Selene-project/secret-scanning/alerts?state=open --jq length';
+
+function securityResponses(
+  overrides: Record<string, string | Error> = {},
+): Record<string, string | Error> {
+  return {
+    // The --jq filter keeps only these fields; a description never arrives.
+    [ADVISORIES]: JSON.stringify([
+      {
+        ghsa_id: 'GHSA-aaaa-bbbb-cccc',
+        severity: 'high',
+        created_at: '2026-11-20T10:00:00Z',
+      },
+      {
+        ghsa_id: 'GHSA-dddd-eeee-ffff',
+        severity: null,
+        created_at: '2026-11-30T08:00:00Z',
+      },
+    ]),
+    [SECRETS]: '2\n',
+    ...overrides,
+  };
+}
+
+describe('collectSecurity', () => {
+  it('prints each draft advisory as its ID, severity, and age, and the open secret alerts', async () => {
+    const section = await collectSecurity(fakeRun(securityResponses()), DATES);
+    expect(section.failed).toBe(false);
+    expect(section.lines).toEqual([
+      'Draft advisories (2):',
+      '- GHSA-aaaa-bbbb-cccc (high, 10 days old)',
+      '- GHSA-dddd-eeee-ffff (no severity, 0 days old)',
+      'Open secret scanning alerts: 2.',
+    ]);
+  });
+
+  it('refuses a full page of drafts instead of undercounting', async () => {
+    const page = JSON.stringify(
+      Array.from({ length: 30 }, (_, i) => ({
+        ghsa_id: `GHSA-${i}`,
+        severity: 'low',
+        created_at: '2026-11-20T10:00:00Z',
+      })),
+    );
+    const section = await collectSecurity(
+      fakeRun(securityResponses({ [ADVISORIES]: page, [SECRETS]: '30' })),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      'Could not check: gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq "[.[] | {ghsa_id, severity, created_at}]": the list reached GitHub\'s page size of 30; add --paginate.',
+      `Could not check: ${SECRETS}: the list reached GitHub's page size of 30; add --paginate.`,
+    ]);
+  });
+
+  it('keeps the secret alert check when the advisory list fails', async () => {
+    const section = await collectSecurity(
+      fakeRun(
+        securityResponses({
+          [ADVISORIES]: new Error('exit 1: HTTP 404'),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      'Could not check: gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq "[.[] | {ghsa_id, severity, created_at}]": exit 1: HTTP 404',
+      'Open secret scanning alerts: 2.',
+    ]);
+  });
+});
+
+const MAIN_RUNS =
+  'gh run list --branch main --created >=2026-11-23 --limit 200 --json databaseId,workflowName,displayTitle,createdAt,conclusion';
+
+function mainRuns(...items: [number, string, string, string, string][]) {
+  return JSON.stringify(
+    items.map(
+      ([databaseId, workflowName, displayTitle, createdAt, conclusion]) => ({
+        databaseId,
+        workflowName,
+        displayTitle,
+        createdAt,
+        conclusion,
+      }),
+    ),
+  );
+}
+
+describe('collectAppHealth', () => {
+  it('lists the failed runs on main and names the later green run that explains one', async () => {
+    const section = await collectAppHealth(
+      fakeRun({
+        [MAIN_RUNS]: mainRuns(
+          [35, 'CI', 'chore: z', '2026-11-27T10:00:00Z', ''],
+          [34, 'CI', 'fix: x', '2026-11-26T12:00:00Z', 'success'],
+          [33, 'CI', 'fix: x', '2026-11-26T10:00:00Z', 'failure'],
+          [32, 'Deploy staging', 'feat: y', '2026-11-25T10:00:00Z', 'failure'],
+          [31, 'Deploy staging', 'feat: w', '2026-11-24T10:00:00Z', 'success'],
+        ),
+      }),
+      DATES,
+    );
+    expect(section.failed).toBe(false);
+    expect(section.lines).toEqual([
+      'Failed runs on main since 2026-11-23 (2):',
+      '- Deploy staging: run 32 failed (2026-11-25T10:00:00Z, "feat: y"); no later run succeeded. Needs a decision; read gh run view 32 --log-failed.',
+      '- CI: run 33 failed (2026-11-26T10:00:00Z, "fix: x"); run 34 succeeded later (2026-11-26T12:00:00Z).',
+    ]);
+  });
+
+  it('refuses a run list that reached its limit, and reports a failed command', async () => {
+    const full = mainRuns(
+      ...Array.from(
+        { length: 200 },
+        (_, i): [number, string, string, string, string] => [
+          i,
+          'CI',
+          'x',
+          '2026-11-24T10:00:00Z',
+          'success',
+        ],
+      ),
+    );
+    const limited = await collectAppHealth(
+      fakeRun({ [MAIN_RUNS]: full }),
+      DATES,
+    );
+    expect(limited.failed).toBe(true);
+    expect(limited.lines).toEqual([
+      `Could not check: ${MAIN_RUNS}: the list reached its limit of 200; raise --limit.`,
+    ]);
+
+    const failing = await collectAppHealth(
+      fakeRun({ [MAIN_RUNS]: new Error('exit 1: HTTP 502') }),
+      DATES,
+    );
+    expect(failing.lines).toEqual([
+      `Could not check: ${MAIN_RUNS}: exit 1: HTTP 502`,
+    ]);
+  });
+});
+
+const MISTAKES_OF_WEEK =
+  'gh issue list --state all --label agent-mistake --search updated:>=2026-11-23 --limit 200 --json number,title,state,createdAt,comments';
+const MISTAKES_UNGUARDED =
+  'gh issue list --state open --label agent-mistake --search -linked:pr --limit 200 --json number,title,comments';
+const TOOLING_NEW =
+  'gh issue list --state open --label finding --label area:tooling --search created:>=2026-11-23 --limit 200 --json number,title';
+const TOOLING_UNTAKEN =
+  'gh issue list --state open --label finding --label area:tooling --search -linked:pr created:<2026-11-16 --limit 200 --json number,title,createdAt';
+
+const comments = (...dates: string[]) =>
+  dates.map((createdAt) => ({ body: 'not printed', createdAt }));
+
+function workflowResponses(
+  overrides: Record<string, string | Error> = {},
+): Record<string, string | Error> {
+  return {
+    [MISTAKES_OF_WEEK]: JSON.stringify([
+      {
+        number: 610,
+        title: 'Agent skips the guard',
+        state: 'OPEN',
+        createdAt: '2026-10-01T10:00:00Z',
+        comments: comments('2026-10-02T10:00:00Z', '2026-11-25T10:00:00Z'),
+      },
+      {
+        number: 740,
+        title: 'Agent edits config',
+        state: 'CLOSED',
+        createdAt: '2026-11-24T10:00:00Z',
+        comments: [],
+      },
+    ]),
+    [MISTAKES_UNGUARDED]: JSON.stringify([
+      {
+        number: 610,
+        title: 'Agent skips the guard',
+        comments: comments('2026-10-02T10:00:00Z'),
+      },
+    ]),
+    [TOOLING_NEW]: JSON.stringify([{ number: 745, title: 'Lint misses x' }]),
+    [TOOLING_UNTAKEN]: JSON.stringify([
+      {
+        number: 600,
+        title: 'Old tooling bug',
+        createdAt: '2026-11-01T10:00:00Z',
+      },
+    ]),
+    ...overrides,
+  };
+}
+
+describe('collectWorkflow', () => {
+  it('classifies the agent mistakes of the week and lists the tooling findings, never comment bodies', async () => {
+    const section = await collectWorkflow(fakeRun(workflowResponses()), DATES);
+    expect(section.failed).toBe(false);
+    expect(section.lines).toEqual([
+      'Agent mistakes updated since 2026-11-23 (2):',
+      '- #610 Agent skips the guard (open): 1 comment since 2026-11-23',
+      '- #740 Agent edits config (closed): first occurrence',
+      'Open agent mistakes without a linked PR (1):',
+      '- #610 Agent skips the guard (1 comment)',
+      'Tooling findings created since 2026-11-23 (1):',
+      '- #745 Lint misses x',
+      'Tooling findings without a linked PR, created before 2026-11-16 (1):',
+      '- #600 Old tooling bug (created 2026-11-01)',
+    ]);
+  });
+
+  it('keeps the other lists when one fails or reaches its limit', async () => {
+    const full = JSON.stringify(
+      Array.from({ length: 200 }, (_, i) => ({
+        number: i + 1,
+        title: 'x',
+        comments: [],
+      })),
+    );
+    const section = await collectWorkflow(
+      fakeRun(
+        workflowResponses({
+          [MISTAKES_OF_WEEK]: new Error('exit 1: HTTP 502'),
+          [MISTAKES_UNGUARDED]: full,
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      `Could not check: ${MISTAKES_OF_WEEK}: exit 1: HTTP 502`,
+      `Could not check: ${MISTAKES_UNGUARDED}: the list reached its limit of 200; raise --limit.`,
+      'Tooling findings created since 2026-11-23 (1):',
+      '- #745 Lint misses x',
+      'Tooling findings without a linked PR, created before 2026-11-16 (1):',
+      '- #600 Old tooling bug (created 2026-11-01)',
+    ]);
+  });
+});
+
+const TREES = 'C:/dev/School-portal-worktrees';
+const git = (path: string, args: string) => `git -C ${path} ${args}`;
+
+function treeResponses(
+  path: string,
+  status: string,
+  ahead: string,
+  lastCommit: string,
+  diff: string,
+): Record<string, string> {
+  return {
+    [git(path, 'status --short')]: status,
+    [git(path, 'rev-list --count origin/main..HEAD')]: ahead,
+    [git(path, 'log -1 --format=%cI')]: lastCommit,
+    [git(path, 'diff --name-only origin/main...HEAD')]: diff,
+  };
+}
+
+function worktreeResponses(
+  overrides: Record<string, string | Error> = {},
+): Record<string, string | Error> {
+  return {
+    'git rev-parse --show-toplevel': 'C:/dev/School-portal\n',
+    'git worktree list --porcelain': [
+      'worktree C:/dev/School-portal\nHEAD 1\nbranch refs/heads/feat/routine-collect',
+      `worktree ${TREES}/a\nHEAD 2\nbranch refs/heads/feat/a`,
+      `worktree ${TREES}/b\nHEAD 3\nbranch refs/heads/feat/b`,
+      'worktree C:/dev/School-portal/.git/gentle-ai/candidate-views/x\nHEAD 4\ndetached',
+      `worktree ${TREES}/c\nHEAD 5\nbranch refs/heads/feat/c`,
+      `worktree ${TREES}/gone\nHEAD 6\nbranch refs/heads/feat/gone\nprunable gitdir file points to non-existent location`,
+      '',
+    ].join('\n\n'),
+    ...treeResponses(
+      `${TREES}/a`,
+      ' M bun.lock\n?? notes.md\n',
+      '2\n',
+      '2026-11-29T10:00:00-06:00\n',
+      'apps/frontend/package.json\nsrc/x.ts\n',
+    ),
+    ...treeResponses(`${TREES}/b`, '', '0\n', '2026-11-10T10:00:00Z\n', ''),
+    ...treeResponses(`${TREES}/c`, '', '0\n', '2026-11-27T10:00:00Z\n', ''),
+    ...overrides,
+  };
+}
+
+describe('collectWorktrees', () => {
+  it('reports the other worktrees, active or not, with the lockfiles they change', async () => {
+    const section = await collectWorktrees(fakeRun(worktreeResponses()), DATES);
+    expect(section.failed).toBe(false);
+    expect(section.lines).toEqual([
+      'Active worktrees (2):',
+      `- ${TREES}/a (feat/a): 2 uncommitted files, 2 commits ahead of origin/main, last commit 2026-11-29 (1 day ago); lockfiles changed: apps/frontend/package.json, bun.lock`,
+      `- ${TREES}/c (feat/c): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-27 (3 days ago); lockfiles changed: none`,
+      'Inactive worktrees (2):',
+      `- ${TREES}/b (feat/b): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-10 (20 days ago)`,
+      `- ${TREES}/gone (feat/gone): prunable, its directory is gone`,
+    ]);
+  });
+
+  it('skips a worktree whose command failed and keeps the others', async () => {
+    const section = await collectWorktrees(
+      fakeRun(
+        worktreeResponses({
+          [git(`${TREES}/a`, 'rev-list --count origin/main..HEAD')]: new Error(
+            'exit 128: unknown revision origin/main',
+          ),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      `Could not check: ${git(`${TREES}/a`, 'rev-list --count origin/main..HEAD')}: exit 128: unknown revision origin/main`,
+      'Active worktrees (1):',
+      `- ${TREES}/c (feat/c): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-27 (3 days ago); lockfiles changed: none`,
+      'Inactive worktrees (2):',
+      `- ${TREES}/b (feat/b): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-10 (20 days ago)`,
+      `- ${TREES}/gone (feat/gone): prunable, its directory is gone`,
+    ]);
+  });
+});
+
+const allResponses = (overrides: Record<string, string | Error> = {}) => ({
+  ...dependencyResponses(),
+  ...securityResponses(),
+  ...backlogResponses(),
+  [MAIN_RUNS]: '[]',
+  ...workflowResponses(),
+  ...worktreeResponses(),
+  ...overrides,
+});
+
 describe('collectRoutine', () => {
   it('prints the header and every section, and reports whether a check failed', async () => {
-    const ok = await collectRoutine(
-      fakeRun({ ...dependencyResponses(), ...backlogResponses() }),
-      NOW,
-    );
+    const ok = await collectRoutine(fakeRun(allResponses()), NOW);
     expect(ok.failed).toBe(false);
     expect(ok.text.split('\n').slice(0, 6)).toEqual([
       '# Routine data, 2026-11-30, ISO week 49',
@@ -430,12 +766,22 @@ describe('collectRoutine', () => {
     expect(ok.text).toContain(
       '\n## C. Backlog\n\nOpen issues: 5. Open PRs: 2.\n',
     );
+    expect(
+      ok.text.split('\n').filter((line) => line.startsWith('## ')),
+    ).toEqual([
+      '## A. Dependencies',
+      '## B. Security',
+      '## C. Backlog',
+      '## D. App health',
+      '## E. Workflow',
+      '## Worktrees',
+    ]);
+    expect(ok.text).toContain(
+      '\n## D. App health\n\nFailed runs on main since 2026-11-23: none.\n',
+    );
 
     const failing = await collectRoutine(
-      fakeRun({
-        ...dependencyResponses({ [REPORT_ISSUES]: new Error('exit 1') }),
-        ...backlogResponses(),
-      }),
+      fakeRun(allResponses({ [SECRETS]: new Error('exit 1') })),
       NOW,
     );
     expect(failing.failed).toBe(true);
