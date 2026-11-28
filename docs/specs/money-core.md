@@ -4,7 +4,7 @@ This document is the design for Selene's money core (#646): a ledger of money mo
 Items #647, #648, and #649 of roadmap #644 implement it.
 The maintainer approves this document before any code for those items is written.
 
-Status: Draft.
+Status: Approved by the maintainer on 2026-11-27 (#742 and #753).
 
 ## Current state
 
