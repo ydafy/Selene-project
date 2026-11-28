@@ -76,7 +76,7 @@ The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-
 1. Each workflow line names the newest run since Sunday whose work job (`audit` or `report`) ran, on the scheduled or the manual event. A backup run that found an earlier run skips that job and still ends in `success`, so the script never counts it. A manual run counts too, so a second session the same week does not start the workflows again.
    - `is in_progress` or `is queued` ends in "Wait for it." Wait, then run the script again.
    - `no run since <date> ran the <job> job` ends in "Start it". Start the workflow as `docs/dependencies.md` says (the audit first), wait for it, then run the script again.
-   - A `report` job that ran and did not end in `success` ends in "Rerun the report". A failed run leaves last week's report in the issue. Start the report again, wait for it, then run the script again.
+   - A `report` job that ran and did not end in `success` ends in "Rerun the report". A failed run leaves last week's report in the issue. Start the report again, wait for it, then run the script again. Rerun the report at most once per session. If the rerun fails too, the failure is a decision: cite the run and the end of its log (`gh run view <id> --log-failed | tail -n 50`), and continue with the other checks.
    - An `audit` job that ran and did not succeed is a decision, not a rerun.
 2. The report line gives the date of the report and its summary line. A date before this week's Sunday means the report did not update. Go back to step 1 with the output of the latest run of the script.
 
