@@ -31,7 +31,7 @@ When you hold a major back, add it to `HELD_BACK` in `scripts/ci/dependency-repo
 
 The maintainer starts this routine with "la rutina de dependencias" (also "rutina de dependencias" or "dependency routine"). The agent then applies the dependency report end to end. It does not ask about each package. It decides with the rules on this page and with the `selene-dependency-review` skill, pushes the branch, and opens the pull request. The maintainer decides the merge.
 
-This routine is the one exception to the rule in `docs/maintenance.md` that nothing changes until the maintainer decides. The weekly routine (systems A to D) still only reports dependencies.
+This routine is the one exception to the rule in `docs/maintenance.md` that nothing changes until the maintainer decides. The weekly routine (systems A to E) still only reports dependencies.
 
 Run the steps in this order:
 
