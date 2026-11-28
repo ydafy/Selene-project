@@ -5,6 +5,13 @@
 // maintainer. A failed command prints "Could not check" in its section, the other
 // checks still run, and the script exits 1.
 
+import type { AdvisorFinding } from '../ci/check-security-advisors';
+import { ACCEPTED_SECURITY_FINDINGS } from '../ci/security-advisor-exceptions';
+import {
+  ACCEPTED_REMOTE_FINDINGS,
+  type AcceptedAdvisorLint,
+} from './routine-accepted-findings';
+
 export type Runner = (cmd: string[]) => Promise<string>;
 
 export type RoutineDates = {
@@ -525,6 +532,128 @@ function capped<T>(
   };
 }
 
+// The accepted remote lints, and the local CI list that also accepts a security
+// finding by its cacheKey.
+export type AcceptedLists = {
+  remote: AcceptedAdvisorLint[];
+  ci: Record<string, string>;
+};
+const ACCEPTED: AcceptedLists = {
+  remote: ACCEPTED_REMOTE_FINDINGS,
+  ci: ACCEPTED_SECURITY_FINDINGS,
+};
+const ACCEPTED_FILE = 'scripts/dev/routine-accepted-findings.ts';
+const LEVELS = ['ERROR', 'WARN', 'INFO'];
+const DETAIL_LENGTH = 200;
+
+function parseAdvisors(output: string): AdvisorFinding[] {
+  const value = jsonValue(output);
+  if (!isJson(value)) throw new Error('the output is not a JSON object');
+  return jsonList(value.results).map((finding) => {
+    const level = text(finding, 'level');
+    if (!LEVELS.includes(level))
+      throw new Error(`the output has an unknown level "${level}"`);
+    return {
+      name: text(finding, 'name'),
+      level: level as AdvisorFinding['level'],
+      cacheKey: text(finding, 'cacheKey'),
+      detail: text(finding, 'detail'),
+    };
+  });
+}
+
+function shortDetail(detail: string): string {
+  const flat = detail.replace(/\s+/g, ' ').trim();
+  return flat.length > DETAIL_LENGTH
+    ? `${flat.slice(0, DETAIL_LENGTH)}...`
+    : flat;
+}
+
+// docs/maintenance.md, "Accepted findings". Reads the remote advisor of one type
+// and prints only what changed: a finding no entry accepts, an accepted object
+// no finding reports, and an entry whose tracking issue closed.
+async function compareAdvisors(
+  section: SectionBuilder,
+  type: AcceptedAdvisorLint['type'],
+  accepted: AcceptedLists,
+): Promise<void> {
+  const title = type === 'security' ? 'Security' : 'Performance';
+  const entries = accepted.remote.filter((entry) => entry.type === type);
+  const findings = await section.read(
+    // `--remote` reads the lints of the linked project; it changes nothing.
+    [
+      'supabase',
+      'db',
+      'advisors',
+      '--remote',
+      '--type',
+      type,
+      '--level',
+      'info',
+      '--fail-on',
+      'none',
+      '--output-format',
+      'json',
+    ],
+    parseAdvisors,
+  );
+  if (findings) {
+    const wholeLints = new Set(
+      entries.filter((e) => e.objects === 'all').map((e) => e.lint),
+    );
+    const listed = entries.flatMap((e) =>
+      e.objects === 'all' ? [] : e.objects,
+    );
+    const isAccepted = (finding: AdvisorFinding) =>
+      wholeLints.has(finding.name) ||
+      listed.includes(finding.cacheKey) ||
+      (type === 'security' && Object.hasOwn(accepted.ci, finding.cacheKey));
+    const reported = new Set(findings.map((finding) => finding.cacheKey));
+    section.lines.push(
+      `${title} advisors: ${plural(findings.filter(isAccepted).length, 'accepted finding')} unchanged.`,
+    );
+    section.list(
+      `${title} findings not accepted`,
+      findings
+        .filter((finding) => !isAccepted(finding))
+        .map(
+          (finding) =>
+            `${finding.level} ${finding.cacheKey}: ${shortDetail(finding.detail)}`,
+        ),
+    );
+    section.list(
+      `Accepted ${type} objects no finding reports; remove them from ${ACCEPTED_FILE}`,
+      listed.filter((key) => !reported.has(key)),
+    );
+  }
+
+  const tracked = [
+    ...new Set(entries.flatMap((e) => (e.trackedBy ? [e.trackedBy] : []))),
+  ];
+  if (tracked.length === 0) return;
+  const closed: string[] = [];
+  for (const issue of tracked) {
+    const state = await section.read(
+      ['gh', 'issue', 'view', issue.replace(/^#/, ''), '--json', 'state'],
+      (output) => {
+        const value = jsonValue(output);
+        if (!isJson(value)) throw new Error('the output is not a JSON object');
+        return text(value, 'state');
+      },
+    );
+    if (state === 'CLOSED') {
+      const lints = entries
+        .filter((e) => e.trackedBy === issue)
+        .map((e) => e.lint);
+      closed.push(`${issue} (${lints.join(', ')})`);
+    }
+  }
+  section.list(
+    `Accepted ${type} findings whose tracking issue closed; each needs a new decision`,
+    closed,
+  );
+}
+
 function parseCount(output: string): number {
   const value = output.trim();
   if (!/^\d+$/.test(value)) throw new Error('the output is not a count');
@@ -537,6 +666,7 @@ function parseCount(output: string): number {
 export async function collectSecurity(
   run: Runner,
   dates: RoutineDates,
+  accepted: AcceptedLists = ACCEPTED,
 ): Promise<Section> {
   const section = new SectionBuilder(run);
   const drafts = await section.read(
@@ -574,15 +704,19 @@ export async function collectSecurity(
   );
   if (alerts !== undefined)
     section.lines.push(`Open secret scanning alerts: ${alerts}.`);
+  await compareAdvisors(section, 'security', accepted);
   return section.done();
 }
 
-// docs/maintenance.md, "D. App health", step 1. A failed run is explained when a
-// later run of the same workflow on main succeeded; reading the failed logs
-// stays with the agent.
+const FAILED_CONCLUSIONS = ['failure', 'timed_out', 'startup_failure'];
+
+// docs/maintenance.md, "D. App health", steps 1 and 3. A failed run is explained
+// when a later run of the same workflow on main succeeded; reading the failed
+// logs stays with the agent, and so do Sentry and the health advisor.
 export async function collectAppHealth(
   run: Runner,
   dates: RoutineDates,
+  accepted: AcceptedLists = ACCEPTED,
 ): Promise<Section> {
   const section = new SectionBuilder(run);
   const runs = await section.read(
@@ -617,7 +751,7 @@ export async function collectAppHealth(
     section.list(
       `Failed runs on main since ${dates.since}`,
       runs
-        .filter((item) => item.conclusion === 'failure')
+        .filter((item) => FAILED_CONCLUSIONS.includes(item.conclusion))
         .map((failed) => {
           const green = runs.find(
             (item) =>
@@ -631,6 +765,7 @@ export async function collectAppHealth(
             : `${head}; no later run succeeded. Needs a decision; read gh run view ${failed.id} --log-failed.`;
         }),
     );
+  await compareAdvisors(section, 'performance', accepted);
   return section.done();
 }
 

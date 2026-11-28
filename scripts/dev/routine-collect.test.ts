@@ -10,6 +10,7 @@ import {
   collectWorkflow,
   collectWorktrees,
   routineDates,
+  type AcceptedLists,
   type Runner,
 } from './routine-collect';
 
@@ -420,6 +421,55 @@ const ADVISORIES =
   'gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq [.[] | {ghsa_id, severity, created_at}]';
 const SECRETS =
   'gh api repos/ydafy/Selene-project/secret-scanning/alerts?state=open --jq length';
+const advisors = (type: string) =>
+  `supabase db advisors --remote --type ${type} --level info --fail-on none --output-format json`;
+const SECURITY_ADVISORS = advisors('security');
+const PERFORMANCE_ADVISORS = advisors('performance');
+
+function findings(...items: [string, string, string, string][]): string {
+  return JSON.stringify({
+    results: items.map(([name, level, cacheKey, detail]) => ({
+      name,
+      level,
+      cacheKey,
+      detail,
+      title: 'not printed',
+    })),
+    message: '',
+    target: 'remote',
+  });
+}
+
+const ACCEPTED: AcceptedLists = {
+  remote: [
+    {
+      type: 'security',
+      lint: 'rls_enabled_no_policy',
+      objects: [
+        'rls_enabled_no_policy_public_a',
+        'rls_enabled_no_policy_public_gone',
+      ],
+      reason: 'Server-owned.',
+      trackedBy: '#434',
+    },
+    {
+      type: 'security',
+      lint: 'auth_leaked_password_protection',
+      objects: ['auth_leaked_password_protection'],
+      reason: 'Needs the Pro plan.',
+      trackedBy: '#313',
+    },
+    {
+      type: 'performance',
+      lint: 'unused_index',
+      objects: 'all',
+      reason: 'Test data.',
+    },
+  ],
+  ci: { security_definer_view_public_products_public: 'Decided.' },
+};
+const NEW_FUNCTION =
+  'authenticated_security_definer_function_executable_public_fn_new_';
 
 function securityResponses(
   overrides: Record<string, string | Error> = {},
@@ -439,19 +489,71 @@ function securityResponses(
       },
     ]),
     [SECRETS]: '2\n',
+    [SECURITY_ADVISORS]: findings(
+      ['rls_enabled_no_policy', 'INFO', 'rls_enabled_no_policy_public_a', 'a'],
+      [
+        'auth_leaked_password_protection',
+        'WARN',
+        'auth_leaked_password_protection',
+        'b',
+      ],
+      [
+        'security_definer_view',
+        'ERROR',
+        'security_definer_view_public_products_public',
+        'c',
+      ],
+      [
+        'authenticated_security_definer_function_executable',
+        'WARN',
+        NEW_FUNCTION,
+        `Function   fn_new\n${'x'.repeat(250)}`,
+      ],
+    ),
+    'gh issue view 434 --json state': '{"state":"OPEN"}',
+    'gh issue view 313 --json state': '{"state":"CLOSED"}',
     ...overrides,
   };
 }
 
 describe('collectSecurity', () => {
-  it('prints each draft advisory as its ID, severity, and age, and the open secret alerts', async () => {
-    const section = await collectSecurity(fakeRun(securityResponses()), DATES);
+  it('prints the drafts, the secret alerts, and only the advisor findings that changed', async () => {
+    const section = await collectSecurity(
+      fakeRun(securityResponses()),
+      DATES,
+      ACCEPTED,
+    );
     expect(section.failed).toBe(false);
     expect(section.lines).toEqual([
       'Draft advisories (2):',
       '- GHSA-aaaa-bbbb-cccc (high, 10 days old)',
       '- GHSA-dddd-eeee-ffff (no severity, 0 days old)',
       'Open secret scanning alerts: 2.',
+      'Security advisors: 3 accepted findings unchanged.',
+      'Security findings not accepted (1):',
+      `- WARN ${NEW_FUNCTION}: Function fn_new ${'x'.repeat(184)}...`,
+      'Accepted security objects no finding reports; remove them from scripts/dev/routine-accepted-findings.ts (1):',
+      '- rls_enabled_no_policy_public_gone',
+      'Accepted security findings whose tracking issue closed; each needs a new decision (1):',
+      '- #313 (auth_leaked_password_protection)',
+    ]);
+  });
+
+  it('fails closed on an advisor output without a results list and still reads the issues', async () => {
+    const section = await collectSecurity(
+      fakeRun(
+        securityResponses({
+          [SECURITY_ADVISORS]: '{"message":"not linked"}',
+          'gh issue view 313 --json state': '{"state":"OPEN"}',
+        }),
+      ),
+      DATES,
+      ACCEPTED,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines.slice(4)).toEqual([
+      `Could not check: ${SECURITY_ADVISORS}: the output is not a JSON list of objects`,
+      'Accepted security findings whose tracking issue closed; each needs a new decision: none.',
     ]);
   });
 
@@ -466,9 +568,10 @@ describe('collectSecurity', () => {
     const section = await collectSecurity(
       fakeRun(securityResponses({ [ADVISORIES]: page, [SECRETS]: '30' })),
       DATES,
+      ACCEPTED,
     );
     expect(section.failed).toBe(true);
-    expect(section.lines).toEqual([
+    expect(section.lines.slice(0, 2)).toEqual([
       'Could not check: gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq "[.[] | {ghsa_id, severity, created_at}]": the list reached GitHub\'s page size of 30; add --paginate.',
       `Could not check: ${SECRETS}: the list reached GitHub's page size of 30; add --paginate.`,
     ]);
@@ -482,9 +585,10 @@ describe('collectSecurity', () => {
         }),
       ),
       DATES,
+      ACCEPTED,
     );
     expect(section.failed).toBe(true);
-    expect(section.lines).toEqual([
+    expect(section.lines.slice(0, 2)).toEqual([
       'Could not check: gh api repos/ydafy/Selene-project/security-advisories?state=draft --jq "[.[] | {ghsa_id, severity, created_at}]": exit 1: HTTP 404',
       'Open secret scanning alerts: 2.',
     ]);
@@ -508,11 +612,32 @@ function mainRuns(...items: [number, string, string, string, string][]) {
   );
 }
 
+const PERFORMANCE_FINDINGS = findings(
+  ['unused_index', 'INFO', 'unused_index_public_orders_idx_a', 'a'],
+  ['unused_index', 'INFO', 'unused_index_public_orders_idx_b', 'b'],
+  [
+    'multiple_permissive_policies',
+    'WARN',
+    'multiple_permissive_policies_public_x',
+    'Two policies',
+  ],
+);
+const PERFORMANCE_LINES = [
+  'Performance advisors: 2 accepted findings unchanged.',
+  'Performance findings not accepted (1):',
+  '- WARN multiple_permissive_policies_public_x: Two policies',
+  'Accepted performance objects no finding reports; remove them from scripts/dev/routine-accepted-findings.ts: none.',
+];
+
 describe('collectAppHealth', () => {
-  it('lists the failed runs on main and names the later green run that explains one', async () => {
+  it('lists the failed runs on main, names the later green run that explains one, and compares the performance advisors', async () => {
     const section = await collectAppHealth(
       fakeRun({
+        [PERFORMANCE_ADVISORS]: PERFORMANCE_FINDINGS,
         [MAIN_RUNS]: mainRuns(
+          [38, 'Release', 'r', '2026-11-28T12:00:00Z', 'cancelled'],
+          [37, 'Release', 'r', '2026-11-28T10:00:00Z', 'startup_failure'],
+          [36, 'Backup', 'b', '2026-11-27T12:00:00Z', 'timed_out'],
           [35, 'CI', 'chore: z', '2026-11-27T10:00:00Z', ''],
           [34, 'CI', 'fix: x', '2026-11-26T12:00:00Z', 'success'],
           [33, 'CI', 'fix: x', '2026-11-26T10:00:00Z', 'failure'],
@@ -521,12 +646,16 @@ describe('collectAppHealth', () => {
         ),
       }),
       DATES,
+      ACCEPTED,
     );
     expect(section.failed).toBe(false);
     expect(section.lines).toEqual([
-      'Failed runs on main since 2026-11-23 (2):',
+      'Failed runs on main since 2026-11-23 (4):',
       '- Deploy staging: run 32 failed (2026-11-25T10:00:00Z, "feat: y"); no later run succeeded. Needs a decision; read gh run view 32 --log-failed.',
       '- CI: run 33 failed (2026-11-26T10:00:00Z, "fix: x"); run 34 succeeded later (2026-11-26T12:00:00Z).',
+      '- Backup: run 36 failed (2026-11-27T12:00:00Z, "b"); no later run succeeded. Needs a decision; read gh run view 36 --log-failed.',
+      '- Release: run 37 failed (2026-11-28T10:00:00Z, "r"); no later run succeeded. Needs a decision; read gh run view 37 --log-failed.',
+      ...PERFORMANCE_LINES,
     ]);
   });
 
@@ -544,20 +673,30 @@ describe('collectAppHealth', () => {
       ),
     );
     const limited = await collectAppHealth(
-      fakeRun({ [MAIN_RUNS]: full }),
+      fakeRun({
+        [MAIN_RUNS]: full,
+        [PERFORMANCE_ADVISORS]: PERFORMANCE_FINDINGS,
+      }),
       DATES,
+      ACCEPTED,
     );
     expect(limited.failed).toBe(true);
     expect(limited.lines).toEqual([
       `Could not check: ${MAIN_RUNS}: the list reached its limit of 200; raise --limit.`,
+      ...PERFORMANCE_LINES,
     ]);
 
     const failing = await collectAppHealth(
-      fakeRun({ [MAIN_RUNS]: new Error('exit 1: HTTP 502') }),
+      fakeRun({
+        [MAIN_RUNS]: new Error('exit 1: HTTP 502'),
+        [PERFORMANCE_ADVISORS]: new Error('exit 1: Unauthorized'),
+      }),
       DATES,
+      ACCEPTED,
     );
     expect(failing.lines).toEqual([
       `Could not check: ${MAIN_RUNS}: exit 1: HTTP 502`,
+      `Could not check: ${PERFORMANCE_ADVISORS}: exit 1: Unauthorized`,
     ]);
   });
 });
@@ -746,6 +885,7 @@ const allResponses = (overrides: Record<string, string | Error> = {}) => ({
   ...securityResponses(),
   ...backlogResponses(),
   [MAIN_RUNS]: '[]',
+  [PERFORMANCE_ADVISORS]: PERFORMANCE_FINDINGS,
   ...workflowResponses(),
   ...worktreeResponses(),
   ...overrides,
