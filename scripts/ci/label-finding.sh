@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # Labels a Finding issue from its form answers: `finding`, one `priority:*`, one `area:*`.
-# Answers that do not match a Finding form option leave that label group untouched, and
-# the script comments once (marked <!-- label-finding:missing-answers -->) naming the
-# heading and its valid options.
+# An answer is the non-empty lines between its "### " heading and the next one; it matches
+# only when it is exactly one line equal to a Finding form option. An answer that does not
+# match leaves that label group untouched, and the script comments once (marked
+# <!-- label-finding:missing-answers -->) naming the heading and its valid options.
 # Usage: label-finding.sh [--dry-run] <issue-number>
 # Runs from .github/workflows/issue-labels.yml; also usable locally with an authenticated gh.
+# Only marker comments by LABEL_FINDING_BOT_LOGIN (default github-actions, the login gh
+# reports for github.token) count as already posted; set it when running as another user.
+# Written for bash 3.2 and later.
 set -euo pipefail
+
+export LABEL_FINDING_BOT_LOGIN="${LABEL_FINDING_BOT_LOGIN:-github-actions}"
 
 dry_run=false
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -45,25 +51,41 @@ has_heading() {
   awk -v heading="### $1" '{ sub(/\r$/, "") } $0 == heading { found = 1; exit } END { exit !found }' <<<"$body"
 }
 
-# Prints the first non-empty line after the "### <heading>" line of the form body.
+# Prints the non-empty lines between the "### <heading>" line and the next "### " line.
 answer() {
-  awk -v heading="### $1" '{ sub(/\r$/, "") } found && NF { print; exit } $0 == heading { found = 1 }' <<<"$body"
+  awk -v heading="### $1" '{ sub(/\r$/, "") } found && /^### / { exit } found && NF { print } $0 == heading { found = 1 }' <<<"$body"
 }
 
-# Prints the label whose option text equals the answer, or nothing.
-lookup() {
-  local wanted="$1" row
+# Prints the label of the heading's table rows (passed after it) that the answer
+# matches, or `missing`, `many` (several lines), or `unmatched`.
+resolve() {
+  local heading="$1" lines row
   shift
+  if ! has_heading "$heading"; then
+    echo missing
+    return 0
+  fi
+  lines="$(answer "$heading")"
+  if [[ "$lines" == *$'\n'* ]]; then
+    echo many
+    return 0
+  fi
   for row in "$@"; do
-    if [[ "${row#*=}" == "$wanted" ]]; then
+    if [[ -n "$lines" && "${row#*=}" == "$lines" ]]; then
       echo "${row%%=*}"
       return 0
     fi
   done
+  echo unmatched
 }
 
-priority="$(lookup "$(answer Priority)" "${priority_table[@]}")"
-area="$(lookup "$(answer Area)" "${area_table[@]}")"
+priority_result="$(resolve Priority "${priority_table[@]}")"
+area_result="$(resolve Area "${area_table[@]}")"
+is_label() { [[ "$1" == *:* ]]; }
+priority=""
+area=""
+is_label "$priority_result" && priority="$priority_result"
+is_label "$area_result" && area="$area_result"
 
 add=()
 remove=()
@@ -84,12 +106,13 @@ sync_group "priority:" "$priority"
 sync_group "area:" "$area"
 
 join() { local IFS=,; echo "$*"; }
-echo "#$issue: priority=${priority:-unmatched} area=${area:-unmatched} add=[$(join "${add[@]}")] remove=[$(join "${remove[@]}")]"
+# ${a[@]+"${a[@]}"} expands an empty array without tripping set -u on bash before 4.4.
+echo "#$issue: priority=${priority:-unmatched} area=${area:-unmatched} add=[$(join ${add[@]+"${add[@]}"})] remove=[$(join ${remove[@]+"${remove[@]}"})]"
 
 if ! $dry_run && ((${#add[@]} + ${#remove[@]})); then
   args=()
-  ((${#add[@]})) && args+=(--add-label "$(join "${add[@]}")")
-  ((${#remove[@]})) && args+=(--remove-label "$(join "${remove[@]}")")
+  ((${#add[@]})) && args+=(--add-label "$(join ${add[@]+"${add[@]}"})")
+  ((${#remove[@]})) && args+=(--remove-label "$(join ${remove[@]+"${remove[@]}"})")
   gh issue edit "$issue" "${args[@]}" >/dev/null
 fi
 
@@ -100,34 +123,39 @@ unmatched=()
 ((${#unmatched[@]})) || exit 0
 
 # Captured first: a gh failure stops the script instead of reading as "no marker".
-comments="$(gh issue view "$issue" --json comments -q '.comments[].body')"
+# gh's jq reads the login from the environment, so the body never reaches the query.
+comments="$(gh issue view "$issue" --json comments --jq '.comments[] | select(.author.login == env.LABEL_FINDING_BOT_LOGIN) | .body')"
 if grep -qF "$marker" <<<"$comments"; then
   echo "#$issue: missing-answers comment already posted"
   exit 0
 fi
 
 comment() {
-  local heading row
+  local heading result row
   echo "$marker"
   echo "The issue labeler could not read every answer it needs from this issue body:"
   echo
   for heading in "${unmatched[@]}"; do
-    if has_heading "$heading"; then
-      echo "- The \`### $heading\` answer is not one of the options."
-    else
-      echo "- The \`### $heading\` heading is missing."
-    fi
+    case "$heading" in
+      Priority) result="$priority_result" ;;
+      Area) result="$area_result" ;;
+    esac
+    case "$result" in
+      missing) echo "- The \`### $heading\` heading is missing." ;;
+      many) echo "- The \`### $heading\` heading must keep exactly one option." ;;
+      *) echo "- The \`### $heading\` answer is not one of the options." ;;
+    esac
   done
   echo
   echo "Under each heading, put one of the lines below exactly as written, then edit the issue. The labeler runs again when the body changes."
   for heading in "${unmatched[@]}"; do
-    local -n table="${heading,,}_table"
     echo
     echo "\`### $heading\`:"
     echo
-    for row in "${table[@]}"; do
-      echo "- ${row#*=}"
-    done
+    case "$heading" in
+      Priority) for row in "${priority_table[@]}"; do echo "- ${row#*=}"; done ;;
+      Area) for row in "${area_table[@]}"; do echo "- ${row#*=}"; done ;;
+    esac
   done
 }
 

@@ -70,7 +70,7 @@ Docs
 <Feature or branch in progress, e.g. odd/tasks/<feature>.md.>
 ```
 
-The labeler reads the first line under each heading. If a heading is missing or its line matches no option, the labeler leaves that label group unchanged and comments once on the issue with the valid options. Fix the body, and the labeler runs again on the edit.
+If a heading is missing or has anything other than exactly one option line under it, the labeler leaves that label group unchanged and comments once on the issue with the valid options. Fix the body, and the labeler runs again on the edit.
 
 ## Go-live
 
