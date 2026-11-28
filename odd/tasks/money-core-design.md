@@ -24,7 +24,7 @@ Quoted from #646.
 - [x] T3 S2, S6: refund and cancellation records section. Route: `gentle-ai-worker` (context backstop) from the decisions in L6, reviewed inline. Commit: see L7.
 - [ ] T4 S3, S6: order and shipment status model section. Route: inline. Commit: pending.
 - [ ] T5 S4, S5, S6: code path changes, TLC impact, implementation order for #647, #648, #649. Route: inline. Commit: pending.
-- [ ] T6 S6: two chained PRs (L8). PR A: T1-T3 (ledger and records), "Part of #646". PR B: T4-T5, based on PR A, `Closes #646`. Each merges after the maintainer approves it. Route: inline. Commit: pending.
+- [ ] T6 S6: two chained PRs (L8). PR A: T1-T3 (ledger and records), "Part of #646". PR B: T4-T5, based on PR A, `Closes #646`. Each merges after the maintainer approves it. Route: inline. PR A: #742 (a2969561). PR B: pending.
 
 ## Log
 
