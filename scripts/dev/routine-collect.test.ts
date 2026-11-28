@@ -257,6 +257,25 @@ describe('collectDependencies', () => {
     ]);
   });
 
+  it('keeps the rerun step while only a scheduled backup run is pending, because it skips the report job', async () => {
+    const section = await collectDependencies(
+      fakeRun(
+        dependencyResponses({
+          [runView(20)]: jobs(['should-run', 'success'], ['report', 'failure']),
+          [runList('dependency-report.yml', 'schedule')]: runs(
+            [21, '2026-11-29T20:55:00Z', 'in_progress', 'schedule'],
+            [20, '2026-11-29T15:00:00Z', 'completed', 'schedule'],
+          ),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.lines.slice(1, 3)).toEqual([
+      'dependency-report.yml: run 21 (schedule) is in_progress. Wait for it.',
+      'dependency-report.yml: the report job ran in run 20 (schedule, 2026-11-29T15:00:00Z): failure. Rerun the report (docs/maintenance.md, "A. Dependencies", step 1).',
+    ]);
+  });
+
   it('refuses a run list that reached its limit', async () => {
     const full = runs(
       ...Array.from(
@@ -971,6 +990,30 @@ describe('collectWorkflow', () => {
     ]);
   });
 
+  it('does not count the comments of an open mistake without a linked PR whose comment list may be cut', async () => {
+    const section = await collectWorkflow(
+      fakeRun(
+        workflowResponses({
+          [MISTAKES_UNGUARDED]: JSON.stringify([
+            {
+              number: 611,
+              title: 'Long thread',
+              comments: comments(
+                ...Array.from({ length: 100 }, () => '2026-10-02T10:00:00Z'),
+              ),
+            },
+          ]),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines.slice(3, 5)).toEqual([
+      'Open agent mistakes without a linked PR (1):',
+      '- #611 Long thread (Could not check its comment count: gh returns at most 100 comments; read gh issue view 611 --comments.)',
+    ]);
+  });
+
   it('keeps the other lists when one fails or reaches its limit', async () => {
     const full = JSON.stringify(
       Array.from({ length: 200 }, (_, i) => ({
@@ -1011,10 +1054,10 @@ function treeResponses(
   diff: string,
 ): Record<string, string> {
   return {
-    [git(path, 'status --porcelain --untracked-files=all')]: status,
+    [git(path, 'status --porcelain -z --untracked-files=all')]: status,
     [git(path, 'rev-list --count origin/main..HEAD')]: ahead,
     [git(path, 'log -1 --format=%cI')]: lastCommit,
-    [git(path, 'diff --name-only --no-renames origin/main...HEAD')]: diff,
+    [git(path, 'diff --name-only --no-renames -z origin/main...HEAD')]: diff,
   };
 }
 
@@ -1034,12 +1077,13 @@ function worktreeResponses(
     ].join('\n\n'),
     ...treeResponses(
       `${TREES}/a`,
-      // A new manifest in an untracked folder, and a renamed manifest.
-      ' M bun.lock\n?? apps/new/package.json\nR  apps/admin-web/package.json -> apps/admin-web/manifest.json\n',
+      // NUL-delimited and unquoted: a new manifest in an untracked folder, one
+      // in a folder Git would quote, and a rename (its target, then its source).
+      ' M bun.lock\0?? apps/new/package.json\0?? apps/café/package.json\0R  apps/admin-web/manifest.json\0apps/admin-web/package.json\0',
       '2\n',
       '2026-11-29T10:00:00-06:00\n',
       // --no-renames lists a committed rename as its deleted source too.
-      'apps/frontend/package.json\npackages/old/package.json\nsrc/x.ts\n',
+      'apps/frontend/package.json\0packages/old/package.json\0src/x.ts\0packages/señal/package.json\0',
     ),
     ...treeResponses(`${TREES}/b`, '', '0\n', '2026-11-10T10:00:00Z\n', ''),
     ...treeResponses(`${TREES}/c`, '', '0\n', '2026-11-27T10:00:00Z\n', ''),
@@ -1053,7 +1097,7 @@ describe('collectWorktrees', () => {
     expect(section.failed).toBe(false);
     expect(section.lines).toEqual([
       'Active worktrees (2):',
-      `- ${TREES}/a (feat/a): 3 uncommitted files, 2 commits ahead of origin/main, last commit 2026-11-29 (1 day ago); lockfiles changed: apps/admin-web/package.json, apps/frontend/package.json, apps/new/package.json, bun.lock, packages/old/package.json`,
+      `- ${TREES}/a (feat/a): 4 uncommitted files, 2 commits ahead of origin/main, last commit 2026-11-29 (1 day ago); lockfiles changed: apps/admin-web/package.json, apps/café/package.json, apps/frontend/package.json, apps/new/package.json, bun.lock, packages/old/package.json, packages/señal/package.json`,
       `- ${TREES}/c (feat/c): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-27 (3 days ago); lockfiles changed: none`,
       'Inactive worktrees (2):',
       `- ${TREES}/b (feat/b): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-10 (20 days ago)`,

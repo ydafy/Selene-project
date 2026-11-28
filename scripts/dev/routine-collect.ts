@@ -208,8 +208,10 @@ const DEPENDENCY_WORKFLOWS = [
     job: 'report',
     onFailure:
       'Rerun the report (docs/maintenance.md, "A. Dependencies", step 1).',
-    // A pending run is already the rerun.
-    pendingReplacesRerun: true,
+    // A pending manual run is already the rerun. A pending scheduled backup run
+    // is not: it skips the report job when another scheduled run started in the
+    // last 24 hours (scripts/ci/scheduled-backup.ts).
+    rerunEvent: 'workflow_dispatch',
   },
 ];
 const REPORT_ISSUE_TITLE = 'Reporte de dependencias';
@@ -305,7 +307,7 @@ export async function collectDependencies(
       const { run: item, conclusion } = latest;
       const next =
         conclusion === 'success' ||
-        (workflow.pendingReplacesRerun && pending.length > 0)
+        pending.some((item) => item.event === workflow.rerunEvent)
           ? ''
           : ` ${workflow.onFailure}`;
       section.lines.push(
@@ -889,7 +891,13 @@ export async function collectWorkflow(
     'Open agent mistakes without a linked PR',
     ['--state', 'open', ...mistake, '-linked:pr'],
     'number,title,comments',
-    (issue) => ` (${plural(comments(issue).length, 'comment')})`,
+    (issue) => {
+      if (comments(issue).length >= COMMENT_LIMIT) {
+        section.failed = true;
+        return ` (Could not check its comment count: gh returns at most ${COMMENT_LIMIT} comments; read gh issue view ${count(issue, 'number')} --comments.)`;
+      }
+      return ` (${plural(comments(issue).length, 'comment')})`;
+    },
   );
   await listIssues(
     section,
@@ -932,8 +940,31 @@ function parseWorktrees(output: string): Worktree[] {
     });
 }
 
-const nonEmptyLines = (output: string) =>
-  output.split(/\r?\n/).filter((line) => line.trim() !== '');
+// `-z` output: NUL-delimited paths that Git never quotes.
+const nulPaths = (output: string) =>
+  output.split('\0').filter((path) => path !== '');
+
+// `git status --porcelain -z`: one `XY path` record per file; a rename or copy
+// record is followed by its source path.
+function parseStatus(output: string): { count: number; paths: string[] } {
+  const records = nulPaths(output);
+  const paths: string[] = [];
+  let count = 0;
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (record.length < 4 || record[2] !== ' ')
+      throw new Error(`the output has a malformed status record "${record}"`);
+    count++;
+    paths.push(record.slice(3));
+    if (/[RC]/.test(record.slice(0, 2))) {
+      const source = records[++i];
+      if (source === undefined)
+        throw new Error(`the rename record "${record}" has no source path`);
+      paths.push(source);
+    }
+  }
+  return { count, paths };
+}
 const LOCKFILE = /(^|\/)(bun\.lock|package\.json)$/;
 const CANDIDATE_VIEWS = '/.git/gentle-ai/candidate-views/';
 const ACTIVE_DAYS = 3;
@@ -972,8 +1003,8 @@ export async function collectWorktrees(
     const git = (...args: string[]) => ['git', '-C', tree.path, ...args];
     // Every untracked file, not only its folder, whatever the local settings.
     const status = await section.read(
-      git('status', '--porcelain', '--untracked-files=all'),
-      nonEmptyLines,
+      git('status', '--porcelain', '-z', '--untracked-files=all'),
+      parseStatus,
     );
     const ahead = await section.read(
       git('rev-list', '--count', 'origin/main..HEAD'),
@@ -988,20 +1019,17 @@ export async function collectWorktrees(
     );
     const changed = await section.read(
       // A renamed manifest also counts by its source path.
-      git('diff', '--name-only', '--no-renames', 'origin/main...HEAD'),
-      nonEmptyLines,
+      git('diff', '--name-only', '--no-renames', '-z', 'origin/main...HEAD'),
+      nulPaths,
     );
     if (!status || ahead === undefined || !age || !changed) continue;
 
-    const files = [
-      ...changed,
-      ...status.flatMap((line) => line.slice(3).split(' -> ')),
-    ];
+    const files = [...changed, ...status.paths];
     const lockfiles = [
       ...new Set(files.filter((file) => LOCKFILE.test(file))),
     ].sort();
-    const summary = `${name}: ${plural(status.length, 'uncommitted file')}, ${plural(ahead, 'commit')} ahead of origin/main, last commit ${age.day} (${plural(age.days, 'day')} ago)`;
-    if (status.length > 0 || ahead > 0 || age.days <= ACTIVE_DAYS)
+    const summary = `${name}: ${plural(status.count, 'uncommitted file')}, ${plural(ahead, 'commit')} ahead of origin/main, last commit ${age.day} (${plural(age.days, 'day')} ago)`;
+    if (status.count > 0 || ahead > 0 || age.days <= ACTIVE_DAYS)
       active.push(
         `${summary}; lockfiles changed: ${lockfiles.join(', ') || 'none'}`,
       );
