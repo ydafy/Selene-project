@@ -20,7 +20,7 @@ Quoted from #646.
 ## Tasks
 
 - [x] T1 S7: map the current money core (writers, readers, amounts, states, open findings). Route: 3 `gentle-ai-explore` in parallel. Commit: evidence in L3.
-- [ ] T2 S1, S6: ledger section, plus the current-state section it builds on. Route: `gentle-ai-worker` (context backstop) from the decisions in L4. Commit: pending.
+- [x] T2 S1, S6: ledger section, plus the current-state section it builds on. Route: `gentle-ai-worker` (context backstop) from the decisions in L4, reviewed inline. Commit: see L5.
 - [ ] T3 S2, S6: refund and cancellation records section. Route: inline. Commit: pending.
 - [ ] T4 S3, S6: order and shipment status model section. Route: inline. Commit: pending.
 - [ ] T5 S4, S5, S6: code path changes, TLC impact, implementation order for #647, #648, #649. Route: inline. Commit: pending.
@@ -48,3 +48,4 @@ Quoted from #646.
   - D6 Time. Each entry stores `effective_at` (when the provider says it happened) and `created_at` (when Selene recorded it).
   - D7 Growth: about 10 to 15 entries per order, 50,000 to 75,000 a month at the design target. Kept forever as financial records; #450 classifies them.
   - D8 Open questions for the maintainer: ISR and IVA withholding (#658) would add entry kinds; chargebacks (#269) are not handled today; whether the Seguro surplus or deficit is reported per month.
+- **L5** (2026-11-27, T2 review): the worker corrected L3: `shipment_cancellation_operations` has 37 columns and 28 CHECKs; `orders.actual_stripe_fee_cents` has six writers (also `auto-cancel-preparing` and `refund-overdue-payout`); refunds follow three paths; `fn_reconcile_shipment_label` does not overwrite a label cost; the dispute refund cannot meet a Transfer, so it gets no reversal entry. Agent decisions added to D2: a reserve surplus goes to a new `shipping_margin` account instead of `commission`, so commission and shipping income stay apart; the return label fee comes from a new external `seller_card` account. Open: the `buyer` account owner for checkout recovery shells, which have no order.
