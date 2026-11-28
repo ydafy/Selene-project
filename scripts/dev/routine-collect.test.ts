@@ -31,13 +31,13 @@ function fakeRun(responses: Record<string, string | Error>): Runner {
 }
 
 const runList = (workflow: string, event: string) =>
-  `gh run list --workflow ${workflow} --event ${event} -L 3 --json databaseId,createdAt,status,event`;
+  `gh run list --workflow ${workflow} --branch main --event ${event} --created >=2026-11-29 --limit 200 --json databaseId,createdAt,status,event`;
 const runView = (id: number) => `gh run view ${id} --json jobs`;
 const REPORT_ISSUES =
-  'gh issue list --search Reporte de dependencias in:title --state open --json number,title,body';
+  'gh issue list --author app/github-actions --search Reporte de dependencias in:title --state open --json number,title,body';
 // "Could not check" lines quote an argument that has spaces, so it can be pasted.
 const REPORT_ISSUES_SHOWN =
-  'gh issue list --search "Reporte de dependencias in:title" --state open --json number,title,body';
+  'gh issue list --author app/github-actions --search "Reporte de dependencias in:title" --state open --json number,title,body';
 
 function runs(...items: [number, string, string, string][]): string {
   return JSON.stringify(
@@ -210,7 +210,77 @@ describe('collectDependencies', () => {
       fakeRun(dependencyResponses({ [REPORT_ISSUES]: '[]' })),
       DATES,
     );
-    expect(none.lines[2]).toBe('No open "Reporte de dependencias" issue.');
+    expect(none.lines[2]).toBe(
+      'No open "Reporte de dependencias" issue by app/github-actions.',
+    );
+  });
+
+  it('reads only the issue with the exact report title', async () => {
+    const section = await collectDependencies(
+      fakeRun(
+        dependencyResponses({
+          [REPORT_ISSUES]: JSON.stringify([
+            {
+              number: 96,
+              title: 'Reporte de dependencias (copia)',
+              body: REPORT_BODY.replace('22 safe', '0 safe'),
+            },
+            { number: 95, title: 'Reporte de dependencias', body: REPORT_BODY },
+          ]),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.lines.slice(2)).toEqual([
+      'Report issue #95 (report of 2026-11-29): 22 safe updates, 3 majors, 0 vulnerabilities.',
+    ]);
+  });
+
+  it('keeps an earlier report failure but drops the rerun step while a report run is pending', async () => {
+    const section = await collectDependencies(
+      fakeRun(
+        dependencyResponses({
+          [runView(20)]: jobs(['should-run', 'success'], ['report', 'failure']),
+          [runList('dependency-report.yml', 'workflow_dispatch')]: runs([
+            22,
+            '2026-11-30T14:00:00Z',
+            'queued',
+            'workflow_dispatch',
+          ]),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.lines.slice(1, 3)).toEqual([
+      'dependency-report.yml: run 22 (workflow_dispatch) is queued. Wait for it.',
+      'dependency-report.yml: the report job ran in run 20 (schedule, 2026-11-29T15:00:00Z): failure.',
+    ]);
+  });
+
+  it('refuses a run list that reached its limit', async () => {
+    const full = runs(
+      ...Array.from(
+        { length: 200 },
+        (_, i): [number, string, string, string] => [
+          100 + i,
+          '2026-11-29T15:00:00Z',
+          'completed',
+          'schedule',
+        ],
+      ),
+    );
+    const section = await collectDependencies(
+      fakeRun(
+        dependencyResponses({
+          [runList('dependency-audit.yml', 'schedule')]: full,
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines[0]).toBe(
+      `Could not check: ${runList('dependency-audit.yml', 'schedule')}: the list reached its limit of 200; raise --limit.`,
+    );
   });
 
   it('turns a failed command into a "Could not check" line and keeps the other checks', async () => {
@@ -247,7 +317,7 @@ describe('collectDependencies', () => {
 const OPEN_ISSUES =
   'gh issue list --state open --limit 1000 --json number,title,labels,milestone,createdAt,updatedAt';
 const CLOSED_GO_LIVE =
-  'gh issue list --state closed --milestone Go-live --search closed:>=2026-11-23 --limit 200 --json number,title';
+  'gh issue list --state closed --milestone Go-live --search closed:>=2026-11-23 --limit 200 --json number,title,createdAt';
 const OPEN_PRS =
   'gh pr list --state open --limit 200 --json number,title,createdAt,isDraft';
 
@@ -309,8 +379,14 @@ function backlogResponses(
         labels: ['idea', 'priority:high'],
       },
     ),
+    // #450 opened and closed this week, so it counts as created too.
     [CLOSED_GO_LIVE]: JSON.stringify([
-      { number: 450, title: 'Closed blocker' },
+      {
+        number: 450,
+        title: 'Closed blocker',
+        createdAt: '2026-11-24T10:00:00Z',
+      },
+      { number: 451, title: 'Old blocker', createdAt: '2026-10-01T10:00:00Z' },
     ]),
     [OPEN_PRS]: JSON.stringify([
       {
@@ -330,6 +406,28 @@ function backlogResponses(
   };
 }
 
+const BACKLOG_NEW = [
+  'New since 2026-11-23 (2):',
+  '- #730 [Finding] New tooling bug (finding, priority:medium, area:tooling)',
+  '- #731 Finding: unlabeled launch blocker (no labels; milestone Go-live)',
+];
+const BACKLOG_ISSUE_LISTS = [
+  'Critical (1):',
+  '- #500 [Finding] Payout drift',
+  'High (1):',
+  '- #401 [Idea] Some idea',
+  'Findings without a priority (1):',
+  '- #400 [Finding] Old finding without priority',
+  'Titles that name a type its labels lack (1):',
+  '- #731 Finding: unlabeled launch blocker: no finding label',
+  'Stale, not updated since 2026-10-01 (1):',
+  '- #400 [Finding] Old finding without priority (updated 2026-09-15)',
+];
+const BACKLOG_PRS = [
+  'PRs open more than 7 days (1):',
+  '- #700 feat: old draft (opened 2026-11-10, draft)',
+];
+
 describe('collectBacklog', () => {
   it('summarizes the open issues and PRs the backlog check reads', async () => {
     const section = await collectBacklog(fakeRun(backlogResponses()), DATES);
@@ -339,7 +437,7 @@ describe('collectBacklog', () => {
       'New since 2026-11-23 (2):',
       '- #730 [Finding] New tooling bug (finding, priority:medium, area:tooling)',
       '- #731 Finding: unlabeled launch blocker (no labels; milestone Go-live)',
-      'Go-live: 2 open (1 created since 2026-11-23), 1 closed since 2026-11-23.',
+      'Go-live: 2 open (2 created since 2026-11-23), 2 closed since 2026-11-23.',
       'Critical (1):',
       '- #500 [Finding] Payout drift',
       'High (1):',
@@ -400,7 +498,7 @@ describe('collectBacklog', () => {
     );
   });
 
-  it('keeps the PR check when the issue list fails', async () => {
+  it('keeps the PR check and the Go-live closures when the issue list fails', async () => {
     const section = await collectBacklog(
       fakeRun(
         backlogResponses({ [OPEN_ISSUES]: new Error('exit 1: HTTP 502') }),
@@ -411,8 +509,54 @@ describe('collectBacklog', () => {
     expect(section.lines).toEqual([
       `Could not check: ${OPEN_ISSUES}: exit 1: HTTP 502`,
       'Open PRs: 2.',
-      'PRs open more than 7 days (1):',
-      '- #700 feat: old draft (opened 2026-11-10, draft)',
+      'Go-live: 2 closed since 2026-11-23.',
+      ...BACKLOG_PRS,
+    ]);
+  });
+
+  it('refuses a PR list that reached its limit and keeps the issue results', async () => {
+    const full = JSON.stringify(
+      Array.from({ length: 200 }, (_, i) => ({
+        number: i + 1,
+        title: 'x',
+        createdAt: '2026-11-01T10:00:00Z',
+        isDraft: false,
+      })),
+    );
+    const section = await collectBacklog(
+      fakeRun(backlogResponses({ [OPEN_PRS]: full })),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      `Could not check: ${OPEN_PRS}: the list reached its limit of 200; raise --limit.`,
+      'Open issues: 5.',
+      ...BACKLOG_NEW,
+      'Go-live: 2 open (2 created since 2026-11-23), 2 closed since 2026-11-23.',
+      ...BACKLOG_ISSUE_LISTS,
+    ]);
+  });
+
+  it('keeps the open Go-live count when the closure list reached its limit', async () => {
+    const full = JSON.stringify(
+      Array.from({ length: 200 }, (_, i) => ({
+        number: i + 1,
+        title: 'x',
+        createdAt: '2026-11-01T10:00:00Z',
+      })),
+    );
+    const section = await collectBacklog(
+      fakeRun(backlogResponses({ [CLOSED_GO_LIVE]: full })),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines).toEqual([
+      `Could not check: ${CLOSED_GO_LIVE}: the list reached its limit of 200; raise --limit.`,
+      'Open issues: 5. Open PRs: 2.',
+      ...BACKLOG_NEW,
+      'Go-live: 2 open; created and closed since 2026-11-23 not checked.',
+      ...BACKLOG_ISSUE_LISTS,
+      ...BACKLOG_PRS,
     ]);
   });
 });
@@ -554,6 +698,38 @@ describe('collectSecurity', () => {
     expect(section.lines.slice(4)).toEqual([
       `Could not check: ${SECURITY_ADVISORS}: the output is not a JSON list of objects`,
       'Accepted security findings whose tracking issue closed; each needs a new decision: none.',
+    ]);
+  });
+
+  it('prints "none" for the tracking issues only when every lookup succeeded, and keeps a confirmed closure', async () => {
+    const lookupFails = {
+      'gh issue view 434 --json state': new Error('exit 1: HTTP 502'),
+    };
+    const closed = await collectSecurity(
+      fakeRun(securityResponses(lookupFails)),
+      DATES,
+      ACCEPTED,
+    );
+    expect(closed.failed).toBe(true);
+    expect(closed.lines.slice(-3)).toEqual([
+      'Could not check: gh issue view 434 --json state: exit 1: HTTP 502',
+      'Accepted security findings whose tracking issue closed; each needs a new decision (1):',
+      '- #313 (auth_leaked_password_protection)',
+    ]);
+
+    const open = await collectSecurity(
+      fakeRun(
+        securityResponses({
+          ...lookupFails,
+          'gh issue view 313 --json state': '{"state":"OPEN"}',
+        }),
+      ),
+      DATES,
+      ACCEPTED,
+    );
+    expect(open.lines.slice(-2)).toEqual([
+      '- rls_enabled_no_policy_public_gone',
+      'Could not check: gh issue view 434 --json state: exit 1: HTTP 502',
     ]);
   });
 
@@ -769,6 +945,32 @@ describe('collectWorkflow', () => {
     ]);
   });
 
+  it('does not count the recent comments of an issue whose comment list may be cut', async () => {
+    const section = await collectWorkflow(
+      fakeRun(
+        workflowResponses({
+          [MISTAKES_OF_WEEK]: JSON.stringify([
+            {
+              number: 611,
+              title: 'Long thread',
+              state: 'OPEN',
+              createdAt: '2026-10-01T10:00:00Z',
+              comments: comments(
+                ...Array.from({ length: 100 }, () => '2026-10-02T10:00:00Z'),
+              ),
+            },
+          ]),
+        }),
+      ),
+      DATES,
+    );
+    expect(section.failed).toBe(true);
+    expect(section.lines.slice(0, 2)).toEqual([
+      'Agent mistakes updated since 2026-11-23 (1):',
+      '- #611 Long thread (open): Could not check its comments since 2026-11-23: gh returns at most 100 comments; read gh issue view 611 --comments.',
+    ]);
+  });
+
   it('keeps the other lists when one fails or reaches its limit', async () => {
     const full = JSON.stringify(
       Array.from({ length: 200 }, (_, i) => ({
@@ -809,10 +1011,10 @@ function treeResponses(
   diff: string,
 ): Record<string, string> {
   return {
-    [git(path, 'status --short')]: status,
+    [git(path, 'status --porcelain --untracked-files=all')]: status,
     [git(path, 'rev-list --count origin/main..HEAD')]: ahead,
     [git(path, 'log -1 --format=%cI')]: lastCommit,
-    [git(path, 'diff --name-only origin/main...HEAD')]: diff,
+    [git(path, 'diff --name-only --no-renames origin/main...HEAD')]: diff,
   };
 }
 
@@ -832,10 +1034,12 @@ function worktreeResponses(
     ].join('\n\n'),
     ...treeResponses(
       `${TREES}/a`,
-      ' M bun.lock\n?? notes.md\n',
+      // A new manifest in an untracked folder, and a renamed manifest.
+      ' M bun.lock\n?? apps/new/package.json\nR  apps/admin-web/package.json -> apps/admin-web/manifest.json\n',
       '2\n',
       '2026-11-29T10:00:00-06:00\n',
-      'apps/frontend/package.json\nsrc/x.ts\n',
+      // --no-renames lists a committed rename as its deleted source too.
+      'apps/frontend/package.json\npackages/old/package.json\nsrc/x.ts\n',
     ),
     ...treeResponses(`${TREES}/b`, '', '0\n', '2026-11-10T10:00:00Z\n', ''),
     ...treeResponses(`${TREES}/c`, '', '0\n', '2026-11-27T10:00:00Z\n', ''),
@@ -849,7 +1053,7 @@ describe('collectWorktrees', () => {
     expect(section.failed).toBe(false);
     expect(section.lines).toEqual([
       'Active worktrees (2):',
-      `- ${TREES}/a (feat/a): 2 uncommitted files, 2 commits ahead of origin/main, last commit 2026-11-29 (1 day ago); lockfiles changed: apps/frontend/package.json, bun.lock`,
+      `- ${TREES}/a (feat/a): 3 uncommitted files, 2 commits ahead of origin/main, last commit 2026-11-29 (1 day ago); lockfiles changed: apps/admin-web/package.json, apps/frontend/package.json, apps/new/package.json, bun.lock, packages/old/package.json`,
       `- ${TREES}/c (feat/c): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-27 (3 days ago); lockfiles changed: none`,
       'Inactive worktrees (2):',
       `- ${TREES}/b (feat/b): 0 uncommitted files, 0 commits ahead of origin/main, last commit 2026-11-10 (20 days ago)`,

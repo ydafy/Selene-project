@@ -41,6 +41,8 @@ const TOPICS = [
   'docs',
 ];
 const ISSUE_LIMIT = 1000;
+const LIST_LIMIT = 200;
+const LIMIT_REACHED = `the list reached its limit of ${LIST_LIMIT}; raise --limit.`;
 
 // ---------------------------------------------------------------- dates
 
@@ -206,12 +208,20 @@ const DEPENDENCY_WORKFLOWS = [
     job: 'report',
     onFailure:
       'Rerun the report (docs/maintenance.md, "A. Dependencies", step 1).',
+    // A pending run is already the rerun.
+    pendingReplacesRerun: true,
   },
 ];
+const REPORT_ISSUE_TITLE = 'Reporte de dependencias';
+const REPORT_AUTHOR = 'app/github-actions';
+// Only the issue the report workflow created: anyone can open one with the same
+// title (.github/workflows/dependency-report.yml).
 const REPORT_ISSUES = [
   'gh',
   'issue',
   'list',
+  '--author',
+  REPORT_AUTHOR,
   '--search',
   'Reporte de dependencias in:title',
   '--state',
@@ -221,8 +231,9 @@ const REPORT_ISSUES = [
 ];
 const REPORT_TITLE = /^# Dependency report, (\d{4}-\d{2}-\d{2})\s*$/;
 
-// docs/maintenance.md, "A. Dependencies". A run counts only when its work job
-// ran: a backup run that found an earlier run skips that job and still succeeds.
+// docs/maintenance.md, "A. Dependencies". A run counts only when it ran on main
+// and its work job ran: a backup run that found an earlier run skips that job
+// and still succeeds, and a run on a feature branch is a test.
 export async function collectDependencies(
   run: Runner,
   dates: RoutineDates,
@@ -241,14 +252,18 @@ export async function collectDependencies(
           'list',
           '--workflow',
           workflow.file,
+          '--branch',
+          'main',
           '--event',
           event,
-          '-L',
-          '3',
+          '--created',
+          `>=${dates.sunday}`,
+          '--limit',
+          String(LIST_LIMIT),
           '--json',
           'databaseId,createdAt,status,event',
         ],
-        parseRuns,
+        capped(LIST_LIMIT, LIMIT_REACHED, parseRuns),
       );
       if (!listed) {
         readAll = false;
@@ -288,7 +303,11 @@ export async function collectDependencies(
 
     if (latest) {
       const { run: item, conclusion } = latest;
-      const next = conclusion === 'success' ? '' : ` ${workflow.onFailure}`;
+      const next =
+        conclusion === 'success' ||
+        (workflow.pendingReplacesRerun && pending.length > 0)
+          ? ''
+          : ` ${workflow.onFailure}`;
       section.lines.push(
         `${workflow.file}: the ${workflow.job} job ran in run ${item.id} (${item.event}, ${item.createdAt}): ${conclusion}.${next}`,
       );
@@ -300,13 +319,17 @@ export async function collectDependencies(
   }
 
   const reports = await section.read(REPORT_ISSUES, (output) =>
-    jsonList(jsonValue(output)).map((issue) => ({
-      number: count(issue, 'number'),
-      body: text(issue, 'body'),
-    })),
+    jsonList(jsonValue(output))
+      .filter((issue) => text(issue, 'title') === REPORT_ISSUE_TITLE)
+      .map((issue) => ({
+        number: count(issue, 'number'),
+        body: text(issue, 'body'),
+      })),
   );
   if (reports?.length === 0)
-    section.lines.push('No open "Reporte de dependencias" issue.');
+    section.lines.push(
+      `No open "${REPORT_ISSUE_TITLE}" issue by ${REPORT_AUTHOR}.`,
+    );
   for (const report of reports ?? []) {
     const lines = report.body.split(/\r?\n/);
     const titleAt = lines.findIndex((line) => REPORT_TITLE.test(line));
@@ -346,7 +369,7 @@ const OPEN_PRS = [
   '--state',
   'open',
   '--limit',
-  '200',
+  String(LIST_LIMIT),
   '--json',
   'number,title,createdAt,isDraft',
 ];
@@ -381,36 +404,39 @@ export async function collectBacklog(
       );
     return byNumber(parsed);
   });
-  const prs = await section.read(OPEN_PRS, (output) =>
-    byNumber(
-      jsonList(jsonValue(output)).map((pr) => ({
-        number: count(pr, 'number'),
-        title: text(pr, 'title'),
-        createdAt: text(pr, 'createdAt'),
-        isDraft: pr.isDraft === true,
-      })),
+  const prs = await section.read(
+    OPEN_PRS,
+    capped(LIST_LIMIT, LIMIT_REACHED, (output) =>
+      byNumber(
+        jsonList(jsonValue(output)).map((pr) => ({
+          number: count(pr, 'number'),
+          title: text(pr, 'title'),
+          createdAt: text(pr, 'createdAt'),
+          isDraft: pr.isDraft === true,
+        })),
+      ),
     ),
   );
-  const closedGoLive = open
-    ? await section.read(
-        [
-          'gh',
-          'issue',
-          'list',
-          '--state',
-          'closed',
-          '--milestone',
-          'Go-live',
-          '--search',
-          `closed:>=${dates.since}`,
-          '--limit',
-          '200',
-          '--json',
-          'number,title',
-        ],
-        (output) => jsonList(jsonValue(output)),
-      )
-    : undefined;
+  const closedGoLive = await section.read(
+    [
+      'gh',
+      'issue',
+      'list',
+      '--state',
+      'closed',
+      '--milestone',
+      'Go-live',
+      '--search',
+      `closed:>=${dates.since}`,
+      '--limit',
+      String(LIST_LIMIT),
+      '--json',
+      'number,title,createdAt',
+    ],
+    capped(LIST_LIMIT, LIMIT_REACHED, (output) =>
+      jsonList(jsonValue(output)).map((issue) => text(issue, 'createdAt')),
+    ),
+  );
 
   const counts = [
     open ? `Open issues: ${open.length}.` : '',
@@ -419,7 +445,6 @@ export async function collectBacklog(
   if (counts.length > 0) section.lines.push(counts.join(' '));
 
   if (open) {
-    const has = (issue: Issue, label: string) => issue.labels.includes(label);
     section.list(
       `New since ${dates.since}`,
       open
@@ -429,20 +454,31 @@ export async function collectBacklog(
             `#${issue.number} ${issue.title} (${describeLabels(issue)})`,
         ),
     );
+  }
 
-    const goLive = open.filter((issue) => issue.milestone === 'Go-live');
-    const createdThisWeek = goLive.filter(
-      (issue) => issue.createdAt >= sinceStart,
-    ).length;
-    const closed = closedGoLive
-      ? `, ${closedGoLive.length} closed since ${dates.since}`
-      : '';
-    // Only the count and its change: listing every launch blocker each week is
-    // noise (53 on 2026-11-28).
+  // Only the count and its change: listing every launch blocker each week is
+  // noise (53 on 2026-11-28). An issue created and closed this week is in the
+  // closed list only, so "created" needs both lists.
+  const goLive = open?.filter((issue) => issue.milestone === 'Go-live');
+  if (goLive && closedGoLive) {
+    const created = [
+      ...goLive.map((issue) => issue.createdAt),
+      ...closedGoLive,
+    ].filter((createdAt) => createdAt >= sinceStart).length;
     section.lines.push(
-      `Go-live: ${goLive.length} open (${createdThisWeek} created since ${dates.since})${closed}.`,
+      `Go-live: ${goLive.length} open (${created} created since ${dates.since}), ${closedGoLive.length} closed since ${dates.since}.`,
+    );
+  } else if (goLive)
+    section.lines.push(
+      `Go-live: ${goLive.length} open; created and closed since ${dates.since} not checked.`,
+    );
+  else if (closedGoLive)
+    section.lines.push(
+      `Go-live: ${closedGoLive.length} closed since ${dates.since}.`,
     );
 
+  if (open) {
+    const has = (issue: Issue, label: string) => issue.labels.includes(label);
     for (const [title, label] of [
       ['Critical', 'priority:critical'],
       ['High', 'priority:high'],
@@ -502,9 +538,7 @@ export async function collectBacklog(
 const REPO_API = 'repos/ydafy/Selene-project';
 // `gh api` without --paginate returns one page of up to 30 items.
 const API_PAGE = 30;
-const LIST_LIMIT = 200;
 const PAGE_REACHED = `the list reached GitHub's page size of ${API_PAGE}; add --paginate.`;
-const LIMIT_REACHED = `the list reached its limit of ${LIST_LIMIT}; raise --limit.`;
 
 function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -632,6 +666,7 @@ async function compareAdvisors(
   ];
   if (tracked.length === 0) return;
   const closed: string[] = [];
+  let readAll = true;
   for (const issue of tracked) {
     const state = await section.read(
       ['gh', 'issue', 'view', issue.replace(/^#/, ''), '--json', 'state'],
@@ -641,6 +676,7 @@ async function compareAdvisors(
         return text(value, 'state');
       },
     );
+    if (state === undefined) readAll = false;
     if (state === 'CLOSED') {
       const lints = entries
         .filter((e) => e.trackedBy === issue)
@@ -648,10 +684,12 @@ async function compareAdvisors(
       closed.push(`${issue} (${lints.join(', ')})`);
     }
   }
-  section.list(
-    `Accepted ${type} findings whose tracking issue closed; each needs a new decision`,
-    closed,
-  );
+  // "none" only when every lookup answered.
+  if (readAll || closed.length > 0)
+    section.list(
+      `Accepted ${type} findings whose tracking issue closed; each needs a new decision`,
+      closed,
+    );
 }
 
 function parseCount(output: string): number {
@@ -804,6 +842,9 @@ async function listIssues(
     );
 }
 
+// `gh issue list --json comments` returns at most this many comments per issue.
+const COMMENT_LIMIT = 100;
+
 // docs/maintenance.md, "E. Workflow", steps 1 to 3. It counts comments but never
 // prints them: whether a comment is new evidence is the agent's call.
 export async function collectWorkflow(
@@ -833,6 +874,10 @@ export async function collectWorkflow(
       const state = text(issue, 'state').toLowerCase();
       if (text(issue, 'createdAt') >= sinceStart)
         return ` (${state}): first occurrence`;
+      if (comments(issue).length >= COMMENT_LIMIT) {
+        section.failed = true;
+        return ` (${state}): Could not check its comments since ${dates.since}: gh returns at most ${COMMENT_LIMIT} comments; read gh issue view ${count(issue, 'number')} --comments.`;
+      }
       const recent = comments(issue).filter(
         (comment) => text(comment, 'createdAt') >= sinceStart,
       ).length;
@@ -925,7 +970,11 @@ export async function collectWorktrees(
       continue;
     }
     const git = (...args: string[]) => ['git', '-C', tree.path, ...args];
-    const status = await section.read(git('status', '--short'), nonEmptyLines);
+    // Every untracked file, not only its folder, whatever the local settings.
+    const status = await section.read(
+      git('status', '--porcelain', '--untracked-files=all'),
+      nonEmptyLines,
+    );
     const ahead = await section.read(
       git('rev-list', '--count', 'origin/main..HEAD'),
       parseCount,
@@ -938,14 +987,15 @@ export async function collectWorktrees(
       }),
     );
     const changed = await section.read(
-      git('diff', '--name-only', 'origin/main...HEAD'),
+      // A renamed manifest also counts by its source path.
+      git('diff', '--name-only', '--no-renames', 'origin/main...HEAD'),
       nonEmptyLines,
     );
     if (!status || ahead === undefined || !age || !changed) continue;
 
     const files = [
       ...changed,
-      ...status.map((line) => line.slice(3).split(' -> ').pop() ?? ''),
+      ...status.flatMap((line) => line.slice(3).split(' -> ')),
     ];
     const lockfiles = [
       ...new Set(files.filter((file) => LOCKFILE.test(file))),

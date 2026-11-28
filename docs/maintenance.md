@@ -329,7 +329,7 @@ Follow these rules:
 
 ## Accepted findings
 
-Without a record, the same known advisor lints come back every week as decisions. An item on one of the two lists below is not a decision. The report counts the listed items in one line: "N accepted findings unchanged". An item becomes a decision again when its count grows, a new object appears under the same lint, or its tracking issue closes.
+Without a record, the same known advisor lints come back every week as decisions. An item on one of the two lists below is not a decision. The report counts the listed items in one line: "N accepted findings unchanged". An item that lists its objects becomes a decision again when its count grows or a new object appears under the same lint. An item that accepts every object of its lint (`objects: 'all'`) also accepts a new object. Either kind becomes a decision again when its tracking issue closes.
 
 Add an item only with the maintainer's decision, and write the reason. Remove it when the issue that fixes it merges. Never list a draft Security Advisory in either list: its details stay out of files.
 
