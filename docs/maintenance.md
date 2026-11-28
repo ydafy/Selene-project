@@ -184,7 +184,7 @@ untaken=$(date -d '14 days ago' +%F)
    gh issue list --state all --label agent-mistake --search "updated:>=$since" --limit 200 --json number,title,state,createdAt
    ```
 
-   An issue created on or after `$since` without comments is a first occurrence. An older issue that only changed labels is not news. A comment with new evidence dated on or after `$since` means the mistake repeated this week, even on an issue opened this week. An older evidence comment is not a repeat of this week; step 2 keeps it. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
+   Classify each issue by its `createdAt` and its evidence comments (comments that report a new occurrence, not clarifications). An issue created on or after `$since` is a first occurrence. An evidence comment dated on or after `$since` means the mistake repeated this week, even on an issue opened this week. An issue that only changed labels, or whose evidence comments are older, is not news; step 2 keeps the older repeats. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
 
 2. List the repeated mistakes whose guard is still missing:
 
