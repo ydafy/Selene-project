@@ -15,7 +15,7 @@ Load when the maintainer asks for the weekly or monthly routine, for example "Ho
 
 - `AGENTS.md` wins over this skill.
 - Outside the dependency routine (below), change nothing until the maintainer decides: no dependency updates, no issue edits, closes, or label changes, and no branches, commits, or PRs. There are two exceptions:
-  - start the dependency workflows when this Monday's run is missing (`docs/dependencies.md`);
+  - start the dependency workflows when this week's Sunday run is missing, or rerun a failed report (`docs/dependencies.md`);
   - open Finding or Idea issues, as `AGENTS.md`, "Findings outside the current work", allows.
 - Read the remote Supabase project only through the read-only MCP tools that `docs/maintenance.md` names. Never use `execute_sql`.
 - Vulnerability details never leave the session.

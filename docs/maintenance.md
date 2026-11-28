@@ -2,13 +2,13 @@
 
 The weekly and monthly review of the repository's state. An agent collects the data, reports what needs a decision with a recommendation, and the maintainer decides. Each area copies the dependency pattern: data that arrives on its own, a written procedure, and a fixed way to act.
 
-Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides, with two exceptions: the agent starts a missing dependency workflow run, and it opens Finding or Idea issues as `AGENTS.md`, "Findings outside the current work", allows.
+Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides, with two exceptions: the agent starts a missing dependency workflow run or reruns a failed report ("A. Dependencies", step 1), and it opens Finding or Idea issues as `AGENTS.md`, "Findings outside the current work", allows.
 
 The dependency routine is a separate session with its own rule. When the maintainer says "la rutina de dependencias", the agent applies the dependency report without asking about each package, and pushes and opens the pull request. The maintainer still decides the merge. The steps are in `docs/dependencies.md`, "Run the dependency routine". Inside this page's routine, systems A to E only report dependencies.
 
 ## When to run it
 
-- **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to E. It takes about 45 minutes.
+- **Weekly.** Every Monday. The dependency workflows are scheduled for Sunday (`docs/dependencies.md`), so their data is ready by Monday morning. Run systems A to E. It takes about 45 minutes.
 - **Monthly.** Once a month, in the first session on or after the 1st (usually the first Monday). Run the weekly routine plus "Monthly checks".
 
 ## Run a session
@@ -80,14 +80,26 @@ Each system says where its data comes from, which commands to run, and when it n
 
 The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-review`.
 
-1. Check that both workflows ran today:
+1. Check that both workflows did their work since Sunday. List the scheduled and the manual runs separately, so the audit's `push` runs never hide them:
 
    ```bash
-   gh run list --workflow dependency-audit.yml -L 1
-   gh run list --workflow dependency-report.yml -L 1
+   for wf in dependency-audit.yml dependency-report.yml; do
+     for ev in schedule workflow_dispatch; do
+       gh run list --workflow "$wf" --event "$ev" -L 3 --json databaseId,createdAt,status
+     done
+   done
    ```
 
-   If either has no run today, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   For each run created since the last Sunday (compare `createdAt`, in UTC), read its jobs:
+
+   ```bash
+   gh run view <databaseId> --json jobs --jq '.jobs[] | {name, conclusion}'
+   ```
+
+   A run counts only when its work job (`audit` or `report`) ran. A backup run that found an earlier run skips that job and still ends in `success`, so never judge a run by its own conclusion. A manual run counts too, so a second session the same week does not start the workflows again.
+   - If a run is still `in_progress` or `queued`, wait for it.
+   - If a workflow has no run since Sunday whose work job ran, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   - If the latest `report` job that ran did not end in `success` (`failure`, `cancelled`, or `timed_out`), start the report again and wait for it: a failed run leaves last week's report in the issue. A `skipped` job did not run, so it never triggers a rerun. An `audit` job that ran and did not succeed is a decision, not a rerun.
 
 2. Read the report issue:
 

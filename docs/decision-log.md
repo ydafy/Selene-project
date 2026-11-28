@@ -397,3 +397,11 @@ If Selene does well and grows organically, we expect 20,000-60,000 registered us
 - Production gets its own environment `production` at go-live, with required reviewers and its own scoped token, password, and ref (`docs/go-live.md`, "Staging and production").
 
 **Consequence:** Staging runs exactly what `main` holds, and the run's summary records each deploy. This replaces the 2026-11-10 entry for staging: the agent no longer asks for a green light to push a merged migration. A vulnerability fix is still deployed by hand from the advisory's fork (`docs/findings.md`, "Report a vulnerability").
+
+## 2026-11-27: Weekly Dependency Workflows Run on Sunday
+
+**Context:** `.github/workflows/dependency-audit.yml` and `.github/workflows/dependency-report.yml` were scheduled for Monday 14:17 and 14:47 UTC (08:17 and 08:47 in Mexico City). From 2026-10-26 to 2026-11-23 GitHub started every scheduled primary run of the audit 5 to 12 hours late, between 13:46 and 19:42 Mexico City time on Monday. The report's primaries were as late (19:54 on 2026-11-23), and its 2026-11-02 primary was dropped. A routine that ran before them found no run and started both by hand, and the late scheduled run then emailed a second time (2026-11-16, #718).
+
+**Decision (maintainer, 2026-11-27):** All four crons move to Sunday at the same UTC times: the primaries at 14:17 and 14:47, the backups at 20:23 and 20:53. The backup check (`scripts/ci/scheduled-backup.ts`) is unchanged.
+
+**Consequence:** With the delays seen so far, the report arrives by Sunday night or early Monday, before the routine. The routine checks for a scheduled run since Sunday and starts a missing one by hand.
