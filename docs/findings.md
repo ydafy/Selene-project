@@ -22,6 +22,56 @@ A finding is a bug or gap that is not part of the task. Open a GitHub issue with
 5. Decide whether it blocks the launch ("Go-live" below).
 6. Cite the issue number in the feature's `## Log`.
 
+If you open the issue from the command line, write the body to a file and pass the `finding` label:
+
+```bash
+gh issue create -R ydafy/Selene-project --label finding --title "[Finding] <short summary>" --body-file <file>
+```
+
+The body file uses the headings of `.github/ISSUE_TEMPLATE/finding.yml`. Under `### Priority` and `### Area`, keep exactly one line of the options below and delete the others:
+
+```markdown
+### What happens
+
+<The problem in plain words, as the user or the system sees it.>
+
+### Where
+
+<Screen, Edge Function, table, file and line.>
+
+### Why it matters
+
+<Who is affected and what breaks or could break.>
+
+### Priority
+
+Critical (money, data loss, or production broken)
+High (wrong behavior users will hit)
+Medium (edge case or degraded experience)
+Low (cleanup, tooling, docs)
+
+### Area
+
+Payments and payouts
+Orders and shipments
+Mobile app
+Admin web
+Edge Functions
+Database
+Dependencies and tooling
+Docs
+
+### Evidence
+
+<Logs, command output, query results, or steps to reproduce. Never paste secrets or personal data.>
+
+### Found while
+
+<Feature or branch in progress, e.g. odd/tasks/<feature>.md.>
+```
+
+The labeler reads the first line under each heading. If a heading is missing or its line matches no option, the labeler leaves that label group unchanged and comments once on the issue with the valid options. Fix the body, and the labeler runs again on the edit.
+
 ## Go-live
 
 The GitHub milestone `Go-live` holds the issues Selene must not launch with. Every other open issue is real and stays open, but it ships and gets fixed after launch. Decide once, when the issue is opened, and change the decision only when new evidence arrives.

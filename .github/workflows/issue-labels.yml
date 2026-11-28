@@ -2,12 +2,18 @@ name: Issue labels
 
 # Labels Finding issues from their form answers (Priority and Area dropdowns).
 # Issue forms can only add fixed labels, so the dropdown answers need this job.
+# A Finding is an issue with the `finding` label or a title that starts with
+# "[Finding]", so an issue from `gh issue create --label finding` is labeled
+# whatever its title says. When the body has no matching `### Priority` or
+# `### Area` answer, the script comments once with the valid options
+# (docs/findings.md, "Record a finding").
 # The issue body is untrusted input: the script reads it through gh and only
 # applies labels from a fixed table; it is never interpolated into a command.
+# Labels and comments made with github.token do not start new workflow runs.
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled]
 
 permissions:
   contents: read
@@ -18,16 +24,20 @@ concurrency:
 
 jobs:
   label-finding:
-    if: startsWith(github.event.issue.title, '[Finding]')
+    # `labeled` runs only when the label added is `finding`.
+    if: >-
+      (github.event.action != 'labeled' || github.event.label.name == 'finding') &&
+      (contains(github.event.issue.labels.*.name, 'finding') ||
+      startsWith(github.event.issue.title, '[Finding]'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: .github/scripts
+          sparse-checkout: scripts/ci
       - name: Label from form answers
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: bash .github/scripts/label-finding.sh "$ISSUE_NUMBER"
+        run: bash scripts/ci/label-finding.sh "$ISSUE_NUMBER"
