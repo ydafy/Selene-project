@@ -1000,7 +1000,15 @@ export async function collectWorktrees(
       inactive.push(`${name}: prunable, its directory is gone`);
       continue;
     }
-    const git = (...args: string[]) => ['git', '-C', tree.path, ...args];
+    // --no-optional-locks: `git status` would otherwise refresh and lock the
+    // other worktree's index, and this script only reads.
+    const git = (...args: string[]) => [
+      'git',
+      '--no-optional-locks',
+      '-C',
+      tree.path,
+      ...args,
+    ];
     // Every untracked file, not only its folder, whatever the local settings.
     const status = await section.read(
       git('status', '--porcelain', '-z', '--untracked-files=all'),

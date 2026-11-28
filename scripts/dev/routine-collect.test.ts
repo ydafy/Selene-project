@@ -1044,7 +1044,9 @@ describe('collectWorkflow', () => {
 });
 
 const TREES = 'C:/dev/School-portal-worktrees';
-const git = (path: string, args: string) => `git -C ${path} ${args}`;
+// --no-optional-locks: reading another worktree must never take its index.lock.
+const git = (path: string, args: string) =>
+  `git --no-optional-locks -C ${path} ${args}`;
 
 function treeResponses(
   path: string,
