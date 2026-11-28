@@ -4,7 +4,7 @@ This document is the design for Selene's money core (#646): a ledger of money mo
 Items #647, #648, and #649 of roadmap #644 implement it.
 The maintainer approves this document before any code for those items is written.
 
-Status: Draft.
+Status: Approved by the maintainer on 2026-11-27 (#742 and #753).
 
 ## Current state
 
@@ -377,7 +377,7 @@ Each writer keeps its name and writes these tables. "Plus" names the ledger entr
 - `fn_upsert_checkout_recovery_shell`: the shell or `orders.payment_processing`, and `internal.payment_recoveries`, plus `recovery_charge` for a shell.
 - `fn_set_checkout_recovery_charge_evidence`: unchanged, `stripe_charge_id` on `orders` or the shell.
 - `fn_claim_checkout_recovery_shells`, `fn_mark_checkout_recovery_retry`, and `fn_mark_checkout_recovery_reconciliation_needed`: `internal.payment_recoveries`.
-- `fn_finalize_checkout_recovery`: `refunds` (purpose `checkout_recovery`), `internal.refund_events`, and `internal.payment_recoveries`, and `orders.status` and the listings for an order, plus `recovery_refund`.
+- `fn_finalize_checkout_recovery`: `refunds` (purpose `checkout_recovery`), `internal.refund_events`, and `internal.payment_recoveries`, and for an order the listings, plus `recovery_refund`. `orders.status` follows through the trigger on `internal.payment_recoveries` (see [Order status](#order-status)).
 
 Readers of the moved columns, such as `fn_list_shipment_refund_problems`, `fn_get_shipment_cancellation_recovery`, and `fn_close_account`, join the new tables. T5 lists them.
 
@@ -398,16 +398,290 @@ Shipment `B` from the ledger example is cancelled by its seller while `paid`. Th
 
 ## Order and shipment states
 
-T4 writes this section.
+Today one enum types both the order and its shipments, a trigger copies a derived status into `orders.status`, and opening a dispute writes that column directly (see [Current state](#current-state): "`orders.status` is a stored copy"). A pgTAP file run on 2026-11-27 against the local stack of this worktree, with `supabase test db`, proved both problems. It was a scratch file and is not committed. All 7 assertions passed:
+
+- An order with a `delivered` shipment and a `cancelled` shipment from two sellers derives `cancelled`, and stays `cancelled` after the delivered shipment completes.
+- An order with a `delivered` and a `shipped` shipment derives `shipped`.
+- Opening a `money_dispute` on the delivered shipment sets `orders.status = 'dispute'` and leaves the shipment `delivered`.
+- The other seller's shipment then moves from `shipped` to `delivered`, and `orders.status` becomes `delivered` while the dispute is still `open`.
+
+This design gives shipments their own enum, keeps the dispute on `disputes`, derives the order status in one function with rules that fit multi-seller orders, guards every shipment transition, and moves the deadlines off `updated_at`. #649 implements the states and commits a pgTAP test that pins the cancelled plus delivered case and the dispute case. #574 implements the deadlines.
+
+### Shipment status
+
+`shipments.status` gets a new enum, `shipment_status`, with the values `paid`, `preparing`, `shipped`, `delivered`, `completed`, `cancelled`, and `refunded`. These are the values a shipment takes today. A shipment is never `pending` or `dispute`, and nothing writes `shipments.status = 'dispute'`. Because the names stay, the app copy, the i18n keys under `status.*` in `apps/frontend/src/shared/i18n/locales/en/orders.json` and its Spanish copy, and the TLC model's `shStatus` (paid, delivered, completed, cancelled, refunded) keep their values. `order_status` keeps all nine values and types only `orders.status`.
+
+`fn_create_shipments_from_single_payment` inserts each shipment as `paid`. Today it inserts `preparing` as a "sub-pending" seed and advances it to `paid` once its allocation is written (`supabase/schemas/public/functions/fn_create_shipments_from_single_payment.sql` line 197 and line 292). The seed exists only because the shared enum has no value before `paid`. The insert, its order items, and the advance run in one transaction, so no other transaction ever sees the seed.
+
+### Where the dispute lives
+
+The dispute lives only on `disputes`, one row per shipment (`disputes.shipment_id` is unique). A shipment in dispute keeps its logistic status, such as `delivered`. "In dispute" means the shipment has an active dispute: a `disputes` row whose `status` is not `resolved` or `rejected`, which is how readers find one today. No shipment gets a `dispute` status, because the dispute has its own seven-state machine in `dispute_status`.
+
+`fn_on_dispute_opened` stops writing `orders.status` (`supabase/schemas/public/functions/fn_on_dispute_opened.sql` line 10). The order shows `dispute` through the derivation below.
+
+### Order status
+
+`orders.status` stays a stored cache, not a view. A view with `security_invoker` would derive the status from the shipments the reader can see, so a seller who can read only their own shipment would get a different order status than the buyer. A `SECURITY DEFINER` view would expose the other sellers' shipments.
+
+A new function, `internal.fn_refresh_order_status(p_order_id)`, is the only writer of `orders.status`. It runs three steps:
+
+1. Lock the order row `FOR UPDATE`.
+2. Derive the status in a new statement, so it sees what a concurrent shipment or dispute writer committed while it waited for the lock.
+3. Update `orders.status` only when the derived value differs from the stored one.
+
+Three triggers call it. One is `AFTER INSERT OR UPDATE OF status` on `shipments` and replaces `trg_shipments_status` and `public.fn_shipments_status_trigger`, which update the order in the same statement that derives it (`supabase/schemas/public/functions/fn_shipments_status_trigger.sql` line 8). The other is new, `AFTER INSERT OR UPDATE OF status` on `disputes`, so opening, resolving, or rejecting a dispute refreshes the order. The third is new, `AFTER INSERT OR UPDATE OF state` on `internal.payment_recoveries`, for a row with an `order_id`, because an order with no shipments has no shipment change to fire a trigger. Every writer of the recovery state is covered: `fn_finalize_checkout_recovery` setting `refunded`, and `fn_record_checkout_recovery_refund` moving it back to a retry when a refund fails after `succeeded`.
+
+A `BEFORE UPDATE OF status` trigger on `orders` refuses every other writer with `ORDER_STATUS_DERIVED`. `internal.fn_refresh_order_status` sets a transaction-local flag with `set_config('selene.order_status_refresh', 'on', true)` before its update and clears it after, and the trigger passes only while the flag is set. Clients have no `UPDATE` on `orders.status`, so the flag guards against a SQL function that writes the column by mistake, not against an attacker.
+
+`internal.fn_derive_order_status` stays as the pure derivation that `internal.fn_refresh_order_status` calls, with new rules. Today it checks `dispute`, `refunded`, and `cancelled` before any logistic status (`supabase/schemas/internal/functions/fn_derive_order_status.sql` line 25). The first matching row wins:
+
+| Order has                                                                        | Status                                                                                                  |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| No shipments, and its `internal.payment_recoveries` row has `state = 'refunded'` | `refunded`                                                                                              |
+| No shipments                                                                     | `pending`                                                                                               |
+| An active dispute                                                                | `dispute`                                                                                               |
+| At least one live shipment (not `cancelled` or `refunded`)                       | The least advanced live shipment, in the order `paid`, `preparing`, `shipped`, `delivered`, `completed` |
+| No live shipment, and at least one `refunded`                                    | `refunded`                                                                                              |
+| No live shipment                                                                 | `cancelled`                                                                                             |
+
+A cancelled or refunded shipment no longer hides the other sellers' progress. Some worked cases:
+
+| Shipments                                         | Today                                                           | After       |
+| ------------------------------------------------- | --------------------------------------------------------------- | ----------- |
+| `cancelled` and `delivered`                       | `cancelled`                                                     | `delivered` |
+| `cancelled` and `completed`                       | `cancelled`                                                     | `completed` |
+| `delivered` and `shipped`                         | `shipped`                                                       | `shipped`   |
+| `delivered` with an active dispute, and `shipped` | `dispute`, until the `shipped` one changes and overwrites it    | `dispute`   |
+| All `cancelled`                                   | `cancelled`                                                     | `cancelled` |
+| `cancelled` and `refunded`                        | `refunded`                                                      | `refunded`  |
+| None, and the payment recovery is `refunded`      | `refunded`, written directly by `fn_finalize_checkout_recovery` | `refunded`  |
+
+### Shipment transition guard
+
+A new `BEFORE UPDATE OF status` trigger on `shipments` refuses any change outside this table with `SHIPMENT_STATUS_TRANSITION_INVALID`:
+
+| From                    | Allowed to                                                            |
+| ----------------------- | --------------------------------------------------------------------- |
+| `paid`                  | `preparing`, `cancelled`                                              |
+| `preparing`             | `shipped`, `delivered`, `cancelled`                                   |
+| `shipped`               | `delivered`, `completed` (dispute resolved to the seller), `refunded` |
+| `delivered`             | `completed`, `refunded`                                               |
+| `completed`             | `refunded`                                                            |
+| `cancelled`, `refunded` | Nothing                                                               |
+
+An update that keeps the same status passes, so an `UPDATE OF status` that rewrites the current value is not an error. An insert must be `paid`. Each writer keeps its own `WHERE` guard on the from status, such as `fn_cancel_shipment` with `paid` or `preparing` and `fn_record_dispute_refund` with `shipped` or `delivered`. The trigger is the backstop for a writer that forgets one.
+
+`fn_resolve_dispute_to_seller` and `fn_resolve_dispute_to_seller_as_admin` change the most. Today they check only the dispute status, then set the shipment `completed` from any status, or write `orders.status = 'completed'` directly when `disputes.shipment_id IS NULL` (`supabase/schemas/public/functions/fn_resolve_dispute_to_seller.sql` line 63). After the change, both lock the shipment and require `shipped` or `delivered`. They refuse a dispute with no shipment instead of writing `orders.status`. No such dispute is created today: `fn_open_shipment_dispute` is the only producer, and it always sets `shipment_id` from the shipment it locks. Older rows without one are disposable test data (AGENTS.md), so #649 writes no migration for them, and #650 makes the column `NOT NULL`.
+
+### Deadlines
+
+Three deadlines start from `updated_at`, so any later write to the row restarts them (#574). Each one gets a column that records the moment its clock starts.
+
+| Deadline                                   | Today's column         | New column                                                                                 | Reader                                                                                                                                                                                              |
+| ------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A `preparing` shipment expires             | `shipments.updated_at` | `shipments.label_generated_at`, which exists and is set by `fn_finalize_shipment_label`    | `auto-cancel-preparing` (`supabase/functions/auto-cancel-preparing/handler.ts` line 147) and the shipment countdown in `apps/frontend/src/features/orders/components/order-action-card.tsx` line 98 |
+| The seller pays the return label, 48 hours | `disputes.updated_at`  | New `disputes.waiting_return_at`, set when `status` enters `waiting_return`                | `fn_cron_dispute_payout_timeout` (`supabase/schemas/public/functions/fn_cron_dispute_payout_timeout.sql` line 17) and its countdown in the same app file, line 120                                  |
+| The buyer ships the return, 48 hours       | `disputes.updated_at`  | New `disputes.return_payout_paid_at`, set when `fn_log_return_payment` records the payment | `fn_cron_dispute_shipping_timeout` (`supabase/schemas/public/functions/fn_cron_dispute_shipping_timeout.sql` line 19) and its countdown in the same app file, line 128                              |
+
+The third row has a second problem: `fn_log_return_payment` sets `status = 'return_shipped'` when it records the payment, while the cron and the countdown look for `waiting_return` with the payment `paid`, so neither ever matches (#750). #574 fixes the status they read in the same change.
+
+The other deadlines already read their own columns: `created_at`, `delivered_at`, and `return_delivered_at`. Once no deadline reads `updated_at`, the shared `updated_at` trigger of #308 can cover `shipments` and `disputes`.
+
+### Locks and concurrency
+
+The order lock comes last, as in the ledger section. A writer locks the shipment, then the cancellation operation, then the dispute, and `internal.fn_refresh_order_status` locks the order at the end, from the trigger. A shipment writer already holds the shipment row when its trigger fires, and a dispute writer holds the dispute row. `fn_resolve_dispute_to_seller` locks the dispute first today (`supabase/schemas/public/functions/fn_resolve_dispute_to_seller.sql` line 39), so it changes to lock the shipment before the dispute. The rule holds for every dispute writer: read the dispute's `shipment_id` without a lock, lock the shipment, then lock the dispute and check that its `shipment_id` did not change. `fn_open_shipment_dispute` already locks the shipment before it inserts the dispute.
+
+The derivation runs after the lock and in a new statement because of `READ COMMITTED`. Each statement takes a new snapshot. Today the trigger derives inside the `UPDATE` of the order, so the derivation reads the shipments with the snapshot taken before that `UPDATE` waited for the row. If two sellers' shipments change at the same time, the second transaction can then write a status that misses the first transaction's change. With the lock first, the second transaction waits until the first commits, and its next statement sees both shipment changes.
+
+### New names
+
+These names are new: the enum `shipment_status`, the function `internal.fn_refresh_order_status`, the error `SHIPMENT_STATUS_TRANSITION_INVALID`, the triggers on `disputes` and `internal.payment_recoveries`, the guard triggers on `orders` and `shipments`, and the columns `disputes.waiting_return_at` and `disputes.return_payout_paid_at`. #649 implements the shipment status, the dispute model, the order status, and the transition guard, after #648 creates `internal.payment_recoveries`, which the first derivation row reads. #574 implements the deadlines after #649, because it changes the same dispute status writers.
 
 ## Code path changes
 
-T5 writes this section.
+This section lists what each item changes outside the new tables. The writers of the refund and cancellation tables are in "Writers after the change" of the records section, and the functions that post each ledger entry are in the entry kinds table of the ledger section. Neither list is repeated here.
+
+### SQL writers and readers
+
+#647 adds `internal.fn_post_ledger_entry` and makes each function in the entry kinds table call it, in the same transaction as its state change. The new functions are `fn_record_order_stripe_fee` and `fn_get_shipment_refund_basis` (#647, under Edge Functions), `fn_record_checkout_recovery_refund` (#648, under the dispute refund and checkout recovery records), and `internal.fn_refresh_order_status` (#649, in [Order and shipment states](#order-and-shipment-states)). Each Edge Function keeps calling the same RPC, and no Edge Function posts an entry.
+
+These readers switch from a dropped or moved column to the ledger or to a new table:
+
+| Reader                                                                                                                              | Reads today                                                                                                                  | Reads after the change                                                                                                                                 | Item       |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| `admin_connect_payout_release_view`                                                                                                 | The sum of `order_items.net_payout_cents`                                                                                    | `release_amount_cents`: the `shipment_funds` balance plus its unreversed `transfer` entries, so the amount stays the shipment's net after the Transfer | #647       |
+| `fn_begin_shipment_transfer`, `fn_atomic_payout_resume_mapping`, `fn_complete_shipment_transfer`, `internal.fn_notify_held_payouts` | `connect_payout_run_shipments.net_payout_cents` against the view                                                             | The same mapping amount against the view, which now returns the `shipment_funds` balance                                                               | #647       |
+| `fn_close_account`                                                                                                                  | The view's `release_amount_cents`, the operation's `refund_status`, `orders.compensation_state`                              | The view, `refunds.status`, and `internal.payment_recoveries.state`                                                                                    | #647, #648 |
+| `fn_list_shipment_refund_problems`, `fn_get_shipment_cancellation_summary`, `fn_get_shipment_cancellation_recovery`                 | The refund, escalation, resolution, and loss columns of `shipment_cancellation_operations`, `orders.cancellation_loss_cents` | `refunds`, `shipment_refund_escalations`, `shipment_refund_resolutions`, and the `refund_fee_loss` and `label_loss` entries                            | #648, #647 |
+| `fn_list_shipment_cancellation_reviews`                                                                                             | The review columns of the operation                                                                                          | `shipment_cancellation_reviews`                                                                                                                        | #648       |
+| `fn_list_shipment_late_carrier_activity`                                                                                            | The `late_carrier_activity_*` columns of the operation                                                                       | `shipment_late_carrier_activities`                                                                                                                     | #648       |
+| `fn_get_shipment_carrier_cancellation`                                                                                              | The carrier columns of the operation                                                                                         | `shipment_carrier_cancellations`                                                                                                                       | #648       |
+| `fn_refresh_seller_stats`                                                                                                           | `orders.status = 'completed'` (`supabase/schemas/internal/functions/fn_refresh_seller_stats.sql` line 28)                    | The seller's own shipments with `status = 'completed'`, because a cancelled plus completed order now derives `completed` for both sellers              | #649       |
+
+`fn_apply_shipment_cancellation_refund_event` reads `orders.cancellation_loss_cents` today. After #647 it reads the operation's frozen `cancellation_loss_cents` or the `refund_fee_loss` entry. `supabase/tests/fixtures/money.psql` derives run and mapping amounts from `net_payout_cents`, so #647 rewrites it to derive them from the ledger. Once the view reads the `shipment_funds` balance, `order_items.net_payout_cents` has no reader, so #647 drops it in its last slice: the ledger section allows it to be derived or checked, and a dropped column cannot drift.
+
+#649 changes the state functions of [Order and shipment states](#order-and-shipment-states). `fn_create_shipments_from_single_payment` inserts `paid`. `internal.fn_refresh_order_status` and its triggers replace `public.fn_shipments_status_trigger`. `fn_on_dispute_opened` stops writing `orders.status`. A trigger on `internal.payment_recoveries` calls the refresh for an order with no shipments. `fn_resolve_dispute_to_seller` and `fn_resolve_dispute_to_seller_as_admin` lock the shipment and require `shipped` or `delivered`. Every dispute writer locks the shipment before the dispute, including `fn_resolve_dispute_to_buyer_as_admin` and the three dispute crons. A cron selects its candidate disputes without a lock, then for each one locks the shipment `FOR UPDATE SKIP LOCKED`, then the dispute, and checks its conditions again; a skipped shipment waits for the next run, as a skipped dispute does today. Every SQL object that casts a shipment status to `order_status` changes its cast to `shipment_status`, such as the `reviews` policy (`supabase/schemas/public/tables/reviews.sql` line 45), `admin_connect_payout_release_view`, and the partial index in `supabase/schemas/public/tables/shipments.sql` line 143.
+
+### Dispute refund and checkout recovery records
+
+These close the two open questions of the records section.
+
+| Function                                   | Arguments after the change                                                                                                                             | Today                                              | Caller passes                                                                                                                                                 |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fn_record_dispute_refund`                 | `p_dispute_id`, `p_stripe_refund_id`, `p_payment_intent_id`, `p_amount_cents`, `p_status`, `p_failure_reason`, `p_stripe_event_id`, `p_stripe_created` | `p_dispute_id`, `p_stripe_refund_id`               | `resolve-dispute-refund`: the refund object's id, PaymentIntent, amount, status, failure reason, and `created`. `stripe-webhooks`: the same plus the event id |
+| `fn_finalize_checkout_recovery`            | `p_stripe_payment_intent_id`, `p_stripe_refund_id`, `p_amount_cents`, `p_stripe_created`                                                               | `p_stripe_payment_intent_id`, `p_stripe_refund_id` | `checkout-recovery-worker` and `stripe-webhooks` (`compensateRecoveryShell`): the result of the refund create call                                            |
+| `fn_record_checkout_recovery_refund` (new) | The refund id, PaymentIntent, amount, status, failure reason, event id, and event `created`                                                            | Does not exist                                     | `stripe-webhooks`, for a later refund event of a recovery refund                                                                                              |
+
+`fn_record_dispute_refund` requires the refund id. It checks the amount against the server basis, which #741 decides (today price plus reserve). Only `succeeded` resolves the dispute and sets the shipment `refunded`. It posts the same entries as a cancellation refund. A dispute refund gets the fence a cancellation has. Before the Stripe call, `resolve-dispute-refund` calls a new `fn_start_dispute_refund(p_dispute_id)`, which locks the shipment, then the dispute, checks the shipment guard (`shipped` or `delivered`) and the dispute guard, builds the amount on the server, and freezes it with the PaymentIntent in new columns `disputes.refund_started_at` and `disputes.refund_request`. While the fence is set and no `refunds` row of the dispute ended `failed` or `canceled`, every other dispute writer refuses with `DISPUTE_REFUND_IN_PROGRESS`: `fn_resolve_dispute_to_seller`, `fn_resolve_dispute_to_seller_as_admin`, the three dispute crons, and `fn_release_shipment_funds` and `fn_confirm_shipment_delivery`, which already refuse an active dispute. So no seller resolution or release can commit between the Stripe call and the record. `fn_record_dispute_refund` then checks the refund against the frozen request instead of the current statuses, so a Stripe-accepted refund is always recorded. Only a confirmed failure of the create call, a Stripe error that proves no refund was created, clears the fence. `charge_already_refunded` is not one: the fence stays set while the caller looks for the refund. The shipment guard and the dispute guard apply only to the start.
+
+A retry, including one after a crash between the start and the Stripe call, recovers the way a cancellation does (`docs/specs/shipment-cancellation-coordination.md`). `fn_start_dispute_refund` returns the frozen request when the fence is already set, instead of refusing. The caller then tries three ways in order: the dispute's recorded `refunds` row; the PaymentIntent's refunds whose `metadata.dispute_id` matches; and, only within 23 hours of `refund_started_at`, a replay of the create call with the same key `refund_dispute_<disputeId>` and the same frozen parameters, so Stripe returns the refund it already made or makes the only one. If none of the three finds or makes a refund, it records nothing, keeps the fence, and lists the dispute as a refund problem with reason `refund_not_found`, so the funds stay held until an admin resolves it (#262). A later event for a refund that is already recorded skips them and goes to the status machine, so a `succeeded` to `failed` event appends its event and posts the `refund` reversal keyed `<stripe_refund_id>:failed`, while the shipment stays `refunded` and the dispute stays resolved. The failed refund is then listed by `fn_list_shipment_refund_problems`, and its manual repayment belongs with #262 (#749). Today `resolve-dispute-refund` passes only the id and never checks the status (`supabase/functions/resolve-dispute-refund/index.ts` line 239).
+
+When Stripe answers `charge_already_refunded` (`supabase/functions/resolve-dispute-refund/index.ts` line 216), `resolve-dispute-refund` lists the PaymentIntent's refunds and records the one whose `metadata.dispute_id` matches. If none matches, it records nothing and reports the dispute. Today the SQL writes `unknown` into `disputes.admin_notes` instead.
+
+`fn_finalize_checkout_recovery` keeps its name for the create-call result. The amount must equal the shell's `charged_amount_cents` or the order's `total_amount_cents`. A recovery refund that fails after `succeeded` reverses `recovery_refund` and queues a retry. The retry's idempotency key is `pi_<id>_recovery_<n>`, where `n` is the number of failed or canceled refunds of that recovery. Today the key is `pi_<id>_recovery` (`supabase/functions/checkout-recovery-worker/recovery.ts` line 79). A crash before the next confirmed failure replays the same key, so only a confirmed failure gets a new one.
+
+### Edge cases of the new paths
+
+- **Rows from before #647.** A shipment created before the ledger exists has no entries. AGENTS.md treats those rows as disposable test data, so no backfill is written. `fn_get_shipment_refund_basis` raises `LEDGER_ENTRY_MISSING` when the shipment has no `charge` entry instead of reading the share as 0, and `admin_connect_payout_release_view` returns no amount for a shipment without a `shipment_funds` account, so it is not releasable.
+- **A 0 fee.** `fn_record_order_stripe_fee` with a fee of 0 sets `actual_stripe_fee_cents = 0` and posts nothing, because `internal.fn_post_ledger_entry` skips a 0 amount. The deferred `refund_fee_loss` split of 0 posts nothing either.
+- **A dispute refund that is not final yet.** When the create call answers `pending` or `requires_action`, `fn_record_dispute_refund` inserts the `refunds` row and leaves the dispute and the shipment as they are. The later `succeeded` event resolves them. A retried `resolve-dispute-refund` reuses the key `refund_dispute_<disputeId>`, so Stripe returns the same refund, and the partial unique index allows no second live refund for the dispute. After a failed dispute refund no new one is created; that is the manual repayment of #262.
+- **The create call and its webhook at the same time.** Both record the same `stripe_refund_id`. `fn_record_dispute_refund` and `fn_record_checkout_recovery_refund` lock the owner first (the shipment, then the dispute, or the payment recovery row), then insert or update the `refunds` row. The second caller applies the status machine to the existing row: an allowed transition, such as `pending` to `succeeded`, appends its event and updates the projection, and only a repeated or backward report returns `changed: false`.
+- **Events out of order.** A `refund.failed` that arrives before the create call is recorded inserts the row as `failed`. The create call's later `succeeded` is a backward report and appends nothing, which matches Stripe's final state. No `refund` entry posts, so the ledger has nothing to reverse.
+- **A recovery that crashes between the Stripe call and the record.** The replay uses the same key `pi_<id>_recovery_<n>` and gets the same refund. If that refund fails while nothing recorded it, its `refund.failed` event carries `metadata.payment_recovery_id`, so the webhook records it as `failed`, `n` grows by one, and the next attempt gets a new key.
+- **A dispute status added later.** The derivation counts a dispute as active unless its status is `resolved` or `rejected`, so a new status shows the order as `dispute` until the derivation learns it. That is the safe default for money held for the seller.
+
+### Webhook routing
+
+`stripe-webhooks` handles `refund.updated` and `refund.failed`. Today it ignores every dispute refund event (`supabase/functions/stripe-webhooks/shipment-refund-events.ts` line 102, Finding #749) and treats a refund without `metadata.shipment_id` as `not_a_shipment_refund` (line 97). After the change it finds the refund's owner in this order:
+
+1. `refunds.stripe_refund_id`.
+2. Only for a refund that is not recorded: `metadata.dispute_id`, then `metadata.shipment_id`, then a new `metadata.payment_recovery_id` that the recovery refund creator sets.
+3. No owner: the event is settled as `not_a_shipment_refund` and reported, as today. The outcome keeps its name, so the webhook's outcome contract and its tests do not change.
+
+The owner's purpose picks the RPC:
+
+| Purpose                          | RPC                                           |
+| -------------------------------- | --------------------------------------------- |
+| `cancellation`, `overdue_payout` | `fn_apply_shipment_cancellation_refund_event` |
+| `dispute`                        | `fn_record_dispute_refund`                    |
+| `checkout_recovery`              | `fn_record_checkout_recovery_refund`          |
+
+Each RPC passes the event id to `internal.fn_append_refund_event`, which stores it in `refund_events.stripe_event_id`. That column is unique, so a redelivered event appends nothing. The manual repayment of a failed dispute refund belongs with #262.
+
+### Edge Functions
+
+No Edge Function posts a ledger entry. Each one changes only the RPC it calls, the arguments it passes, or the column it reads.
+
+| Edge Function                                                                                             | What changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Item |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| `stripe-webhooks`, `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing`, `refund-overdue-payout` | The direct update guarded by `.is('actual_stripe_fee_cents', null)` becomes a call to the new `fn_record_order_stripe_fee(p_order_id, p_charge_id, p_fee_cents, p_effective_at)`. It keeps the `IS NULL` guard, posts `stripe_fee`, and runs the deferred `refund_fee_loss` check under the order lock.                                                                                                                                                                                                             | #647 |
+| `cancel-order`, `auto-cancel-orders`, `auto-cancel-preparing`, `refund-overdue-payout`                    | The refund basis in `supabase/functions/_shared/cancellation/refund-basis.ts` reads the shipment's recorded `seguro` entry instead of rounding a share with `computeShipmentRefundAmountCents`. It reads it through a new service-only RPC, `fn_get_shipment_refund_basis(p_shipment_id)`, which returns the price and the recorded share, because Edge Functions have no grant on the ledger tables.                                                                                                               | #647 |
+| `auto-cancel-preparing`                                                                                   | Reads `shipments.label_generated_at` instead of `updated_at`.                                                                                                                                                                                                                                                                                                                                                                                                                                                       | #574 |
+| `resolve-dispute-refund`                                                                                  | Calls `fn_start_dispute_refund` before the Stripe call and uses its frozen amount, passes the whole refund to `fn_record_dispute_refund`, and handles `charge_already_refunded` by listing the PaymentIntent's refunds.                                                                                                                                                                                                                                                                                             | #648 |
+| `stripe-webhooks`                                                                                         | Routes refund events by owner, as above. `fn_upsert_checkout_recovery_shell` already runs before the immediate refund, so it returns the `internal.payment_recoveries` id it wrote, and `compensateRecoveryShell` creates the refund with `metadata.payment_recovery_id` set to it and the key `pi_<id>_recovery_<n>`, then passes the amount and `created` to `fn_finalize_checkout_recovery`. A crash after the Stripe call or a refund that stays `pending` then fails later with an owner the webhook can find. | #648 |
+| `checkout-recovery-worker`                                                                                | Passes the amount and `created`, sets `metadata.payment_recovery_id` from the claimed row, and builds the key `pi_<id>_recovery_<n>`. Both creators build the refund request with one shared helper, so every replay of a key sends the same parameters, which Stripe requires for a reused idempotency key.                                                                                                                                                                                                        | #648 |
+| `release-connect-payout`                                                                                  | Inserts mapping and run amounts that are checked against the `shipment_funds` balance through the view.                                                                                                                                                                                                                                                                                                                                                                                                             | #647 |
+| `resume-pending-payouts`                                                                                  | Its check of `net_payout_cents` against `release_amount_cents` (`supabase/functions/resume-pending-payouts/resume-pending-payouts.ts` line 408) compares with the view, whose amount stays the shipment's net after the Transfer, so a run resumed after its Transfer still matches. The code does not change.                                                                                                                                                                                                      | #647 |
+| `generate-shipping-label`                                                                                 | No code change. `fn_finalize_shipment_label` and `fn_reconcile_shipment_label` post `label_purchase`.                                                                                                                                                                                                                                                                                                                                                                                                               | #647 |
+| `list-shipment-operation-reviews`, `list-shipment-late-carrier-activity`, `list-shipment-refund-problems` | Their SQL functions read the new tables. The responses keep their field names, such as `carrier_cancellation_outcome` and `late_carrier_activity_at`.                                                                                                                                                                                                                                                                                                                                                               | #648 |
+
+### Crons
+
+No cron schedule changes. These jobs in `supabase/schemas/_cluster/misc.sql` reach changed functions:
+
+- `auto-cancel-orders-job` and `auto-cancel-preparing-job`: fee writers, refund basis, and refund records. `auto-cancel-preparing-job` also reads `label_generated_at` (#574).
+- `checkout-recovery-worker-every-5-minutes`: the new `fn_finalize_checkout_recovery` arguments and the retry key.
+- `reconcile-stripe-fees-every-5-minutes`: `fn_complete_stripe_fee_reconciliation_job_leased` posts `stripe_fee` and the deferred `refund_fee_loss`.
+- `resume-pending-payouts` and `held-payout-seller-notices`: payout amounts checked against the ledger.
+- `complete-delivered-shipments`, `track-shipments-preparing`, and `track-shipments-shipped`: `fn_confirm_shipment_delivery` posts the reserve settlement, `fn_record_tracking_event` writes `shipment_late_carrier_activities`, and both pass the transition guard.
+- `dispute-payout-timeout-job`, `dispute-shipping-timeout-job`, and `return-delivery-timeout`: dispute writers under the shipment-before-dispute lock order (#649). The first two also read the new deadline columns (#574).
+- `reconcile-connect-payments`: `internal.fn_reconcile_connect_payments` reads `shipments.status`, which changes type (#649).
+
+### App and admin-web
+
+`packages/types/src/types.ts` gets `ShipmentStatus = Enums<'shipment_status'>` next to `OrderStatus` (line 52). The app reads no money columns. These app files read a shipment status through `Tables<'shipments'>['status']`, which becomes `shipment_status` with the same values after `bun run db:types`: `apps/frontend/src/features/orders/hooks/use-orders.ts`, `apps/frontend/src/features/orders/hooks/use-shipments.ts`, `apps/frontend/src/features/orders/components/order-action-card.tsx`, `apps/frontend/src/features/orders/logic/order-status.ts`, `apps/frontend/src/features/orders/components/order-card.tsx`, `apps/frontend/src/features/orders/components/order-stepper.tsx`, `apps/frontend/src/features/orders/components/multi-seller-banner.tsx`, and `apps/frontend/src/features/orders/logic/order-action-banner.ts`.
+
+The meaning of `orders.status` changes for multi-seller orders: an order with a cancelled shipment now shows the other shipments' progress instead of `cancelled`. A screen that reads `orders.status` to mean "some shipment was cancelled" must read the shipments. `apps/admin-web/src/features/users/hooks/use-user-detail.ts` filters `orders.status = 'cancelled'`, which after #649 counts only orders whose every shipment was cancelled. The filter stays, because a user's cancelled orders are the ones where nothing was delivered; a single cancelled shipment shows in the order's shipments. The countdowns in `apps/frontend/src/features/orders/components/order-action-card.tsx` read the new deadline columns (#574). Admin-web changes only where it reads a table or enum directly, because the Edge Function responses keep their field names.
+
+### Tests
+
+Each item rewrites the tests that pin the columns and functions it changes. The groups from the T5 survey are pgTAP files in `supabase/tests/database`, Bruno folders in `bruno`, and e2e specs in `e2e/admin-web`.
+
+| Item | pgTAP                                                                                                                                                                                           | bun                                                                                                                                                                                      | Bruno                                                  | e2e                              |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------------- |
+| #648 | `shipment_cancellation_*`, `overdue_payout_refund`, `overdue_refund_hardening`, `checkout_recovery_*`, `account_closure_blockers`, `integrity_constraints`, `ops_failures`                      | `stripe-webhooks`, `resolve-dispute-refund`, `checkout-recovery-worker`, the cancellation helpers, the list functions, and the `scripts/verify` harnesses of the cancellation lifecycles | `cancellations`, `dispute-integrity`, `stripe-sandbox` | `e2e/admin-web/shipments.e2e.ts` |
+| #647 | `settlement_single_payment`, `money_orders`, `payout_*`, `stripe_fee_reconciliation_*`, `shipment_cancellation_*`, `overdue_payout_refund`, `account_closure_blockers`, `integrity_constraints` | The five fee writers, `refund-basis`, `release-connect-payout`, `resume-pending-payouts`                                                                                                 | `orders`, `functions`, `stripe-sandbox`                | `e2e/admin-web/payments.e2e.ts`  |
+| #649 | `settlement_single_payment`, `internal_functions`, `order_status_name`, `shipment_disputes`, `money_orders`                                                                                     | The app order status logic and `apps/admin-web/src/features/users/hooks/use-user-detail.ts`                                                                                              | `orders`, `dispute-integrity`                          | `e2e/admin-web/shipments.e2e.ts` |
+| #574 | `dispute_return_timeouts`, `ops_failures`                                                                                                                                                       | `auto-cancel-preparing` and the app countdowns                                                                                                                                           | `cancellations`, `dispute-integrity`                   |                                  |
+
+The design also needs new tests. Each one fails before its item and passes after it.
+
+- Ledger idempotency (#647): for each entry kind, a replay with the same key and amount writes nothing, the same key with another amount raises `LEDGER_ENTRY_KEY_CONFLICT`, and a 0 amount writes nothing.
+- Append-only triggers: `UPDATE`, `DELETE`, and `TRUNCATE` on `ledger_entries` raise `LEDGER_ENTRY_IMMUTABLE` (#647). `internal.refund_events` and the final child rows refuse changes (#648).
+- Refund event transitions (#648): every allowed row of the refund status machine appends one event, and every other pair appends nothing and returns `changed: false`.
+- Order derivation (#649): every row of the worked table in [Order and shipment states](#order-and-shipment-states), including the cancelled plus delivered case and the dispute case.
+- Transition guard (#649): every pair outside the guard table raises `SHIPMENT_STATUS_TRANSITION_INVALID`, an insert other than `paid` raises, and a same-status update passes. A direct write of `orders.status` raises `ORDER_STATUS_DERIVED`.
+- Concurrent refresh (#649): two sellers' shipments of one order change in two sessions at once, and the order ends with the status derived from both. pgTAP runs in one session, so this is a harness in `scripts/verify`, like `scripts/verify/test-shipment-transfer-coordination.ts`.
+- Recovery race (#647): the order creation and the `recovery_refund` of one PaymentIntent, under the PaymentIntent lock, as the ledger section requires.
 
 ## Effect on the TLC model
 
-T5 writes this section.
+The model in `docs/formal/shipment-transfer-cancellation/ShipmentTransferCancel.tla` covers transfer, cancellation, and the overdue payout refund. Disputes and returns are out of scope. The design changes which tables its mapped functions write and read, but no action, guard, or invariant.
+
+### Mapping rows that change
+
+The code mapping table in `docs/formal/shipment-transfer-cancellation/README.md` has 21 actions. These rows change their code step or guard text:
+
+| Item | Rows                                                                                                                                              | What changes                                                                                                                                                                                                                                                                                                                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #648 | `RecordRefund`, `RecordRefundFailed`, `CancelShipment`, `CompleteOverdue`, `ResolveFailedOverdueRefund`, `Progress`, `ClaimCancel`, `StartRefund` | The refund status is read from and written to `refunds` and `internal.refund_events`. The resolution is `shipment_refund_resolutions`. `Progress` records late activity in `shipment_late_carrier_activities` instead of the `late_carrier_activity_*` columns. `ClaimCancel` and `StartRefund` read the review and carrier tables. |
+| #647 | `Reprice`, `Begin`, `CreateRun`, `CompleteTransfer`, `RecordRefund`, `CancelShipment`, `CompleteOverdue`, `ResolveFailedOverdueRefund`            | `release_amount_cents` is the `shipment_funds` balance, so the inputs of `Reprice` are ledger entries. `G_BeginAmount` compares the mapping with that balance. The other rows post entries and stop writing the loss columns.                                                                                                       |
+| #649 | `Progress`, `ConfirmDelivery`, `CancelShipment`, `CompleteOverdue`                                                                                | Only if their function files change. The transition guard trigger is a backstop on `shipments`, not a new guard of these actions.                                                                                                                                                                                                   |
+
+#574 changes no row. `auto-cancel-preparing` is not in the mapping table, and the dispute deadlines are out of scope.
+
+### Variables
+
+- `shStatus` maps to `shipments.status`, which becomes `shipment_status`. Its five model values (paid, delivered, completed, cancelled, refunded) keep their names.
+- `refundStatus` maps to the `refunds.status` projection of the operation's refund. The model's reduction stays (assumption 5): `failed` stands for `failed` and `canceled`. `refundOk`, history the model keeps today, now also exists in the database as the operation's `succeeded` event in `internal.refund_events`.
+- `viewAmt` maps to `release_amount_cents`, which the view now derives from the `shipment_funds` balance. `mapNet` stays `connect_payout_run_shipments.net_payout_cents`, checked against that balance.
+
+### Actions and invariants
+
+No action and no invariant changes, for these reasons:
+
+- A cancellation operation still accepts one Stripe refund. `fn_record_shipment_cancellation_refund` keeps `REFUND_ID_MISMATCH` (`supabase/schemas/public/functions/fn_record_shipment_cancellation_refund.sql` line 40), so one `refunds` row per operation matches the model's single `refundStatus`.
+- The model's shipment transitions (paid to delivered, delivered to completed, paid to cancelled, completed to refunded) are a subset of the T4 guard table, with `paid` standing for `preparing` as the README's bounds say.
+- Amounts stay abstract. `G_BeginAmount` is the same equality with a different source for the view amount.
+- Losses, ledger entries, and `orders.status` are not modelled.
+
+### Keeping the model in sync
+
+The README's rule is: "When any file in the mapping table changes, re-read its row and update the model and this table." Its "Checked against the code" section adds: "When a function in the mapping table changes, run the harness as well as TLC." The harness is `scripts/verify/test-shipment-lifecycle-model.ts`, and its row checks read the refund columns, so #648 rewrites them.
+
+Each implementing PR updates its rows of the mapping table and the "Synced against" line in the same PR. Run TLC from the README's "Run it" section:
+
+```sh
+cd docs/formal/shipment-transfer-cancellation
+java -XX:+UseParallelGC -cp "$TLA2TOOLS" tlc2.TLC -workers auto -deadlock \
+  -metadir "$(mktemp -d)" -config ShipmentTransferCancel.cfg ShipmentTransferCancel.tla
+```
 
 ## Implementation order
 
-T5 writes this section.
+The items land in this order. Each one can start after the item named in its row is merged.
+
+1. **#648, refund and cancellation history.** Can start now. The ledger keys refund entries on `refunds.stripe_refund_id`, and today a dispute refund can be recorded with a `NULL` id, so the records come first. It also creates `internal.payment_recoveries`.
+2. **#647, ledger.** Can start after #648. It drops the loss columns that #648 still writes and keys its refund entries on the `refunds` rows.
+3. **#649, order and shipment states.** Can start after #647. Its first derivation row reads `internal.payment_recoveries` from #648, and it rewrites the completion and dispute functions (`fn_release_shipment_funds`, `fn_confirm_shipment_delivery`, `fn_resolve_dispute_to_seller`) that #647 changes to post the reserve settlement, so running them one after the other avoids two migrations rewriting the same functions at once.
+4. **#574, deadlines.** Can start after #649, because it changes the dispute status writers that #649 touches. It fixes #750 in the same change.
+5. **#639, clients read only the shipments columns they use.** Can start after #649, because it needs the final `shipments` columns.
+6. **#650, dispute record cleanup.** Can start after #574, because it needs the dispute model of #649 and both change `disputes` columns and the dispute timeout functions.
+
+Each commit stays near 400 changed lines, counting generated files. SQL goes in its own commit, apart from Edge Functions and UI, and `packages/types/src/database.types.ts` goes in the commit of the migration that produced it. These are suggested slices:
+
+- #648: (1) `refunds`, `internal.refund_events`, `internal.fn_append_refund_event`, and the cancellation refund writers. (2) The carrier, review, late activity, escalation, and resolution tables with their writers and readers. (3) `internal.payment_recoveries`, the new `fn_finalize_checkout_recovery` and `fn_record_dispute_refund` arguments, and `fn_record_checkout_recovery_refund`. (4) The column drops. (5) `stripe-webhooks` routing. (6) `resolve-dispute-refund` and `checkout-recovery-worker`. (7) The TLC mapping rows and the harness.
+- #647: (1) `ledger_accounts`, `ledger_entries`, the append-only triggers, `internal.fn_post_ledger_entry`, and `ledger_account_balances`. (2) The checkout entries, `stripe_fee`, and `fn_record_order_stripe_fee`. (3) The label, completion, transfer, and payout entries. (4) The refund entries and losses, and the loss column drops. (5) The checkout recovery entries. (6) The view and the payout checks against `shipment_funds`. (7) The five fee writers and the refund basis in Edge Functions. (8) The TLC mapping rows.
+- #649: (1) `shipment_status`, the insert as `paid`, and the transition guard. (2) `internal.fn_refresh_order_status`, its triggers, the `orders` guard, the new derivation, and the dispute writers. (3) `ShipmentStatus`, the app, and admin-web.
+- #574: (1) The deadline columns and the dispute crons, with #750. (2) `auto-cancel-preparing`. (3) The app countdowns.
+- #639 and #650 plan their slices in their own issues.
