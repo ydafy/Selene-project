@@ -377,7 +377,7 @@ Each writer keeps its name and writes these tables. "Plus" names the ledger entr
 - `fn_upsert_checkout_recovery_shell`: the shell or `orders.payment_processing`, and `internal.payment_recoveries`, plus `recovery_charge` for a shell.
 - `fn_set_checkout_recovery_charge_evidence`: unchanged, `stripe_charge_id` on `orders` or the shell.
 - `fn_claim_checkout_recovery_shells`, `fn_mark_checkout_recovery_retry`, and `fn_mark_checkout_recovery_reconciliation_needed`: `internal.payment_recoveries`.
-- `fn_finalize_checkout_recovery`: `refunds` (purpose `checkout_recovery`), `internal.refund_events`, and `internal.payment_recoveries`, and `orders.status` and the listings for an order, plus `recovery_refund`.
+- `fn_finalize_checkout_recovery`: `refunds` (purpose `checkout_recovery`), `internal.refund_events`, and `internal.payment_recoveries`, and for an order the listings and `orders.status` through `internal.fn_refresh_order_status` (see [Order status](#order-status)), plus `recovery_refund`.
 
 Readers of the moved columns, such as `fn_list_shipment_refund_problems`, `fn_get_shipment_cancellation_recovery`, and `fn_close_account`, join the new tables. T5 lists them.
 
@@ -398,7 +398,104 @@ Shipment `B` from the ledger example is cancelled by its seller while `paid`. Th
 
 ## Order and shipment states
 
-T4 writes this section.
+Today one enum types both the order and its shipments, a trigger copies a derived status into `orders.status`, and opening a dispute writes that column directly (see [Current state](#current-state): "`orders.status` is a stored copy"). A pgTAP file run on 2026-11-27 against the local stack of this worktree, with `supabase test db`, proved both problems. It was a scratch file and is not committed. All 7 assertions passed:
+
+- An order with a `delivered` shipment and a `cancelled` shipment from two sellers derives `cancelled`, and stays `cancelled` after the delivered shipment completes.
+- An order with a `delivered` and a `shipped` shipment derives `shipped`.
+- Opening a `money_dispute` on the delivered shipment sets `orders.status = 'dispute'` and leaves the shipment `delivered`.
+- The other seller's shipment then moves from `shipped` to `delivered`, and `orders.status` becomes `delivered` while the dispute is still `open`.
+
+This design gives shipments their own enum, keeps the dispute on `disputes`, derives the order status in one function with rules that fit multi-seller orders, guards every shipment transition, and moves the deadlines off `updated_at`. #649 implements the states and commits a pgTAP test that pins the cancelled plus delivered case and the dispute case. #574 implements the deadlines.
+
+### Shipment status
+
+`shipments.status` gets a new enum, `shipment_status`, with the values `paid`, `preparing`, `shipped`, `delivered`, `completed`, `cancelled`, and `refunded`. These are the values a shipment takes today. A shipment is never `pending` or `dispute`, and nothing writes `shipments.status = 'dispute'`. Because the names stay, the app copy, the i18n keys under `status.*` in `apps/frontend/src/shared/i18n/locales/en/orders.json` and its Spanish copy, and the TLC model's `shStatus` (paid, delivered, completed, cancelled, refunded) keep their values. `order_status` keeps all nine values and types only `orders.status`.
+
+`fn_create_shipments_from_single_payment` inserts each shipment as `paid`. Today it inserts `preparing` as a "sub-pending" seed and advances it to `paid` once its allocation is written (`supabase/schemas/public/functions/fn_create_shipments_from_single_payment.sql` line 197 and line 292). The seed exists only because the shared enum has no value before `paid`. The insert, its order items, and the advance run in one transaction, so no other transaction ever sees the seed.
+
+### Where the dispute lives
+
+The dispute lives only on `disputes`, one row per shipment (`disputes.shipment_id` is unique). A shipment in dispute keeps its logistic status, such as `delivered`. "In dispute" means the shipment has an active dispute: a `disputes` row whose `status` is not `resolved` or `rejected`, which is how readers find one today. No shipment gets a `dispute` status, because the dispute has its own seven-state machine in `dispute_status`.
+
+`fn_on_dispute_opened` stops writing `orders.status` (`supabase/schemas/public/functions/fn_on_dispute_opened.sql` line 10). The order shows `dispute` through the derivation below.
+
+### Order status
+
+`orders.status` stays a stored cache, not a view. A view with `security_invoker` would derive the status from the shipments the reader can see, so a seller who can read only their own shipment would get a different order status than the buyer. A `SECURITY DEFINER` view would expose the other sellers' shipments.
+
+A new function, `internal.fn_refresh_order_status(p_order_id)`, is the only writer of `orders.status`. It runs three steps:
+
+1. Lock the order row `FOR UPDATE`.
+2. Derive the status in a new statement, so it sees what a concurrent shipment or dispute writer committed while it waited for the lock.
+3. Update `orders.status` only when the derived value differs from the stored one.
+
+Two triggers call it. One is `AFTER INSERT OR UPDATE OF status` on `shipments` and replaces `trg_shipments_status` and `public.fn_shipments_status_trigger`, which update the order in the same statement that derives it (`supabase/schemas/public/functions/fn_shipments_status_trigger.sql` line 8). The other is new, `AFTER INSERT OR UPDATE OF status` on `disputes`, so opening, resolving, or rejecting a dispute refreshes the order. `fn_finalize_checkout_recovery` calls it too, after it sets the order's `internal.payment_recoveries` row to `refunded`, because an order with no shipments has no shipment change to fire a trigger.
+
+A `BEFORE UPDATE OF status` trigger on `orders` refuses every other writer with `ORDER_STATUS_DERIVED`. `internal.fn_refresh_order_status` sets a transaction-local flag with `set_config('selene.order_status_refresh', 'on', true)` before its update and clears it after, and the trigger passes only while the flag is set. Clients have no `UPDATE` on `orders.status`, so the flag guards against a SQL function that writes the column by mistake, not against an attacker.
+
+`internal.fn_derive_order_status` stays as the pure derivation that `internal.fn_refresh_order_status` calls, with new rules. Today it today checks `dispute`, `refunded`, and `cancelled` before any logistic status (`supabase/schemas/internal/functions/fn_derive_order_status.sql` line 25). The first matching row wins:
+
+| Order has                                                                        | Status                                                                                                  |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| No shipments, and its `internal.payment_recoveries` row has `state = 'refunded'` | `refunded`                                                                                              |
+| No shipments                                                                     | `pending`                                                                                               |
+| An active dispute                                                                | `dispute`                                                                                               |
+| At least one live shipment (not `cancelled` or `refunded`)                       | The least advanced live shipment, in the order `paid`, `preparing`, `shipped`, `delivered`, `completed` |
+| No live shipment, and at least one `refunded`                                    | `refunded`                                                                                              |
+| No live shipment                                                                 | `cancelled`                                                                                             |
+
+A cancelled or refunded shipment no longer hides the other sellers' progress. Some worked cases:
+
+| Shipments                                         | Today                                                           | After       |
+| ------------------------------------------------- | --------------------------------------------------------------- | ----------- |
+| `cancelled` and `delivered`                       | `cancelled`                                                     | `delivered` |
+| `cancelled` and `completed`                       | `cancelled`                                                     | `completed` |
+| `delivered` and `shipped`                         | `shipped`                                                       | `shipped`   |
+| `delivered` with an active dispute, and `shipped` | `dispute`, until the `shipped` one changes and overwrites it    | `dispute`   |
+| All `cancelled`                                   | `cancelled`                                                     | `cancelled` |
+| `cancelled` and `refunded`                        | `refunded`                                                      | `refunded`  |
+| None, and the payment recovery is `refunded`      | `refunded`, written directly by `fn_finalize_checkout_recovery` | `refunded`  |
+
+### Shipment transition guard
+
+A new `BEFORE UPDATE OF status` trigger on `shipments` refuses any change outside this table with `SHIPMENT_STATUS_TRANSITION_INVALID`:
+
+| From                    | Allowed to                                                            |
+| ----------------------- | --------------------------------------------------------------------- |
+| `paid`                  | `preparing`, `cancelled`                                              |
+| `preparing`             | `shipped`, `delivered`, `cancelled`                                   |
+| `shipped`               | `delivered`, `completed` (dispute resolved to the seller), `refunded` |
+| `delivered`             | `completed`, `refunded`                                               |
+| `completed`             | `refunded`                                                            |
+| `cancelled`, `refunded` | Nothing                                                               |
+
+An update that keeps the same status passes, so an `UPDATE OF status` that rewrites the current value is not an error. An insert must be `paid`. Each writer keeps its own `WHERE` guard on the from status, such as `fn_cancel_shipment` with `paid` or `preparing` and `fn_record_dispute_refund` with `shipped` or `delivered`. The trigger is the backstop for a writer that forgets one.
+
+`fn_resolve_dispute_to_seller` and `fn_resolve_dispute_to_seller_as_admin` change the most. Today they check only the dispute status, then set the shipment `completed` from any status, or write `orders.status = 'completed'` directly when `disputes.shipment_id IS NULL` (`supabase/schemas/public/functions/fn_resolve_dispute_to_seller.sql` line 63). After the change, both lock the shipment and require `shipped` or `delivered`. They refuse a dispute with no shipment instead of writing `orders.status`.
+
+### Deadlines
+
+Three deadlines start from `updated_at`, so any later write to the row restarts them (#574). Each one gets a column that records the moment its clock starts.
+
+| Deadline                                   | Today's column         | New column                                                                                 | Reader                                                                                                                                                                                              |
+| ------------------------------------------ | ---------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A `preparing` shipment expires             | `shipments.updated_at` | `shipments.label_generated_at`, which exists and is set by `fn_finalize_shipment_label`    | `auto-cancel-preparing` (`supabase/functions/auto-cancel-preparing/handler.ts` line 147) and the shipment countdown in `apps/frontend/src/features/orders/components/order-action-card.tsx` line 98 |
+| The seller pays the return label, 48 hours | `disputes.updated_at`  | New `disputes.waiting_return_at`, set when `status` enters `waiting_return`                | `fn_cron_dispute_payout_timeout` (`supabase/schemas/public/functions/fn_cron_dispute_payout_timeout.sql` line 17) and its countdown in the same app file, line 120                                  |
+| The buyer ships the return, 48 hours       | `disputes.updated_at`  | New `disputes.return_payout_paid_at`, set when `fn_log_return_payment` records the payment | `fn_cron_dispute_shipping_timeout` (`supabase/schemas/public/functions/fn_cron_dispute_shipping_timeout.sql` line 19) and its countdown in the same app file, line 128                              |
+
+The third row has a second problem: `fn_log_return_payment` sets `status = 'return_shipped'` when it records the payment, while the cron and the countdown look for `waiting_return` with the payment `paid`, so neither ever matches (#750). #574 fixes the status they read in the same change.
+
+The other deadlines already read their own columns: `created_at`, `delivered_at`, and `return_delivered_at`. Once no deadline reads `updated_at`, the shared `updated_at` trigger of #308 can cover `shipments` and `disputes`.
+
+### Locks and concurrency
+
+The order lock comes last, as in the ledger section. A writer locks the shipment, then the cancellation operation, then the dispute, and `internal.fn_refresh_order_status` locks the order at the end, from the trigger. A shipment writer already holds the shipment row when its trigger fires, and a dispute writer holds the dispute row. `fn_resolve_dispute_to_seller` locks the dispute first today (`supabase/schemas/public/functions/fn_resolve_dispute_to_seller.sql` line 39), so it changes to lock the shipment before the dispute. The rule holds for every dispute writer: read the dispute's `shipment_id` without a lock, lock the shipment, then lock the dispute and check that its `shipment_id` did not change. `fn_open_shipment_dispute` already locks the shipment before it inserts the dispute.
+
+The derivation runs after the lock and in a new statement because of `READ COMMITTED`. Each statement takes a new snapshot. Today the trigger derives inside the `UPDATE` of the order, so the derivation reads the shipments with the snapshot taken before that `UPDATE` waited for the row. If two sellers' shipments change at the same time, the second transaction can then write a status that misses the first transaction's change. With the lock first, the second transaction waits until the first commits, and its next statement sees both shipment changes.
+
+### New names
+
+These names are new: the enum `shipment_status`, the function `internal.fn_refresh_order_status`, the error `SHIPMENT_STATUS_TRANSITION_INVALID`, the trigger on `disputes`, the guard triggers on `orders` and `shipments`, and the columns `disputes.waiting_return_at` and `disputes.return_payout_paid_at`. #649 implements the shipment status, the dispute model, the order status, and the transition guard, after #648 creates `internal.payment_recoveries`, which the first derivation row reads. #574 implements the deadlines after #649, because it changes the same dispute status writers.
 
 ## Code path changes
 
