@@ -83,11 +83,14 @@ The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-
 1. Check that both workflows ran since Sunday:
 
    ```bash
-   gh run list --workflow dependency-audit.yml --event schedule -L 2 --json createdAt,conclusion
-   gh run list --workflow dependency-report.yml --event schedule -L 2 --json createdAt,conclusion
+   gh run list --workflow dependency-audit.yml -L 10 --json event,createdAt,status,conclusion
+   gh run list --workflow dependency-report.yml -L 5 --json event,createdAt,status,conclusion
    ```
 
-   Compare each `createdAt` (UTC) with this week's Sunday. A manual run or the audit's push run does not count. If either has no scheduled run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   Compare each `createdAt` (UTC) with this week's Sunday. Only a `schedule` run or a manual `workflow_dispatch` run counts; the audit's `push` runs do not. A manual run counts too, so a second session the same week does not start the workflows again.
+   - If a run is still `in_progress` or `queued`, wait for it.
+   - If either workflow has no counting run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   - If the report's latest counting run did not end in `success`, start it again and wait for it: a failed run leaves last week's report in the issue. A failed audit is a decision, not a rerun.
 
 2. Read the report issue:
 
