@@ -117,7 +117,7 @@ The table names the SQL function that posts each kind. A function marked "new" d
 | `transfer`         | `shipment_funds` → `seller_balance`    | The `shipment_funds` balance, which `connect_payout_run_shipments.net_payout_cents` must equal                                               | `<transfer_id>`                          | `fn_complete_shipment_transfer`                                                                                                                                          | Payout                       |
 | `payout`           | `seller_balance` → `seller_bank`       | `connect_payout_runs.amount_cents`                                                                                                           | `<payout_id>:paid`                       | `fn_project_payout_run_terminal` (`paid`)                                                                                                                                | Payout                       |
 | `refund`           | `shipment_funds` → `buyer`             | The frozen `refund_request` amount: price plus Seguro share (`computeShipmentRefundAmountCents`)                                             | `<refund_id>`                            | `fn_record_shipment_cancellation_refund` (`succeeded`)                                                                                                                   | Cancellation, overdue refund |
-| `refund_fee_loss`  | `loss` → `seguro`                      | The shipment's share of the actual Stripe fee (`allocateCancellationLossCents`), today's `cancellation_loss_cents`                           | `<refund_id>:fee_loss`                   | `fn_record_shipment_cancellation_refund`, or `fn_complete_stripe_fee_reconciliation_job_leased` if the fee was unknown at refund time                                    | Cancellation, overdue refund |
+| `refund_fee_loss`  | `loss` → `seguro`                      | The shipment's share of the actual Stripe fee (`allocateCancellationLossCents`), today's `cancellation_loss_cents`                           | `<shipment>:refund_fee_loss`             | `fn_record_shipment_cancellation_refund`, or `fn_complete_stripe_fee_reconciliation_job_leased` if the fee was unknown at refund time                                    | Cancellation, overdue refund |
 | `manual_repayment` | `shipment_funds` → `buyer`             | The frozen `refund_request` amount                                                                                                           | `<shipment>:manual_repayment`            | `fn_resolve_shipment_cancellation_refund`                                                                                                                                | Cancellation, overdue refund |
 | `dispute_refund`   | `shipment_funds` → `buyer`             | Open (#741). Today `disputeRefundAmountCents` returns price plus the seller shipping reserve. `fn_record_dispute_refund` receives no amount. | `<refund_id>`                            | `fn_record_dispute_refund`                                                                                                                                               | Dispute refund               |
 | `return_label_fee` | `seller_card` → `return_label_fees`    | `system_settings.return_label_fee_cents` as charged on the return PaymentIntent                                                              | `<payment_intent>:return_label_fee`      | `fn_log_return_payment`                                                                                                                                                  | Return label                 |
@@ -170,7 +170,7 @@ A buyer orders two products from two sellers with one PaymentIntent `pi_1` and c
 | 12  | `seguro` reversal           | `seguro` → `shipment_funds(B)`              | 5,347   | `re_1:seguro`          |
 | 13  | `shipping_reserve` reversal | `shipping_reserve(B)` → `shipment_funds(B)` | 18,000  | `re_1:reserve`         |
 | 14  | `refund`                    | `shipment_funds(B)` → `buyer`               | 125,347 | `re_1`                 |
-| 15  | `refund_fee_loss`           | `loss` → `seguro`                           | 5,347   | `re_1:fee_loss`        |
+| 15  | `refund_fee_loss`           | `loss` → `seguro`                           | 5,347   | `B:refund_fee_loss`    |
 | 16  | `reserve_surplus`           | `shipping_reserve(A)` → `shipping_margin`   | 3,500   | `A:reserve_settlement` |
 | 17  | `transfer`                  | `shipment_funds(A)` → `seller_balance(S1)`  | 207,000 | `tr_1`                 |
 | 18  | `payout`                    | `seller_balance(S1)` → `seller_bank(S1)`    | 207,000 | `po_1:paid`            |
@@ -239,7 +239,152 @@ These need a decision from the maintainer:
 
 ## Refund and cancellation records
 
-T3 writes this section.
+Today one wide row holds five lifecycles, a refund status that is overwritten, and two loss columns, and each refund path stores its refund somewhere else (see [Current state](#current-state): "`shipment_cancellation_operations` holds five lifecycles in one row", "A retried refund leaves no trace", "Refunds follow three paths", and "Losses live in two tables"). This design keeps `shipment_cancellation_operations` as the claim and its fence, moves each other lifecycle to its own table, records every Stripe refund of every path in one `refunds` table with an append-only status history, and moves the losses to the ledger. Function names and signatures stay where possible, so the TLC code mapping changes only in which table a function writes.
+
+### Cancellation operation
+
+`shipment_cancellation_operations` stays the one cancellation record per shipment, as `docs/specs/shipment-cancellation-coordination.md` requires. It keeps 12 of its 37 columns: the keys `shipment_id` (primary key) and `order_id`, plus `operation_key`, `source`, `actor_id`, `reason`, `claim_token`, `claim_expires_at`, `external_started_at`, `refund_request`, `cancellation_loss_cents`, and `created_at`. Its CHECKs on `source`, on `source` with `actor_id`, and on a nonblank `reason` stay. Of the other 25 columns, 24 move to the tables below, which name the column each one replaces. The last one, `label_cost_loss_cents`, is dropped, as is `orders.cancellation_loss_cents`. Losses become sums of `refund_fee_loss` and `label_loss` entries.
+
+`cancellation_loss_cents` stays because it is an input, not a running total. The Edge Function computes the shipment's fee share with `allocateCancellationLossCents`, and `fn_start_shipment_cancellation_refund` freezes it with the request under the fence. The `refund_fee_loss` entry posts that frozen amount, so the start and cancel signatures do not change.
+
+Four CHECKs today compare columns of two lifecycles: `carrier_balance_consistent`, `carrier_balance_no_loss`, `refund_resolution_status`, and `late_activity_after_start`. A CHECK cannot read another table, so the writer function makes each of these checks while it holds the operation lock. The other CHECKs move with their columns.
+
+### Refunds
+
+`public.refunds` has one row per Stripe refund, for every path.
+
+| Column                      | Type and constraints                                                                        | Replaces                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `id`                        | `uuid` primary key, default `gen_random_uuid()`                                             |                                                                        |
+| `stripe_refund_id`          | `text NOT NULL UNIQUE`                                                                      | `refund_id`, `orders.stripe_refund_id`, the shell's `stripe_refund_id` |
+| `stripe_payment_intent_id`  | `text NOT NULL`                                                                             | `refund_request->>'payment_intent'` as recorded                        |
+| `amount_cents`              | `bigint NOT NULL CHECK (amount_cents > 0)`                                                  | Nothing. The dispute path stores no amount today.                      |
+| `purpose`                   | `refund_purpose NOT NULL`: `cancellation`, `overdue_payout`, `dispute`, `checkout_recovery` |                                                                        |
+| `shipment_id`               | `uuid` references `shipments`                                                               |                                                                        |
+| `cancellation_operation_id` | `uuid` references `shipment_cancellation_operations(shipment_id)`                           |                                                                        |
+| `dispute_id`                | `uuid` references `disputes`                                                                | The refund id appended to `disputes.admin_notes`                       |
+| `payment_recovery_id`       | `uuid` references `internal.payment_recoveries`                                             |                                                                        |
+| `status`                    | `refund_status NOT NULL`: `pending`, `requires_action`, `succeeded`, `failed`, `canceled`   | `refund_status`                                                        |
+| `failure_reason`            | `text`, set only when `status = 'failed'`                                                   | `refund_failure_reason`                                                |
+| `status_updated_at`         | `timestamptz NOT NULL`                                                                      | `refund_status_updated_at`                                             |
+| `created_at`                | `timestamptz NOT NULL DEFAULT now()`                                                        |                                                                        |
+
+A CHECK makes the purpose match its owner. `cancellation` and `overdue_payout` set `shipment_id` and `cancellation_operation_id`, equal to each other. `dispute` sets `shipment_id` and `dispute_id`. `checkout_recovery` sets only `payment_recovery_id`. The writer also checks that `overdue_payout` matches an operation with source `admin_overdue_payout`. Indexes cover each owner column. A partial unique index on each of `cancellation_operation_id`, `dispute_id`, and `payment_recovery_id`, `WHERE status NOT IN ('failed', 'canceled')`, allows at most one live refund per owner, so a second refund can exist only after the first one failed or was canceled. A trigger refuses an update to any column other than `status`, `failure_reason`, and `status_updated_at`, and refuses `DELETE`.
+
+`status` is a projection of `internal.refund_events`, which has one row per status change and is append-only like `internal.connect_payout_events`. Its columns are `id uuid` (primary key), `refund_id uuid NOT NULL` references `refunds`, `from_status refund_status` (`NULL` on the first row of a refund), `to_status refund_status NOT NULL` with `CHECK (from_status IS DISTINCT FROM to_status)`, `failure_reason text` (set only when `to_status = 'failed'`), `stripe_event_id text` (unique when set, the webhook event that reported the change), `stripe_created timestamptz` (that event's `created` time), `recorded_by text NOT NULL` (the SQL function that appended the row), and `recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()`.
+
+`UNIQUE (refund_id, to_status)` holds because the status machine reaches each status at most once. A `BEFORE UPDATE OR DELETE` trigger raises, as `fn_prevent_connect_payout_event_mutation` does. One internal function, `internal.fn_append_refund_event`, validates the transition, appends the event, and updates the projection in the same transaction. Every refund writer below calls it, and nothing else writes `refunds.status`.
+
+### Refund status machine
+
+The transitions are today's forward-only rules from `fn_record_shipment_cancellation_refund`:
+
+| From                 | Allowed to                                                      |
+| -------------------- | --------------------------------------------------------------- |
+| No row yet           | `pending`, `requires_action`, `succeeded`, `failed`, `canceled` |
+| `requires_action`    | `pending`, `succeeded`, `failed`, `canceled`                    |
+| `pending`            | `succeeded`, `failed`, `canceled`                               |
+| `succeeded`          | `failed`                                                        |
+| `failed`, `canceled` | Nothing                                                         |
+
+The first report of a refund inserts its `refunds` row and its first `refund_events` row. An allowed transition appends one `refund_events` row and updates the projection. A repeated or backward report appends nothing and returns `changed: false`, as today. A report on an operation that has a `shipment_refund_resolutions` row appends nothing and returns `unchanged` or `after_resolution`, as `fn_apply_shipment_cancellation_refund_event` does today.
+
+A retried refund is a second `refunds` row with its own `stripe_refund_id` and its own events. The first row keeps its `failed` or `canceled` history. A cancellation operation still accepts only one Stripe refund: `fn_record_shipment_cancellation_refund` keeps `REFUND_ID_MISMATCH`, because the frozen request and the key `cancel_shipment_<shipmentId>` never change. A second row for one owner appears only where a path retries with a new refund, such as checkout recovery after a failed refund.
+
+The ledger keys its refund entries on `refunds.stripe_refund_id`. The event that records `succeeded` posts `refund`, `dispute_refund`, or `recovery_refund` with key `<stripe_refund_id>` and the reversals keyed `<stripe_refund_id>:commission`, `:seguro`, and `:reserve`. The event that records `succeeded` to `failed` posts the reversal keyed `<stripe_refund_id>:failed`. Each entry takes `effective_at` from `stripe_created`, or `recorded_at` when no webhook reported the change. A second refund after a failed one posts only its own `refund` entry, because the reversals already exist and an entry is reversed at most once.
+
+### Carrier cancellation, review, and late carrier activity
+
+`public.shipment_carrier_cancellations` has one row per operation, written once. Its columns are `shipment_id` (primary key, references `shipment_cancellation_operations`), `outcome text NOT NULL CHECK (outcome IN ('accepted', 'refused', 'ambiguous'))` (replaces `carrier_cancellation_outcome`), `recorded_at timestamptz NOT NULL DEFAULT clock_timestamp()` (replaces `carrier_cancellation_recorded_at`), `balance_returned boolean` (replaces `carrier_balance_returned`), and `balance_returned_at timestamptz` (replaces `carrier_balance_returned_at`). CHECKs require `balance_returned` exactly when `outcome = 'accepted'`, and `balance_returned_at` only when `balance_returned` is true.
+
+The label cost loss is the `label_loss` entry, or `label_returned` when Envia returned the balance. It is no longer a column.
+
+`public.shipment_cancellation_reviews` has one row per review.
+
+| Column            | Type and constraints                                                                           | Replaces                 |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------ |
+| `id`              | `uuid` primary key                                                                             |                          |
+| `shipment_id`     | `uuid NOT NULL` references `shipment_cancellation_operations`                                  |                          |
+| `reason`          | `text NOT NULL CHECK (reason IN ('tracking_unknown', 'carrier_refused', 'carrier_ambiguous'))` | `review_reason`          |
+| `required_at`     | `timestamptz NOT NULL DEFAULT clock_timestamp()`                                               | `review_required_at`     |
+| `resolution`      | `text CHECK (resolution IN ('refund_approved', 'closed_no_refund'))`                           | `review_resolution`      |
+| `resolved_at`     | `timestamptz`                                                                                  | `review_resolved_at`     |
+| `resolved_by`     | `uuid` references `profiles`                                                                   | `review_resolved_by`     |
+| `resolution_note` | `text`, trimmed, 1 to 500 characters                                                           | `review_resolution_note` |
+
+A CHECK keeps the four resolution columns `NULL` together, and `resolved_at >= required_at`. A partial unique index on `shipment_id WHERE resolution IS NULL` allows at most one open review per operation. A resolution is final: a trigger refuses any update of a resolved row and any `DELETE`. `fn_mark_shipment_cancellation_review` still marks an operation once, so an operation closed with `closed_no_refund` never gets a new review.
+
+`public.shipment_late_carrier_activities` has one row per shipment. Its columns are `shipment_id` (primary key, references `shipment_cancellation_operations`), `first_activity_at timestamptz NOT NULL` (replaces `late_carrier_activity_at`), `event_type shipment_tracking_event_type NOT NULL` (replaces `late_carrier_activity_event_type`), and `acknowledged_at timestamptz`, `acknowledged_by uuid` references `profiles`, and `acknowledged_note text` (trimmed, 1 to 200 characters), which replace the three `late_carrier_activity_acknowledged_*` columns. A CHECK keeps the three acknowledgement columns `NULL` together, and `acknowledged_at` not before `first_activity_at`.
+
+### Escalation and manual repayment
+
+`public.shipment_refund_escalations` has one row per operation: `shipment_id` (primary key, references the operation), `reason text NOT NULL CHECK (reason IN ('refund_not_found', 'refund_ambiguous'))`, and `escalated_at timestamptz NOT NULL DEFAULT clock_timestamp()`. It replaces `recovery_escalation_reason` and `recovery_escalated_at`. The row stays as history after a resolution.
+
+`public.shipment_refund_resolutions` has one row per operation and is final: `shipment_id` (primary key, references the operation), `refund_id uuid` references `refunds` (`NULL` for an escalated operation with no recorded refund), `reference text NOT NULL` (trimmed, 1 to 200 characters), `resolved_by uuid NOT NULL` references `profiles`, and `resolved_at timestamptz NOT NULL DEFAULT clock_timestamp()`. It replaces `refund_resolution_reference`, `refund_resolved_by`, and `refund_resolved_at`. A trigger refuses `UPDATE` and `DELETE`. The amount repaid is the `manual_repayment` entry.
+
+### Payment recoveries
+
+`internal.payment_recoveries` is the checkout recovery queue, one row per PaymentIntent. It is a queue with a lease, so it lives in `internal`.
+
+| Column                     | Type and constraints                                                                                                                                         | Replaces                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
+| `id`                       | `uuid` primary key                                                                                                                                           |                                 |
+| `stripe_payment_intent_id` | `text NOT NULL UNIQUE`                                                                                                                                       |                                 |
+| `order_id`                 | `uuid UNIQUE` references `orders`, `NULL` when the payment has only a shell                                                                                  |                                 |
+| `state`                    | `payment_recovery_state NOT NULL DEFAULT 'refund_pending'`: `refund_pending`, `refunding`, `refund_failed_retry_queued`, `refunded`, `reconciliation_needed` | `compensation_state`            |
+| `attempt_count`            | `integer NOT NULL DEFAULT 0 CHECK (attempt_count >= 0)`                                                                                                      | `compensation_attempt_count`    |
+| `next_retry_at`            | `timestamptz`                                                                                                                                                | `next_compensation_retry_at`    |
+| `lease_expires_at`         | `timestamptz`                                                                                                                                                | `compensation_lease_expires_at` |
+| `last_error`               | `text`                                                                                                                                                       | `compensation_last_error`       |
+| `created_at`, `updated_at` | `timestamptz NOT NULL DEFAULT now()`                                                                                                                         |                                 |
+
+Each replaced column is the one on `orders` and the one on `internal.checkout_recovery_shells`. The sixth column of each, `stripe_refund_id`, moves to `refunds`. The enum replaces the two CHECKs that #638 named. One partial index on `(next_retry_at, created_at) WHERE state IN ('refund_pending', 'refund_failed_retry_queued', 'refunding')` replaces `orders_checkout_recovery_claim_idx` and `checkout_recovery_shells_claim_idx`. A shell keeps only the payment that has no order: `stripe_payment_intent_id`, `reason`, `source_metadata`, `charged_amount_cents`, `stripe_charge_id`, `created_at`, and `updated_at`.
+
+### Access, locks, and the fence
+
+Every table in this section has RLS on, no policies, and `REVOKE ALL` from `anon`, `authenticated`, and `service_role`, as `shipment_cancellation_operations` has today. Only `SECURITY DEFINER` functions write them, and Edge Functions call those service-only RPCs. Buyers and sellers see refund state only through `fn_get_shipment_cancellation_summary`.
+
+Every cancellation writer locks the shipment first, then the operation row `FOR UPDATE`, then writes a child row. No function locks a child row before its operation. The overdue payout path keeps its order: runs, mappings, shipment, operation. `external_started_at` stays the fence before any Stripe call, and no child row authorizes one. `fn_record_shipment_cancellation_refund` still compares the payment intent and amount with the frozen `refund_request` before it inserts the `refunds` row. Recovery keeps its three ways: the recorded refund (now the operation's `refunds` row), the `metadata.shipment_id` lookup, and the replay inside 23 hours.
+
+### Writers after the change
+
+Each writer keeps its name and writes these tables. "Plus" names the ledger entries it posts.
+
+- `fn_claim_shipment_cancellation`: the operation. It reads `shipment_cancellation_reviews` to refuse a claim under review or closed.
+- `fn_start_shipment_cancellation` (`external_started_at`), `fn_start_shipment_cancellation_refund` (`refund_request`), `fn_claim_overdue_payout_refund`, and `fn_lease_overdue_refund_replay`: the operation. The refund start also reads the carrier cancellation and the review.
+- `fn_record_shipment_cancellation_refund`: `refunds` and `internal.refund_events`, plus the refund entries.
+- `fn_apply_shipment_cancellation_refund_event`: `refunds` and `internal.refund_events` through `fn_record_shipment_cancellation_refund`, and `notifications`.
+- `fn_escalate_shipment_cancellation`: `shipment_refund_escalations`.
+- `fn_resolve_shipment_cancellation_refund`: `shipment_refund_resolutions` and `admin_audit_logs`, plus `manual_repayment`.
+- `fn_record_shipment_carrier_cancellation`: `shipment_carrier_cancellations`, plus `label_loss` or `label_returned`.
+- `fn_mark_shipment_cancellation_review`: a new `shipment_cancellation_reviews` row.
+- `fn_resolve_shipment_cancellation_review`: the open `shipment_cancellation_reviews` row, plus `label_loss` when it applies.
+- `fn_record_tracking_event`: `shipment_late_carrier_activities`, with `ON CONFLICT DO NOTHING`.
+- `fn_acknowledge_shipment_late_carrier_activity`: `shipment_late_carrier_activities`. It gains the shipment lock before the operation lock, which it does not take today.
+- `fn_cancel_shipment`: `shipments` and `notifications`. It no longer writes `orders.cancellation_loss_cents`.
+- `fn_complete_overdue_payout_refund`: `shipments`, payout runs, mappings, and `notifications`, plus `label_loss`. It no longer writes either loss column.
+- `fn_record_dispute_refund`: `refunds` (purpose `dispute`) and `internal.refund_events`, plus `dispute_refund`. It stops appending the refund id to `disputes.admin_notes`.
+- `fn_upsert_checkout_recovery_shell`: the shell or `orders.payment_processing`, and `internal.payment_recoveries`, plus `recovery_charge` for a shell.
+- `fn_set_checkout_recovery_charge_evidence`: unchanged, `stripe_charge_id` on `orders` or the shell.
+- `fn_claim_checkout_recovery_shells`, `fn_mark_checkout_recovery_retry`, and `fn_mark_checkout_recovery_reconciliation_needed`: `internal.payment_recoveries`.
+- `fn_finalize_checkout_recovery`: `refunds` (purpose `checkout_recovery`), `internal.refund_events`, and `internal.payment_recoveries`, and `orders.status` and the listings for an order, plus `recovery_refund`.
+
+Readers of the moved columns, such as `fn_list_shipment_refund_problems`, `fn_get_shipment_cancellation_recovery`, and `fn_close_account`, join the new tables. T5 lists them.
+
+### Worked example of a failed refund
+
+Shipment `B` from the ledger example is cancelled by its seller while `paid`. The frozen request asks for 125,347 cents on `pi_1`.
+
+1. Stripe answers the create call with `re_1`, `succeeded`. `fn_record_shipment_cancellation_refund` inserts `refunds` row `R1` (`re_1`, `pi_1`, 125,347, `cancellation`, `B`, `succeeded`) and `refund_events` row from no status to `succeeded`, recorded by `fn_record_shipment_cancellation_refund`, with no event id. It posts ledger entries 11 to 15 of the ledger example. `fn_cancel_shipment` cancels `B`.
+2. Stripe sends `refund.failed` as `evt_2`. `internal.fn_append_refund_event` appends `succeeded` to `failed` with the failure reason, `stripe_event_id = 'evt_2'`, recorded by `fn_record_shipment_cancellation_refund`, and sets `R1.status = 'failed'`. The ledger gets the `refund` reversal from `buyer` to `shipment_funds(B)`, 125,347, key `re_1:failed`. The buyer gets `shipment.refund_failed`, and `B` is listed by `fn_list_shipment_refund_problems`.
+3. An admin repays the buyer by SPEI and records the tracking key. `fn_resolve_shipment_cancellation_refund` inserts the `shipment_refund_resolutions` row (`B`, `R1`, the reference, the admin, the time). No `shipment_refund_escalations` row exists, because the refund was recorded. The ledger gets `manual_repayment` from `shipment_funds(B)` to `buyer`, 125,347, key `B:manual_repayment`. The step 1 reversals already exist, so none are posted. `B` is already cancelled.
+
+`shipment_funds(B)` ends at 0, and `loss` keeps the 5,347 fee loss. A later Stripe event for `re_1` returns `unchanged` or `after_resolution` and appends nothing.
+
+### Open questions about the records
+
+- `fn_record_dispute_refund` and `fn_finalize_checkout_recovery` receive no amount or status today, and `resolve-dispute-refund` can record a `NULL` refund id. They need new arguments, and #741 decides the dispute amount.
+- Webhook refund events for dispute and checkout recovery refunds are ignored today. T5 decides whether `stripe-webhooks` routes them by `refunds.stripe_refund_id`.
 
 ## Order and shipment states
 
