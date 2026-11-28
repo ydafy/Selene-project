@@ -10,7 +10,7 @@ Project skills live in `.agents/skills/`. The rules agents follow are in the roo
 
 ## Update
 
-The monthly routine (`docs/maintenance.md`) runs step 1. It also runs `bun run skills:usage` to find installed skills that no session read (`docs/maintenance.md`, "E. Agent tools").
+The monthly routine (`docs/maintenance.md`) runs step 1. It also runs `bun run skills:usage` to find installed skills that no session read (`docs/maintenance.md`, "F. Agent tools").
 
 1. `npx skills check` lists skills with upstream changes. It takes about 2 minutes because it fetches every source, so give it a timeout of at least 5 minutes.
 2. `npx skills update <name>` installs the new version.
@@ -28,7 +28,7 @@ Reject a skill that downloads and runs unpinned code, installs hooks, or follows
 
 ## Remove
 
-Remove a vendor skill only with the maintainer's decision, usually after the monthly usage check (`docs/maintenance.md`, "E. Agent tools").
+Remove a vendor skill only with the maintainer's decision, usually after the monthly usage check (`docs/maintenance.md`, "F. Agent tools").
 
 1. `npx skills remove <name>`. It deletes the folder and its `skills-lock.json` entry. Check `git status` for anything else it touched.
 2. Search the repository for the skill name (`git grep -n <name>`) and update the docs that cite it.

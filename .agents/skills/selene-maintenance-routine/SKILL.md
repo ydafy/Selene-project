@@ -26,11 +26,12 @@ Load when the maintainer asks for the weekly or monthly routine, for example "Ho
 
 1. Read `docs/maintenance.md` once.
 2. Decide from today's date whether the session is weekly or monthly.
-3. Run the weekly checks. Run independent checks in parallel. Add the monthly checks when they apply.
-4. Pick the topic of the week as the page says.
-5. Write the report in the page's format.
-6. Walk the decisions with the maintainer, one at a time.
-7. Record each decision as the page says.
+3. Check the tools as the page's "Check the tools before you collect" says. Load deferred MCP tools with the harness's tool search before you call a server missing. Tell the maintainer about a missing tool before you collect.
+4. Run the weekly checks A to E. Run independent checks in parallel. Add the monthly checks when they apply.
+5. Pick the topic of the week as the page says.
+6. Write the report in the page's format: decisions first, detail below.
+7. Ask the decisions as the page's "Run a session", step 4, says: the ones easy to undo together in questionnaires of up to four questions, the ones hard to undo on their own.
+8. Record each decision as the page says.
 
 ## Dependency routine
 

@@ -4,19 +4,39 @@ The weekly and monthly review of the repository's state. An agent collects the d
 
 Start a session by telling an agent "Hoy es lunes, hagamos la rutina". The `selene-maintenance-routine` skill (`.agents/skills/selene-maintenance-routine/SKILL.md`) runs this page. Nothing changes the repository, the Supabase project, or GitHub until the maintainer decides, with two exceptions: the agent starts a missing dependency workflow run, and it opens Finding or Idea issues as `AGENTS.md`, "Findings outside the current work", allows.
 
-The dependency routine is a separate session with its own rule. When the maintainer says "la rutina de dependencias", the agent applies the dependency report without asking about each package, and pushes and opens the pull request. The maintainer still decides the merge. The steps are in `docs/dependencies.md`, "Run the dependency routine". Inside this page's routine, systems A to D only report dependencies.
+The dependency routine is a separate session with its own rule. When the maintainer says "la rutina de dependencias", the agent applies the dependency report without asking about each package, and pushes and opens the pull request. The maintainer still decides the merge. The steps are in `docs/dependencies.md`, "Run the dependency routine". Inside this page's routine, systems A to E only report dependencies.
 
 ## When to run it
 
-- **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to D. It takes about 45 minutes.
+- **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to E. It takes about 45 minutes.
 - **Monthly.** Once a month, in the first session on or after the 1st (usually the first Monday). Run the weekly routine plus "Monthly checks".
 
 ## Run a session
 
-1. Collect. Run every check below in order, then look at the topic of the week ("Pick the topic of the week"). Change nothing.
-2. Report. Write the report in the format of "Report format", with the topic's observations in it.
-3. Decide. Walk every decision in the report with the maintainer, one at a time.
-4. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
+1. Check the tools. Run "Check the tools before you collect" before any other check.
+2. Collect. Run every check below in order, then look at the topic of the week ("Pick the topic of the week"). Change nothing.
+3. Report. Write the report in the format of "Report format", with the topic's observations in it.
+4. Decide. Ask the decisions that are easy to undo together, in questionnaires of up to four questions each. A fifth easy decision goes in a second questionnaire, never into a deferred issue. Ask a decision that is hard to undo on its own: one that costs more than a revert PR to undo, touches security, money, a merge, or a deletion, or affects another active worktree. If a decision in a questionnaire turns out to be hard to undo, take it out and ask it on its own. A question the maintainer leaves unanswered means wait, never act.
+5. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
+
+## Check the tools before you collect
+
+A check that discovers a missing tool halfway through wastes the data collected before it. Check every tool the session reads first:
+
+- `gh auth status`, for every system.
+- The Supabase MCP, for systems B and D.
+- The Sentry MCP, for system D.
+- The Stripe MCP, for the monthly checks only.
+
+If the harness defers a server's tools, load them with its tool search first. A server is missing only when its tools still do not appear. Then make one small read-only call to each server that always returns data, such as Sentry `whoami` or Supabase `list_edge_functions`, and keep its result as evidence.
+
+A tool can fail in three ways, and the report names which one:
+
+- **Missing.** Its tools do not appear. Every section that needs it is "Could not check".
+- **Error.** The call fails. Every section that needs it is "Could not check", with the error.
+- **Empty.** The call works but returns nothing. That call always returns data, so treat it as an error. Later in the session, an empty result is a real result only when this check passed.
+
+Write the result on the "Herramientas" line of the report. Tell the maintainer about a missing tool before you collect, because they may fix it in a minute.
 
 ## Check the open worktrees before you act
 
@@ -150,9 +170,46 @@ This check stays light until go-live. There is no real traffic yet, so it lists 
 
 Needs a decision for a failure that no later green run of the same workflow explains, a flaky test (it fails, then passes with no change), a new Sentry issue, and an ERROR advisor.
 
+### E. Workflow
+
+This system reviews how we work: mistakes agents repeat and tooling bugs nobody took. It has the same weight as dependencies. The procedure for agent mistakes is `docs/findings.md`, "Record a repeated agent mistake". Set one more date for step 3:
+
+```bash
+untaken=$(date -d '14 days ago' +%F)
+```
+
+1. List the agent mistakes of the week, then read each one with `gh issue view <number> --comments`:
+
+   ```bash
+   gh issue list --state all --label agent-mistake --search "updated:>=$since" --limit 200 --json number,title,state,createdAt
+   ```
+
+   Classify each issue by its `createdAt` and its evidence comments (comments that report a new occurrence, not clarifications). An issue created on or after `$since` is a first occurrence. An evidence comment dated on or after `$since` means the mistake repeated this week, even on an issue opened this week. An issue that only changed labels, or whose evidence comments are older, is not news; step 2 keeps the older repeats. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
+
+2. List the repeated mistakes whose guard is still missing:
+
+   ```bash
+   gh issue list --state open --label agent-mistake --search "-linked:pr" --limit 200 --json number,title,comments
+   ```
+
+   An issue with a comment with new evidence has repeated. Its guard has not landed while no PR links it. Step 1 covers the repeated issues that already have a linked PR. This closes the loop on the guards earlier sessions approved.
+
+3. List the tooling findings of the week, and the ones nobody took in 14 days:
+
+   ```bash
+   gh issue list --state open --label finding --label area:tooling --search "created:>=$since" --limit 200 --json number,title
+   gh issue list --state open --label finding --label area:tooling --search "-linked:pr created:<$untaken" --limit 200 --json number,title,createdAt
+   ```
+
+4. Ask the maintainer: "¿Qué error de un agente corregiste más de una vez esta semana?" No command sees these. For each answer with no `agent-mistake` issue, open one as `docs/findings.md` describes.
+
+For each repeated mistake, propose where its fix goes. Use the order of `docs/findings.md`, step 3: architecture, types, a guard or lint, a behavior test, and a rule in `AGENTS.md` or a skill only last. Propose "no change" when the cost of the mistake is lower than the cost of the fix, and say why. If an existing guard needs many exceptions to stay reliable, propose turning it back into a written rule.
+
+Needs a decision for each repeated mistake without a guard, with the proposed fix, and each tooling finding that nobody took in 14 days.
+
 ## Monthly checks
 
-### E. Agent tools
+### F. Agent tools
 
 Run `npx skills check`. It takes about 2 minutes because it fetches every source. Give it a timeout of at least 5 minutes, or run it in the background.
 
@@ -223,9 +280,15 @@ Write at most three observations. Classify each one as must-have, nice-to-have, 
 Write the report in the maintainer's language, with this template:
 
 ```markdown
-# Rutina <YYYY-MM-DD>, semana ISO <NN>, tema: <area>
+# Rutina <YYYY-MM-DD>, semana ISO <NN>
 
-<N> decisiones pendientes.
+**Tema de la semana: <area>**
+
+Herramientas: <OK | <server>: missing, error, or empty>
+
+## Decisiones (<N>)
+
+1. <ID> <item>: <recommendation>, <reason>, <must-have | nice-to-have | overengineering>, <fácil | difícil de deshacer>
 
 ## A. Dependencias: <OK | Needs decision | Could not check>
 
@@ -235,17 +298,19 @@ Write the report in the maintainer's language, with this template:
 
 ## D. Salud de la app: <OK | Needs decision | Could not check>
 
-## E. Herramientas de agentes (solo mensual): <OK | Needs decision | Could not check>
+## E. Flujo de trabajo: <OK | Needs decision | Could not check>
+
+## F. Herramientas de agentes (solo mensual): <OK | Needs decision | Could not check>
 
 ## Tema de la semana: <area>
-
-## Decisiones
-
-1. <item>: <recommendation>, <reason>, <must-have | nice-to-have | overengineering>
 ```
 
 Follow these rules:
 
+- The report has two levels. The top holds the topic of the week, the tools line, and every decision, one line each. The sections below hold the detail and the evidence.
+- The topic of the week keeps its own bold line under the title, every week.
+- Each decision has an ID made of its section letter and a number, such as `C2`. The questionnaire and the issues it records use the same ID. The topic's observations use `T`.
+- Each decision says whether it is easy or hard to undo, as "Run a session", step 4, defines.
 - An OK section is one line.
 - Every item cites evidence (command output, an issue number, or a link) and gives a recommendation: do now, wait, or drop. Add its reason and its class: must-have, nice-to-have, or overengineering.
 - "Could not check" names the command and the exact blocker, such as a missing MCP server or `gh` not logged in. Never skip a check silently (`AGENTS.md`, "Verifying a change").
