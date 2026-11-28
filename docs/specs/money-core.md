@@ -32,12 +32,13 @@ The ledger records every movement of money as an entry from one account to anoth
 
 - `id uuid` primary key, default `gen_random_uuid()`.
 - `kind ledger_account_kind NOT NULL`, an enum with the kinds in the table below.
-- `order_id uuid` references `orders`, set only for `buyer`.
+- `order_id uuid` references `orders`, set for `buyer` when the payment has an order.
+- `stripe_payment_intent_id text`, set only for a `buyer` account whose payment has no order: a checkout recovery shell.
 - `shipment_id uuid` references `shipments`, set only for `shipment_funds` and `shipping_reserve`.
 - `seller_id uuid` references `profiles`, set only for `seller_balance`, `seller_bank`, and `seller_card`.
 - `created_at timestamptz NOT NULL DEFAULT now()`.
-- A `CHECK` requires exactly the owner column that the kind needs and `NULL` in the others.
-- Four partial unique indexes make each account exist once: `(kind) WHERE` all owners are `NULL`, `(kind, order_id)`, `(kind, shipment_id)`, and `(kind, seller_id)`, each `WHERE` that owner is set. A kind without an owner is a single row.
+- A `CHECK` requires exactly the owner column that the kind needs and `NULL` in the others. A `buyer` account has exactly one of `order_id` and `stripe_payment_intent_id`.
+- Five partial unique indexes make each account exist once: `(kind) WHERE` all owners are `NULL`, `(kind, order_id)`, `(kind, stripe_payment_intent_id)`, `(kind, shipment_id)`, and `(kind, seller_id)`, each `WHERE` that owner is set. A kind without an owner is a single row.
 
 `ledger_entries` has one row per movement.
 
@@ -238,14 +239,14 @@ An order writes about 10 to 15 entries. A single-shipment order writes 8 (4 at c
 
 Entries and accounts are financial records and are kept forever. #450 classifies them in the retention rules.
 
-### Open questions
+### Extensions left to other issues
 
-These need a decision from the maintainer:
+The maintainer decided these on 2026-11-27:
 
-- ISR and IVA withholding for sellers (#658) would add entry kinds and accounts.
-- Chargebacks (#269) are not handled today. They would add a kind that moves money from `shipment_funds` or `loss` to `buyer`.
-- Whether the Seguro surplus or deficit is reported per month.
-- A checkout recovery shell has no order, so it has no `buyer` account. This draft needs a `buyer` account owned by the PaymentIntent for that case. Stripe also keeps its fee on a recovery refund, and no code reads that fee today.
+- ISR and IVA withholding for sellers is decided in #658. If Selene withholds, it adds entry kinds and accounts to this ledger.
+- Chargebacks are designed in #269. They will add a kind that moves money from `shipment_funds` or `loss` to `buyer`.
+- A monthly report of the Seguro surplus or deficit is #745. It reads the `seguro` and `loss` balances by month.
+- A checkout recovery shell has no order, so its `buyer` account is owned by the PaymentIntent. Stripe keeps its fee on a recovery refund, and no code reads that fee today. #647 reads it and posts it as `stripe_fee` from `loss` to `stripe`, because no Seguro was ever allocated for a payment without an order.
 
 ## Refund and cancellation records
 
