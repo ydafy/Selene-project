@@ -8,7 +8,7 @@ The dependency routine is a separate session with its own rule. When the maintai
 
 ## When to run it
 
-- **Weekly.** Every Monday, after the dependency workflows (08:17 and 08:47 Mexico City time). Run systems A to E. It takes about 45 minutes.
+- **Weekly.** Every Monday. The dependency workflows are scheduled for Sunday (`docs/dependencies.md`), so their data is ready by Monday morning. Run systems A to E. It takes about 45 minutes.
 - **Monthly.** Once a month, in the first session on or after the 1st (usually the first Monday). Run the weekly routine plus "Monthly checks".
 
 ## Run a session
@@ -80,14 +80,14 @@ Each system says where its data comes from, which commands to run, and when it n
 
 The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-review`.
 
-1. Check that both workflows ran today:
+1. Check that both workflows ran since Sunday:
 
    ```bash
    gh run list --workflow dependency-audit.yml -L 1
    gh run list --workflow dependency-report.yml -L 1
    ```
 
-   If either has no run today, start it as `docs/dependencies.md` says (the audit first), and wait for it.
+   If either has no scheduled run since Sunday, start it as `docs/dependencies.md` says (the audit first), and wait for it.
 
 2. Read the report issue:
 

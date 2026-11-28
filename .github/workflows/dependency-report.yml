@@ -7,11 +7,11 @@ name: Dependency report
 on:
   schedule:
     # Off the top and half hour, where GitHub most often delays or drops scheduled runs.
-    - cron: '47 14 * * 1' # Mondays 14:47 UTC (08:47 in Mexico City), after the dependency audit
+    - cron: '47 14 * * 0' # Sundays 14:47 UTC (08:47 in Mexico City), after the dependency audit
     # Backup, after the audit's backup: runs the report only when no other scheduled
     # run started in the last 24 hours (scripts/ci/scheduled-backup.ts). Keep it
     # equal to BACKUP_CRON below.
-    - cron: '53 20 * * 1' # Mondays 20:53 UTC (14:53 in Mexico City)
+    - cron: '53 20 * * 0' # Sundays 20:53 UTC (14:53 in Mexico City)
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ concurrency:
   group: dependency-report
 
 env:
-  BACKUP_CRON: '53 20 * * 1'
+  BACKUP_CRON: '53 20 * * 0'
 
 jobs:
   # Every trigger except the backup cron always runs the report.
