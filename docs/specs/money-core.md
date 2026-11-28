@@ -149,6 +149,8 @@ The `refund_fee_loss` amount is the operation's frozen `cancellation_loss_cents`
 
 The SQL computation is the split of `allocateCancellationLossCents`. Each shipment of the order gets the fee times its `charge` amount divided by the sum of the order's `charge` amounts, rounded down. The remaining cents go one each by largest remainder, then by shipment id. The key `<shipment>:refund_fee_loss` posts the entry once in either order.
 
+The two paths serialize on the order row. Before it checks for the other path's fact, each path locks the order `FOR UPDATE` and holds the lock until it commits its own fact. `fn_record_shipment_cancellation_refund` and `fn_resolve_shipment_cancellation_refund` take it after the shipment and operation locks. Each function that posts `stripe_fee` takes it before it writes the fee, and takes no shipment or operation lock. `fn_complete_stripe_fee_reconciliation_job_leased` already locks the order `FOR UPDATE` after its job row. The order is therefore always the last lock, and the lock order stays shipment, operation, order, as in `fn_cancel_shipment` today. Under `READ COMMITTED`, each statement after the lock sees the fact the other transaction committed, so the second path always finds the first one's fact. If both post, the shared key makes the second post a no-op.
+
 `fn_record_shipment_cancellation_refund` stays the one place that records a cancellation refund, as `docs/specs/shipment-cancellation-coordination.md` requires. T3 replaces its overwritten columns with refund records.
 
 ### Worked example
@@ -352,7 +354,7 @@ Each replaced column is the one on `orders` and the one on `internal.checkout_re
 
 Every table in this section has RLS on, no policies, and `REVOKE ALL` from `anon`, `authenticated`, and `service_role`, as `shipment_cancellation_operations` has today. Only `SECURITY DEFINER` functions write them, and Edge Functions call those service-only RPCs. Buyers and sellers see refund state only through `fn_get_shipment_cancellation_summary`.
 
-Every cancellation writer locks the shipment first, then the operation row `FOR UPDATE`, then writes a child row. No function locks a child row before its operation. The overdue payout path keeps its order: runs, mappings, shipment, operation. `external_started_at` stays the fence before any Stripe call, and no child row authorizes one. `fn_record_shipment_cancellation_refund` still compares the payment intent and amount with the frozen `refund_request` before it inserts the `refunds` row. Recovery keeps its three ways: the recorded refund (now the operation's `refunds` row), the `metadata.shipment_id` lookup, and the replay inside 23 hours.
+Every cancellation writer locks the shipment first, then the operation row `FOR UPDATE`, then writes a child row. No function locks a child row before its operation. A writer that needs the order, such as the deferred `refund_fee_loss` check in the ledger section, locks it last. The overdue payout path keeps its order: runs, mappings, shipment, operation. `external_started_at` stays the fence before any Stripe call, and no child row authorizes one. `fn_record_shipment_cancellation_refund` still compares the payment intent and amount with the frozen `refund_request` before it inserts the `refunds` row. Recovery keeps its three ways: the recorded refund (now the operation's `refunds` row), the `metadata.shipment_id` lookup, and the replay inside 23 hours.
 
 ### Writers after the change
 
