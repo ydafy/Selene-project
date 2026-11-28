@@ -8,23 +8,22 @@ The dependency routine is a separate session with its own rule. When the maintai
 
 ## When to run it
 
-- **Weekly.** Every Monday. The dependency workflows are scheduled for Sunday (`docs/dependencies.md`), so their data is ready by Monday morning. Run systems A to E. It takes about 45 minutes.
+- **Weekly.** Every Monday. The dependency workflows are scheduled for Sunday (`docs/dependencies.md`), so their data is ready by Monday morning. Run systems A to E. `bun run routine:collect` collects their data in about 10 seconds.
 - **Monthly.** Once a month, in the first session on or after the 1st (usually the first Monday). Run the weekly routine plus "Monthly checks".
 
 ## Run a session
 
 1. Check the tools. Run "Check the tools before you collect" before any other check.
-2. Collect. Run every check below in order, then look at the topic of the week ("Pick the topic of the week"). Change nothing.
+2. Collect. Run `bun run routine:collect` with a timeout of 120 seconds. It only reads, and it prints the data of systems A to E, the open worktrees, the dates, and the topic of the week. Then run the agent steps below that the script does not cover (Sentry, the health advisor, and the questions to the maintainer), and look at the topic of the week ("Pick the topic of the week"). Change nothing.
 3. Report. Write the report in the format of "Report format", with the topic's observations in it.
 4. Decide. Ask the decisions that are easy to undo together, in questionnaires of up to four questions each. A fifth easy decision goes in a second questionnaire, never into a deferred issue. Ask a decision that is hard to undo on its own: one that costs more than a revert PR to undo, touches security, money, a merge, or a deletion, or affects another active worktree. If a decision in a questionnaire turns out to be hard to undo, take it out and ask it on its own. A question the maintainer leaves unanswered means wait, never act.
 5. Record. Each deferred decision becomes a Finding or Idea issue, as `docs/findings.md` describes. A decision about a vulnerability never goes into an issue: it stays in its draft Security Advisory (`docs/findings.md`, "Report a vulnerability"). A decision that changes a procedure on this page changes the page in the same session, on a branch.
 
 ## Check the tools before you collect
 
-A check that discovers a missing tool halfway through wastes the data collected before it. Check every tool the session reads first:
+A check that discovers a missing tool halfway through wastes the data collected before it. `bun run routine:collect` checks its own tools: a section whose command fails prints `Could not check:` with the command and its error, the other sections still run, and the script exits 1. It needs `gh` logged in and the Supabase CLI logged in and linked to the remote project (`supabase db advisors --remote`). Check the MCP servers the agent steps read before you collect:
 
-- `gh auth status`, for every system.
-- The Supabase MCP, for systems B and D.
+- The Supabase MCP, for system D (the health advisor and `query_logs`).
 - The Sentry MCP, for system D.
 - The Stripe MCP, for the monthly checks only.
 
@@ -42,22 +41,13 @@ Write the result on the "Herramientas" line of the report. Tell the maintainer a
 
 The maintainer works in several parallel worktrees (`docs/worktrees.md`). Collecting data and deciding are read-only and always safe. Some actions touch resources that every worktree shares, so check the worktrees before you act on a decision.
 
-1. Run `git worktree list`. Ignore the entries whose path ends in `.git/gentle-ai/candidate-views/<id>`. The review tool creates them, and they are not the maintainer's work.
-2. For each other worktree, collect its branch and these three values:
-
-   ```bash
-   git -C <path> status --short | wc -l              # uncommitted files
-   git -C <path> rev-list --count origin/main..HEAD  # commits ahead of origin/main
-   git -C <path> log -1 --format=%cr                 # age of the last commit
-   ```
-
-   A worktree with uncommitted files, commits ahead of `origin/main`, or a commit in the last few days is active.
+The "Worktrees" section of `bun run routine:collect` lists every other worktree with its branch, uncommitted files, commits ahead of `origin/main`, and the age of its last commit. It skips the entries under `.git/gentle-ai/candidate-views/<id>`, which the review tool creates. A worktree with uncommitted files, commits ahead of `origin/main`, or a commit in the last 3 days is active. The script lists it under "Active worktrees" with the lockfiles its branch or its working tree changes.
 
 Each worktree has its own folder, branch, `node_modules`, and local Supabase stack. All worktrees share the tools on the machine (Supabase CLI, Docker Desktop, Node, and Bun), the stack data in `~/.supabase/stacks`, and `main`.
 
 While any worktree is active, these actions wait, and the report says why:
 
-- A dependency update, only when an active branch also changes `bun.lock` or a `package.json`. Check each worktree with `git -C <path> diff --name-only origin/main...HEAD` and `git -C <path> status --short`. If both sides change the lockfile, the merge conflicts. If no active branch touches them, do the update: each worktree runs `bun install` after it merges `main`.
+- A dependency update, only when an active worktree's "lockfiles changed" is not `none`. If both sides change the lockfile, the merge conflicts. If no active worktree touches them, do the update: each worktree runs `bun install` after it merges `main`.
 - A Supabase CLI, Node, or Bun upgrade on the machine. Every worktree switches to the new version at once, and a Supabase CLI major needs `supabase stop` in every worktree first.
 - A Docker Desktop update while a local stack runs (`docker ps`). It restarts Docker and stops every local stack.
 
@@ -67,157 +57,104 @@ These actions are safe at any time: GitHub issue changes, read-only reviews, doc
 
 ## Weekly checks
 
-Set two dates first. The commands below read them:
+Each system has three parts:
 
-```bash
-since=$(date -d '7 days ago' +%F)
-stale=$(date -d '60 days ago' +%F)
-```
+- **Data.** The section of `bun run routine:collect` that holds its data, or the agent step that collects it. The script prints the dates it used on its `Dates:` line: `since` is 7 days ago, `stale` 60 days ago, `untaken` 14 days ago, and the dependency runs count since the last Sunday.
+- **Judge.** What each line means and when it needs a decision. The script computes only what a command can compute. Judging stays with the agent and the maintainer.
+- **Look closer.** The commands to run only on an item the data shows.
 
-Each system says where its data comes from, which commands to run, and when it needs a decision.
+If a section prints `Could not check:`, that section of the report is "Could not check" with the same command and error. Never collect it by hand instead. A script that fails the same way twice gets a Finding issue (`docs/findings.md`).
 
 ### A. Dependencies
 
 The procedure is `docs/dependencies.md`. The action skill is `selene-dependency-review`.
 
-1. Check that both workflows did their work since Sunday. List the scheduled and the manual runs separately, so the audit's `push` runs never hide them:
+**Data.** The "A. Dependencies" section: one line per dependency workflow and one line for the report issue.
 
-   ```bash
-   for wf in dependency-audit.yml dependency-report.yml; do
-     for ev in schedule workflow_dispatch; do
-       gh run list --workflow "$wf" --event "$ev" -L 3 --json databaseId,createdAt,status
-     done
-   done
-   ```
+**Judge.**
 
-   For each run created since the last Sunday (compare `createdAt`, in UTC), read its jobs:
+1. Each workflow line names the newest run since Sunday whose work job (`audit` or `report`) ran, on the scheduled or the manual event. A backup run that found an earlier run skips that job and still ends in `success`, so the script never counts it. A manual run counts too, so a second session the same week does not start the workflows again.
+   - `is in_progress` or `is queued` ends in "Wait for it." Wait, then run the script again.
+   - `no run since <date> ran the <job> job` ends in "Start it". Start the workflow as `docs/dependencies.md` says (the audit first), and wait for it.
+   - A `report` job that ran and did not end in `success` ends in "Rerun the report". Start the report again and wait for it: a failed run leaves last week's report in the issue.
+   - An `audit` job that ran and did not succeed is a decision, not a rerun.
+2. The report line gives the date of the report and its summary line. A date before this week's Sunday means the report did not update: go back to step 1.
 
-   ```bash
-   gh run view <databaseId> --json jobs --jq '.jobs[] | {name, conclusion}'
-   ```
+Needs a decision when the audit failed, or the summary counts majors, an Expo SDK upgrade, or a flag in the Runtimes, Supabase CLI, Stripe API version, or GitHub Actions section. Safe updates wait for the monthly checks unless they fix an advisory. For majors and the Expo SDK, run `selene-dependency-review`. If an open issue already decides a major (search the issues for the package name), cite that issue instead of reviewing the major again.
 
-   A run counts only when its work job (`audit` or `report`) ran. A backup run that found an earlier run skips that job and still ends in `success`, so never judge a run by its own conclusion. A manual run counts too, so a second session the same week does not start the workflows again.
-   - If a run is still `in_progress` or `queued`, wait for it.
-   - If a workflow has no run since Sunday whose work job ran, start it as `docs/dependencies.md` says (the audit first), and wait for it.
-   - If the latest `report` job that ran did not end in `success` (`failure`, `cancelled`, or `timed_out`), start the report again and wait for it: a failed run leaves last week's report in the issue. A `skipped` job did not run, so it never triggers a rerun. An `audit` job that ran and did not succeed is a decision, not a rerun.
-
-2. Read the report issue:
-
-   ```bash
-   gh issue list --search "Reporte de dependencias in:title" --state open
-   gh issue view <number>
-   ```
-
-Needs a decision when the audit failed, or the report has rows under "Majors available", an Expo SDK upgrade, or a flag in the Runtimes, Supabase CLI, Stripe API version, or GitHub Actions section. Safe updates wait for the monthly checks unless they fix an advisory. For majors and the Expo SDK, run `selene-dependency-review`. If an open issue already decides a major (search the issues for the package name), cite that issue instead of reviewing the major again.
+**Look closer.** Read the rows behind a count in the report issue with `gh issue view <number>`.
 
 ### B. Security
 
 The procedure is `docs/findings.md`, "Report a vulnerability".
 
-1. List the draft Security Advisories:
+**Data.** The "B. Security" section: the draft Security Advisories, the count of open secret scanning alerts, and the remote security advisor compared with "Accepted findings".
 
-   ```bash
-   gh api "repos/ydafy/Selene-project/security-advisories?state=draft" --jq '[.[] | {ghsa_id, severity, created_at}]'
-   ```
+**Judge.**
 
-   Each draft is an unfixed vulnerability. Report only its GHSA ID, severity, and age. Never copy its description into an issue, a commit, or a file.
+1. Each draft advisory is an unfixed vulnerability. The script prints only its GHSA ID, severity, and age. Never copy its description into an issue, a commit, or a file.
+2. An open secret scanning alert means you rotate the secret first.
+3. "Security findings not accepted" lists each finding no entry accepts, with its level. An accepted object no finding reports leaves the list, and an entry whose tracking issue closed needs a new decision ("Accepted findings").
 
-2. Count the open secret scanning alerts:
+Needs a decision for any draft advisory (which one to fix next), any open alert, any ERROR finding that is not accepted, and each line under the last two lists. Group WARN findings by lint name.
 
-   ```bash
-   gh api "repos/ydafy/Selene-project/secret-scanning/alerts?state=open" --jq length
-   ```
-
-   An open alert means you rotate the secret first.
-
-3. Run the Supabase MCP tool `get_advisors` with `type: security` on the remote project. The tool is read-only.
-
-Before you decide on a lint, compare it with "Accepted findings". Needs a decision for any draft advisory (which one to fix next), any open alert, and any ERROR lint that is not an accepted finding. Group WARN lints by lint name.
+**Look closer.** Read a draft advisory on GitHub only inside the session.
 
 ### C. Backlog
 
 The procedure is `docs/findings.md`. `.github/workflows/issue-labels.yml` sets the labels: `priority:critical`, `priority:high`, `priority:medium`, `priority:low`, the eight `area:*` labels, and `finding`, `idea`, and `roadmap`.
 
-```bash
-# New issues of the week, with their milestone
-gh issue list --state open --search "created:>=$since" --json number,title,labels,milestone
-# Launch blockers (docs/findings.md, "Go-live")
-gh issue list --state open --milestone Go-live --json number,title,updatedAt
-# Open critical and high
-gh issue list --state open --label priority:critical
-gh issue list --state open --label priority:high
-# Findings with no priority label
-gh issue list --state open --label finding --limit 200 --json number,title,labels --jq '.[] | select([.labels[].name | startswith("priority:")] | any | not) | {number, title}'
-# Stale issues: no update in 60 days
-gh issue list --state open --search "updated:<$stale"
-# Open PRs
-gh pr list --state open --json number,title,createdAt,isDraft
-```
+**Data.** The "C. Backlog" section: the new issues of the week with their labels, the `Go-live` counts, the critical and high issues, the findings without a priority, the titles that name a type their labels lack, the stale issues, and the PRs open more than 7 days.
 
-Needs a decision for:
+**Judge.** Needs a decision for:
 
 - each new issue: is the priority right, is it a duplicate, should it stay open, does it block the launch (`Go-live`);
 - a `Go-live` issue with no work started;
 - a critical issue with no work started;
 - a finding without a priority;
+- a title that names a type its labels lack: add the label or fix the title;
 - a stale issue: close it, keep it, or change its priority;
 - an Idea whose "When to revisit" moment has come;
 - a PR open for more than 7 days.
 
 A priority change edits the issue body, not the label (`docs/findings.md`).
 
+**Look closer.** Read an issue with `gh issue view <number>`. List the open `Go-live` issues with `gh issue list --state open --milestone Go-live --json number,title,updatedAt`, and the Ideas with `gh issue list --state open --label idea --limit 200 --json number,title`, then read the "When to revisit" of each one you judge.
+
 ### D. App health
 
 This check stays light until go-live. There is no real traffic yet, so it lists what is new instead of comparing with thresholds. The thresholds come with `docs/go-live.md`.
 
-1. List the failed runs on `main`, then read the end of each failed log:
+**Data.** The "D. App health" section gives steps 1 and 3. Step 2 and the health advisor are agent steps.
 
-   ```bash
-   gh run list --branch main --status failure --created ">=$since" --json databaseId,workflowName,displayTitle,createdAt
-   gh run view <id> --log-failed | tail -n 50
-   ```
+**Judge.**
 
-2. Run the Sentry MCP tool `search_issues` with `is:unresolved firstSeen:-7d` in `selene-ze/selene-edge-functions`. For each new issue, read it with `get_sentry_resource`, then read the Supabase logs between its first and last event with the Supabase MCP tool `query_logs` (source `function_logs`, error lines). Search the issues for the error code the logs show: an open Finding may already cover it.
-3. Run the Supabase MCP tool `get_advisors` with `type: performance`, then with `type: health`. Before you decide on a lint, compare it with "Accepted findings".
+1. Each failed run on `main` since `since` says whether a later run of the same workflow succeeded.
+2. Agent step. Run the Sentry MCP tool `search_issues` with `is:unresolved firstSeen:-7d` in `selene-ze/selene-edge-functions`. For each new issue, read it with `get_sentry_resource`, then read the Supabase logs between its first and last event with the Supabase MCP tool `query_logs` (source `function_logs`, error lines). Search the issues for the error code the logs show: an open Finding may already cover it.
+3. "Performance findings not accepted" lists each performance finding no entry accepts. Then, as an agent step, run the Supabase MCP tool `get_advisors` with `type: health`. The health advisor has no accepted list, so judge each of its lints.
 
-Needs a decision for a failure that no later green run of the same workflow explains, a flaky test (it fails, then passes with no change), a new Sentry issue, and an ERROR advisor.
+Needs a decision for a failure that no later green run of the same workflow explains, a flaky test (it fails, then passes with no change), a new Sentry issue, an ERROR advisor, and each line under the performance lists.
+
+**Look closer.** Read the end of a failed log with `gh run view <id> --log-failed | tail -n 50`.
 
 ### E. Workflow
 
-This system reviews how we work: mistakes agents repeat and tooling bugs nobody took. It has the same weight as dependencies. The procedure for agent mistakes is `docs/findings.md`, "Record a repeated agent mistake". Set one more date for step 3:
+This system reviews how we work: mistakes agents repeat and tooling bugs nobody took. It has the same weight as dependencies. The procedure for agent mistakes is `docs/findings.md`, "Record a repeated agent mistake".
 
-```bash
-untaken=$(date -d '14 days ago' +%F)
-```
+**Data.** The "E. Workflow" section gives steps 1 to 3. Step 4 is an agent step.
 
-1. List the agent mistakes of the week, then read each one with `gh issue view <number> --comments`:
+**Judge.**
 
-   ```bash
-   gh issue list --state all --label agent-mistake --search "updated:>=$since" --limit 200 --json number,title,state,createdAt
-   ```
-
-   Classify each issue by its `createdAt` and its evidence comments (comments that report a new occurrence, not clarifications). An issue created on or after `$since` is a first occurrence. An evidence comment dated on or after `$since` means the mistake repeated this week, even on an issue opened this week. An issue that only changed labels, or whose evidence comments are older, is not news; step 2 keeps the older repeats. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
-
-2. List the repeated mistakes whose guard is still missing:
-
-   ```bash
-   gh issue list --state open --label agent-mistake --search "-linked:pr" --limit 200 --json number,title,comments
-   ```
-
-   An issue with a comment with new evidence has repeated. Its guard has not landed while no PR links it. Step 1 covers the repeated issues that already have a linked PR. This closes the loop on the guards earlier sessions approved.
-
-3. List the tooling findings of the week, and the ones nobody took in 14 days:
-
-   ```bash
-   gh issue list --state open --label finding --label area:tooling --search "created:>=$since" --limit 200 --json number,title
-   gh issue list --state open --label finding --label area:tooling --search "-linked:pr created:<$untaken" --limit 200 --json number,title,createdAt
-   ```
-
-4. Ask the maintainer: "¿Qué error de un agente corregiste más de una vez esta semana?" No command sees these. For each answer with no `agent-mistake` issue, open one as `docs/findings.md` describes.
+1. "Agent mistakes updated since" lists each `agent-mistake` issue updated this week, with its state and how many comments it got this week. Read each one with `gh issue view <number> --comments`, and classify it by its creation date and its evidence comments (comments that report a new occurrence, not clarifications). An issue created on or after `since` is a first occurrence. An evidence comment dated on or after `since` means the mistake repeated this week, even on an issue opened this week. An issue that only changed labels, or whose evidence comments are older, is not news; step 2 keeps the older repeats. A repeat on an issue with a linked PR means the fix in progress did not prevent it: it needs a decision too.
+2. "Open agent mistakes without a linked PR" lists the issues whose guard is still missing, with their comment count. An issue with a comment with new evidence has repeated. Its guard has not landed while no PR links it. Step 1 covers the repeated issues that already have a linked PR. This closes the loop on the guards earlier sessions approved.
+3. The two tooling lists hold the tooling findings of the week and the ones nobody took since `untaken` (14 days ago).
+4. Agent step. Ask the maintainer: "¿Qué error de un agente corregiste más de una vez esta semana?" No command sees these. For each answer with no `agent-mistake` issue, open one as `docs/findings.md` describes.
 
 For each repeated mistake, propose where its fix goes. Use the order of `docs/findings.md`, step 3: architecture, types, a guard or lint, a behavior test, and a rule in `AGENTS.md` or a skill only last. Propose "no change" when the cost of the mistake is lower than the cost of the fix, and say why. If an existing guard needs many exceptions to stay reliable, propose turning it back into a written rule.
 
 Needs a decision for each repeated mistake without a guard, with the proposed fix, and each tooling finding that nobody took in 14 days.
+
+**Look closer.** Read a finding with `gh issue view <number>`.
 
 ## Monthly checks
 
@@ -243,7 +180,7 @@ Read the sandbox webhook endpoints with the Stripe MCP tool `GetWebhookEndpoints
 
 ### Worktrees
 
-A worktree is a cleanup candidate only when it is not active ("Check the open worktrees before you act"). It has no uncommitted files, no commits ahead of `origin/main`, and no recent work, and its branch is merged: `git merge-base --is-ancestor <branch> origin/main` exits with 0. A merged branch alone is not enough, because a worktree can move on to a new branch. On 2026-11-10, `repo-hygiene` held a merged branch one day and 38 uncommitted files on a new branch the next.
+A worktree is a cleanup candidate only when `bun run routine:collect` lists it under "Inactive worktrees" ("Check the open worktrees before you act") and its branch is merged: `git merge-base --is-ancestor <branch> origin/main` exits with 0. A merged branch alone is not enough, because a worktree can move on to a new branch. On 2026-11-10, `repo-hygiene` held a merged branch one day and 38 uncommitted files on a new branch the next.
 
 Run these from the main checkout:
 
@@ -259,11 +196,7 @@ Ask the maintainer what they did by hand more than once this month. Each answer 
 
 ## Pick the topic of the week
 
-Each week the session looks closer at one area, adapted from AWS "The Wheel" (https://aws.amazon.com/blogs/opensource/the-wheel/). The topic is the `area:*` label at index ISO week number modulo 8:
-
-```bash
-echo $(( 10#$(date +%V) % 8 ))
-```
+Each week the session looks closer at one area, adapted from AWS "The Wheel" (https://aws.amazon.com/blogs/opensource/the-wheel/). The topic is the `area:*` label at index ISO week number modulo 8. `bun run routine:collect` prints it on its `Topic of the week:` line.
 
 | Index | Area             |
 | ----- | ---------------- |
