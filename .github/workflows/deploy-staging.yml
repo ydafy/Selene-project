@@ -136,8 +136,18 @@ jobs:
       - name: Deploy every Edge Function
         if: steps.target.outputs.skip != 'true'
         env:
+          ROLLBACK: ${{ steps.target.outputs.rollback }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: supabase functions deploy --use-api --yes
+        # Supabase can answer a transient 5xx, and the deploy is idempotent, so
+        # retry-transient.ts reruns it then (at most 3 attempts).
+        run: |
+          script=scripts/ci/retry-transient.ts
+          if [ "$ROLLBACK" = true ]; then
+            # An older commit may lack the wrapper: take it from main.
+            script="$RUNNER_TEMP/retry-transient.ts"
+            git show origin/main:scripts/ci/retry-transient.ts > "$script"
+          fi
+          bun "$script" -- supabase functions deploy --use-api --yes
       # A rollback compares with the head of main: the remote keeps main's
       # migrations, and functions added after the rolled-back commit stay deployed.
       - name: Check drift
