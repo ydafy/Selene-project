@@ -24,7 +24,7 @@ Quoted from #646.
 - [x] T3 S2, S6: refund and cancellation records section. Route: `gentle-ai-worker` (context backstop) from the decisions in L6, reviewed inline. Commit: see L7.
 - [ ] T4 S3, S6: order and shipment status model section. Route: inline. Commit: pending.
 - [ ] T5 S4, S5, S6: code path changes, TLC impact, implementation order for #647, #648, #649. Route: inline. Commit: pending.
-- [ ] T6 S6: maintainer review, PR `Closes #646`, merge after approval. Route: inline. Commit: pending.
+- [ ] T6 S6: two chained PRs (L8). PR A: T1-T3 (ledger and records), "Part of #646". PR B: T4-T5, based on PR A, `Closes #646`. Each merges after the maintainer approves it. Route: inline. Commit: pending.
 
 ## Log
 
@@ -60,3 +60,4 @@ Quoted from #646.
   - E8 Checkout recovery: one `payment_recoveries` record keyed by PaymentIntent replaces the six compensation columns on `orders` and on `internal.checkout_recovery_shells` (state enum from #638, attempts, retry time, lease, last error), optionally linked to its order. Shells keep only the payment that has no order. Its refunds are `refunds` rows.
   - E9 Function names and signatures stay where possible, so the TLC code mapping changes only in which table a function writes. Each child table carries its own CHECKs instead of the 28 on one row.
 - **L7** (2026-11-27, T3 review): E7 changed. `shipment_cancellation_operations.cancellation_loss_cents` stays, because it is a frozen input (computed by `allocateCancellationLossCents`, frozen by `fn_start_shipment_cancellation_refund`); `refund_fee_loss` posts it, so the start and cancel signatures keep E9. Only `label_cost_loss_cents` and `orders.cancellation_loss_cents` are dropped. The `refund_fee_loss` key became `<shipment>:refund_fee_loss`, because Stripe keeps the fee once per shipment even if a second refund follows. Worker additions accepted: `internal.refund_events` and `internal.payment_recoveries` live in `internal`; enums `refund_purpose`, `refund_status`, `payment_recovery_state`; helper `internal.fn_append_refund_event`; one live refund per owner by partial unique index; `fn_acknowledge_shipment_late_carrier_activity` gains the shipment lock. Left for T5: arguments of `fn_record_dispute_refund` and `fn_finalize_checkout_recovery`, and webhook routing of dispute and recovery refund events.
+- **L8** (2026-11-27, slice boundary): T1-T3 reached 465 authored lines in 4 commits (2beffde8, cf0c3019, 6cf5ed6b, ebfe8a9a), each under 400. Delivery shape: PR A holds them so the maintainer can review the ledger and the records while T4 and T5 are written; PR B adds T4 and T5 and closes #646.
