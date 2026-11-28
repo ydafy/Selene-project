@@ -414,6 +414,15 @@ describe('deploy-staging workflow', () => {
     expect(workflow).toContain('environment: staging');
   });
 
+  it('deploys the functions through the retry wrapper, taken from main on a rollback', () => {
+    expect(workflow).toContain(
+      'git show origin/main:scripts/ci/retry-transient.ts > "$script"',
+    );
+    expect(workflow).toContain(
+      'bun "$script" -- supabase functions deploy --use-api --yes',
+    );
+  });
+
   it('never prunes functions or pushes the config', () => {
     const commands = workflow
       .split('\n')
