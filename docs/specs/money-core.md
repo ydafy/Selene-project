@@ -32,13 +32,12 @@ The ledger records every movement of money as an entry from one account to anoth
 
 - `id uuid` primary key, default `gen_random_uuid()`.
 - `kind ledger_account_kind NOT NULL`, an enum with the kinds in the table below.
-- `order_id uuid` references `orders`, set for `buyer` when the payment has an order.
-- `stripe_payment_intent_id text`, set only for a `buyer` account whose payment has no order: a checkout recovery shell.
+- `stripe_payment_intent_id text`, set only for `buyer`. A buyer account belongs to the PaymentIntent, not to the order, so it never changes when an order is created after a checkout recovery shell for the same payment. Each entry still carries its `order_id`.
 - `shipment_id uuid` references `shipments`, set only for `shipment_funds` and `shipping_reserve`.
 - `seller_id uuid` references `profiles`, set only for `seller_balance`, `seller_bank`, and `seller_card`.
 - `created_at timestamptz NOT NULL DEFAULT now()`.
-- A `CHECK` requires exactly the owner column that the kind needs and `NULL` in the others. A `buyer` account has exactly one of `order_id` and `stripe_payment_intent_id`.
-- Five partial unique indexes make each account exist once: `(kind) WHERE` all owners are `NULL`, `(kind, order_id)`, `(kind, stripe_payment_intent_id)`, `(kind, shipment_id)`, and `(kind, seller_id)`, each `WHERE` that owner is set. A kind without an owner is a single row.
+- A `CHECK` requires exactly the owner column that the kind needs and `NULL` in the others.
+- Four partial unique indexes make each account exist once: `(kind) WHERE` all owners are `NULL`, `(kind, stripe_payment_intent_id)`, `(kind, shipment_id)`, and `(kind, seller_id)`, each `WHERE` that owner is set. A kind without an owner is a single row.
 
 `ledger_entries` has one row per movement.
 
@@ -83,22 +82,22 @@ Only SQL functions post entries. Each one calls `internal.fn_post_ledger_entry` 
 
 The balance of an account is the sum of entries into it minus the sum of entries out of it. An external account goes negative by the money that left the outside world into Selene.
 
-| Kind                   | Owner    | What its balance means                                                                                          |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `buyer`                | order    | External. Minus what the buyer paid for the order, plus what was refunded.                                      |
-| `shipment_funds`       | shipment | Money Selene holds for the shipment. After checkout it is the seller net. After the Transfer it is 0.           |
-| `seller_balance`       | seller   | Money in the seller's connected Stripe account that a Payout has not yet sent to the bank.                      |
-| `seller_bank`          | seller   | External. What reached the seller's bank.                                                                       |
-| `seller_card`          | seller   | External. Minus the return label fees charged to the seller's saved card.                                       |
-| `commission`           | none     | Selene revenue from commissions.                                                                                |
-| `shipping_margin`      | none     | Selene revenue from shipping reserves that labels did not spend.                                                |
-| `seguro`               | none     | Seguro Selene collected minus the Stripe fees it paid. Positive is a surplus, negative a deficit.               |
-| `shipping_reserve`     | shipment | The seller-paid shipping reserve not yet spent on labels or settled.                                            |
-| `carrier`              | none     | External. What Envia charged for labels, minus label costs it returned.                                         |
-| `stripe`               | none     | External. Stripe processing fees.                                                                               |
-| `loss`                 | none     | Selene losses from Stripe fees on refunded shipments, label costs not returned, and reserve deficits. Negative. |
-| `return_label_fees`    | none     | Selene revenue from return label fees.                                                                          |
-| `unallocated_payments` | none     | Checkout recovery payments with no order, held until they are refunded. 0 once every one is refunded.           |
+| Kind                   | Owner         | What its balance means                                                                                          |
+| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------- |
+| `buyer`                | PaymentIntent | External. Minus what the buyer paid with the PaymentIntent, plus what was refunded.                             |
+| `shipment_funds`       | shipment      | Money Selene holds for the shipment. After checkout it is the seller net. After the Transfer it is 0.           |
+| `seller_balance`       | seller        | Money in the seller's connected Stripe account that a Payout has not yet sent to the bank.                      |
+| `seller_bank`          | seller        | External. What reached the seller's bank.                                                                       |
+| `seller_card`          | seller        | External. Minus the return label fees charged to the seller's saved card.                                       |
+| `commission`           | none          | Selene revenue from commissions.                                                                                |
+| `shipping_margin`      | none          | Selene revenue from shipping reserves that labels did not spend.                                                |
+| `seguro`               | none          | Seguro Selene collected minus the Stripe fees it paid. Positive is a surplus, negative a deficit.               |
+| `shipping_reserve`     | shipment      | The seller-paid shipping reserve not yet spent on labels or settled.                                            |
+| `carrier`              | none          | External. What Envia charged for labels, minus label costs it returned.                                         |
+| `stripe`               | none          | External. Stripe processing fees.                                                                               |
+| `loss`                 | none          | Selene losses from Stripe fees on refunded shipments, label costs not returned, and reserve deficits. Negative. |
+| `return_label_fees`    | none          | Selene revenue from return label fees.                                                                          |
+| `unallocated_payments` | none          | Checkout recovery payments with no order, held until they are refunded. 0 once every one is refunded.           |
 
 ### Entry kinds
 
@@ -245,8 +244,8 @@ The maintainer decided these on 2026-11-27:
 
 - ISR and IVA withholding for sellers is decided in #658. If Selene withholds, it adds entry kinds and accounts to this ledger.
 - Chargebacks are designed in #269. They will add a kind that moves money from `shipment_funds` or `loss` to `buyer`.
-- A monthly report of the Seguro surplus or deficit is #745. It reads the `seguro` and `loss` balances by month.
-- A checkout recovery shell has no order, so its `buyer` account is owned by the PaymentIntent. Stripe keeps its fee on a recovery refund, and no code reads that fee today. #647 reads it and posts it as `stripe_fee` from `loss` to `stripe`, because no Seguro was ever allocated for a payment without an order.
+- A monthly report of the Seguro surplus or deficit is #745. Per month it shows the Seguro collected (`seguro` entries), the Stripe fees it paid (`stripe_fee` from `seguro`), the Seguro returned on refunds (`seguro` reversals), and the fee losses on refunds (`refund_fee_loss`). Its result is collected minus fees minus returned, which is the change of the `seguro` balance minus the `refund_fee_loss` entries. Label losses, reserve deficits, and the recovery fee below are not Seguro costs, so the report leaves the rest of `loss` out.
+- A checkout recovery shell has no order, and its `buyer` account is the PaymentIntent's like any other. If `fn_create_shipments_from_single_payment` later creates an order for a PaymentIntent that has a `recovery_charge` and no `recovery_refund`, it first reverses the `recovery_charge`, so the charge is counted once, in the order's `charge` entries. A `recovery_refund` posted after that would find `unallocated_payments` empty for the PaymentIntent and must raise; #647 proves with pgTAP which of the two flows wins under the PaymentIntent lock. Stripe keeps its fee on a recovery refund, and no code reads that fee today. #647 reads it and posts it as `stripe_fee` from `loss` to `stripe`, because no Seguro was ever allocated for a payment without an order.
 
 ## Refund and cancellation records
 
